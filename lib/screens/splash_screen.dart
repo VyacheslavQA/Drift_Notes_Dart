@@ -1,6 +1,7 @@
 // Путь: lib/screens/splash_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,16 +12,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-
-    // Задержка перед переходом на следующий экран
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(context, '/auth_selection');
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     // Получаем размеры экрана для адаптивности
@@ -33,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
         height: double.infinity,
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/images/splash_background.jpg'),
+            image: AssetImage('assets/images/splash_background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -100,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/auth_selection');
+                      Navigator.pushNamed(context, '/auth_selection');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
@@ -122,14 +113,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
                 SizedBox(height: screenSize.height * 0.03),
 
-                // Кнопка "Назад"
+                // Кнопка "Выход" вместо "Назад"
                 TextButton(
                   onPressed: () {
-                    // Здесь можно реализовать действие для кнопки "Назад"
-                    // На заставке кнопка обычно не делает ничего
+                    // Выход из приложения
+                    SystemNavigator.pop();
                   },
                   child: const Text(
-                    'Назад',
+                    'Выход',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 16,
