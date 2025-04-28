@@ -3,19 +3,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../models/fishing_note_model.dart';
+import 'package:intl/intl.dart';
 
 class WeatherService {
   final String _baseUrl = 'https://api.open-meteo.com/v1/forecast';
 
   // Получает данные о погоде для указанных координат
-  Future<FishingWeather?> getWeatherForLocation(double latitude, double longitude) async {
+  Future<FishingWeather?> getWeatherForLocation(double latitude,
+      double longitude) async {
     try {
       final response = await http.get(Uri.parse(
-        '$_baseUrl?latitude=$latitude&longitude=$longitude'
-        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
-        'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
-        '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
-        '&timezone=auto'
+          '$_baseUrl?latitude=$latitude&longitude=$longitude'
+              '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
+              'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
+              '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
+              '&timezone=auto'
       ));
 
       if (response.statusCode == 200) {
@@ -67,7 +69,8 @@ class WeatherService {
       final weatherDesc = _getWeatherDescription(weatherCode);
       final temperature = (current['temperature_2m'] ?? 0.0).toInt();
       final feelsLike = (current['apparent_temperature'] ?? 0.0).toInt();
-      final windDirection = _getWindDirection(current['wind_direction_10m'] ?? 0);
+      final windDirection = _getWindDirection(
+          current['wind_direction_10m'] ?? 0);
       final windSpeed = current['wind_speed_10m'] ?? 0.0;
       final humidity = current['relative_humidity_2m'] ?? 0;
       final pressure = current['pressure_msl'] != null
@@ -146,10 +149,14 @@ class WeatherService {
     return 'Неизвестно';
   }
 
-  // Форматирует время из ISO формата
+  // форматирует время из ISO формата
   String _formatTimeFromIso(String isoTime) {
     try {
-      final dateFormat = DateFormat('yyyy-MM-dd\'T\'HH:mm');
+      if (isoTime.isEmpty) {
+        return '';
+      }
+
+      final dateFormat = DateFormat("yyyy-MM-dd'T'HH:mm");
       final time = dateFormat.parse(isoTime);
       return DateFormat('HH:mm').format(time);
     } catch (e) {

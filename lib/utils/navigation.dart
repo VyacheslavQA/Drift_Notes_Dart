@@ -61,7 +61,7 @@ class AppNavigation {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => screen),
-      (route) => false,
+          (route) => false,
     );
   }
 }

@@ -3,6 +3,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data'; // Добавляем импорт для Uint8List
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -86,7 +87,9 @@ class FirebaseService {
   // Загрузка изображения в Firebase Storage
   Future<String> uploadImage(String path, List<int> imageBytes) async {
     final ref = _storage.ref().child(path);
-    final uploadTask = ref.putData(imageBytes);
+    // Преобразуем List<int> в Uint8List
+    final Uint8List uint8List = Uint8List.fromList(imageBytes);
+    final uploadTask = ref.putData(uint8List);
     final snapshot = await uploadTask;
     return await snapshot.ref.getDownloadURL();
   }
