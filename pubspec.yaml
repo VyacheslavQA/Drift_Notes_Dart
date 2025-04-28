@@ -1,0 +1,55 @@
+name: dtift_notes_dart
+description: "Мобильное приложение для рыболовов."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Основные
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.17.2
+  cloud_firestore: ^4.15.2
+  firebase_storage: ^11.6.3
+
+  # UI и дизайн
+  intl: ^0.19.0  # Обновленная версия
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.1
+  google_fonts: ^6.1.0
+
+  # Утилиты
+  connectivity_plus: ^5.0.2
+  http: ^1.1.2
+  image_picker: ^1.0.7
+  path_provider: ^2.1.2
+  shared_preferences: ^2.2.2
+
+  # Карты
+  google_maps_flutter: ^2.5.3
+  geolocator: ^10.1.0
+
+  # Управление состоянием
+  provider: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
