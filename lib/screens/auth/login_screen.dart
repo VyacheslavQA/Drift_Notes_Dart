@@ -1,10 +1,11 @@
 // Путь: lib/screens/auth/login_screen.dart
 
 import 'package:flutter/material.dart';
+import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -40,9 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
-      // Навигация на главный экран после успешного входа
-      Navigator.of(context).pushReplacementNamed('/home');
-
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       setState(() {
         _errorMessage = 'Ошибка входа: ${e.toString()}';
@@ -56,36 +55,62 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Получаем размеры экрана для адаптивности
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
       body: Container(
-        decoration: const BoxDecoration(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1E2B23), Color(0xFF0A1710)],
+            colors: AppConstants.authGradient,
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.08),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Логотип
-                  Image.asset('assets/images/app_logo.png', height: 120),
-                  const SizedBox(height: 16),
+                  SizedBox(height: screenSize.height * 0.04),
 
-                  // Название приложения
+                  // Кнопка "Назад"
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  SizedBox(height: screenSize.height * 0.02),
+
+                  // Заголовок
                   const Text(
-                    'DriftNotes',
+                    'Вход',
                     style: TextStyle(
-                      fontSize: 34,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFD7CCA1),
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 32),
+
+                  SizedBox(height: screenSize.height * 0.02),
+
+                  // Подзаголовок
+                  const Text(
+                    'Введите email и пароль для входа в приложение',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                    ),
+                  ),
+
+                  SizedBox(height: screenSize.height * 0.06),
 
                   // Форма входа
                   Form(
@@ -95,15 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Поле для email
                         TextFormField(
                           controller: _emailController,
-                          decoration: InputDecoration(
-                            hintText: 'Email',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.email, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           keyboardType: TextInputType.emailAddress,
@@ -114,20 +134,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.03),
 
                         // Поле для пароля
                         TextFormField(
                           controller: _passwordController,
-                          decoration: InputDecoration(
-                            hintText: 'Пароль',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Пароль',
+                            prefixIcon: Icon(Icons.lock, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           obscureText: true,
@@ -138,7 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 8),
+
+                        SizedBox(height: screenSize.height * 0.02),
 
                         // Ссылка "Забыли пароль?"
                         Align(
@@ -149,11 +166,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             child: const Text(
                               'Забыли пароль?',
-                              style: TextStyle(color: Color(0xFFD7CCA1)),
+                              style: TextStyle(color: AppConstants.accentColor),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.02),
 
                         // Сообщение об ошибке
                         if (_errorMessage.isNotEmpty)
@@ -173,44 +191,45 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E7D32),
+                              backgroundColor: AppConstants.primaryColor,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text(
-                                    'Войти',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFFD7CCA1),
-                                    ),
-                                  ),
+                              'Войти',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.04),
 
                         // Ссылка на регистрацию
                         TextButton(
                           onPressed: () {
-                            // Навигация на экран регистрации
+                            Navigator.pushNamed(context, '/register');
                           },
                           child: const Text(
-                            child: const Text(
-                                                        'Нет аккаунта? Зарегистрироваться',
-                                                        style: TextStyle(color: Color(0xFFD7CCA1)),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
+                            'Нет аккаунта? Зарегистрироваться',
+                            style: TextStyle(color: AppConstants.accentColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

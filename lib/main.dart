@@ -1,10 +1,23 @@
 // Путь: lib/main.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'screens/splash_screen.dart';
+import 'screens/auth/auth_selection_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
+import 'screens/home_screen.dart';
+import 'constants/app_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Устанавливаем ориентацию экрана только на портретный режим
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // Инициализация Firebase
   await Firebase.initializeApp();
@@ -13,73 +26,53 @@ void main() async {
 }
 
 class DriftNotesApp extends StatelessWidget {
-  const DriftNotesApp({Key? key}) : super(key: key);
+  const DriftNotesApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DriftNotes',
+      title: 'Drift Notes',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.green,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFF1E2B23),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E2B23),
-          foregroundColor: Color(0xFFD7CCA1),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppConstants.backgroundColor,
+        appBarTheme: AppBarTheme(
+          backgroundColor: AppConstants.backgroundColor,
+          foregroundColor: AppConstants.accentColor,
+          elevation: 0,
         ),
-        cardColor: const Color(0xFF1A1A1A),
-        colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: const Color(0xFF4CAF50),
-          secondary: const Color(0xFFD7CCA1),
-          surface: const Color(0xFF1E2B23),
-          onSurface: const Color(0xFFFFFFFF),
+        cardColor: AppConstants.surfaceColor,
+        colorScheme: ColorScheme.dark().copyWith(
+          primary: AppConstants.primaryColor,
+          secondary: AppConstants.accentColor,
+          surface: AppConstants.surfaceColor,
+          onSurface: AppConstants.textColor,
         ),
-      ),
-      home: const SplashScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
-
-  @override
-  _SplashScreenState createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-
-    // Задержка для отображения сплеш-экрана
-    Future.delayed(const Duration(seconds: 2), () {
-      // Здесь будет навигация на экран авторизации или главный экран
-      // в зависимости от статуса авторизации пользователя
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset('assets/images/app_logo.png', width: 120, height: 120),
-            const SizedBox(height: 24),
-            const Text(
-              'DriftNotes',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD7CCA1),
-              ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: AppConstants.accentColor,
+            backgroundColor: AppConstants.primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
-          ],
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppConstants.accentColor,
+          ),
         ),
       ),
+      // Начальный экран приложения
+      home: const SplashScreen(),
+      // Определение маршрутов для навигации
+      routes: {
+        '/auth_selection': (context) => const AuthSelectionScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }

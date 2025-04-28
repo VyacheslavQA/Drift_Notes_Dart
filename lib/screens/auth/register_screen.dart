@@ -1,10 +1,11 @@
 // Путь: lib/screens/auth/register_screen.dart
 
 import 'package:flutter/material.dart';
+import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
@@ -54,9 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
 
-      // Навигация на главный экран после успешной регистрации
-      Navigator.of(context).pushReplacementNamed('/home');
-
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       setState(() {
         _errorMessage = 'Ошибка регистрации: ${e.toString()}';
@@ -70,47 +69,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Получаем размеры экрана для адаптивности
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
       body: Container(
-        decoration: const BoxDecoration(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1E2B23), Color(0xFF0A1710)],
+            colors: AppConstants.authGradient,
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.08),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Логотип
-                  Image.asset('assets/images/app_logo.png', height: 120),
-                  const SizedBox(height: 16),
+                  SizedBox(height: screenSize.height * 0.04),
 
-                  // Название приложения
-                  const Text(
-                    'DriftNotes',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFD7CCA1),
-                    ),
+                  // Кнопка "Назад"
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
                   ),
-                  const SizedBox(height: 16),
 
-                  // Заголовок регистрации
+                  SizedBox(height: screenSize.height * 0.02),
+
+                  // Заголовок
                   const Text(
                     'Регистрация',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 24),
+
+                  SizedBox(height: screenSize.height * 0.02),
+
+                  // Подзаголовок
+                  const Text(
+                    'Создайте аккаунт для доступа к приложению',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                    ),
+                  ),
+
+                  SizedBox(height: screenSize.height * 0.04),
 
                   // Форма регистрации
                   Form(
@@ -120,15 +134,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для имени
                         TextFormField(
                           controller: _nameController,
-                          decoration: InputDecoration(
-                            hintText: 'Имя',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Имя',
+                            prefixIcon: Icon(Icons.person, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           validator: (value) {
@@ -138,20 +147,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.02),
 
                         // Поле для email
                         TextFormField(
                           controller: _emailController,
-                          decoration: InputDecoration(
-                            hintText: 'Email',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.email, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           keyboardType: TextInputType.emailAddress,
@@ -160,25 +165,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Пожалуйста, введите email';
                             }
                             if (!value.contains('@') || !value.contains('.')) {
-                              return 'Пожалуйста, введите корректный email';
+                              return 'Введите корректный email';
                             }
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.02),
 
                         // Поле для пароля
                         TextFormField(
                           controller: _passwordController,
-                          decoration: InputDecoration(
-                            hintText: 'Пароль',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Пароль',
+                            prefixIcon: Icon(Icons.lock, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           obscureText: true,
@@ -192,20 +193,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.02),
 
                         // Поле для подтверждения пароля
                         TextFormField(
                           controller: _confirmPasswordController,
-                          decoration: InputDecoration(
-                            hintText: 'Подтвердите пароль',
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                          decoration: const InputDecoration(
+                            labelText: 'Подтвердите пароль',
+                            prefixIcon: Icon(Icons.lock_outline, color: Colors.white70),
+                            labelStyle: TextStyle(color: Colors.white70),
                           ),
                           style: const TextStyle(color: Colors.white),
                           obscureText: true,
@@ -219,7 +216,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 24),
+
+                        SizedBox(height: screenSize.height * 0.04),
 
                         // Сообщение об ошибке
                         if (_errorMessage.isNotEmpty)
@@ -239,32 +237,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _register,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E7D32),
+                              backgroundColor: AppConstants.primaryColor,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text(
-                                    'Зарегистрироваться',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFFD7CCA1),
-                                    ),
-                                  ),
+                              'Зарегистрироваться',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+
+                        SizedBox(height: screenSize.height * 0.03),
 
                         // Ссылка на вход
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(context);
+                            Navigator.pushReplacementNamed(context, '/login');
                           },
                           child: const Text(
                             'Уже есть аккаунт? Войти',
-                            style: TextStyle(color: Color(0xFFD7CCA1)),
+                            style: TextStyle(color: AppConstants.accentColor),
                           ),
                         ),
                       ],

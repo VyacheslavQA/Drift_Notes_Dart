@@ -56,20 +56,20 @@ class _HomeScreenState extends State<HomeScreen> {
     // В зависимости от выбранного индекса, выполняем соответствующие действия
     switch (index) {
       case 0:
-        // Основной экран (уже отображен)
+      // Основной экран (уже отображен)
         break;
       case 1:
-        // Экран погоды
+      // Экран погоды
         break;
       case 2:
-        // Добавление новой заметки
+      // Добавление новой заметки
         _navigateToAddNote();
         break;
       case 3:
-        // Экран календаря
+      // Экран календаря
         break;
       case 4:
-        // Экран уведомлений
+      // Экран уведомлений
         break;
     }
   }
@@ -287,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (count % 10 == 1 && count % 100 != 11) {
       return 'рыбалка';
     } else if ((count % 10 >= 2 && count % 10 <= 4) &&
-               (count % 100 < 10 || count % 100 >= 20)) {
+        (count % 100 < 10 || count % 100 >= 20)) {
       return 'рыбалки';
     } else {
       return 'рыбалок';
@@ -407,9 +407,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         : null,
                     child: user?.photoURL == null
                         ? Text(
-                            userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 24, color: Colors.white),
-                          )
+                      userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                      style: const TextStyle(fontSize: 24, color: Colors.white),
+                    )
                         : null,
                   ),
                   const SizedBox(height: 12),

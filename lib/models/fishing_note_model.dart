@@ -63,7 +63,7 @@ class FishingNoteModel {
       markerMapId: json['markerMapId'] ?? '',
       biteRecords: (json['biteRecords'] != null)
           ? List<BiteRecord>.from(
-              json['biteRecords'].map((x) => BiteRecord.fromJson(x)))
+          json['biteRecords'].map((x) => BiteRecord.fromJson(x)))
           : [],
       dayBiteMaps: (json['dayBiteMaps'] != null)
           ? Map<String, List<String>>.from(json['dayBiteMaps'].map(
