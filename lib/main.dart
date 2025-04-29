@@ -11,8 +11,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
-import 'firebase_options.dart'; // Добавьте этот импорт
-import 'firebase_options.dart'; // Используем сгенерированный файл
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +21,16 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Настройка системного UI (статус бар и навигационная панель)
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF0B1F1D),
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
 
   // Инициализация Firebase
   try {
@@ -47,7 +56,7 @@ class DriftNotesApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: AppConstants.primaryColor,
         scaffoldBackgroundColor: AppConstants.backgroundColor,
-        textTheme: GoogleFonts.poppinsTextTheme(
+        textTheme: GoogleFonts.montserratTextTheme(
           Theme.of(context).textTheme.apply(
             bodyColor: AppConstants.textColor,
             displayColor: AppConstants.textColor,
@@ -58,27 +67,30 @@ class DriftNotesApp extends StatelessWidget {
           foregroundColor: AppConstants.textColor,
           elevation: 0,
           systemOverlayStyle: SystemUiOverlayStyle.light,
-          titleTextStyle: GoogleFonts.poppins(
-            fontSize: 20,
+          titleTextStyle: GoogleFonts.montserrat(
+            fontSize: 24,
             fontWeight: FontWeight.bold,
+            color: AppConstants.textColor,
+          ),
+          iconTheme: IconThemeData(
             color: AppConstants.textColor,
           ),
         ),
         cardTheme: CardTheme(
-          color: AppConstants.surfaceColor,
+          color: AppConstants.cardColor,
           elevation: 4,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
           ),
           shadowColor: Colors.black.withOpacity(0.2),
         ),
         colorScheme: ColorScheme.dark(
           primary: AppConstants.primaryColor,
-          secondary: AppConstants.accentColor, // Теперь это светло-бежевый вместо голубого
+          secondary: AppConstants.accentColor,
           surface: AppConstants.surfaceColor,
           background: AppConstants.backgroundColor,
           onPrimary: AppConstants.textColor,
-          onSecondary: Colors.black, // Черный текст на светло-бежевом фоне для контраста
+          onSecondary: Colors.black,
           onSurface: AppConstants.textColor,
           onBackground: AppConstants.textColor,
         ),
@@ -87,7 +99,7 @@ class DriftNotesApp extends StatelessWidget {
             backgroundColor: AppConstants.primaryColor,
             foregroundColor: AppConstants.textColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
             ),
             padding: const EdgeInsets.symmetric(vertical: 16),
             elevation: 0,
@@ -106,18 +118,25 @@ class DriftNotesApp extends StatelessWidget {
           fillColor: AppConstants.surfaceColor,
           hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
             borderSide: BorderSide(color: AppConstants.textColor),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
             borderSide: const BorderSide(color: Colors.redAccent),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        // Настройка анимаций
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
         ),
       ),
       // Начальный экран приложения

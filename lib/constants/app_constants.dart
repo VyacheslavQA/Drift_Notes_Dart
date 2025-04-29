@@ -3,19 +3,43 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  // Цвета из ТЗ
+  // Цвета приложения
   static const Color backgroundColor = Color(0xFF0A1F1C); // Тёмно-зелёный
   static const Color surfaceColor = Color(0xFF12332E); // Чуть светлее фона
   static const Color textColor = Color(0xFFE3D8B2); // Светло-бежевый
-  static const Color accentColor = Color(0xFFE3D8B2); // Меняем с голубого на светло-бежевый
+  static const Color accentColor = Color(0xFFE3D8B2); // Светло-бежевый
   static const Color primaryColor = Color(0xFF2E7D32); // Зелёный для кнопок
   static const Color secondaryTextColor = Color(0xFFCCCCCC); // Серый для вторичного текста
+  static const Color cardColor = Color(0xFF12332E); // Цвет карточек
+  static const Color bottomBarColor = Color(0xFF0B1F1D); // Цвет нижней панели
+  static const Color dividerColor = Color(0xFF164C45); // Цвет разделителей
 
-  // Градиент для фона авторизации
+  // Градиенты
   static const List<Color> authGradient = [
     Color(0xFF0A1F1C), // Тёмно-зелёный
     Color(0xFF071714), // Более тёмный оттенок
   ];
+
+  static const List<Color> cardGradient = [
+    Color(0xFF123430), // Верхний цвет карточки
+    Color(0xFF0F2923), // Нижний цвет карточки
+  ];
+
+  // Радиусы скругления
+  static const double borderRadiusSmall = 8.0;
+  static const double borderRadiusMedium = 16.0;
+  static const double borderRadiusLarge = 24.0;
+
+  // Отступы
+  static const double paddingSmall = 8.0;
+  static const double paddingMedium = 16.0;
+  static const double paddingLarge = 24.0;
+
+  // Размеры текста
+  static const double fontSizeSmall = 12.0;
+  static const double fontSizeMedium = 16.0;
+  static const double fontSizeLarge = 20.0;
+  static const double fontSizeXLarge = 24.0;
 
   // Типы рыбалки
   static const List<String> fishingTypes = [
@@ -117,4 +141,17 @@ class AppConstants {
     fontSize: 12,
     color: secondaryTextColor,
   );
+
+  // Тени
+  static List<BoxShadow> cardShadow = [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.2),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+  ];
+
+  // Анимации
+  static const Duration animationDuration = Duration(milliseconds: 300);
+  static const Curve animationCurve = Curves.easeInOut;
 }
