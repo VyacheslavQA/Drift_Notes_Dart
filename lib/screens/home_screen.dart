@@ -2,6 +2,7 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
 import '../models/fishing_note_model.dart';
@@ -24,6 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<FishingNoteModel> _fishingNotes = [];
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
+
+  // URL YouTube канала для перехода
+  final String _youtubeChannelUrl = 'https://www.youtube.com/channel/UCarpeDiem';
 
   @override
   void initState() {
@@ -53,6 +57,22 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Метод для открытия URL
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть ссылку')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка при открытии ссылки: ${e.toString()}')),
+      );
     }
   }
 
@@ -164,78 +184,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Виджет для отображения рекламы канала YouTube
+  // Виджет для отображения рекламы канала YouTube с возможностью перехода по ссылке
   Widget _buildYoutubePromoCard() {
-    return Container(
-      height: 180,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: const DecorationImage(
-          image: AssetImage('assets/images/fishing_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Затемнение для лучшей читаемости текста
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.2),
-                  Colors.black.withOpacity(0.6),
-                ],
-              ),
-            ),
+    return GestureDetector(
+      onTap: () => _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
+      child: Container(
+        height: 180,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/fishing_background.png'),
+            fit: BoxFit.cover,
           ),
-
-          // Текст "Посетите наш YouTube канал"
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Text(
-                'Посетите наш YouTube канал',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+        ),
+        child: Stack(
+          children: [
+            // Затемнение для лучшей читаемости текста
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.2),
+                    Colors.black.withOpacity(0.6),
+                  ],
                 ),
               ),
             ),
-          ),
 
-          // Кнопка для перехода
-          Positioned.fill(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  // Открытие YouTube канала
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Переход на YouTube канал будет добавлен позже')),
-                  );
-                },
+            // Текст "Посетите наш YouTube канал"
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  'Посетите наш YouTube канал',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
-          ),
-
-          // Иконка настроек (в правом верхнем углу)
-          Positioned(
-            right: 16,
-            top: 16,
-            child: Icon(
-              Icons.settings,
-              color: Colors.white.withOpacity(0.7),
-              size: 24,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -573,9 +569,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Нижняя навигационная панель
+  // Нижняя навигационная панель с центрированной рыбкой
   Widget _buildBottomNavigationBar() {
     return Container(
+      height: 60, // Компактная высота панели
       decoration: BoxDecoration(
         color: const Color(0xFF0B1F1D),
         boxShadow: [
@@ -596,66 +593,87 @@ class _HomeScreenState extends State<HomeScreen> {
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
-        child: BottomNavigationBar(
-          backgroundColor: const Color(0xFF0B1F1D),
-          type: BottomNavigationBarType.fixed,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          selectedItemColor: AppConstants.textColor,
-          unselectedItemColor: Colors.white54,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: [
-            // Таймер
-            BottomNavigationBarItem(
-              icon: Icon(Icons.access_time, size: 22),
-              label: 'Таймер',
+        child: Stack(
+          alignment: Alignment.center, // Обеспечиваем выравнивание по центру
+          children: [
+            // Основная панель навигации
+            BottomNavigationBar(
+              backgroundColor: const Color(0xFF0B1F1D),
+              type: BottomNavigationBarType.fixed,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              selectedItemColor: AppConstants.textColor,
+              unselectedItemColor: Colors.white54,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              selectedFontSize: 12, // Размер шрифта
+              unselectedFontSize: 11,
+              items: [
+                // Таймер
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.access_time, size: 22),
+                  label: 'Таймер',
+                ),
+                // Погода
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.cloud, size: 22),
+                  label: 'Погода',
+                ),
+                // Пустой элемент для места центральной кнопки
+                const BottomNavigationBarItem(
+                  icon: SizedBox(width: 1, height: 1), // Минимальный размер
+                  label: '',
+                ),
+                // Календарь
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today, size: 22),
+                  label: 'Календарь',
+                ),
+                // Уведомления
+                BottomNavigationBarItem(
+                  icon: Stack(
+                    children: [
+                      const Icon(Icons.notifications, size: 22),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  label: 'Уведомл...',
+                ),
+              ],
             ),
-            // Погода
-            BottomNavigationBarItem(
-              icon: Icon(Icons.cloud, size: 22),
-              label: 'Погода',
-            ),
-            // Кнопка добавления заметки с логотипом рыбки (увеличена в 2 раза)
-            BottomNavigationBarItem(
-              icon: Center(
-                child: SizedBox(
-                  width: 128, // Увеличено в 2 раза по ширине (было 64)
-                  height: 80, // Увеличено в 2 раза по высоте (было 40)
-                  child: Image.asset(
-                    'assets/images/app_logo.png',
-                    width: 128,
-                    height: 80,
+
+            // Центральная кнопка с логотипом рыбки
+            Positioned(
+              top: 3, // Немного отступаем от верха
+              child: GestureDetector(
+                onTap: () => _onItemTapped(2), // Вызов функции при нажатии
+                child: Container(
+                  width: 52, // Размер контейнера
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      width: 42,
+                      height: 42,
+                    ),
                   ),
                 ),
               ),
-              label: '',
-            ),
-            // Календарь
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today, size: 22),
-              label: 'Календарь',
-            ),
-            // Уведомления
-            BottomNavigationBarItem(
-              icon: Stack(
-                children: [
-                  Icon(Icons.notifications, size: 22),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              label: 'Уведомл...',
             ),
           ],
         ),
