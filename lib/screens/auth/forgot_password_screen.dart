@@ -67,248 +67,245 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
 
     return Scaffold(
-        body: Container(
+      body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-        gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-        Color(0xFF0A1F1C),
-    Color(0xFF071714),
-    ],
-    ),
-    ),
-    child: SafeArea(
-    child: SingleChildScrollView(
-    physics: const BouncingScrollPhysics(),
-    child: Padding(
-    padding: EdgeInsets.fromLTRB(24, size.height * 0.02, 24, 24),
-    child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-    // Кнопка "Назад"
-    IconButton(
-    icon: const Icon(Icons.arrow_back, color: Color(0xFFE3D8B2)),
-    onPressed: () {
-    Navigator.pop(context);
-    },
-    padding: EdgeInsets.zero,
-    constraints: const BoxConstraints(),
-    ),
-    SizedBox(height: size.height * 0.02),
-      // Продолжение файла: lib/screens/auth/forgot_password_screen.dart
-
-      // Заголовок экрана
-      Text(
-        'Восстановление пароля',
-        style: TextStyle(
-          fontSize: 28 * adaptiveTextScale,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFFE3D8B2),
-        ),
-      ),
-
-      SizedBox(height: size.height * 0.04),
-
-      if (_isSent)
-      // Сообщение об успешной отправке
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Письмо отправлено',
-                    style: TextStyle(
-                      fontSize: 18 * adaptiveTextScale,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Инструкции по восстановлению пароля были отправлены на указанный email.',
-                style: TextStyle(
-                  fontSize: 16 * adaptiveTextScale,
-                  color: const Color(0xFFE3D8B2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    foregroundColor: const Color(0xFFE3D8B2),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  child: Text(
-                    'Вернуться к входу',
-                    style: TextStyle(fontSize: 16 * adaptiveTextScale),
-                  ),
-                ),
-              ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A1F1C),
+              Color(0xFF071714),
             ],
           ),
-        )
-      else
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Описание
-            Text(
-              'Укажите email, с которым вы регистрировались. Мы отправим на него инструкции по восстановлению пароля.',
-              style: TextStyle(
-                fontSize: 16 * adaptiveTextScale,
-                color: const Color(0xFFE3D8B2),
-              ),
-            ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, size.height * 0.02, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Кнопка "Назад"
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFFE3D8B2)),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  SizedBox(height: size.height * 0.02),
 
-            SizedBox(height: size.height * 0.04),
-
-            // Форма сброса пароля
-            Form(
-              key: _formKey,
-              child: TextFormField(
-                controller: _emailController,
-                style: const TextStyle(
-                  color: Color(0xFFE3D8B2),
-                  fontSize: 16,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Email',
-                  hintStyle: TextStyle(
-                    color: const Color(0xFFE3D8B2).withOpacity(0.5),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF12332E),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFE3D8B2),
-                      width: 1.5,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.redAccent,
-                      width: 1.5,
-                    ),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.redAccent,
-                      width: 1.5,
-                    ),
-                  ),
-                  errorStyle: const TextStyle(color: Colors.redAccent),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) => Validators.validateEmail(value),
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _resetPassword(),
-              ),
-            ),
-
-            SizedBox(height: size.height * 0.02),
-
-            // Сообщение об ошибке
-            if (_errorMessage.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _errorMessage,
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 14 * adaptiveTextScale,
-                  ),
-                ),
-              ),
-
-            SizedBox(height: _errorMessage.isNotEmpty ? size.height * 0.04 : size.height * 0.06),
-
-            // Кнопка отправки
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _resetPassword,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: const Color(0xFFE3D8B2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  padding: EdgeInsets.zero,
-                  disabledBackgroundColor: const Color(0xFF2E7D32).withOpacity(0.5),
-                  elevation: 0,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFE3D8B2),
-                    strokeWidth: 2.5,
-                  ),
-                )
-                    : Center(
-                  child: Text(
-                    'ОТПРАВИТЬ',
+                  // Заголовок экрана
+                  Text(
+                    'Восстановление пароля',
                     style: TextStyle(
-                      fontSize: 18 * adaptiveTextScale,
+                      fontSize: 28 * adaptiveTextScale,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      height: 1.0,
+                      color: const Color(0xFFE3D8B2),
                     ),
                   ),
-                ),
+
+                  SizedBox(height: size.height * 0.04),
+
+                  if (_isSent)
+                  // Сообщение об успешной отправке
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Письмо отправлено',
+                                style: TextStyle(
+                                  fontSize: 18 * adaptiveTextScale,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Инструкции по восстановлению пароля были отправлены на указанный email.',
+                            style: TextStyle(
+                              fontSize: 16 * adaptiveTextScale,
+                              color: const Color(0xFFE3D8B2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(context, '/login');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                foregroundColor: const Color(0xFFE3D8B2),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                              ),
+                              child: Text(
+                                'Вернуться к входу',
+                                style: TextStyle(fontSize: 16 * adaptiveTextScale),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Описание
+                        Text(
+                          'Укажите email, с которым вы регистрировались. Мы отправим на него инструкции по восстановлению пароля.',
+                          style: TextStyle(
+                            fontSize: 16 * adaptiveTextScale,
+                            color: const Color(0xFFE3D8B2),
+                          ),
+                        ),
+
+                        SizedBox(height: size.height * 0.04),
+
+                        // Форма сброса пароля
+                        Form(
+                          key: _formKey,
+                          child: TextFormField(
+                            controller: _emailController,
+                            style: const TextStyle(
+                              color: Color(0xFFE3D8B2),
+                              fontSize: 16,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Email',
+                              hintStyle: TextStyle(
+                                color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFF12332E),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFE3D8B2),
+                                  width: 1.5,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.redAccent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.redAccent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              errorStyle: const TextStyle(color: Colors.redAccent),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) => Validators.validateEmail(value),
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _resetPassword(),
+                          ),
+                        ),
+
+                        SizedBox(height: size.height * 0.02),
+
+                        // Сообщение об ошибке
+                        if (_errorMessage.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _errorMessage,
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 14 * adaptiveTextScale,
+                              ),
+                            ),
+                          ),
+
+                        SizedBox(height: _errorMessage.isNotEmpty ? size.height * 0.04 : size.height * 0.06),
+
+                        // Кнопка отправки
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _resetPassword,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              foregroundColor: const Color(0xFFE3D8B2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              padding: EdgeInsets.zero,
+                              disabledBackgroundColor: const Color(0xFF2E7D32).withOpacity(0.5),
+                              elevation: 0,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFE3D8B2),
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                                : const Text(
+                              'ОТПРАВИТЬ',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-    ],
-    ),
-    ),
-    ),
-    ),
-        ),
+      ),
     );
   }
 }

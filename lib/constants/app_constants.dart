@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  // Цвета из ТЗ без голубого
+  // Цвета из ТЗ
   static const Color backgroundColor = Color(0xFF0A1F1C); // Тёмно-зелёный
   static const Color surfaceColor = Color(0xFF12332E); // Чуть светлее фона
   static const Color textColor = Color(0xFFE3D8B2); // Светло-бежевый
-  static const Color accentColor = Color(0xFFE3D8B2); // Теперь используем светло-бежевый вместо голубого
+  static const Color accentColor = Color(0xFF6BC1E3); // Голубой акцентный
   static const Color primaryColor = Color(0xFF2E7D32); // Зелёный для кнопок
   static const Color secondaryTextColor = Color(0xFFCCCCCC); // Серый для вторичного текста
 

@@ -59,17 +59,17 @@ class _HomeScreenState extends State<HomeScreen> {
       // Основной экран (уже отображен)
         break;
       case 1:
-      // Экран погоды
+      // Экран таймера
         break;
       case 2:
+      // Экран погоды
+        break;
+      case 3:
       // Добавление новой заметки
         _navigateToAddNote();
         break;
-      case 3:
-      // Экран календаря
-        break;
       case 4:
-      // Экран уведомлений
+      // Экран календаря
         break;
     }
   }
@@ -77,6 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAddNote() {
     // Навигация на экран добавления заметки
     // Navigator.push(context, MaterialPageRoute(builder: (context) => AddFishingNoteScreen()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Функция создания заметки будет доступна в ближайшее время')),
+    );
   }
 
   Widget _buildUserStats() {
@@ -283,6 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return _formatDate(note.date);
   }
 
+  // Путь: lib/screens/home_screen.dart
+// (продолжение кода)
+
   String _getTripsText(int count) {
     if (count % 10 == 1 && count % 100 != 11) {
       return 'рыбалка';
@@ -354,6 +360,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Главная',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.timer),
+            label: 'Таймер',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.cloud),
             label: 'Погода',
           ),
@@ -365,13 +375,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.calendar_today),
             label: 'Календарь',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Уведомления',
-          ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
+        selectedItemColor: const Color(0xFF6BC1E3), // Голубой акцентный цвет
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         backgroundColor: const Color(0xFF121C15),
