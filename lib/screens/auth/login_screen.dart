@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   // Кнопка "Назад"
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFFE3D8B2)),
+                    icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
                     onPressed: () {
                       Navigator.pop(context);
                     },
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 28 * adaptiveTextScale,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFFE3D8B2),
+                      color: AppConstants.textColor,
                     ),
                   ),
 
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         fontSize: 36 * adaptiveTextScale,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFE3D8B2),
+                        color: AppConstants.textColor,
                       ),
                     ),
                   ),
@@ -176,14 +176,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email поле
                         TextFormField(
                           controller: _emailController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Email',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -193,8 +193,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -228,14 +228,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Пароль поле
                         TextFormField(
                           controller: _passwordController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Пароль',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -245,8 +245,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -272,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                color: const Color(0xFFE3D8B2),
+                                color: AppConstants.textColor,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushNamed(context, '/forgot_password');
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFE3D8B2),
+                        foregroundColor: AppConstants.textColor,
                       ),
                       child: Text(
                         'Забыли пароль?',
@@ -340,8 +340,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent, // Прозрачный фон
-                        foregroundColor: const Color(0xFFE3D8B2), // Цвет текста
-                        side: const BorderSide(color: Color(0xFFE3D8B2)), // Граница кнопки
+                        foregroundColor: AppConstants.textColor, // Цвет текста
+                        side: BorderSide(color: AppConstants.textColor), // Граница кнопки
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
                         ),
@@ -350,11 +350,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         elevation: 0, // Без тени
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                          color: Color(0xFFE3D8B2),
+                          color: AppConstants.textColor,
                           strokeWidth: 2.5,
                         ),
                       )
@@ -381,7 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushReplacementNamed(context, '/register');
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFE3D8B2),
+                        foregroundColor: AppConstants.textColor,
                       ),
                       child: Text(
                         'Еще нет аккаунта? Зарегистрироваться',

@@ -124,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFFE3D8B2)),
+                        icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
                         onPressed: () {
                           Navigator.pop(context);
                         },
@@ -141,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(
                       fontSize: 32 * adaptiveTextScale,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFFE3D8B2),
+                      color: AppConstants.textColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -168,26 +168,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для имени
                         TextFormField(
                           controller: _nameController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Имя',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
-                            prefixIcon: const Icon(Icons.person, color: Color(0xFFE3D8B2)),
+                            prefixIcon: Icon(Icons.person, color: AppConstants.textColor),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -220,26 +220,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для email
                         TextFormField(
                           controller: _emailController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Email',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
-                            prefixIcon: const Icon(Icons.email, color: Color(0xFFE3D8B2)),
+                            prefixIcon: Icon(Icons.email, color: AppConstants.textColor),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -273,26 +273,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для пароля
                         TextFormField(
                           controller: _passwordController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Пароль',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
-                            prefixIcon: const Icon(Icons.lock, color: Color(0xFFE3D8B2)),
+                            prefixIcon: Icon(Icons.lock, color: AppConstants.textColor),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -318,7 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                color: const Color(0xFFE3D8B2),
+                                color: AppConstants.textColor,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -337,26 +337,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для подтверждения пароля
                         TextFormField(
                           controller: _confirmPasswordController,
-                          style: const TextStyle(
-                            color: Color(0xFFE3D8B2),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Подтвердите пароль',
                             hintStyle: TextStyle(
-                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                              color: AppConstants.textColor.withOpacity(0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
-                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFE3D8B2)),
+                            prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE3D8B2),
+                              borderSide: BorderSide(
+                                color: AppConstants.textColor,
                                 width: 1.5,
                               ),
                             ),
@@ -382,7 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                                color: const Color(0xFFE3D8B2),
+                                color: AppConstants.textColor,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -433,7 +433,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: _isLoading ? null : _register,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppConstants.primaryColor,
-                        foregroundColor: const Color(0xFFE3D8B2),
+                        foregroundColor: AppConstants.textColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
                         ),
@@ -441,11 +441,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         elevation: 0,
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                          color: Color(0xFFE3D8B2),
+                          color: AppConstants.textColor,
                           strokeWidth: 2.5,
                         ),
                       )
@@ -470,7 +470,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Navigator.pushReplacementNamed(context, '/login');
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFE3D8B2),
+                      foregroundColor: AppConstants.textColor,
                     ),
                     child: Text(
                       'Уже есть аккаунт? Войти',

@@ -125,11 +125,11 @@ class _SplashScreenState extends State<SplashScreen> {
                       padding: EdgeInsets.zero, // Убираем отступы
                     ),
                     child: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
-                        color: Color(0xFFE3D8B2),
+                        color: AppConstants.textColor,
                         strokeWidth: 2.5,
                       ),
                     )

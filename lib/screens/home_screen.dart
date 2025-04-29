@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
 import '../models/fishing_note_model.dart';
+import '../constants/app_constants.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -97,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFD7CCA1),
+                color: Color(0xFFE3D8B2),
               ),
             ),
             const SizedBox(height: 16),
@@ -245,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFD7CCA1),
+                      color: Color(0xFFE3D8B2),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -285,9 +286,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return _formatDate(note.date);
   }
-
-  // Путь: lib/screens/home_screen.dart
-// (продолжение кода)
 
   String _getTripsText(int count) {
     if (count % 10 == 1 && count % 100 != 11) {
@@ -351,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddNote,
         child: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: AppConstants.primaryColor,
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -377,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF6BC1E3), // Голубой акцентный цвет
+        selectedItemColor: AppConstants.textColor, // Заменили голубой на светло-бежевый
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         backgroundColor: const Color(0xFF121C15),
@@ -422,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     userName,
                     style: const TextStyle(
-                      color: Color(0xFFD7CCA1),
+                      color: Color(0xFFE3D8B2),
                       fontSize: 18,
                     ),
                   ),

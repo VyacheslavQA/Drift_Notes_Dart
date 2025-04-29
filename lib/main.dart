@@ -73,11 +73,11 @@ class DriftNotesApp extends StatelessWidget {
         ),
         colorScheme: ColorScheme.dark(
           primary: AppConstants.primaryColor,
-          secondary: const Color(0xFF6BC1E3), // Голубой акцентный цвет
+          secondary: AppConstants.accentColor, // Теперь это светло-бежевый вместо голубого
           surface: AppConstants.surfaceColor,
           background: AppConstants.backgroundColor,
           onPrimary: AppConstants.textColor,
-          onSecondary: Colors.white,
+          onSecondary: Colors.black, // Черный текст на светло-бежевом фоне для контраста
           onSurface: AppConstants.textColor,
           onBackground: AppConstants.textColor,
         ),
