@@ -3,18 +3,18 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  // Цвета
-  static const Color primaryColor = Color(0xFF4CAF50);
-  static const Color accentColor = Color(0xFFD7CCA1);
-  static const Color backgroundColor = Color(0xFF1E2B23);
-  static const Color surfaceColor = Color(0xFF1A1A1A);
-  static const Color textColor = Colors.white;
-  static const Color secondaryTextColor = Color(0xFFCCCCCC);
+  // Цвета из ТЗ без голубого
+  static const Color backgroundColor = Color(0xFF0A1F1C); // Тёмно-зелёный
+  static const Color surfaceColor = Color(0xFF12332E); // Чуть светлее фона
+  static const Color textColor = Color(0xFFE3D8B2); // Светло-бежевый
+  static const Color accentColor = Color(0xFFE3D8B2); // Теперь используем светло-бежевый вместо голубого
+  static const Color primaryColor = Color(0xFF2E7D32); // Зелёный для кнопок
+  static const Color secondaryTextColor = Color(0xFFCCCCCC); // Серый для вторичного текста
 
   // Градиент для фона авторизации
   static const List<Color> authGradient = [
-    Color(0xFF1E2B23),
-    Color(0xFF0A1710),
+    Color(0xFF0A1F1C), // Тёмно-зелёный
+    Color(0xFF071714), // Более тёмный оттенок
   ];
 
   // Типы рыбалки
@@ -99,7 +99,7 @@ class AppConstants {
   static const TextStyle titleStyle = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
-    color: accentColor,
+    color: textColor,
   );
 
   static const TextStyle subtitleStyle = TextStyle(

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _firebaseService = FirebaseService();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _errorMessage = '';
 
   @override
@@ -32,6 +35,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
+    // Скрываем клавиатуру
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -55,76 +61,104 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
 
-      Navigator.pushReplacementNamed(context, '/home');
+      if (mounted) {
+        // Показываем сообщение об успешной регистрации
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Регистрация успешна'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Небольшая задержка перед навигацией
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        });
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Ошибка регистрации: ${e.toString()}';
+        _errorMessage = e.toString();
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Получаем размеры экрана для адаптивности
-    final screenSize = MediaQuery.of(context).size;
+    final size = MediaQuery.of(context).size;
+    final textScale = MediaQuery.of(context).textScaleFactor;
+    final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
 
     return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: AppConstants.authGradient,
+            colors: [
+              Color(0xFF0A1F1C),  // Тёмно-зеленый
+              Color(0xFF071714),  // Более тёмный оттенок
+            ],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.08),
+              padding: EdgeInsets.fromLTRB(24, size.height * 0.02, 24, 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center, // Центрируем все содержимое
                 children: [
-                  SizedBox(height: screenSize.height * 0.04),
-
-                  // Кнопка "Назад"
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                  // Выравниваем кнопку "Назад" слева
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Color(0xFFE3D8B2)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
                   ),
+                  SizedBox(height: size.height * 0.02),
 
-                  SizedBox(height: screenSize.height * 0.02),
-
-                  // Заголовок
-                  const Text(
+                  // Заголовок экрана (центрированный)
+                  Text(
                     'Регистрация',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 32 * adaptiveTextScale,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: const Color(0xFFE3D8B2),
                     ),
+                    textAlign: TextAlign.center,
                   ),
 
-                  SizedBox(height: screenSize.height * 0.02),
+                  SizedBox(height: size.height * 0.01),
 
-                  // Подзаголовок
-                  const Text(
+                  // Подзаголовок (центрированный)
+                  Text(
                     'Создайте аккаунт для доступа к приложению',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 16 * adaptiveTextScale,
                       color: Colors.white70,
                     ),
+                    textAlign: TextAlign.center,
                   ),
 
-                  SizedBox(height: screenSize.height * 0.04),
+                  SizedBox(height: size.height * 0.04),
 
                   // Форма регистрации
                   Form(
@@ -134,140 +168,315 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для имени
                         TextFormField(
                           controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Имя',
-                            prefixIcon: Icon(Icons.person, color: Colors.white70),
-                            labelStyle: TextStyle(color: Colors.white70),
+                          style: const TextStyle(
+                            color: Color(0xFFE3D8B2),
+                            fontSize: 16,
                           ),
-                          style: const TextStyle(color: Colors.white),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Пожалуйста, введите ваше имя';
-                            }
-                            return null;
-                          },
+                          decoration: InputDecoration(
+                            hintText: 'Имя',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF12332E),
+                            prefixIcon: const Icon(Icons.person, color: Color(0xFFE3D8B2)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE3D8B2),
+                                width: 1.5,
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            errorStyle: const TextStyle(color: Colors.redAccent),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
+                          validator: (value) => Validators.validateName(value),
+                          textInputAction: TextInputAction.next,
                         ),
 
-                        SizedBox(height: screenSize.height * 0.02),
+                        SizedBox(height: size.height * 0.02),
 
                         // Поле для email
                         TextFormField(
                           controller: _emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email, color: Colors.white70),
-                            labelStyle: TextStyle(color: Colors.white70),
+                          style: const TextStyle(
+                            color: Color(0xFFE3D8B2),
+                            fontSize: 16,
                           ),
-                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Email',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF12332E),
+                            prefixIcon: const Icon(Icons.email, color: Color(0xFFE3D8B2)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE3D8B2),
+                                width: 1.5,
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            errorStyle: const TextStyle(color: Colors.redAccent),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Пожалуйста, введите email';
-                            }
-                            if (!value.contains('@') || !value.contains('.')) {
-                              return 'Введите корректный email';
-                            }
-                            return null;
-                          },
+                          validator: (value) => Validators.validateEmail(value),
+                          textInputAction: TextInputAction.next,
                         ),
 
-                        SizedBox(height: screenSize.height * 0.02),
+                        SizedBox(height: size.height * 0.02),
 
                         // Поле для пароля
                         TextFormField(
                           controller: _passwordController,
-                          decoration: const InputDecoration(
-                            labelText: 'Пароль',
-                            prefixIcon: Icon(Icons.lock, color: Colors.white70),
-                            labelStyle: TextStyle(color: Colors.white70),
+                          style: const TextStyle(
+                            color: Color(0xFFE3D8B2),
+                            fontSize: 16,
                           ),
-                          style: const TextStyle(color: Colors.white),
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Пожалуйста, введите пароль';
-                            }
-                            if (value.length < 6) {
-                              return 'Пароль должен содержать не менее 6 символов';
-                            }
-                            return null;
-                          },
+                          decoration: InputDecoration(
+                            hintText: 'Пароль',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF12332E),
+                            prefixIcon: const Icon(Icons.lock, color: Color(0xFFE3D8B2)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE3D8B2),
+                                width: 1.5,
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            errorStyle: const TextStyle(color: Colors.redAccent),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                color: const Color(0xFFE3D8B2),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          obscureText: _obscurePassword,
+                          validator: (value) => Validators.validatePassword(value),
+                          textInputAction: TextInputAction.next,
                         ),
 
-                        SizedBox(height: screenSize.height * 0.02),
+                        SizedBox(height: size.height * 0.02),
 
                         // Поле для подтверждения пароля
                         TextFormField(
                           controller: _confirmPasswordController,
-                          decoration: const InputDecoration(
-                            labelText: 'Подтвердите пароль',
-                            prefixIcon: Icon(Icons.lock_outline, color: Colors.white70),
-                            labelStyle: TextStyle(color: Colors.white70),
+                          style: const TextStyle(
+                            color: Color(0xFFE3D8B2),
+                            fontSize: 16,
                           ),
-                          style: const TextStyle(color: Colors.white),
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Пожалуйста, подтвердите пароль';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Пароли не совпадают';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        SizedBox(height: screenSize.height * 0.04),
-
-                        // Сообщение об ошибке
-                        if (_errorMessage.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: Text(
-                              _errorMessage,
-                              style: const TextStyle(color: Colors.red),
-                              textAlign: TextAlign.center,
+                          decoration: InputDecoration(
+                            hintText: 'Подтвердите пароль',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFFE3D8B2).withOpacity(0.5),
                             ),
-                          ),
-
-                        // Кнопка регистрации
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _register,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppConstants.primaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                            filled: true,
+                            fillColor: const Color(0xFF12332E),
+                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFE3D8B2)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE3D8B2),
+                                width: 1.5,
                               ),
                             ),
-                            child: _isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text(
-                              'Зарегистрироваться',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
                               ),
                             ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.5,
+                              ),
+                            ),
+                            errorStyle: const TextStyle(color: Colors.redAccent),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                                color: const Color(0xFFE3D8B2),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                                });
+                              },
+                            ),
                           ),
-                        ),
-
-                        SizedBox(height: screenSize.height * 0.03),
-
-                        // Ссылка на вход
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(context, '/login');
-                          },
-                          child: const Text(
-                            'Уже есть аккаунт? Войти',
-                            style: TextStyle(color: AppConstants.accentColor),
+                          obscureText: _obscureConfirmPassword,
+                          validator: (value) => Validators.validateConfirmPassword(
+                            value,
+                            _passwordController.text,
                           ),
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _register(),
                         ),
                       ],
+                    ),
+                  ),
+
+                  SizedBox(height: size.height * 0.03),
+
+                  // Сообщение об ошибке
+                  if (_errorMessage.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _errorMessage,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 14 * adaptiveTextScale,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                  SizedBox(height: _errorMessage.isNotEmpty ? size.height * 0.03 : size.height * 0.04),
+
+                  // Кнопка регистрации
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: const Color(0xFFE3D8B2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        padding: EdgeInsets.zero, // Убираем отступы
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE3D8B2),
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                          : const Center( // Явно центрируем текст
+                        child: Text(
+                          'Зарегистрироваться',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            height: 1.0, // Фиксируем высоту строки
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: size.height * 0.03),
+
+                  // Ссылка на вход
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFE3D8B2),
+                    ),
+                    child: Text(
+                      'Уже есть аккаунт? Войти',
+                      style: TextStyle(
+                        fontSize: 16 * adaptiveTextScale,
+                      ),
                     ),
                   ),
                 ],

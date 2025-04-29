@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
+import '../services/firebase/firebase_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,6 +13,29 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final _firebaseService = FirebaseService();
+  bool _isLoading = false;
+
+  // Обработка нажатия кнопки входа
+  void _handleLogin() {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Если пользователь уже авторизован, направляем на главный экран
+    if (_firebaseService.isUserLoggedIn) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      // Если не авторизован, переходим на экран выбора способа входа
+      Navigator.of(context).pushReplacementNamed('/auth_selection');
+    }
+  }
+
+  // Обработка нажатия кнопки выхода
+  void _handleExit() {
+    SystemNavigator.pop(); // Закрываем приложение
+  }
+
   @override
   Widget build(BuildContext context) {
     // Получаем размеры экрана для адаптивности
@@ -51,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   style: TextStyle(
                     fontSize: 54 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
                     fontWeight: FontWeight.bold,
-                    color: AppConstants.accentColor,
+                    color: AppConstants.textColor,
                   ),
                 ),
                 SizedBox(height: screenSize.height * 0.03),
@@ -90,22 +114,33 @@ class _SplashScreenState extends State<SplashScreen> {
                   width: screenSize.width * 0.8,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/auth_selection');
-                    },
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
-                      foregroundColor: AppConstants.accentColor,
-                      side: const BorderSide(color: AppConstants.accentColor),
+                      foregroundColor: AppConstants.textColor,
+                      side: BorderSide(color: AppConstants.textColor),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25.0),
                       ),
+                      padding: EdgeInsets.zero, // Убираем отступы
                     ),
-                    child: const Text(
-                      'ВОЙТИ',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    child: _isLoading
+                        ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFE3D8B2),
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                        : const Center( // Добавляем явное центрирование
+                      child: Text(
+                        'ВОЙТИ',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0, // Фиксируем высоту строки
+                        ),
                       ),
                     ),
                   ),
@@ -113,12 +148,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
                 SizedBox(height: screenSize.height * 0.03),
 
-                // Кнопка "Выход" вместо "Назад"
+                // Кнопка "Выход"
                 TextButton(
-                  onPressed: () {
-                    // Выход из приложения
-                    SystemNavigator.pop();
-                  },
+                  onPressed: _isLoading ? null : _handleExit,
                   child: const Text(
                     'Выход',
                     style: TextStyle(

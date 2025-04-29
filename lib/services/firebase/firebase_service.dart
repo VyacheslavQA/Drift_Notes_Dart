@@ -3,7 +3,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:typed_data'; // Добавляем импорт для Uint8List
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -28,7 +29,8 @@ class FirebaseService {
         password: password,
       );
     } catch (e) {
-      rethrow;
+      // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
+      throw _handleAuthException(e);
     }
   }
 
@@ -41,8 +43,51 @@ class FirebaseService {
         password: password,
       );
     } catch (e) {
-      rethrow;
+      // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
+      throw _handleAuthException(e);
     }
+  }
+
+  // Обработка ошибок аутентификации Firebase
+  String _handleAuthException(dynamic e) {
+    String errorMessage = 'Произошла неизвестная ошибка';
+
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'Пользователь с таким email не найден';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Неверный пароль';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Неверный формат email';
+          break;
+        case 'user-disabled':
+          errorMessage = 'Учетная запись отключена';
+          break;
+        case 'email-already-in-use':
+          errorMessage = 'Email уже используется другим аккаунтом';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Операция не разрешена';
+          break;
+        case 'weak-password':
+          errorMessage = 'Слишком простой пароль';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Проверьте подключение к интернету';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Слишком много попыток входа. Попробуйте позже';
+          break;
+        default:
+          errorMessage = 'Ошибка: ${e.code}';
+      }
+    }
+
+    debugPrint('Firebase Auth Error: $e');
+    return errorMessage;
   }
 
   // Выход пользователя
@@ -52,7 +97,11 @@ class FirebaseService {
 
   // Отправка письма для сброса пароля
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
   // Обновление данных пользователя в Firestore
