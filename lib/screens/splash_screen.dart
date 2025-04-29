@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   'Drift Notes',
                   style: TextStyle(
-                    fontSize: 48 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                    fontSize: 54 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
                     fontWeight: FontWeight.bold,
                     color: AppConstants.accentColor,
                   ),
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     'Твой личный журнал рыбалки',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 24 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                      fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
                       color: Colors.white,
                     ),
                   ),
@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     'Запоминай клёвые выезды',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 22 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                      fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
                       color: Colors.white,
                     ),
                   ),
