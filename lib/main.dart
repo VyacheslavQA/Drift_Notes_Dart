@@ -12,6 +12,7 @@ import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'firebase_options.dart'; // Добавьте этот импорт
+import 'firebase_options.dart'; // Используем сгенерированный файл
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,3 +1,4 @@
+$gitignore = @"
 # Miscellaneous
 *.class
 *.log
@@ -44,8 +45,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Исключаем файл google-services.json
+# Firebase конфиденциальные файлы
 **/google-services.json
+**/GoogleService-Info.plist
+lib/firebase_options.dart
+"@
 
-# Дополнительно можно исключить другие конфиденциальные файлы
-**/firebase_options.dart
+Set-Content -Path .gitignore -Value $gitignore -Encoding UTF8

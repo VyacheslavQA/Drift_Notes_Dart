@@ -8,6 +8,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:7.4.2")  // Исправленная версия
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
         classpath("com.google.gms:google-services:4.4.0")
+
     }
 }
 
