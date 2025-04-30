@@ -13,11 +13,17 @@ class TimerService {
   // Аудио плееры для воспроизведения звуков
   final Map<String, AudioPlayer> _alertPlayers = {};
 
+  // Флаг для отслеживания проигрывания звуков по таймерам
+  final Map<String, bool> _isPlayingAlert = {};
+
   // Стримы для обновления UI
   final _timerStreamController = StreamController<List<FishingTimerModel>>.broadcast();
   Stream<List<FishingTimerModel>> get timersStream => _timerStreamController.stream;
 
   bool _isInitialized = false;
+
+  // Максимальное время воспроизведения в миллисекундах (20 секунд)
+  final int _maxAlertDuration = 20000;
 
   // Цвета таймеров
   static final Map<String, Color> timerColors = {
@@ -102,9 +108,23 @@ class TimerService {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
+    // Проверяем, что звук уже не воспроизводится для этого таймера
+    if (_isPlayingAlert[id] == true) {
+      return;
+    }
+
+    // Отмечаем, что звук начал воспроизводиться
+    _isPlayingAlert[id] = true;
+
     // Воспроизводим звук в зависимости от настроек таймера
     final soundFile = _timers[index].alertSound;
     await _playAlertSound(id, soundFile);
+
+    // Автоматически останавливаем звук через определенное время
+    Timer(Duration(milliseconds: _maxAlertDuration), () {
+      _stopAlertSound(id);
+      _isPlayingAlert[id] = false;
+    });
 
     // Обновляем UI
     _notifyListeners();
@@ -113,10 +133,16 @@ class TimerService {
   // Воспроизведение звука оповещения
   Future<void> _playAlertSound(String timerId, String soundFile) async {
     try {
-      // Создаем или получаем аудиоплеер для этого таймера
-      if (!_alertPlayers.containsKey(timerId)) {
-        _alertPlayers[timerId] = AudioPlayer();
-      }
+      // Сначала останавливаем звук, если он уже воспроизводится
+      _stopAlertSound(timerId);
+
+      // Создаем новый плеер для этого таймера
+      _alertPlayers[timerId] = AudioPlayer();
+
+      // Настраиваем обработчик окончания воспроизведения
+      _alertPlayers[timerId]!.onPlayerComplete.listen((_) {
+        _isPlayingAlert[timerId] = false;
+      });
 
       // Проверяем, есть ли такой звук в ресурсах
       final soundResource = alertSoundResources[soundFile];
@@ -130,12 +156,7 @@ class TimerService {
       }
     } catch (e) {
       print('Ошибка при воспроизведении звука: $e');
-      // Если произошла ошибка, пробуем воспроизвести встроенный звук
-      try {
-        await _alertPlayers[timerId]!.play(UrlSource('https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav'));
-      } catch (error) {
-        print('Не удалось воспроизвести запасной звук: $error');
-      }
+      _isPlayingAlert[timerId] = false;
     }
   }
 
@@ -143,7 +164,10 @@ class TimerService {
   void _stopAlertSound(String timerId) {
     if (_alertPlayers.containsKey(timerId)) {
       _alertPlayers[timerId]!.stop();
+      _alertPlayers[timerId]!.dispose();
+      _alertPlayers.remove(timerId);
     }
+    _isPlayingAlert[timerId] = false;
   }
 
   // Метод для предварительного прослушивания звука
@@ -156,6 +180,12 @@ class TimerService {
       }
     } catch (e) {
       print('Ошибка при предварительном воспроизведении: $e');
+    } finally {
+      // Освобождаем ресурсы после воспроизведения
+      Timer(Duration(milliseconds: _maxAlertDuration), () {
+        previewPlayer.stop();
+        previewPlayer.dispose();
+      });
     }
   }
 
