@@ -580,8 +580,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Нижняя навигационная панель с выделенной кнопкой "Заметка"
   Widget _buildBottomNavigationBar() {
-    return SizedBox(
-      height: 70, // Высота для размещения выступающей кнопки
+    return Container(
+      height: 90, // Увеличиваем высоту для размещения большой центральной кнопки
       child: Stack(
         children: [
           // Основная панель с 4 кнопками (без центральной)
@@ -614,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: InkWell(
                       onTap: () => _onItemTapped(0),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.access_time,
@@ -624,15 +624,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 22,
                           ),
                           const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Таймер',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _selectedIndex == 0 ? AppConstants
-                                    .textColor : Colors.white54,
-                              ),
+                          Text(
+                            'Таймер',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 0 ? AppConstants
+                                  .textColor : Colors.white54,
                             ),
                           ),
                         ],
@@ -645,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: InkWell(
                       onTap: () => _onItemTapped(1),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.cloud,
@@ -655,15 +652,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 22,
                           ),
                           const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Погода',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _selectedIndex == 1 ? AppConstants
-                                    .textColor : Colors.white54,
-                              ),
+                          Text(
+                            'Погода',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 1 ? AppConstants
+                                  .textColor : Colors.white54,
                             ),
                           ),
                         ],
@@ -679,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: InkWell(
                       onTap: () => _onItemTapped(3),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.calendar_today,
@@ -689,15 +683,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 22,
                           ),
                           const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Календарь',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _selectedIndex == 3 ? AppConstants
-                                    .textColor : Colors.white54,
-                              ),
+                          Text(
+                            'Календарь',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 3 ? AppConstants
+                                  .textColor : Colors.white54,
                             ),
                           ),
                         ],
@@ -710,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: InkWell(
                       onTap: () => _onItemTapped(4),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Stack(
                             alignment: Alignment.center,
@@ -736,15 +727,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Уведомл...',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _selectedIndex == 4 ? AppConstants
-                                    .textColor : Colors.white54,
-                              ),
+                          Text(
+                            'Уведомл...',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 4 ? AppConstants
+                                  .textColor : Colors.white54,
                             ),
                           ),
                         ],
@@ -756,34 +744,33 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Центральная кнопка, выступающая над панелью (без контейнера с фоном)
+          // Центральная кнопка, размещенная выше панели
           Positioned(
+            top: 0, // Размещаем кнопку в верхней части Container
             left: 0,
             right: 0,
-            bottom: 8, // Размещаем подпись на одном уровне с другими подписями
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Логотип рыбки как кнопка, без контейнера с фоном
-                  GestureDetector(
-                    onTap: () => _onItemTapped(2),
-                    child: Image.asset(
-                      'assets/images/app_logo.png',
-                      width: 48, // Размер немного больше остальных иконок
-                      height: 48, // Сохраняем пропорции
-                    ),
+              child: GestureDetector(
+                onTap: () => _onItemTapped(2),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-
-                  // Подпись
-                  const Text(
-                    'Заметка',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white,
-                    ),
+                  child: Image.asset(
+                    'assets/images/app_logo.png',
+                    width: 80,
+                    height: 80,
                   ),
-                ],
+                ),
               ),
             ),
           ),
