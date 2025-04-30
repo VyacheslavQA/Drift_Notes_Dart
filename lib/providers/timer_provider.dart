@@ -40,19 +40,17 @@ class TimerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Обновление настроек таймера
+  // Обновление настроек таймера - убираем параметр isCountdown
   void updateTimerSettings(String id, {
     String? name,
     Color? timerColor,
     String? alertSound,
-    bool? isCountdown,
   }) {
     _timerService.updateTimerSettings(
       id,
       name: name,
       timerColor: timerColor,
       alertSound: alertSound,
-      isCountdown: isCountdown,
     );
     notifyListeners();
   }

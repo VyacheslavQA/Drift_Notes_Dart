@@ -1,6 +1,8 @@
 // Путь: lib/screens/timer/timer_settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/timer_provider.dart';
 import '../../models/timer_model.dart';
@@ -25,7 +27,10 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   Color _selectedColor = Colors.green;
   String _selectedSound = 'default_alert.mp3';
-  bool _isCountdown = true;
+
+  // Добавляем аудиоплеер и состояние воспроизведения для экрана настроек
+  final AudioPlayer _previewPlayer = AudioPlayer();
+  String? _playingSound;
 
   @override
   void initState() {
@@ -44,26 +49,68 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
     _nameController = TextEditingController(text: _timer.name);
     _selectedColor = _timer.timerColor;
     _selectedSound = _timer.alertSound;
-    _isCountdown = _timer.isCountdown;
+
+    // Слушаем окончание воспроизведения
+    _previewPlayer.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _playingSound = null;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _previewPlayer.dispose();
     super.dispose();
   }
 
   // Сохранение настроек
   void _saveSettings() {
+    // Останавливаем воспроизведение, если оно идет
+    if (_playingSound != null) {
+      _previewPlayer.stop();
+    }
+
     _timerProvider.updateTimerSettings(
       widget.timerId,
       name: _nameController.text.trim(),
       timerColor: _selectedColor,
       alertSound: _selectedSound,
-      isCountdown: _isCountdown,
     );
 
     Navigator.of(context).pop();
+  }
+
+  // Воспроизведение или остановка звука
+  void _toggleSoundPreview(String soundFile) async {
+    if (_playingSound == soundFile) {
+      // Если этот звук уже играет, останавливаем его
+      await _previewPlayer.stop();
+      setState(() {
+        _playingSound = null;
+      });
+    } else {
+      // Если играл другой звук, останавливаем его
+      if (_playingSound != null) {
+        await _previewPlayer.stop();
+      }
+
+      // Воспроизводим выбранный звук
+      try {
+        await _previewPlayer.play(AssetSource('sounds/$soundFile'));
+        setState(() {
+          _playingSound = soundFile;
+        });
+      } catch (e) {
+        print("Ошибка при воспроизведении звука: $e");
+        setState(() {
+          _playingSound = null;
+        });
+      }
+    }
   }
 
   @override
@@ -83,7 +130,13 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Останавливаем воспроизведение при выходе
+            if (_playingSound != null) {
+              _previewPlayer.stop();
+            }
+            Navigator.of(context).pop();
+          },
         ),
         actions: [
           IconButton(
@@ -123,45 +176,6 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
                     borderSide: BorderSide(color: AppConstants.textColor),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Переключатель режима таймера
-              Text(
-                'Режим таймера',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: Text(
-                  'Обратный отсчет',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: Text(
-                  _isCountdown
-                      ? 'Время будет уменьшаться от заданного значения'
-                      : 'Время будет увеличиваться от нуля',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                value: _isCountdown,
-                onChanged: (value) {
-                  setState(() {
-                    _isCountdown = value;
-                  });
-                },
-                activeColor: _selectedColor,
-                contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
               ),
 
               const SizedBox(height: 24),
@@ -301,6 +315,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
     return Column(
       children: sounds.map((sound) {
         final isSelected = _selectedSound == sound['file'];
+        final isPlaying = _playingSound == sound['file'];
 
         return ListTile(
           title: Text(
@@ -315,11 +330,22 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
             color: isSelected ? _selectedColor : Colors.white60,
           ),
           trailing: IconButton(
-            icon: const Icon(Icons.play_circle_outline, color: Colors.white70),
+            icon: Icon(
+                isPlaying ? Icons.stop_circle : Icons.play_circle_outline,
+                color: isPlaying ? Colors.red : Colors.white70
+            ),
             onPressed: () {
-              // Здесь будет воспроизведение звука для предпросмотра
+              _toggleSoundPreview(sound['file']!);
+
+              // Показываем уведомление
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Воспроизведение: ${sound['name']}')),
+                SnackBar(
+                  content: Text(isPlaying
+                      ? 'Остановка: ${sound['name']}'
+                      : 'Воспроизведение: ${sound['name']}'
+                  ),
+                  duration: Duration(seconds: 1),
+                ),
               );
             },
           ),

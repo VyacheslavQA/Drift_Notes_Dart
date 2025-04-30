@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import '../../models/timer_model.dart';
 
 class TimerService {
   final List<FishingTimerModel> _timers = [];
   final List<Timer> _runningTimers = [];
+
+  // Аудио плееры для воспроизведения звуков
+  final Map<String, AudioPlayer> _alertPlayers = {};
 
   // Стримы для обновления UI
   final _timerStreamController = StreamController<List<FishingTimerModel>>.broadcast();
@@ -23,13 +27,13 @@ class TimerService {
     'blue': const Color(0xFF1976D2),    // Синий
   };
 
-  // Звуки оповещений
-  static final List<String> alertSounds = [
-    'default_alert.mp3',
-    'fish_splash.mp3',
-    'bell.mp3',
-    'alarm.mp3',
-  ];
+  // Звуки оповещений и их соответствующие ресурсы
+  static final Map<String, String> alertSoundResources = {
+    'default_alert.mp3': 'sounds/default_alert.mp3',
+    'fish_splash.mp3': 'sounds/fish_splash.mp3',
+    'bell.mp3': 'sounds/bell.mp3',
+    'alarm.mp3': 'sounds/alarm.mp3',
+  };
 
   // Инициализация сервиса
   Future<void> initialize() async {
@@ -72,15 +76,13 @@ class TimerService {
     // Запускаем таймер
     final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       // Проверяем режим таймера (обратный отсчет)
-      if (_timers[index].isCountdown) {
-        final currentDuration = getCurrentDuration(id);
+      final currentDuration = getCurrentDuration(id);
 
-        // Если время вышло, останавливаем таймер и запускаем уведомление
-        if (currentDuration.inSeconds <= 0) {
-          stopTimer(id);
-          _notifyTimeIsUp(id);
-          return;
-        }
+      // Если время вышло, останавливаем таймер и запускаем уведомление
+      if (currentDuration.inSeconds <= 0) {
+        stopTimer(id);
+        _notifyTimeIsUp(id);
+        return;
       }
 
       // Нам нужно обновить только UI, сам таймер идет от startTime
@@ -96,10 +98,65 @@ class TimerService {
   }
 
   // Метод для уведомления о том, что время вышло
-  void _notifyTimeIsUp(String id) {
-    // Здесь будет логика воспроизведения звука и показа уведомления
-    // В текущей версии просто обновляем UI
+  Future<void> _notifyTimeIsUp(String id) async {
+    final index = _timers.indexWhere((timer) => timer.id == id);
+    if (index == -1) return;
+
+    // Воспроизводим звук в зависимости от настроек таймера
+    final soundFile = _timers[index].alertSound;
+    await _playAlertSound(id, soundFile);
+
+    // Обновляем UI
     _notifyListeners();
+  }
+
+  // Воспроизведение звука оповещения
+  Future<void> _playAlertSound(String timerId, String soundFile) async {
+    try {
+      // Создаем или получаем аудиоплеер для этого таймера
+      if (!_alertPlayers.containsKey(timerId)) {
+        _alertPlayers[timerId] = AudioPlayer();
+      }
+
+      // Проверяем, есть ли такой звук в ресурсах
+      final soundResource = alertSoundResources[soundFile];
+      if (soundResource != null) {
+        print('Воспроизведение звука: $soundResource');
+        await _alertPlayers[timerId]!.play(AssetSource(soundResource));
+      } else {
+        // Если звук не найден, воспроизводим звук по умолчанию
+        print('Звук не найден, воспроизведение звука по умолчанию');
+        await _alertPlayers[timerId]!.play(AssetSource(alertSoundResources['default_alert.mp3']!));
+      }
+    } catch (e) {
+      print('Ошибка при воспроизведении звука: $e');
+      // Если произошла ошибка, пробуем воспроизвести встроенный звук
+      try {
+        await _alertPlayers[timerId]!.play(UrlSource('https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav'));
+      } catch (error) {
+        print('Не удалось воспроизвести запасной звук: $error');
+      }
+    }
+  }
+
+  // Остановка звука оповещения
+  void _stopAlertSound(String timerId) {
+    if (_alertPlayers.containsKey(timerId)) {
+      _alertPlayers[timerId]!.stop();
+    }
+  }
+
+  // Метод для предварительного прослушивания звука
+  Future<void> previewSound(String soundFile) async {
+    final previewPlayer = AudioPlayer();
+    try {
+      final soundResource = alertSoundResources[soundFile];
+      if (soundResource != null) {
+        await previewPlayer.play(AssetSource(soundResource));
+      }
+    } catch (e) {
+      print('Ошибка при предварительном воспроизведении: $e');
+    }
   }
 
   // Остановка таймера
@@ -107,29 +164,20 @@ class TimerService {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
-    // Если таймер был запущен и не в режиме обратного отсчета, сохраняем прошедшее время
+    // Останавливаем звук оповещения, если он воспроизводится
+    _stopAlertSound(id);
+
+    // Если таймер был запущен, сохраняем оставшееся время
     if (_timers[index].isRunning && _timers[index].startTime != null) {
-      if (!_timers[index].isCountdown) {
-        final elapsed = DateTime.now().difference(_timers[index].startTime!);
-        final newDuration = _timers[index].duration + elapsed;
+      final elapsed = DateTime.now().difference(_timers[index].startTime!);
+      final remainingTimeInSeconds = _timers[index].remainingTime.inSeconds - elapsed.inSeconds;
+      final newRemainingTime = Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
 
-        _timers[index] = _timers[index].copyWith(
-          isRunning: false,
-          duration: newDuration,
-          startTime: null,
-        );
-      } else {
-        // Для обратного отсчета сохраняем оставшееся время
-        final elapsed = DateTime.now().difference(_timers[index].startTime!);
-        final remainingTimeInSeconds = _timers[index].remainingTime.inSeconds - elapsed.inSeconds;
-        final newRemainingTime = Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
-
-        _timers[index] = _timers[index].copyWith(
-          isRunning: false,
-          remainingTime: newRemainingTime,
-          startTime: null,
-        );
-      }
+      _timers[index] = _timers[index].copyWith(
+        isRunning: false,
+        remainingTime: newRemainingTime,
+        startTime: null,
+      );
     } else {
       _timers[index] = _timers[index].copyWith(
         isRunning: false,
@@ -153,6 +201,9 @@ class TimerService {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
+    // Останавливаем звук оповещения, если он воспроизводится
+    _stopAlertSound(id);
+
     // Останавливаем таймер если он запущен
     if (_timers[index].isRunning) {
       if (index < _runningTimers.length) {
@@ -161,11 +212,11 @@ class TimerService {
       }
     }
 
-    // Сбрасываем все значения
+    // Сбрасываем все значения - ставим на ноль!
     _timers[index] = _timers[index].copyWith(
       isRunning: false,
-      duration: const Duration(seconds: 0),
-      remainingTime: _timers[index].isCountdown ? _timers[index].duration : Duration.zero,
+      duration: Duration.zero, // Сбрасываем длительность на ноль
+      remainingTime: Duration.zero, // Сбрасываем оставшееся время на ноль
       startTime: null,
     );
 
@@ -179,7 +230,6 @@ class TimerService {
     String? name,
     Color? timerColor,
     String? alertSound,
-    bool? isCountdown,
   }) {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
@@ -188,7 +238,6 @@ class TimerService {
       name: name,
       timerColor: timerColor,
       alertSound: alertSound,
-      isCountdown: isCountdown,
     );
 
     // Сохраняем состояние
@@ -205,20 +254,15 @@ class TimerService {
 
     // Если таймер не запущен
     if (!timer.isRunning || timer.startTime == null) {
-      return timer.isCountdown ? timer.remainingTime : timer.duration;
+      return timer.remainingTime;
     }
 
     // Если таймер запущен
     final elapsed = DateTime.now().difference(timer.startTime!);
 
-    if (timer.isCountdown) {
-      // Для обратного отсчета вычитаем прошедшее время
-      final remainingTimeInSeconds = timer.remainingTime.inSeconds - elapsed.inSeconds;
-      return Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
-    } else {
-      // Для обычного таймера прибавляем прошедшее время
-      return timer.duration + elapsed;
-    }
+    // Для обратного отсчета вычитаем прошедшее время
+    final remainingTimeInSeconds = timer.remainingTime.inSeconds - elapsed.inSeconds;
+    return Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
   }
 
   // Сохранение таймеров
@@ -268,6 +312,14 @@ class TimerService {
       timer.cancel();
     }
     _runningTimers.clear();
+
+    // Останавливаем и освобождаем все звуковые ресурсы
+    for (var player in _alertPlayers.values) {
+      player.stop();
+      player.dispose();
+    }
+    _alertPlayers.clear();
+
     _timerStreamController.close();
   }
 

@@ -16,11 +16,11 @@ class FishingTimerModel {
   FishingTimerModel({
     required this.id,
     required this.name,
-    this.duration = const Duration(seconds: 0),  // Здесь была опечатка Der0, исправлено на 0
+    this.duration = const Duration(seconds: 0),
     this.remainingTime = const Duration(seconds: 0),
     this.isRunning = false,
     this.startTime,
-    this.isCountdown = true, // По умолчанию - обратный отсчет
+    this.isCountdown = true, // Всегда в режиме обратного отсчета
     this.timerColor = Colors.green,
     this.alertSound = 'default_alert.mp3',
   });
@@ -44,7 +44,7 @@ class FishingTimerModel {
       remainingTime: remainingTime ?? this.remainingTime,
       isRunning: isRunning ?? this.isRunning,
       startTime: startTime ?? this.startTime,
-      isCountdown: isCountdown ?? this.isCountdown,
+      isCountdown: true, // Всегда в режиме обратного отсчета независимо от параметра isCountdown
       timerColor: timerColor ?? this.timerColor,
       alertSound: alertSound ?? this.alertSound,
     );
@@ -59,7 +59,7 @@ class FishingTimerModel {
       'remainingTime': remainingTime.inSeconds,
       'isRunning': isRunning,
       'startTime': startTime?.millisecondsSinceEpoch,
-      'isCountdown': isCountdown,
+      'isCountdown': true, // Всегда true
       'timerColor': timerColor.value,
       'alertSound': alertSound,
     };
@@ -76,7 +76,7 @@ class FishingTimerModel {
       startTime: json['startTime'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
           : null,
-      isCountdown: json['isCountdown'] ?? true,
+      isCountdown: true, // Всегда true, независимо от значения в JSON
       timerColor: Color(json['timerColor'] ?? Colors.green.value),
       alertSound: json['alertSound'] ?? 'default_alert.mp3',
     );

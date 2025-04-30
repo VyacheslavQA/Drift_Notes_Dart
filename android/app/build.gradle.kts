@@ -1,7 +1,9 @@
+// Путь: android/app/build.gradle.kts
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    id("com.google.gms.google-services")  // Добавляем эту строку
+    id("com.google.gms.google-services")  // Google Services плагин
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -30,13 +32,13 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        // Исправляем эту часть для согласования версий Java
         compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_1_8
-            targetCompatibility = JavaVersion.VERSION_1_8
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
             isCoreLibraryDesugaringEnabled = true
         }
     }
-
 
     buildTypes {
         release {
