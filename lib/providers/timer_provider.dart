@@ -45,12 +45,14 @@ class TimerProvider extends ChangeNotifier {
     String? name,
     Color? timerColor,
     String? alertSound,
+    bool? isCountdown,
   }) {
     _timerService.updateTimerSettings(
       id,
       name: name,
       timerColor: timerColor,
       alertSound: alertSound,
+      isCountdown: isCountdown,
     );
     notifyListeners();
   }

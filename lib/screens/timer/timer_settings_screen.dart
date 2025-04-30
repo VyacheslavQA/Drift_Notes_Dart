@@ -25,6 +25,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   Color _selectedColor = Colors.green;
   String _selectedSound = 'default_alert.mp3';
+  bool _isCountdown = true;
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
     _nameController = TextEditingController(text: _timer.name);
     _selectedColor = _timer.timerColor;
     _selectedSound = _timer.alertSound;
+    _isCountdown = _timer.isCountdown;
   }
 
   @override
@@ -58,6 +60,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
       name: _nameController.text.trim(),
       timerColor: _selectedColor,
       alertSound: _selectedSound,
+      isCountdown: _isCountdown,
     );
 
     Navigator.of(context).pop();
@@ -120,6 +123,45 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
                     borderSide: BorderSide(color: AppConstants.textColor),
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Переключатель режима таймера
+              Text(
+                'Режим таймера',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: Text(
+                  'Обратный отсчет',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Text(
+                  _isCountdown
+                      ? 'Время будет уменьшаться от заданного значения'
+                      : 'Время будет увеличиваться от нуля',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+                value: _isCountdown,
+                onChanged: (value) {
+                  setState(() {
+                    _isCountdown = value;
+                  });
+                },
+                activeColor: _selectedColor,
+                contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
               ),
 
               const SizedBox(height: 24),

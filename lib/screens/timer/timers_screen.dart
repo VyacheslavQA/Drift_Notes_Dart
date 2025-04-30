@@ -18,6 +18,10 @@ class _TimersScreenState extends State<TimersScreen> {
   late TimerProvider _timerProvider;
   final List<StreamSubscription> _subscriptions = [];
 
+  // Переменные для выбора времени
+  int _hours = 0;
+  int _minutes = 0;
+
   @override
   void initState() {
     super.initState();
@@ -44,9 +48,10 @@ class _TimersScreenState extends State<TimersScreen> {
 
   // Форматирование времени таймера
   String _formatDuration(Duration duration) {
-    final hours = duration.inHours.toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
 
     return hours == '00' ? '$minutes:$seconds' : '$hours:$minutes:$seconds';
   }
@@ -103,148 +108,153 @@ class _TimersScreenState extends State<TimersScreen> {
 
   // Показать диалог для выбора произвольного времени
   void _showCustomTimePicker(String timerId) {
-    int hours = 0;
-    int minutes = 0;
+    // Сбрасываем значения часов и минут при каждом открытии диалога
+    _hours = 0;
+    _minutes = 0;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          'Установите время',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            title: Text(
+              'Установите время',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Часы
-                Column(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
-                      onPressed: () {
-                        setState(() {
-                          hours = (hours + 1) % 24;
-                        });
-                      },
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppConstants.backgroundColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        hours.toString().padLeft(2, '0'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                    // Часы
+                    Column(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              _hours = (_hours + 1) % 24;
+                            });
+                          },
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
-                      onPressed: () {
-                        setState(() {
-                          hours = (hours - 1 + 24) % 24;
-                        });
-                      },
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppConstants.backgroundColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _hours.toString().padLeft(2, '0'),
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              _hours = (_hours - 1 + 24) % 24;
+                            });
+                          },
+                        ),
+                        Text(
+                          'Часы',
+                          style: TextStyle(color: AppConstants.textColor),
+                        ),
+                      ],
                     ),
                     Text(
-                      'Часы',
-                      style: TextStyle(color: AppConstants.textColor),
-                    ),
-                  ],
-                ),
-                Text(
-                  ':',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                // Минуты
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
-                      onPressed: () {
-                        setState(() {
-                          minutes = (minutes + 1) % 60;
-                        });
-                      },
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppConstants.backgroundColor,
-                        borderRadius: BorderRadius.circular(8),
+                      ':',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: Text(
-                        minutes.toString().padLeft(2, '0'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    // Минуты
+                    Column(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              _minutes = (_minutes + 1) % 60;
+                            });
+                          },
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
-                      onPressed: () {
-                        setState(() {
-                          minutes = (minutes - 1 + 60) % 60;
-                        });
-                      },
-                    ),
-                    Text(
-                      'Минуты',
-                      style: TextStyle(color: AppConstants.textColor),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppConstants.backgroundColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _minutes.toString().padLeft(2, '0'),
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              _minutes = (_minutes - 1 + 60) % 60;
+                            });
+                          },
+                        ),
+                        Text(
+                          'Минуты',
+                          style: TextStyle(color: AppConstants.textColor),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Отмена',
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Отмена',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
 
-              // Проверяем, что выбрано хотя бы какое-то время
-              if (hours > 0 || minutes > 0) {
-                final duration = Duration(hours: hours, minutes: minutes);
-                _timerProvider.setTimerDuration(timerId, duration);
-                _timerProvider.startTimer(timerId);
-              } else {
-                // Показываем сообщение, если время не выбрано
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Установите время больше 0')),
-                );
-              }
-            },
-            child: Text(
-              'Установить',
-              style: TextStyle(color: AppConstants.textColor),
-            ),
-          ),
-        ],
+                  // Проверяем, что выбрано хотя бы какое-то время
+                  if (_hours > 0 || _minutes > 0) {
+                    final duration = Duration(hours: _hours, minutes: _minutes);
+                    _timerProvider.setTimerDuration(timerId, duration);
+                    _timerProvider.startTimer(timerId);
+                  } else {
+                    // Показываем сообщение, если время не выбрано
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Установите время больше 0')),
+                    );
+                  }
+                },
+                child: Text(
+                  'Установить',
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -306,6 +316,16 @@ class _TimersScreenState extends State<TimersScreen> {
   }
 
   Widget _buildTimerCard(FishingTimerModel timer, Duration currentDuration) {
+    // Рассчитываем прогресс для обратного отсчета
+    double progressValue = 0.0;
+    if (timer.isCountdown && timer.duration.inSeconds > 0) {
+      progressValue = currentDuration.inSeconds / timer.duration.inSeconds;
+      progressValue = progressValue.clamp(0.0, 1.0);
+    } else {
+      // Для обычного таймера используем прежнюю логику
+      progressValue = currentDuration.inSeconds / 3600; // Прогресс до 1 часа
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 8, right: 8),
       decoration: BoxDecoration(
@@ -320,117 +340,118 @@ class _TimersScreenState extends State<TimersScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              timer.name,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+      Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        timer.name,
+        style: TextStyle(
+          color: AppConstants.textColor,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+    Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: Center(
+    child: Text(
+    _formatDuration(currentDuration),
+    style: TextStyle(
+    color: timer.timerColor,
+    fontSize: 60,
+    fontWeight: FontWeight.bold,
+    ),
+    ),
+    ),
+    ),
+    Padding(
+    padding: const EdgeInsets.all(4),
+    child: LinearProgressIndicator(
+    value: progressValue,
+    backgroundColor: Colors.white10,
+    valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
+    minHeight: 2,
+    ),
+    ),
+    Padding(
+    padding: const EdgeInsets.all(16),
+    child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+    Expanded(
+    child: ElevatedButton(
+    onPressed: () {
+    if (timer.isRunning) {
+    _timerProvider.stopTimer(timer.id);
+    } else {
+    // Показываем диалог выбора времени при нажатии на Старт
+    _showTimePickerDialog(timer.id);
+    }
+    },
+    style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.green,
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(24),
+    ),
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    ),
+    child: Text(
+    timer.isRunning ? 'СТОП' : 'СТАРТ',
+    style: const TextStyle(
+      // Путь: lib/screens/timer/timers_screen.dart (продолжение)
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+    ),
+    ),
+    ),
+    ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () {
+            _timerProvider.resetTimer(timer.id);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: const Text(
+            'СБРОС',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Container(
+        decoration: BoxDecoration(
+          color: AppConstants.primaryColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => TimerSettingsScreen(timerId: timer.id),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Center(
-              child: Text(
-                _formatDuration(currentDuration),
-                style: TextStyle(
-                  color: timer.timerColor,
-                  fontSize: 60,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(4),
-            child: LinearProgressIndicator(
-              value: currentDuration.inSeconds / 3600, // Прогресс до 1 часа
-              backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
-              minHeight: 2,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (timer.isRunning) {
-                        _timerProvider.stopTimer(timer.id);
-                      } else {
-                        // Показываем диалог выбора времени при нажатии на Старт
-                        _showTimePickerDialog(timer.id);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text(
-                      timer.isRunning ? 'СТОП' : 'СТАРТ',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _timerProvider.resetTimer(timer.id);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text(
-                      'СБРОС',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.white),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TimerSettingsScreen(timerId: timer.id),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
+      ),
+    ],
+    ),
+    ),
+          ],
       ),
     );
   }

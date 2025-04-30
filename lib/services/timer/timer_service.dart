@@ -71,6 +71,18 @@ class TimerService {
 
     // Запускаем таймер
     final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Проверяем режим таймера (обратный отсчет)
+      if (_timers[index].isCountdown) {
+        final currentDuration = getCurrentDuration(id);
+
+        // Если время вышло, останавливаем таймер и запускаем уведомление
+        if (currentDuration.inSeconds <= 0) {
+          stopTimer(id);
+          _notifyTimeIsUp(id);
+          return;
+        }
+      }
+
       // Нам нужно обновить только UI, сам таймер идет от startTime
       _notifyListeners();
     });
@@ -83,21 +95,41 @@ class TimerService {
     _notifyListeners();
   }
 
+  // Метод для уведомления о том, что время вышло
+  void _notifyTimeIsUp(String id) {
+    // Здесь будет логика воспроизведения звука и показа уведомления
+    // В текущей версии просто обновляем UI
+    _notifyListeners();
+  }
+
   // Остановка таймера
   void stopTimer(String id) {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
-    // Если таймер был запущен, сохраняем прошедшее время
+    // Если таймер был запущен и не в режиме обратного отсчета, сохраняем прошедшее время
     if (_timers[index].isRunning && _timers[index].startTime != null) {
-      final elapsed = DateTime.now().difference(_timers[index].startTime!);
-      final newDuration = _timers[index].duration + elapsed;
+      if (!_timers[index].isCountdown) {
+        final elapsed = DateTime.now().difference(_timers[index].startTime!);
+        final newDuration = _timers[index].duration + elapsed;
 
-      _timers[index] = _timers[index].copyWith(
-        isRunning: false,
-        duration: newDuration,
-        startTime: null,
-      );
+        _timers[index] = _timers[index].copyWith(
+          isRunning: false,
+          duration: newDuration,
+          startTime: null,
+        );
+      } else {
+        // Для обратного отсчета сохраняем оставшееся время
+        final elapsed = DateTime.now().difference(_timers[index].startTime!);
+        final remainingTimeInSeconds = _timers[index].remainingTime.inSeconds - elapsed.inSeconds;
+        final newRemainingTime = Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
+
+        _timers[index] = _timers[index].copyWith(
+          isRunning: false,
+          remainingTime: newRemainingTime,
+          startTime: null,
+        );
+      }
     } else {
       _timers[index] = _timers[index].copyWith(
         isRunning: false,
@@ -133,6 +165,7 @@ class TimerService {
     _timers[index] = _timers[index].copyWith(
       isRunning: false,
       duration: const Duration(seconds: 0),
+      remainingTime: _timers[index].isCountdown ? _timers[index].duration : Duration.zero,
       startTime: null,
     );
 
@@ -146,6 +179,7 @@ class TimerService {
     String? name,
     Color? timerColor,
     String? alertSound,
+    bool? isCountdown,
   }) {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
@@ -154,6 +188,7 @@ class TimerService {
       name: name,
       timerColor: timerColor,
       alertSound: alertSound,
+      isCountdown: isCountdown,
     );
 
     // Сохраняем состояние
@@ -167,13 +202,23 @@ class TimerService {
     if (index == -1) return Duration.zero;
 
     final timer = _timers[index];
+
+    // Если таймер не запущен
     if (!timer.isRunning || timer.startTime == null) {
-      return timer.duration;
+      return timer.isCountdown ? timer.remainingTime : timer.duration;
     }
 
-    // Вычисляем прошедшее время с момента запуска
+    // Если таймер запущен
     final elapsed = DateTime.now().difference(timer.startTime!);
-    return timer.duration + elapsed;
+
+    if (timer.isCountdown) {
+      // Для обратного отсчета вычитаем прошедшее время
+      final remainingTimeInSeconds = timer.remainingTime.inSeconds - elapsed.inSeconds;
+      return Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
+    } else {
+      // Для обычного таймера прибавляем прошедшее время
+      return timer.duration + elapsed;
+    }
   }
 
   // Сохранение таймеров
@@ -225,6 +270,7 @@ class TimerService {
     _runningTimers.clear();
     _timerStreamController.close();
   }
+
   // Установка длительности таймера
   void setTimerDuration(String id, Duration duration) {
     final index = _timers.indexWhere((timer) => timer.id == id);
@@ -232,6 +278,7 @@ class TimerService {
 
     _timers[index] = _timers[index].copyWith(
       duration: duration,
+      remainingTime: duration, // Устанавливаем оставшееся время равным общей длительности
     );
 
     // Сохраняем состояние
