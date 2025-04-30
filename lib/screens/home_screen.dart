@@ -8,6 +8,8 @@ import '../repositories/fishing_note_repository.dart';
 import '../models/fishing_note_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
+import '../utils/navigation.dart';
+import 'timer/timers_screen.dart'; // Правильный импорт для экрана таймеров
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -84,8 +86,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // Обработка нажатия на элементы меню
     switch (index) {
       case 0: // Таймер
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Экран таймера в разработке')),
+      // Навигация на экран таймеров
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const TimersScreen()),
         );
         break;
       case 1: // Погода
@@ -489,6 +493,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text(
                       'Экран со всеми заметками будет доступен позже')),
+                );
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.timer,
+              title: 'Таймеры',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TimersScreen()),
                 );
               },
             ),
