@@ -12,23 +12,60 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   final _firebaseService = FirebaseService();
   bool _isLoading = false;
+  bool _isPressed = false;
+
+  // Контроллер для анимации нажатия
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Настраиваем контроллер анимации для эффекта нажатия
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Curves.easeInOut,
+        )
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   // Обработка нажатия кнопки входа
   void _handleLogin() {
+    // Если уже идет загрузка, не выполняем повторное действие
+    if (_isLoading) return;
+
     setState(() {
       _isLoading = true;
     });
 
-    // Если пользователь уже авторизован, направляем на главный экран
-    if (_firebaseService.isUserLoggedIn) {
-      Navigator.of(context).pushReplacementNamed('/home');
-    } else {
-      // Если не авторизован, переходим на экран выбора способа входа
-      Navigator.of(context).pushReplacementNamed('/auth_selection');
-    }
+    // Имитируем небольшую задержку для анимации
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        // Если пользователь уже авторизован, направляем на главный экран
+        if (_firebaseService.isUserLoggedIn) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          // Если не авторизован, переходим на экран выбора способа входа
+          Navigator.of(context).pushReplacementNamed('/auth_selection');
+        }
+      }
+    });
   }
 
   // Обработка нажатия кнопки выхода
@@ -109,39 +146,61 @@ class _SplashScreenState extends State<SplashScreen> {
 
                 const Spacer(flex: 3),
 
-                // Кнопка входа
+                // Кнопка входа - с эффектом нажатия
                 SizedBox(
                   width: screenSize.width * 0.8,
                   height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: AppConstants.textColor,
-                      side: BorderSide(color: AppConstants.textColor),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                      ),
-                      padding: EdgeInsets.zero, // Убираем отступы
-                    ),
-                    child: _isLoading
-                        ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: AppConstants.textColor,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                        : const Center( // Добавляем явное центрирование
-                      child: Text(
-                        'ВОЙТИ',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          height: 1.0, // Фиксируем высоту строки
-                        ),
-                      ),
+                  child: GestureDetector(
+                    onTapDown: (_) {
+                      setState(() {
+                        _isPressed = true;
+                      });
+                      _animationController.forward();
+                    },
+                    onTapUp: (_) {
+                      setState(() {
+                        _isPressed = false;
+                      });
+                      _animationController.reverse();
+                      _handleLogin();
+                    },
+                    onTapCancel: () {
+                      setState(() {
+                        _isPressed = false;
+                      });
+                      _animationController.reverse();
+                    },
+                    child: AnimatedBuilder(
+                      animation: _animationController,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _isPressed
+                                  ? AppConstants.textColor.withOpacity(0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(25.0),
+                              border: Border.all(
+                                color: AppConstants.textColor,
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'ВОЙТИ',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: _isLoading
+                                      ? AppConstants.textColor.withOpacity(0.7)
+                                      : AppConstants.textColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
