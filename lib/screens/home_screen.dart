@@ -113,7 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Навигация на экран добавления заметки
     // Navigator.push(context, MaterialPageRoute(builder: (context) => AddFishingNoteScreen()));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Функция создания заметки будет доступна в ближайшее время')),
+      const SnackBar(content: Text(
+          'Функция создания заметки будет доступна в ближайшее время')),
     );
   }
 
@@ -173,13 +174,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Статистика
                 _buildStatsGrid(),
 
-                const SizedBox(height: 100), // Большой отступ внизу для плавающей кнопки
+                const SizedBox(height: 100),
+                // Большой отступ внизу для плавающей кнопки
               ],
             ),
           ),
         ),
       ),
-      extendBody: true, // Позволяет контенту скроллиться под нижней панелью
+      extendBody: true,
+      // Позволяет контенту скроллиться под нижней панелью
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
@@ -187,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Виджет для отображения рекламы канала YouTube с возможностью перехода по ссылке
   Widget _buildYoutubePromoCard() {
     return GestureDetector(
-      onTap: () => _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
+      onTap: () =>
+          _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
       child: Container(
         height: 180,
         decoration: BoxDecoration(
@@ -459,7 +463,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Экран личного кабинета будет доступен позже')),
+                  const SnackBar(content: Text(
+                      'Экран личного кабинета будет доступен позже')),
                 );
               },
             ),
@@ -470,7 +475,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Экран статистики будет доступен позже')),
+                  const SnackBar(
+                      content: Text('Экран статистики будет доступен позже')),
                 );
               },
             ),
@@ -481,7 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Экран со всеми заметками будет доступен позже')),
+                  const SnackBar(content: Text(
+                      'Экран со всеми заметками будет доступен позже')),
                 );
               },
             ),
@@ -512,7 +519,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Экран настроек будет доступен позже')),
+                  const SnackBar(
+                      content: Text('Экран настроек будет доступен позже')),
                 );
               },
             ),
@@ -523,7 +531,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Экран помощи будет доступен позже')),
+                  const SnackBar(
+                      content: Text('Экран помощи будет доступен позже')),
                 );
               },
             ),
@@ -569,114 +578,216 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Нижняя навигационная панель с центрированной рыбкой
+  // Нижняя навигационная панель с выделенной кнопкой "Заметка"
   Widget _buildBottomNavigationBar() {
-    return Container(
-      height: 60, // Компактная высота панели
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B1F1D),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, -1),
-          ),
-        ],
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        child: Stack(
-          alignment: Alignment.center, // Обеспечиваем выравнивание по центру
-          children: [
-            // Основная панель навигации
-            BottomNavigationBar(
-              backgroundColor: const Color(0xFF0B1F1D),
-              type: BottomNavigationBarType.fixed,
-              showSelectedLabels: true,
-              showUnselectedLabels: true,
-              selectedItemColor: AppConstants.textColor,
-              unselectedItemColor: Colors.white54,
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              selectedFontSize: 12, // Размер шрифта
-              unselectedFontSize: 11,
-              items: [
-                // Таймер
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.access_time, size: 22),
-                  label: 'Таймер',
-                ),
-                // Погода
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.cloud, size: 22),
-                  label: 'Погода',
-                ),
-                // Пустой элемент для места центральной кнопки
-                const BottomNavigationBarItem(
-                  icon: SizedBox(width: 1, height: 1), // Минимальный размер
-                  label: '',
-                ),
-                // Календарь
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today, size: 22),
-                  label: 'Календарь',
-                ),
-                // Уведомления
-                BottomNavigationBarItem(
-                  icon: Stack(
-                    children: [
-                      const Icon(Icons.notifications, size: 22),
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
+    return SizedBox(
+      height: 70, // Высота для размещения выступающей кнопки
+      child: Stack(
+        children: [
+          // Основная панель с 4 кнопками (без центральной)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 60, // Стандартная высота панели
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B1F1D),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, -1),
                   ),
-                  label: 'Уведомл...',
-                ),
-              ],
-            ),
-
-            // Центральная кнопка с логотипом рыбки
-            Positioned(
-              top: 3, // Немного отступаем от верха
-              child: GestureDetector(
-                onTap: () => _onItemTapped(2), // Вызов функции при нажатии
-                child: Container(
-                  width: 52, // Размер контейнера
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Image.asset(
-                      'assets/images/app_logo.png',
-                      width: 42,
-                      height: 42,
-                    ),
-                  ),
+                ],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  // Таймер
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _selectedIndex == 0
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'Таймер',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _selectedIndex == 0 ? AppConstants
+                                    .textColor : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Погода
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(1),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.cloud,
+                            color: _selectedIndex == 1
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'Погода',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _selectedIndex == 1 ? AppConstants
+                                    .textColor : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Пустое место для центральной кнопки
+                  const Expanded(child: SizedBox()),
+
+                  // Календарь
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: _selectedIndex == 3
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'Календарь',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _selectedIndex == 3 ? AppConstants
+                                    .textColor : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Уведомления
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications,
+                                color: _selectedIndex == 4 ? AppConstants
+                                    .textColor : Colors.white54,
+                                size: 22,
+                              ),
+                              Positioned(
+                                right: -2,
+                                top: 0,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              'Уведомл...',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _selectedIndex == 4 ? AppConstants
+                                    .textColor : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+
+          // Центральная кнопка, выступающая над панелью (без контейнера с фоном)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 8, // Размещаем подпись на одном уровне с другими подписями
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Логотип рыбки как кнопка, без контейнера с фоном
+                  GestureDetector(
+                    onTap: () => _onItemTapped(2),
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      width: 48, // Размер немного больше остальных иконок
+                      height: 48, // Сохраняем пропорции
+                    ),
+                  ),
+
+                  // Подпись
+                  const Text(
+                    'Заметка',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
