@@ -18,6 +18,7 @@ class FishingNoteModel {
   final List<BiteRecord> biteRecords;
   final Map<String, List<String>> dayBiteMaps;
   final List<String> fishingSpots;
+  final List<Map<String, dynamic>> mapMarkers; // Добавлено поле для маркеров
 
   FishingNoteModel({
     required this.id,
@@ -37,6 +38,7 @@ class FishingNoteModel {
     this.biteRecords = const [],
     this.dayBiteMaps = const {},
     this.fishingSpots = const ['Основная точка'],
+    this.mapMarkers = const [], // Инициализируем пустым списком маркеров
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -70,6 +72,9 @@ class FishingNoteModel {
               (key, value) => MapEntry(key, List<String>.from(value))))
           : {},
       fishingSpots: List<String>.from(json['fishingSpots'] ?? ['Основная точка']),
+      mapMarkers: (json['mapMarkers'] != null)
+          ? List<Map<String, dynamic>>.from(json['mapMarkers'])
+          : [],
     );
   }
 
@@ -91,6 +96,7 @@ class FishingNoteModel {
       'biteRecords': biteRecords.map((x) => x.toJson()).toList(),
       'dayBiteMaps': dayBiteMaps,
       'fishingSpots': fishingSpots,
+      'mapMarkers': mapMarkers,
     };
   }
 
@@ -112,6 +118,7 @@ class FishingNoteModel {
     List<BiteRecord>? biteRecords,
     Map<String, List<String>>? dayBiteMaps,
     List<String>? fishingSpots,
+    List<Map<String, dynamic>>? mapMarkers,
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
@@ -131,9 +138,12 @@ class FishingNoteModel {
       biteRecords: biteRecords ?? this.biteRecords,
       dayBiteMaps: dayBiteMaps ?? this.dayBiteMaps,
       fishingSpots: fishingSpots ?? this.fishingSpots,
+      mapMarkers: mapMarkers ?? this.mapMarkers,
     );
   }
 }
+
+// Остальные классы модели остаются без изменений
 
 class FishingWeather {
   final double temperature;
