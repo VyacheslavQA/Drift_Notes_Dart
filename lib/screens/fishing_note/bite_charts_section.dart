@@ -366,13 +366,11 @@ class _BiteChartPreviewPainter extends CustomPainter {
       final x = hourInt * hourWidth;
       final barHeight = intensity * size.height;
 
-      // Рисуем столбик
+      // Рисуем столбик - исправленная версия для совместимости
       canvas.drawRect(
-        Rect.fromLTWB(
-          x,
-          size.height - barHeight,
-          x + hourWidth,
-          size.height,
+        Rect.fromPoints(
+          Offset(x, size.height - barHeight),
+          Offset(x + hourWidth, size.height),
         ),
         barPaint,
       );

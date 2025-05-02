@@ -18,17 +18,41 @@ class FishingNotesListScreen extends StatefulWidget {
   _FishingNotesListScreenState createState() => _FishingNotesListScreenState();
 }
 
-class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
+class _FishingNotesListScreenState extends State<FishingNotesListScreen> with SingleTickerProviderStateMixin {
   final _fishingNoteRepository = FishingNoteRepository();
 
   List<FishingNoteModel> _notes = [];
   bool _isLoading = true;
   String? _errorMessage;
 
+  // Контроллер анимации для плавного появления элементов
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Настройка анимации
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Curves.easeInOut,
+        )
+    );
+
     _loadNotes();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadNotes() async {
@@ -47,6 +71,9 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
         _notes = notes;
         _isLoading = false;
       });
+
+      // Запускаем анимацию после загрузки данных
+      _animationController.forward();
     } catch (e) {
       setState(() {
         _errorMessage = 'Ошибка загрузки заметок: $e';
@@ -62,6 +89,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
     );
 
     if (result == true) {
+      // Сбрасываем анимацию перед обновлением данных
+      _animationController.reset();
       _loadNotes();
     }
   }
@@ -74,6 +103,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
       ),
     ).then((value) {
       if (value == true) {
+        // Сбрасываем анимацию перед обновлением данных
+        _animationController.reset();
         _loadNotes();
       }
     });
@@ -134,10 +165,19 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
         )
             : _notes.isEmpty
             ? _buildEmptyState()
-            : ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _notes.length,
-          itemBuilder: (context, index) => _buildNoteCard(_notes[index]),
+            : FadeTransition(
+          opacity: _fadeAnimation,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _notes.length,
+            itemBuilder: (context, index) {
+              // Добавляем задержку для каскадной анимации
+              Future.delayed(Duration(milliseconds: 50 * index), () {
+                if (mounted) setState(() {});
+              });
+              return _buildNoteCard(_notes[index]);
+            },
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -149,55 +189,82 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
           width: 40,
           height: 40,
         ),
+        elevation: 4,
+        // Добавляем эффект нажатия
+        splashColor: Colors.white.withOpacity(0.3),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.sentiment_dissatisfied,
-            color: AppConstants.textColor.withOpacity(0.5),
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'У вас пока нет заметок',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.set_meal,  // Используем иконку рыбы вместо несуществующей fishing
+              color: AppConstants.textColor.withOpacity(0.5),
+              size: 80,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Нажмите на кнопку добавления, чтобы создать первую заметку о рыбалке',
-            style: TextStyle(
-              color: AppConstants.textColor.withOpacity(0.7),
-              fontSize: 16,
+            const SizedBox(height: 24),
+            Text(
+              'Ещё нет заметок о рыбалке',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Создать заметку'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
-              foregroundColor: AppConstants.textColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Text(
+                'Начните вести дневник ваших рыбалок, чтобы отслеживать самые удачные уловы',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            onPressed: _addNewNote,
-          ),
-        ],
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Создать первую заметку'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 4,
+              ),
+              onPressed: _addNewNote,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildNoteCard(FishingNoteModel note) {
+    // Информация о самой крупной рыбе
+    final biggestFish = note.biggestFish;
+
+    // URL фотографии (обложки или первое фото)
+    String photoUrl = '';
+    if (note.coverPhotoUrl.isNotEmpty) {
+      photoUrl = note.coverPhotoUrl;
+    } else if (note.photoUrls.isNotEmpty) {
+      photoUrl = note.photoUrls.first;
+    }
+
+    // Настройки кадрирования для обложки
+    final cropSettings = note.coverCropSettings;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: const Color(0xFF12332E),
@@ -205,6 +272,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.3),
       child: InkWell(
         onTap: () => _viewNoteDetails(note),
         splashColor: AppConstants.primaryColor.withOpacity(0.1),
@@ -212,26 +281,84 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Фотография, если есть
-            if (note.photoUrls.isNotEmpty)
-              SizedBox(
-                height: 150,
-                width: double.infinity,
-                child: CachedNetworkImage(
-                  imageUrl: note.photoUrls.first,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+            if (photoUrl.isNotEmpty)
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 170,  // Увеличили размер для лучшего отображения
+                    width: double.infinity,
+                    child: _buildCoverImage(photoUrl, cropSettings),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 60,  // Увеличили градиент для лучшего перехода
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.8),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppConstants.backgroundColor,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
+                  // Показываем тип рыбалки и дату внизу фотографии
+                  Positioned(
+                    bottom: 8,
+                    left: 16,
+                    right: 16,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppConstants.textColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            note.fishingType,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppConstants.textColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            note.isMultiDay
+                                ? DateFormatter.formatDateRange(note.date, note.endDate!)
+                                : DateFormatter.formatDate(note.date),
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                ],
               ),
 
             Padding(
@@ -239,103 +366,303 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Тип рыбалки и дата
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          note.fishingType,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                  // Если фото не было, показываем тип рыбалки и дату в основном блоке
+                  if (photoUrl.isEmpty)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppConstants.primaryColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            note.fishingType,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        note.isMultiDay
-                            ? DateFormatter.formatDateRange(note.date, note.endDate!)
-                            : DateFormatter.formatDate(note.date),
-                        style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
-                          fontSize: 14,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppConstants.primaryColor.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            note.isMultiDay
+                                ? DateFormatter.formatDateRange(note.date, note.endDate!)
+                                : DateFormatter.formatDate(note.date),
+                            style: TextStyle(
+                              color: AppConstants.textColor.withOpacity(0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  const SizedBox(height: 8),
+                  if (photoUrl.isEmpty)
+                    const SizedBox(height: 12),
 
-                  // Место рыбалки
+                  // Место рыбалки / название
                   Text(
-                    note.location,
+                    note.title.isNotEmpty ? note.title : note.location,
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
-                  // Количество поклевок и фотографий
+                  // Количество поклевок и фото
                   Row(
                     children: [
-                      Icon(
-                        Icons.set_meal,
-                        color: AppConstants.textColor.withOpacity(0.7),
-                        size: 16,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.set_meal,
+                          color: AppConstants.textColor,
+                          size: 18,
+                        ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 8),
                       Text(
                         '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
                         style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
-                          fontSize: 14,
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Icon(
-                        Icons.photo,
-                        color: AppConstants.textColor.withOpacity(0.7),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${note.photoUrls.length} фото',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
-                          fontSize: 14,
+                      if (note.photoUrls.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.photo_library,
+                            color: AppConstants.textColor,
+                            size: 18,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${note.photoUrls.length} фото',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
 
-                  // Если есть заметки, показываем начало
-                  if (note.notes.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      note.notes.length > 100
-                          ? '${note.notes.substring(0, 100)}...'
-                          : note.notes,
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 14,
+                  // Если есть самая крупная рыба, показываем информацию о ней
+                  if (biggestFish != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppConstants.primaryColor.withOpacity(0.3),
+                          width: 1,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.emoji_events,
+                                color: Colors.amber,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Самая крупная рыба:',
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              if (biggestFish.fishType.isNotEmpty) ...[
+                                Expanded(
+                                  child: Text(
+                                    biggestFish.fishType,
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.scale,
+                                color: AppConstants.textColor.withOpacity(0.7),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${biggestFish.weight} кг',
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (biggestFish.length > 0) ...[
+                                const SizedBox(width: 16),
+                                Icon(
+                                  Icons.straighten,
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${biggestFish.length} см',
+                                  style: TextStyle(
+                                    color: AppConstants.textColor,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Метод для построения изображения обложки с учётом настроек кадрирования
+  Widget _buildCoverImage(String photoUrl, Map<String, dynamic>? cropSettings) {
+    // Если нет настроек кадрирования, просто показываем изображение
+    if (cropSettings == null) {
+      return CachedNetworkImage(
+        imageUrl: photoUrl,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+            strokeWidth: 2.0,
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: AppConstants.backgroundColor.withOpacity(0.7),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.grey[400],
+                  size: 40,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Изображение недоступно',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Если есть настройки кадрирования, применяем их
+    final offsetX = cropSettings['offsetX'] as double? ?? 0.0;
+    final offsetY = cropSettings['offsetY'] as double? ?? 0.0;
+    final scale = cropSettings['scale'] as double? ?? 1.0;
+
+    return ClipRect(
+      child: Transform.scale(
+        scale: scale,
+        child: Transform.translate(
+          offset: Offset(offsetX, offsetY),
+          child: CachedNetworkImage(
+            imageUrl: photoUrl,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                strokeWidth: 2.0,
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: AppConstants.backgroundColor.withOpacity(0.7),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.grey[400],
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Изображение недоступно',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
