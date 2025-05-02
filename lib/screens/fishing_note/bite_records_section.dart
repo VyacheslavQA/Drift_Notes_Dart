@@ -6,6 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../utils/date_formatter.dart';
 import 'bite_record_screen.dart';
+import 'edit_bite_record_screen.dart';
 
 class BiteRecordsSection extends StatelessWidget {
   final FishingNoteModel note;
@@ -108,193 +109,182 @@ class BiteRecordsSection extends StatelessWidget {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BiteRecordScreen(
-          initialRecord: record,
-          dayIndex: record.dayIndex,
-        ),
+        builder: (context) => EditBiteRecordScreen(biteRecord: record),
       ),
     );
 
-    if (result != null) {
-      if (result == 'delete') {
-        // Если пришла команда удаления
-        onDeleteRecord(record.id);
-      } else if (result is BiteRecord) {
-        // Если пришла обновленная запись
-        onUpdateRecord(result);
-      }
+    if (result != null && result is BiteRecord) {
+      onUpdateRecord(result);
     }
   }
 
   // Построение карточки записи о поклёвке
   Widget _buildBiteRecordCard(BuildContext context, BiteRecord record) {
     return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        color: const Color(0xFF12332E),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: InkWell(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: const Color(0xFF12332E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
         onTap: () => _editBiteRecord(context, record),
-    borderRadius: BorderRadius.circular(12),
-    child: Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-    // Заголовок с временем и типом рыбы
-    Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-    Expanded(
-    child: Row(
-    children: [
-    Icon(
-    Icons.access_time,
-    color: AppConstants.textColor,
-    size: 18,
-    ),
-    const SizedBox(width: 8),
-    Text(
-    DateFormat('HH:mm').format(record.time),
-    style: TextStyle(
-    color: AppConstants.textColor,
-    fontWeight: FontWeight.bold,
-    fontSize: 16,
-    ),
-    ),
-    ],
-    ),
-    ),
-    if (record.fishType.isNotEmpty)
-    Expanded(
-    child: Text(
-    record.fishType,
-    textAlign: TextAlign.end,
-    style: TextStyle(
-    color: AppConstants.textColor,
-    fontWeight: FontWeight.bold,
-    fontSize: 16,
-    ),
-    ),
-    ),
-    ],
-    ),
-
-    const SizedBox(height: 8),
-
-      // Путь: lib/screens/fishing_note/bite_records_section.dart (продолжение)
-
-      // Информация о весе и длине
-      if (record.weight > 0 || record.length > 0)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (record.weight > 0)
-                Row(
-                  children: [
-                    Icon(
-                      Icons.scale,
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      size: 16,
+              // Заголовок с временем и типом рыбы
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          color: AppConstants.textColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('HH:mm').format(record.time),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${record.weight} кг',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.9),
+                  ),
+                  if (record.fishType.isNotEmpty)
+                    Expanded(
+                      child: Text(
+                        record.fishType,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
-                  ],
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Информация о весе и длине
+              if (record.weight > 0 || record.length > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      if (record.weight > 0)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.scale,
+                              color: AppConstants.textColor.withOpacity(0.7),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${record.weight} кг',
+                              style: TextStyle(
+                                color: AppConstants.textColor.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (record.weight > 0 && record.length > 0)
+                        const SizedBox(width: 16),
+                      if (record.length > 0)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.straighten,
+                              color: AppConstants.textColor.withOpacity(0.7),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${record.length} см',
+                              style: TextStyle(
+                                color: AppConstants.textColor.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-              if (record.weight > 0 && record.length > 0)
-                const SizedBox(width: 16),
-              if (record.length > 0)
-                Row(
-                  children: [
-                    Icon(
-                      Icons.straighten,
+
+              // Примечания
+              if (record.notes.isNotEmpty)
+                Text(
+                  record.notes,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+
+              // Фотографии
+              if (record.photoUrls.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 80,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: record.photoUrls.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(record.photoUrls[index]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+
+              // Иконки действий
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit,
                       color: AppConstants.textColor.withOpacity(0.7),
-                      size: 16,
+                      size: 20,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${record.length} см',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.9),
-                      ),
+                    tooltip: 'Редактировать',
+                    onPressed: () => _editBiteRecord(context, record),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete,
+                      color: Colors.redAccent,
+                      size: 20,
                     ),
-                  ],
-                ),
+                    tooltip: 'Удалить',
+                    onPressed: () => _confirmDeleteRecord(context, record),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-
-      // Примечания
-      if (record.notes.isNotEmpty)
-        Text(
-          record.notes,
-          style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.8),
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-
-      // Фотографии
-      if (record.photoUrls.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 80,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: record.photoUrls.length,
-            itemBuilder: (context, index) {
-              return Container(
-                width: 80,
-                height: 80,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: NetworkImage(record.photoUrls[index]),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-
-      // Иконки действий
-      Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          IconButton(
-            icon: Icon(
-              Icons.edit,
-              color: AppConstants.textColor.withOpacity(0.7),
-              size: 20,
-            ),
-            tooltip: 'Редактировать',
-            onPressed: () => _editBiteRecord(context, record),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.delete,
-              color: Colors.redAccent,
-              size: 20,
-            ),
-            tooltip: 'Удалить',
-            onPressed: () => _confirmDeleteRecord(context, record),
-          ),
-        ],
       ),
-    ],
-    ),
-    ),
-        ),
     );
   }
 
@@ -442,16 +432,28 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     }
 
     // Рисуем точки поклевок
-    final bitePaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.fill;
-
     for (final record in biteRecords) {
       final timeInMinutes = record.time.hour * 60 + record.time.minute;
       final totalMinutes = 24 * 60;
       final position = timeInMinutes / totalMinutes * size.width;
 
+      // Основной цвет в зависимости от типа рыбы
+      Color pointColor = Colors.green;
+      if (record.fishType.toLowerCase().contains('карп')) {
+        pointColor = Colors.orange;
+      } else if (record.fishType.toLowerCase().contains('щука')) {
+        pointColor = Colors.red;
+      } else if (record.fishType.toLowerCase().contains('окунь')) {
+        pointColor = Colors.purple;
+      } else if (record.fishType.toLowerCase().contains('судак')) {
+        pointColor = Colors.blue;
+      }
+
       // Рисуем кружок для поклевки
+      final bitePaint = Paint()
+        ..color = pointColor
+        ..style = PaintingStyle.fill;
+
       canvas.drawCircle(
         Offset(position, size.height / 2),
         7,
@@ -461,7 +463,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       // Если есть вес, рисуем размер круга в зависимости от веса
       if (record.weight > 0) {
         final weightPaint = Paint()
-          ..color = Colors.orange
+          ..color = pointColor.withOpacity(0.8)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0;
 
@@ -479,6 +481,26 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
           radius,
           weightPaint,
         );
+
+        // Добавляем подписи веса для крупных рыб (больше 2 кг)
+        if (record.weight > 2.0) {
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: '${record.weight}кг',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          );
+          textPainter.layout();
+          textPainter.paint(
+              canvas,
+              Offset(position - textPainter.width / 2, size.height / 2 - radius - 14)
+          );
+        }
       }
     }
   }
