@@ -7,7 +7,11 @@ import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
+import '../../widgets/loading_overlay.dart';
 import 'photo_gallery_screen.dart';
+import 'bite_records_section.dart';
+import 'bite_charts_section.dart';
+import 'cover_photo_selection_screen.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -26,6 +30,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
   FishingNoteModel? _note;
   bool _isLoading = true;
+  bool _isSaving = false;
   String? _errorMessage;
 
   @override
@@ -55,6 +60,322 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // Обработчики для работы с записями о поклёвках
+  Future<void> _addBiteRecord(BiteRecord record) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Добавляем новую запись в список
+      final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)..add(record);
+
+      // Создаем обновленную модель заметки
+      final updatedNote = _note!.copyWith(
+        biteRecords: updatedBiteRecords,
+      );
+
+      // Сохраняем в репозитории
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+      // Обновляем локальное состояние
+      setState(() {
+        _note = updatedNote;
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Запись о поклёвке успешно добавлена'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при добавлении записи: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateBiteRecord(BiteRecord record) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Обновляем запись в списке
+      final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords);
+      final index = updatedBiteRecords.indexWhere((r) => r.id == record.id);
+
+      if (index != -1) {
+        updatedBiteRecords[index] = record;
+
+        // Создаем обновленную модель заметки
+        final updatedNote = _note!.copyWith(
+          biteRecords: updatedBiteRecords,
+        );
+
+        // Сохраняем в репозитории
+        await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+        // Обновляем локальное состояние
+        setState(() {
+          _note = updatedNote;
+          _isSaving = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Запись о поклёвке успешно обновлена'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при обновлении записи: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteBiteRecord(String recordId) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Удаляем запись из списка
+      final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)
+        ..removeWhere((r) => r.id == recordId);
+
+      // Создаем обновленную модель заметки
+      final updatedNote = _note!.copyWith(
+        biteRecords: updatedBiteRecords,
+      );
+
+      // Сохраняем в репозитории
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+      // Обновляем локальное состояние
+      setState(() {
+        _note = updatedNote;
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Запись о поклёвке успешно удалена'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при удалении записи: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Обработчики для работы с графиками клёва
+  Future<void> _addBiteChart(Map<String, dynamic> chart) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Добавляем новый график в список
+      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts)..add(chart);
+
+      // Создаем обновленную модель заметки
+      final updatedNote = _note!.copyWith(
+        biteCharts: updatedBiteCharts,
+      );
+
+      // Сохраняем в репозитории
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+      // Обновляем локальное состояние
+      setState(() {
+        _note = updatedNote;
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('График клёва успешно добавлен'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при добавлении графика: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateBiteChart(Map<String, dynamic> chart) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Обновляем график в списке
+      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts);
+      final index = updatedBiteCharts.indexWhere((c) => c['id'] == chart['id']);
+
+      if (index != -1) {
+        updatedBiteCharts[index] = chart;
+
+        // Создаем обновленную модель заметки
+        final updatedNote = _note!.copyWith(
+          biteCharts: updatedBiteCharts,
+        );
+
+        // Сохраняем в репозитории
+        await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+        // Обновляем локальное состояние
+        setState(() {
+          _note = updatedNote;
+          _isSaving = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('График клёва успешно обновлен'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при обновлении графика: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteBiteChart(String chartId) async {
+    if (_note == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Удаляем график из списка
+      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts)
+        ..removeWhere((c) => c['id'] == chartId);
+
+      // Создаем обновленную модель заметки
+      final updatedNote = _note!.copyWith(
+        biteCharts: updatedBiteCharts,
+      );
+
+      // Сохраняем в репозитории
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+      // Обновляем локальное состояние
+      setState(() {
+        _note = updatedNote;
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('График клёва успешно удален'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при удалении графика: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Выбор обложки
+  Future<void> _selectCoverPhoto() async {
+    if (_note == null || _note!.photoUrls.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Сначала добавьте фотографии к заметке'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CoverPhotoSelectionScreen(
+          photoUrls: _note!.photoUrls,
+          currentCoverPhotoUrl: _note!.coverPhotoUrl.isNotEmpty
+              ? _note!.coverPhotoUrl
+              : null,
+          currentCropSettings: _note!.coverCropSettings,
+        ),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() => _isSaving = true);
+
+      try {
+        // Создаем обновленную модель заметки с новой обложкой
+        final updatedNote = _note!.copyWith(
+          coverPhotoUrl: result['coverPhotoUrl'],
+          coverCropSettings: result['cropSettings'],
+        );
+
+        // Сохраняем в репозитории
+        await _fishingNoteRepository.updateFishingNote(updatedNote);
+
+        // Обновляем локальное состояние
+        setState(() {
+          _note = updatedNote;
+          _isSaving = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Обложка успешно обновлена'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при обновлении обложки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _viewPhotoGallery(int initialIndex) {
     if (_note == null || _note!.photoUrls.isEmpty) return;
 
@@ -68,8 +389,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
   }
-
-  // Путь: lib/screens/fishing_note/fishing_note_detail_screen.dart (продолжение)
 
   Future<void> _deleteNote() async {
     final confirmed = await showDialog<bool>(
@@ -112,6 +431,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
     if (confirmed == true) {
       try {
+        setState(() => _isLoading = true);
+
         await _fishingNoteRepository.deleteFishingNote(widget.noteId);
 
         if (mounted) {
@@ -125,6 +446,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           Navigator.pop(context, true); // true для обновления списка заметок
         }
       } catch (e) {
+        setState(() => _isLoading = false);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -143,9 +466,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          _isLoading || _note == null
-              ? 'Детали рыбалки'
-              : _note!.location,
+          _note?.title?.isNotEmpty == true
+              ? _note!.title
+              : _note?.location ?? 'Детали рыбалки',
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -159,45 +482,64 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (!_isLoading && _note != null)
+          if (!_isLoading && _note != null) ...[
+            // Кнопка для выбора обложки
             IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Icons.image),
+              tooltip: 'Выбрать обложку',
+              onPressed: _selectCoverPhoto,
+            ),
+            // Кнопка удаления
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: 'Удалить заметку',
               onPressed: _deleteNote,
             ),
+          ],
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 16,
+      body: LoadingOverlay(
+        isLoading: _isLoading || _isSaving,
+        message: _isLoading ? 'Загрузка...' : 'Сохранение...',
+        child: _errorMessage != null
+            ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 48,
               ),
-              textAlign: TextAlign.center,
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadNote,
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        )
+            : _note == null
+            ? Center(
+          child: Text(
+            'Заметка не найдена',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadNote,
-              child: const Text('Повторить'),
-            ),
-          ],
-        ),
-      )
-          : _note == null
-          ? const Center(child: Text('Заметка не найдена'))
-          : _buildNoteDetails(),
+          ),
+        )
+            : _buildNoteDetails(),
+      ),
     );
   }
 
@@ -240,12 +582,25 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
+          // Графики клёва
+          BiteChartsSection(
+            note: _note!,
+            onAddChart: _addBiteChart,
+            onUpdateChart: _updateBiteChart,
+            onDeleteChart: _deleteBiteChart,
+          ),
+
+          const SizedBox(height: 20),
+
           // Поклевки
-          if (_note!.biteRecords.isNotEmpty) ...[
-            _buildSectionHeader('Поклевки'),
-            _buildBiteRecordsSection(),
-            const SizedBox(height: 20),
-          ],
+          BiteRecordsSection(
+            note: _note!,
+            onAddRecord: _addBiteRecord,
+            onUpdateRecord: _updateBiteRecord,
+            onDeleteRecord: _deleteBiteRecord,
+          ),
+
+          const SizedBox(height: 20),
 
           // Если это карповая рыбалка, показываем кнопку "Маркерная карта"
           if (_note!.fishingType == 'Карповая рыбалка') ...[
@@ -279,26 +634,51 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
+  // Путь: lib/screens/fishing_note/fishing_note_detail_screen.dart (продолжение)
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: AppConstants.textColor,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   Widget _buildPhotoGallery() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Фотографии'),
-        Container(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Фотографии'),
+            TextButton.icon(
+              icon: const Icon(Icons.fullscreen, size: 18),
+              label: const Text('Просмотр'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppConstants.primaryColor,
+              ),
+              onPressed: () => _viewPhotoGallery(0),
+            ),
+          ],
+        ),
+        SizedBox(
           height: 200,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: const Color(0xFF12332E),
-          ),
           child: PageView.builder(
             itemCount: _note!.photoUrls.length,
             itemBuilder: (context, index) {
               return GestureDetector(
                 onTap: () => _viewPhotoGallery(index),
                 child: Container(
-                  margin: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: CachedNetworkImage(
@@ -312,6 +692,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     errorWidget: (context, url, error) => const Icon(
                       Icons.error,
                       color: Colors.red,
+                      size: 50,
                     ),
                   ),
                 ),
@@ -325,7 +706,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: Center(
               child: Text(
-                'Свайпните для просмотра всех фотографий (${_note!.photoUrls.length})',
+                'Свайпните для просмотра всех фото (${_note!.photoUrls.length})',
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 14,
@@ -338,6 +719,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   }
 
   Widget _buildInfoCard() {
+    // Получение самой крупной рыбы
+    final biggestFish = _note!.biggestFish;
+
     return Card(
       color: const Color(0xFF12332E),
       shape: RoundedRectangleBorder(
@@ -443,6 +827,106 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 12),
+
+            // Количество рыб
+            Row(
+              children: [
+                Icon(
+                  Icons.set_meal,
+                  color: AppConstants.textColor,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Поклёвок:',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_note!.biteRecords.length} ${DateFormatter.getFishText(_note!.biteRecords.length)}',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Самая крупная рыба, если есть
+            if (biggestFish != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Самая крупная рыба:',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 26.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (biggestFish.fishType.isNotEmpty)
+                      Text(
+                        biggestFish.fishType,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Вес: ${biggestFish.weight} кг',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (biggestFish.length > 0) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            'Длина: ${biggestFish.length} см',
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      'Время: ${DateFormat('dd.MM.yyyy HH:mm').format(biggestFish.time)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // Если есть координаты
             if (_note!.latitude != 0 && _note!.longitude != 0) ...[
@@ -644,233 +1128,5 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildBiteRecordsSection() {
-    // Сортируем записи по времени
-    final sortedRecords = List<BiteRecord>.from(_note!.biteRecords)
-      ..sort((a, b) => a.time.compareTo(b.time));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // График поклевок
-        _buildBiteRecordsTimeline(sortedRecords),
-
-        const SizedBox(height: 12),
-
-        // Список поклевок
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: sortedRecords.length,
-          itemBuilder: (context, index) {
-            final record = sortedRecords[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              color: const Color(0xFF12332E).withOpacity(0.8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ListTile(
-                title: Text(
-                  record.fishType.isEmpty
-                      ? 'Поклевка #${index + 1}'
-                      : record.fishType,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Время: ${DateFormat('HH:mm').format(record.time)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
-                      ),
-                    ),
-                    if (record.weight > 0)
-                      Text(
-                        'Вес: ${record.weight} кг',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
-                        ),
-                      ),
-                    if (record.notes.isNotEmpty)
-                      Text(
-                        'Заметка: ${record.notes}',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBiteRecordsTimeline(List<BiteRecord> records) {
-    // Если нет записей, не показываем график
-    if (records.isEmpty) return const SizedBox();
-
-    // Создаем временную шкалу от 00:00 до 23:59
-    const hoursInDay = 24;
-    const divisions = 48; // 30-минутные интервалы
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            'График поклевок',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Container(
-          height: 100,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF12332E),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: CustomPaint(
-                  size: Size(MediaQuery.of(context).size.width - 50, 40),
-                  painter: BiteRecordsTimelinePainter(
-                    biteRecords: records,
-                    divisions: divisions,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (int i = 0; i < hoursInDay; i += 3)
-                    Text(
-                      '$i:00',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 10,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: AppConstants.textColor,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-// Кастомный график поклевок - используем такой же как в экране добавления заметки
-class BiteRecordsTimelinePainter extends CustomPainter {
-  final List<BiteRecord> biteRecords;
-  final int divisions;
-
-  BiteRecordsTimelinePainter({
-    required this.biteRecords,
-    required this.divisions,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..strokeWidth = 1.0;
-
-    // Рисуем горизонтальную линию
-    canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      paint,
-    );
-
-    // Рисуем деления
-    final divisionWidth = size.width / divisions;
-    for (int i = 0; i <= divisions; i++) {
-      final x = i * divisionWidth;
-      final height = i % 2 == 0 ? 10.0 : 5.0;
-
-      canvas.drawLine(
-        Offset(x, size.height / 2 - height / 2),
-        Offset(x, size.height / 2 + height / 2),
-        paint,
-      );
-    }
-
-    // Рисуем точки поклевок
-    final bitePaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.fill;
-
-    for (final record in biteRecords) {
-      final timeInMinutes = record.time.hour * 60 + record.time.minute;
-      final totalMinutes = 24 * 60;
-      final position = timeInMinutes / totalMinutes * size.width;
-
-      // Рисуем кружок для поклевки
-      canvas.drawCircle(
-        Offset(position, size.height / 2),
-        7,
-        bitePaint,
-      );
-
-      // Если есть вес, рисуем размер круга в зависимости от веса
-      if (record.weight > 0) {
-        final weightPaint = Paint()
-          ..color = Colors.orange
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
-
-        // Максимальный вес для отображения (15 кг)
-        const maxWeight = 15.0;
-        // Минимальный и максимальный радиус
-        const minRadius = 8.0;
-        const maxRadius = 18.0;
-
-        final weight = record.weight.clamp(0.1, maxWeight);
-        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
-
-        canvas.drawCircle(
-          Offset(position, size.height / 2),
-          radius,
-          weightPaint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
   }
 }

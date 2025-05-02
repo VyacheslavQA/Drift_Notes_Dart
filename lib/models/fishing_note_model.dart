@@ -4,6 +4,7 @@ class FishingNoteModel {
   final String id;
   final String userId;
   final String location;
+  final String title; // Добавлено название рыбалки
   final double latitude;
   final double longitude;
   final DateTime date;
@@ -18,12 +19,16 @@ class FishingNoteModel {
   final List<BiteRecord> biteRecords;
   final Map<String, List<String>> dayBiteMaps;
   final List<String> fishingSpots;
-  final List<Map<String, dynamic>> mapMarkers; // Добавлено поле для маркеров
+  final List<Map<String, dynamic>> mapMarkers;
+  final List<Map<String, dynamic>> biteCharts; // Добавлено для графиков клёва
+  final String coverPhotoUrl; // Добавлено URL обложки
+  final Map<String, dynamic>? coverCropSettings; // Добавлены настройки кадрирования
 
   FishingNoteModel({
     required this.id,
     required this.userId,
     required this.location,
+    this.title = '', // Название рыбалки
     this.latitude = 0.0,
     this.longitude = 0.0,
     required this.date,
@@ -38,7 +43,10 @@ class FishingNoteModel {
     this.biteRecords = const [],
     this.dayBiteMaps = const {},
     this.fishingSpots = const ['Основная точка'],
-    this.mapMarkers = const [], // Инициализируем пустым списком маркеров
+    this.mapMarkers = const [],
+    this.biteCharts = const [],
+    this.coverPhotoUrl = '', // По умолчанию пустая строка
+    this.coverCropSettings, // Настройки кадрирования
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -46,6 +54,7 @@ class FishingNoteModel {
       id: id ?? json['id'] ?? '',
       userId: json['userId'] ?? '',
       location: json['location'] ?? '',
+      title: json['title'] ?? '', // Новое поле
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       date: (json['date'] != null)
@@ -75,6 +84,11 @@ class FishingNoteModel {
       mapMarkers: (json['mapMarkers'] != null)
           ? List<Map<String, dynamic>>.from(json['mapMarkers'])
           : [],
+      biteCharts: (json['biteCharts'] != null)
+          ? List<Map<String, dynamic>>.from(json['biteCharts'])
+          : [],
+      coverPhotoUrl: json['coverPhotoUrl'] ?? '',
+      coverCropSettings: json['coverCropSettings'],
     );
   }
 
@@ -82,6 +96,7 @@ class FishingNoteModel {
     return {
       'userId': userId,
       'location': location,
+      'title': title,
       'latitude': latitude,
       'longitude': longitude,
       'date': date.millisecondsSinceEpoch,
@@ -97,6 +112,9 @@ class FishingNoteModel {
       'dayBiteMaps': dayBiteMaps,
       'fishingSpots': fishingSpots,
       'mapMarkers': mapMarkers,
+      'biteCharts': biteCharts,
+      'coverPhotoUrl': coverPhotoUrl,
+      'coverCropSettings': coverCropSettings,
     };
   }
 
@@ -104,6 +122,7 @@ class FishingNoteModel {
     String? id,
     String? userId,
     String? location,
+    String? title,
     double? latitude,
     double? longitude,
     DateTime? date,
@@ -119,11 +138,15 @@ class FishingNoteModel {
     Map<String, List<String>>? dayBiteMaps,
     List<String>? fishingSpots,
     List<Map<String, dynamic>>? mapMarkers,
+    List<Map<String, dynamic>>? biteCharts,
+    String? coverPhotoUrl,
+    Map<String, dynamic>? coverCropSettings,
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       location: location ?? this.location,
+      title: title ?? this.title,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       date: date ?? this.date,
@@ -139,11 +162,29 @@ class FishingNoteModel {
       dayBiteMaps: dayBiteMaps ?? this.dayBiteMaps,
       fishingSpots: fishingSpots ?? this.fishingSpots,
       mapMarkers: mapMarkers ?? this.mapMarkers,
+      biteCharts: biteCharts ?? this.biteCharts,
+      coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl,
+      coverCropSettings: coverCropSettings ?? this.coverCropSettings,
     );
+  }
+
+  // Получение самой крупной рыбы
+  BiteRecord? get biggestFish {
+    if (biteRecords.isEmpty) return null;
+
+    BiteRecord biggest = biteRecords.first;
+    for (var record in biteRecords) {
+      if (record.weight > biggest.weight) {
+        biggest = record;
+      }
+    }
+
+    // Если нет рыбы с весом > 0, вернем null
+    return biggest.weight > 0 ? biggest : null;
   }
 }
 
-// Остальные классы модели остаются без изменений
+// Остальные классы модели с обновлениями
 
 class FishingWeather {
   final double temperature;
@@ -220,18 +261,22 @@ class BiteRecord {
   final DateTime time;
   final String fishType;
   final double weight;
+  final double length; // Добавлено новое поле длины рыбы
   final String notes;
   final int dayIndex;
   final int spotIndex;
+  final List<String> photoUrls; // Добавлено новое поле для фотографий
 
   BiteRecord({
     required this.id,
     required this.time,
     this.fishType = '',
     this.weight = 0.0,
+    this.length = 0.0, // Длина рыбы в см
     this.notes = '',
     this.dayIndex = 0,
     this.spotIndex = 0,
+    this.photoUrls = const [], // Пустой массив по умолчанию
   });
 
   factory BiteRecord.fromJson(Map<String, dynamic> json) {
@@ -242,9 +287,13 @@ class BiteRecord {
           : DateTime.now(),
       fishType: json['fishType'] ?? '',
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
+      length: (json['length'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] ?? '',
       dayIndex: json['dayIndex'] ?? 0,
       spotIndex: json['spotIndex'] ?? 0,
+      photoUrls: json['photoUrls'] != null
+          ? List<String>.from(json['photoUrls'])
+          : [],
     );
   }
 
@@ -254,9 +303,11 @@ class BiteRecord {
       'time': time.millisecondsSinceEpoch,
       'fishType': fishType,
       'weight': weight,
+      'length': length,
       'notes': notes,
       'dayIndex': dayIndex,
       'spotIndex': spotIndex,
+      'photoUrls': photoUrls,
     };
   }
 
@@ -265,18 +316,22 @@ class BiteRecord {
     DateTime? time,
     String? fishType,
     double? weight,
+    double? length,
     String? notes,
     int? dayIndex,
     int? spotIndex,
+    List<String>? photoUrls,
   }) {
     return BiteRecord(
       id: id ?? this.id,
       time: time ?? this.time,
       fishType: fishType ?? this.fishType,
       weight: weight ?? this.weight,
+      length: length ?? this.length,
       notes: notes ?? this.notes,
       dayIndex: dayIndex ?? this.dayIndex,
       spotIndex: spotIndex ?? this.spotIndex,
+      photoUrls: photoUrls ?? this.photoUrls,
     );
   }
 }
