@@ -18,6 +18,10 @@ class FishingNoteModel {
   final Map<String, List<String>> dayBiteMaps;
   final List<String> fishingSpots;
   final List<Map<String, dynamic>> mapMarkers;
+  final String coverPhotoUrl; // Добавлено новое поле
+  final Map<String, dynamic>? coverCropSettings; // Добавлено новое поле
+  final String title; // Добавлено новое поле
+  final List<Map<String, dynamic>> biteCharts; // Добавлено новое поле
 
   FishingNoteModel({
     required this.id,
@@ -37,6 +41,10 @@ class FishingNoteModel {
     this.dayBiteMaps = const {},
     this.fishingSpots = const ['Основная точка'],
     this.mapMarkers = const [],
+    this.coverPhotoUrl = '', // Инициализация нового поля
+    this.coverCropSettings, // Инициализация нового поля
+    this.title = '', // Инициализация нового поля
+    this.biteCharts = const [], // Инициализация нового поля
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -72,6 +80,12 @@ class FishingNoteModel {
       mapMarkers: (json['mapMarkers'] != null)
           ? List<Map<String, dynamic>>.from(json['mapMarkers'])
           : [],
+      coverPhotoUrl: json['coverPhotoUrl'] ?? '', // Добавлено новое поле
+      coverCropSettings: json['coverCropSettings'], // Добавлено новое поле
+      title: json['title'] ?? '', // Добавлено новое поле
+      biteCharts: (json['biteCharts'] != null)
+          ? List<Map<String, dynamic>>.from(json['biteCharts'])
+          : [], // Добавлено новое поле
     );
   }
 
@@ -93,6 +107,10 @@ class FishingNoteModel {
       'dayBiteMaps': dayBiteMaps,
       'fishingSpots': fishingSpots,
       'mapMarkers': mapMarkers,
+      'coverPhotoUrl': coverPhotoUrl, // Добавлено новое поле
+      'coverCropSettings': coverCropSettings, // Добавлено новое поле
+      'title': title, // Добавлено новое поле
+      'biteCharts': biteCharts, // Добавлено новое поле
     };
   }
 
@@ -114,6 +132,10 @@ class FishingNoteModel {
     Map<String, List<String>>? dayBiteMaps,
     List<String>? fishingSpots,
     List<Map<String, dynamic>>? mapMarkers,
+    String? coverPhotoUrl, // Добавлено новое поле
+    Map<String, dynamic>? coverCropSettings, // Добавлено новое поле
+    String? title, // Добавлено новое поле
+    List<Map<String, dynamic>>? biteCharts, // Добавлено новое поле
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
@@ -133,6 +155,10 @@ class FishingNoteModel {
       dayBiteMaps: dayBiteMaps ?? this.dayBiteMaps,
       fishingSpots: fishingSpots ?? this.fishingSpots,
       mapMarkers: mapMarkers ?? this.mapMarkers,
+      coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl, // Добавлено новое поле
+      coverCropSettings: coverCropSettings ?? this.coverCropSettings, // Добавлено новое поле
+      title: title ?? this.title, // Добавлено новое поле
+      biteCharts: biteCharts ?? this.biteCharts, // Добавлено новое поле
     );
   }
 

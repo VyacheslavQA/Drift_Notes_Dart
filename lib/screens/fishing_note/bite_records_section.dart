@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui'; // Явный импорт для TextDirection
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../utils/date_formatter.dart';
 import 'bite_record_screen.dart';
-import 'edit_bite_record_screen.dart';
 
 class BiteRecordsSection extends StatelessWidget {
   final FishingNoteModel note;
@@ -109,12 +109,21 @@ class BiteRecordsSection extends StatelessWidget {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EditBiteRecordScreen(biteRecord: record),
+        builder: (context) => BiteRecordScreen(
+          initialRecord: record,
+          dayIndex: record.dayIndex,
+        ),
       ),
     );
 
-    if (result != null && result is BiteRecord) {
-      onUpdateRecord(result);
+    if (result != null) {
+      if (result == 'delete') {
+        // Если пришла команда удаления
+        onDeleteRecord(record.id);
+      } else if (result is BiteRecord) {
+        // Если пришла обновленная запись
+        onUpdateRecord(result);
+      }
     }
   }
 
@@ -432,28 +441,16 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     }
 
     // Рисуем точки поклевок
+    final bitePaint = Paint()
+      ..color = Colors.green
+      ..style = PaintingStyle.fill;
+
     for (final record in biteRecords) {
       final timeInMinutes = record.time.hour * 60 + record.time.minute;
       final totalMinutes = 24 * 60;
       final position = timeInMinutes / totalMinutes * size.width;
 
-      // Основной цвет в зависимости от типа рыбы
-      Color pointColor = Colors.green;
-      if (record.fishType.toLowerCase().contains('карп')) {
-        pointColor = Colors.orange;
-      } else if (record.fishType.toLowerCase().contains('щука')) {
-        pointColor = Colors.red;
-      } else if (record.fishType.toLowerCase().contains('окунь')) {
-        pointColor = Colors.purple;
-      } else if (record.fishType.toLowerCase().contains('судак')) {
-        pointColor = Colors.blue;
-      }
-
       // Рисуем кружок для поклевки
-      final bitePaint = Paint()
-        ..color = pointColor
-        ..style = PaintingStyle.fill;
-
       canvas.drawCircle(
         Offset(position, size.height / 2),
         7,
@@ -463,7 +460,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       // Если есть вес, рисуем размер круга в зависимости от веса
       if (record.weight > 0) {
         final weightPaint = Paint()
-          ..color = pointColor.withOpacity(0.8)
+          ..color = Colors.orange
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0;
 
@@ -481,26 +478,6 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
           radius,
           weightPaint,
         );
-
-        // Добавляем подписи веса для крупных рыб (больше 2 кг)
-        if (record.weight > 2.0) {
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: '${record.weight}кг',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            textDirection: TextDirection.ltr,
-          );
-          textPainter.layout();
-          textPainter.paint(
-              canvas,
-              Offset(position - textPainter.width / 2, size.height / 2 - radius - 14)
-          );
-        }
       }
     }
   }

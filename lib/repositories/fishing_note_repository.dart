@@ -265,6 +265,7 @@ class FishingNoteRepository {
   Future<void> syncOfflineDataOnStartup() async {
     await _syncOfflineNotes();
   }
+
   // Обновление заметки с загрузкой новых фотографий
   Future<FishingNoteModel> updateFishingNoteWithPhotos(FishingNoteModel note, List<File> newPhotos) async {
     try {
@@ -300,13 +301,13 @@ class FishingNoteRepository {
     }
   }
 
-// Сохранение обновления заметки в офлайн режиме
+  // Сохранение обновления заметки в офлайн режиме
   Future<void> saveOfflineNoteUpdate(FishingNoteModel note, List<File> newPhotos) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
       // Получаем текущие офлайн обновления заметок
-      final String? offlineUpdatesJson = prefs.getString('offline_note_updates') ?? '{}';
+      final String offlineUpdatesJson = prefs.getString('offline_note_updates') ?? '{}';
       final Map<String, dynamic> offlineUpdates = jsonDecode(offlineUpdatesJson);
 
       // Сохраняем обновление для этой заметки
@@ -315,7 +316,7 @@ class FishingNoteRepository {
       // Сохраняем пути к новым фото
       if (newPhotos.isNotEmpty) {
         // Загружаем существующие пути к фото
-        final String? offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
+        final String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
         final Map<String, dynamic> offlinePhotos = jsonDecode(offlinePhotosJson);
 
         // Существующие пути для этой заметки или пустой список
