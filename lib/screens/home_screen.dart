@@ -9,7 +9,9 @@ import '../models/fishing_note_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
 import '../utils/navigation.dart';
-import 'timer/timers_screen.dart'; // Правильный импорт для экрана таймеров
+import 'timer/timers_screen.dart';
+import 'fishing_note/fishing_type_selection_screen.dart';
+import 'fishing_note/fishing_notes_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -35,6 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadFishingNotes();
+
+    // Синхронизируем офлайн заметки при запуске
+    _fishingNoteRepository.syncOfflineDataOnStartup();
   }
 
   Future<void> _loadFishingNotes() async {
@@ -114,12 +119,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToAddNote() {
-    // Навигация на экран добавления заметки
-    // Navigator.push(context, MaterialPageRoute(builder: (context) => AddFishingNoteScreen()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(
-          'Функция создания заметки будет доступна в ближайшее время')),
-    );
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen())
+    ).then((value) {
+      if (value == true) {
+        _loadFishingNotes(); // Обновить список заметок, если была создана новая
+      }
+    });
   }
 
   @override
@@ -177,6 +184,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Статистика
                 _buildStatsGrid(),
+
+                const SizedBox(height: 24),
+
+                // Недавние заметки (если есть)
+                if (_fishingNotes.isNotEmpty) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Недавние заметки',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppConstants.textColor,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+                          );
+                        },
+                        child: Text(
+                          'Все заметки',
+                          style: TextStyle(
+                            color: AppConstants.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Список недавних заметок (максимум 3)
+                  _buildRecentNotesList(),
+                ],
 
                 const SizedBox(height: 100),
                 // Большой отступ внизу для плавающей кнопки
@@ -246,6 +291,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Сетка со статистикой
   Widget _buildStatsGrid() {
+    // Подсчет значений статистики на основе заметок
+    int totalTrips = _fishingNotes.length;
+    double biggestFish = 0.0;
+    DateTime? biggestFishDate;
+    int totalFish = 0;
+    int longestTripDays = 0;
+
+    for (var note in _fishingNotes) {
+      // Общее количество рыб
+      totalFish += note.biteRecords.length;
+
+      // Самая большая рыба
+      for (var record in note.biteRecords) {
+        if (record.weight > biggestFish) {
+          biggestFish = record.weight;
+          biggestFishDate = note.date;
+        }
+      }
+
+      // Самая долгая рыбалка
+      if (note.isMultiDay && note.endDate != null) {
+        int days = note.endDate!.difference(note.date).inDays + 1;
+        if (days > longestTripDays) {
+          longestTripDays = days;
+        }
+      }
+    }
+
+    // Если нет данных, устанавливаем значения по умолчанию
+    bool hasData = _fishingNotes.isNotEmpty;
+
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 12,
@@ -256,36 +332,41 @@ class _HomeScreenState extends State<HomeScreen> {
         // Всего рыбалок
         _buildStatCard(
           title: 'Всего рыбалок',
-          value: '0',
-          subtitle: 'рыбалок',
+          value: hasData ? totalTrips.toString() : '0',
+          subtitle: DateFormatter.getFishingTripsText(hasData ? totalTrips : 0),
           icon: Icons.format_list_bulleted,
-          chartData: const [0.2, 0.4, 0.3, 0.5, 0.7, 0.2],
+          chartData: hasData ? const [0.2, 0.4, 0.3, 0.5, 0.7, 0.2] : null,
+          isEmpty: !hasData,
         ),
 
         // Самая большая рыба
         _buildStatCard(
           title: 'Самая большая рыба',
-          value: '12,5',
-          subtitle: 'кг, 12 марта',
+          value: biggestFish > 0 ? biggestFish.toString() : '0',
+          subtitle: biggestFishDate != null
+              ? 'кг, ${DateFormatter.formatShortDate(biggestFishDate)}'
+              : 'кг',
           icon: Icons.catching_pokemon,
+          isEmpty: biggestFish <= 0,
         ),
 
         // Всего рыб
         _buildStatCard(
           title: 'Всего поймано',
-          value: '8',
-          subtitle: 'рыб',
+          value: hasData ? totalFish.toString() : '0',
+          subtitle: DateFormatter.getFishText(hasData ? totalFish : 0),
           icon: Icons.set_meal,
-          progressValue: 0.6,
+          progressValue: hasData ? (totalFish / 100).clamp(0.0, 1.0) : 0.0,
+          isEmpty: !hasData || totalFish <= 0,
         ),
 
         // Самая долгая рыбалка
         _buildStatCard(
           title: 'Самая долгая рыбалка',
-          value: '0',
-          subtitle: 'дней',
+          value: longestTripDays > 0 ? longestTripDays.toString() : '0',
+          subtitle: DateFormatter.getDaysText(longestTripDays),
           icon: Icons.timer,
-          isEmpty: true,
+          isEmpty: longestTripDays <= 0,
         ),
       ],
     );
@@ -402,6 +483,105 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Список недавних заметок
+  Widget _buildRecentNotesList() {
+    // Отображаем только последние 3 заметки
+    final recentNotes = _fishingNotes.take(3).toList();
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recentNotes.length,
+      itemBuilder: (context, index) {
+        final note = recentNotes[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          color: const Color(0xFF12332E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(12),
+            title: Text(
+              note.location,
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  note.isMultiDay && note.endDate != null
+                      ? DateFormatter.formatDateRange(note.date, note.endDate!)
+                      : DateFormatter.formatDate(note.date),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${note.fishingType} • ${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+            leading: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: note.photoUrls.isNotEmpty
+                  ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: note.photoUrls.first,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.grey,
+                  ),
+                ),
+              )
+                  : Icon(
+                Icons.photo_camera,
+                color: AppConstants.textColor,
+              ),
+            ),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppConstants.textColor,
+            ),
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/fishing_note_detail',
+                arguments: note.id,
+              ).then((value) {
+                if (value == true) {
+                  _loadFishingNotes();
+                }
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+
   // Боковое меню
   Widget _buildDrawer() {
     final user = _firebaseService.currentUser;
@@ -490,10 +670,14 @@ class _HomeScreenState extends State<HomeScreen> {
               title: 'Мои заметки',
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text(
-                      'Экран со всеми заметками будет доступен позже')),
-                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+                ).then((value) {
+                  if (value == true) {
+                    _loadFishingNotes();
+                  }
+                });
               },
             ),
 
@@ -597,201 +781,201 @@ class _HomeScreenState extends State<HomeScreen> {
   // Нижняя навигационная панель с выделенной кнопкой "Заметка"
   Widget _buildBottomNavigationBar() {
     return Container(
-      height: 90, // Увеличиваем высоту для размещения большой центральной кнопки
-      child: Stack(
+        height: 90, // Увеличиваем высоту для размещения большой центральной кнопки
+        child: Stack(
         children: [
-          // Основная панель с 4 кнопками (без центральной)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              height: 60, // Стандартная высота панели
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B1F1D),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: const Offset(0, -1),
-                  ),
-                ],
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  // Таймер
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _onItemTapped(0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: _selectedIndex == 0
-                                ? AppConstants.textColor
-                                : Colors.white54,
-                            size: 22,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Таймер',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _selectedIndex == 0 ? AppConstants
-                                  .textColor : Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+        // Основная панель с 4 кнопками (без центральной)
+        Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: Container(
+        height: 60, // Стандартная высота панели
+        decoration: BoxDecoration(
+        color: const Color(0xFF0B1F1D),
+    boxShadow: [
+    BoxShadow(
+    color: Colors.black.withOpacity(0.3),
+    spreadRadius: 1,
+    blurRadius: 5,
+    offset: const Offset(0, -1),
+    ),
+    ],
+    borderRadius: const BorderRadius.only(
+    topLeft: Radius.circular(20),
+    topRight: Radius.circular(20),
+    ),
+    ),
+    child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceAround,
+    children: [
+    // Таймер
+    Expanded(
+    child: InkWell(
+    onTap: () => _onItemTapped(0),
+    child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+    Icon(
+    Icons.access_time,
+    color: _selectedIndex == 0
+    ? AppConstants.textColor
+        : Colors.white54,
+    size: 22,
+    ),
+    const SizedBox(height: 4),
+    Text(
+    'Таймер',
+    style: TextStyle(
+    fontSize: 11,
+    color: _selectedIndex == 0 ? AppConstants
+        .textColor : Colors.white54,
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
 
-                  // Погода
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _onItemTapped(1),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud,
-                            color: _selectedIndex == 1
-                                ? AppConstants.textColor
-                                : Colors.white54,
-                            size: 22,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Погода',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _selectedIndex == 1 ? AppConstants
-                                  .textColor : Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+    // Погода
+    Expanded(
+    child: InkWell(
+    onTap: () => _onItemTapped(1),
+    child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+    Icon(
+    Icons.cloud,
+    color: _selectedIndex == 1
+    ? AppConstants.textColor
+        : Colors.white54,
+    size: 22,
+    ),
+    const SizedBox(height: 4),
+    Text(
+    'Погода',
+    style: TextStyle(
+    fontSize: 11,
+    color: _selectedIndex == 1 ? AppConstants
+        .textColor : Colors.white54,
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
 
-                  // Пустое место для центральной кнопки
-                  const Expanded(child: SizedBox()),
+    // Пустое место для центральной кнопки
+    const Expanded(child: SizedBox()),
 
-                  // Календарь
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _onItemTapped(3),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            color: _selectedIndex == 3
-                                ? AppConstants.textColor
-                                : Colors.white54,
-                            size: 22,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Календарь',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _selectedIndex == 3 ? AppConstants
-                                  .textColor : Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+    // Календарь
+    Expanded(
+    child: InkWell(
+    onTap: () => _onItemTapped(3),
+    child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+    Icon(
+    Icons.calendar_today,
+    color: _selectedIndex == 3
+    ? AppConstants.textColor
+        : Colors.white54,
+    size: 22,
+    ),
+    const SizedBox(height: 4),
+    Text(
+    'Календарь',
+    style: TextStyle(
+    fontSize: 11,
+    color: _selectedIndex == 3 ? AppConstants
+        .textColor : Colors.white54,
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
 
-                  // Уведомления
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _onItemTapped(4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications,
-                                color: _selectedIndex == 4 ? AppConstants
-                                    .textColor : Colors.white54,
-                                size: 22,
-                              ),
-                              Positioned(
-                                right: -2,
-                                top: 0,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Уведомл...',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _selectedIndex == 4 ? AppConstants
-                                  .textColor : Colors.white54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    // Уведомления
+    Expanded(
+    child: InkWell(
+    onTap: () => _onItemTapped(4),
+    child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+    Stack(
+    alignment: Alignment.center,
+    children: [
+    Icon(
+    Icons.notifications,
+    color: _selectedIndex == 4 ? AppConstants
+        .textColor : Colors.white54,
+    size: 22,
+    ),
+    Positioned(
+    right: -2,
+    top: 0,
+    child: Container(
+    width: 8,
+    height: 8,
+    decoration: const BoxDecoration(
+    color: Colors.red,
+    shape: BoxShape.circle,
+    ),
+    ),
+    ),
+    ],
+    ),
+    const SizedBox(height: 4),
+    Text(
+    'Уведомл...',
+    style: TextStyle(
+    fontSize: 11,
+    color: _selectedIndex == 4 ? AppConstants
+        .textColor : Colors.white54,
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
 
-          // Центральная кнопка, размещенная выше панели
-          Positioned(
-            top: 0, // Размещаем кнопку в верхней части Container
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _onItemTapped(2),
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 5,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/images/app_logo.png',
-                    width: 80,
-                    height: 80,
-                  ),
-                ),
-              ),
-            ),
+    // Центральная кнопка, размещенная выше панели
+    Positioned(
+    top: 0, // Размещаем кнопку в верхней части Container
+    left: 0,
+    right: 0,
+    child: Center(
+    child: GestureDetector(
+    onTap: () => _onItemTapped(2),
+    child: Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 5,
+            spreadRadius: 1,
           ),
         ],
       ),
+      child: Image.asset(
+        'assets/images/app_logo.png',
+        width: 80,
+        height: 80,
+      ),
+    ),
+    ),
+    ),
+    ),
+        ],
+        ),
     );
   }
 }

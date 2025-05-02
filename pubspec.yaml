@@ -13,6 +13,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  # Добавляем необходимые зависимости
+  uuid: ^4.2.2  # Для генерации уникальных идентификаторов
+
   # Основные
   cupertino_icons: ^1.0.8
 
@@ -60,4 +63,5 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/fishing_types/
     - assets/sounds/
