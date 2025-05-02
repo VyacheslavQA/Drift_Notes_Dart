@@ -21,6 +21,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fishTypeController;
   late TextEditingController _weightController;
+  late TextEditingController _lengthController;
   late TextEditingController _notesController;
 
   late DateTime _selectedTime;
@@ -34,6 +35,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
     _weightController = TextEditingController(
         text: widget.biteRecord.weight > 0 ? widget.biteRecord.weight.toString() : ''
     );
+    _lengthController = TextEditingController(
+        text: widget.biteRecord.length > 0 ? widget.biteRecord.length.toString() : ''
+    );
     _notesController = TextEditingController(text: widget.biteRecord.notes);
 
     _selectedTime = widget.biteRecord.time;
@@ -43,6 +47,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
   void dispose() {
     _fishTypeController.dispose();
     _weightController.dispose();
+    _lengthController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -92,10 +97,18 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
       weight = double.tryParse(weightText) ?? 0.0;
     }
 
+    double length = 0.0;
+    if (_lengthController.text.isNotEmpty) {
+      // Преобразуем запятую в точку для корректного парсинга
+      final lengthText = _lengthController.text.replaceAll(',', '.');
+      length = double.tryParse(lengthText) ?? 0.0;
+    }
+
     final updatedRecord = widget.biteRecord.copyWith(
       time: _selectedTime,
       fishType: _fishTypeController.text.trim(),
       weight: weight,
+      length: length,
       notes: _notesController.text.trim(),
     );
 
@@ -194,36 +207,87 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
 
               const SizedBox(height: 20),
 
-              // Вес
-              _buildSectionHeader('Вес (кг)'),
-              TextFormField(
-                controller: _weightController,
-                style: TextStyle(color: AppConstants.textColor),
-                decoration: InputDecoration(
-                  fillColor: const Color(0xFF12332E),
-                  filled: true,
-                  hintText: 'Укажите вес (необязательно)',
-                  hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              // Ряд для веса и длины (два поля в одной строке)
+              Row(
+                children: [
+                  // Вес
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader('Вес (кг)'),
+                        TextFormField(
+                          controller: _weightController,
+                          style: TextStyle(color: AppConstants.textColor),
+                          decoration: InputDecoration(
+                            fillColor: const Color(0xFF12332E),
+                            filled: true,
+                            hintText: 'Вес',
+                            hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.scale,
+                              color: AppConstants.textColor,
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              // Проверяем, что введено корректное число
+                              final weightText = value.replaceAll(',', '.');
+                              if (double.tryParse(weightText) == null) {
+                                return 'Введите корректное число';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  prefixIcon: Icon(
-                    Icons.scale,
-                    color: AppConstants.textColor,
+                  const SizedBox(width: 16),
+                  // Длина
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader('Длина (см)'),
+                        TextFormField(
+                          controller: _lengthController,
+                          style: TextStyle(color: AppConstants.textColor),
+                          decoration: InputDecoration(
+                            fillColor: const Color(0xFF12332E),
+                            filled: true,
+                            hintText: 'Длина',
+                            hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.straighten,
+                              color: AppConstants.textColor,
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              // Проверяем, что введено корректное число
+                              final lengthText = value.replaceAll(',', '.');
+                              if (double.tryParse(lengthText) == null) {
+                                return 'Введите корректное число';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    // Проверяем, что введено корректное число
-                    final weightText = value.replaceAll(',', '.');
-                    if (double.tryParse(weightText) == null) {
-                      return 'Введите корректное число';
-                    }
-                  }
-                  return null;
-                },
+                ],
               ),
 
               const SizedBox(height: 20),

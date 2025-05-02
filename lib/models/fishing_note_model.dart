@@ -4,7 +4,6 @@ class FishingNoteModel {
   final String id;
   final String userId;
   final String location;
-  final String title; // Добавлено название рыбалки
   final double latitude;
   final double longitude;
   final DateTime date;
@@ -15,20 +14,15 @@ class FishingNoteModel {
   final List<String> photoUrls;
   final String fishingType;
   final FishingWeather? weather;
-  final String markerMapId;
   final List<BiteRecord> biteRecords;
   final Map<String, List<String>> dayBiteMaps;
   final List<String> fishingSpots;
   final List<Map<String, dynamic>> mapMarkers;
-  final List<Map<String, dynamic>> biteCharts; // Добавлено для графиков клёва
-  final String coverPhotoUrl; // Добавлено URL обложки
-  final Map<String, dynamic>? coverCropSettings; // Добавлены настройки кадрирования
 
   FishingNoteModel({
     required this.id,
     required this.userId,
     required this.location,
-    this.title = '', // Название рыбалки
     this.latitude = 0.0,
     this.longitude = 0.0,
     required this.date,
@@ -39,14 +33,10 @@ class FishingNoteModel {
     this.photoUrls = const [],
     this.fishingType = '',
     this.weather,
-    this.markerMapId = '',
     this.biteRecords = const [],
     this.dayBiteMaps = const {},
     this.fishingSpots = const ['Основная точка'],
     this.mapMarkers = const [],
-    this.biteCharts = const [],
-    this.coverPhotoUrl = '', // По умолчанию пустая строка
-    this.coverCropSettings, // Настройки кадрирования
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -54,7 +44,6 @@ class FishingNoteModel {
       id: id ?? json['id'] ?? '',
       userId: json['userId'] ?? '',
       location: json['location'] ?? '',
-      title: json['title'] ?? '', // Новое поле
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       date: (json['date'] != null)
@@ -71,7 +60,6 @@ class FishingNoteModel {
       weather: json['weather'] != null
           ? FishingWeather.fromJson(json['weather'])
           : null,
-      markerMapId: json['markerMapId'] ?? '',
       biteRecords: (json['biteRecords'] != null)
           ? List<BiteRecord>.from(
           json['biteRecords'].map((x) => BiteRecord.fromJson(x)))
@@ -84,11 +72,6 @@ class FishingNoteModel {
       mapMarkers: (json['mapMarkers'] != null)
           ? List<Map<String, dynamic>>.from(json['mapMarkers'])
           : [],
-      biteCharts: (json['biteCharts'] != null)
-          ? List<Map<String, dynamic>>.from(json['biteCharts'])
-          : [],
-      coverPhotoUrl: json['coverPhotoUrl'] ?? '',
-      coverCropSettings: json['coverCropSettings'],
     );
   }
 
@@ -96,7 +79,6 @@ class FishingNoteModel {
     return {
       'userId': userId,
       'location': location,
-      'title': title,
       'latitude': latitude,
       'longitude': longitude,
       'date': date.millisecondsSinceEpoch,
@@ -107,14 +89,10 @@ class FishingNoteModel {
       'photoUrls': photoUrls,
       'fishingType': fishingType,
       'weather': weather?.toJson(),
-      'markerMapId': markerMapId,
       'biteRecords': biteRecords.map((x) => x.toJson()).toList(),
       'dayBiteMaps': dayBiteMaps,
       'fishingSpots': fishingSpots,
       'mapMarkers': mapMarkers,
-      'biteCharts': biteCharts,
-      'coverPhotoUrl': coverPhotoUrl,
-      'coverCropSettings': coverCropSettings,
     };
   }
 
@@ -122,7 +100,6 @@ class FishingNoteModel {
     String? id,
     String? userId,
     String? location,
-    String? title,
     double? latitude,
     double? longitude,
     DateTime? date,
@@ -133,20 +110,15 @@ class FishingNoteModel {
     List<String>? photoUrls,
     String? fishingType,
     FishingWeather? weather,
-    String? markerMapId,
     List<BiteRecord>? biteRecords,
     Map<String, List<String>>? dayBiteMaps,
     List<String>? fishingSpots,
     List<Map<String, dynamic>>? mapMarkers,
-    List<Map<String, dynamic>>? biteCharts,
-    String? coverPhotoUrl,
-    Map<String, dynamic>? coverCropSettings,
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       location: location ?? this.location,
-      title: title ?? this.title,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       date: date ?? this.date,
@@ -157,14 +129,10 @@ class FishingNoteModel {
       photoUrls: photoUrls ?? this.photoUrls,
       fishingType: fishingType ?? this.fishingType,
       weather: weather ?? this.weather,
-      markerMapId: markerMapId ?? this.markerMapId,
       biteRecords: biteRecords ?? this.biteRecords,
       dayBiteMaps: dayBiteMaps ?? this.dayBiteMaps,
       fishingSpots: fishingSpots ?? this.fishingSpots,
       mapMarkers: mapMarkers ?? this.mapMarkers,
-      biteCharts: biteCharts ?? this.biteCharts,
-      coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl,
-      coverCropSettings: coverCropSettings ?? this.coverCropSettings,
     );
   }
 
@@ -183,8 +151,6 @@ class FishingNoteModel {
     return biggest.weight > 0 ? biggest : null;
   }
 }
-
-// Остальные классы модели с обновлениями
 
 class FishingWeather {
   final double temperature;
@@ -261,22 +227,22 @@ class BiteRecord {
   final DateTime time;
   final String fishType;
   final double weight;
-  final double length; // Добавлено новое поле длины рыбы
+  final double length;
   final String notes;
   final int dayIndex;
   final int spotIndex;
-  final List<String> photoUrls; // Добавлено новое поле для фотографий
+  final List<String> photoUrls;
 
   BiteRecord({
     required this.id,
     required this.time,
     this.fishType = '',
     this.weight = 0.0,
-    this.length = 0.0, // Длина рыбы в см
+    this.length = 0.0,
     this.notes = '',
     this.dayIndex = 0,
     this.spotIndex = 0,
-    this.photoUrls = const [], // Пустой массив по умолчанию
+    this.photoUrls = const [],
   });
 
   factory BiteRecord.fromJson(Map<String, dynamic> json) {

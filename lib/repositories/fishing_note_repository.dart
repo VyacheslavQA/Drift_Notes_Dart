@@ -265,4 +265,79 @@ class FishingNoteRepository {
   Future<void> syncOfflineDataOnStartup() async {
     await _syncOfflineNotes();
   }
+  // Обновление заметки с загрузкой новых фотографий
+  Future<FishingNoteModel> updateFishingNoteWithPhotos(FishingNoteModel note, List<File> newPhotos) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Список для хранения всех URL фотографий (существующие + новые)
+      final List<String> allPhotoUrls = List.from(note.photoUrls);
+
+      // Загрузка новых фото
+      if (newPhotos.isNotEmpty) {
+        for (var photo in newPhotos) {
+          final bytes = await photo.readAsBytes();
+          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${newPhotos.indexOf(photo)}.jpg';
+          final path = 'users/$userId/photos/$fileName';
+          final url = await _firebaseService.uploadImage(path, bytes);
+          allPhotoUrls.add(url);
+        }
+      }
+
+      // Создаем копию заметки с обновленными URL фотографий
+      final updatedNote = note.copyWith(photoUrls: allPhotoUrls);
+
+      // Обновляем заметку в Firestore
+      await _firebaseService.updateFishingNote(note.id, updatedNote.toJson());
+
+      return updatedNote;
+    } catch (e) {
+      debugPrint('Ошибка при обновлении заметки с фото: $e');
+      rethrow;
+    }
+  }
+
+// Сохранение обновления заметки в офлайн режиме
+  Future<void> saveOfflineNoteUpdate(FishingNoteModel note, List<File> newPhotos) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Получаем текущие офлайн обновления заметок
+      final String? offlineUpdatesJson = prefs.getString('offline_note_updates') ?? '{}';
+      final Map<String, dynamic> offlineUpdates = jsonDecode(offlineUpdatesJson);
+
+      // Сохраняем обновление для этой заметки
+      offlineUpdates[note.id] = note.toJson();
+
+      // Сохраняем пути к новым фото
+      if (newPhotos.isNotEmpty) {
+        // Загружаем существующие пути к фото
+        final String? offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
+        final Map<String, dynamic> offlinePhotos = jsonDecode(offlinePhotosJson);
+
+        // Существующие пути для этой заметки или пустой список
+        final List<String> existingPaths = offlinePhotos[note.id] != null
+            ? List<String>.from(offlinePhotos[note.id])
+            : [];
+
+        // Добавляем пути к новым фото
+        for (var photo in newPhotos) {
+          existingPaths.add(photo.path);
+        }
+
+        // Обновляем хранилище
+        offlinePhotos[note.id] = existingPaths;
+        await prefs.setString(_offlinePhotosKey, jsonEncode(offlinePhotos));
+      }
+
+      // Сохраняем обновленные данные
+      await prefs.setString('offline_note_updates', jsonEncode(offlineUpdates));
+    } catch (e) {
+      debugPrint('Ошибка при сохранении обновления заметки офлайн: $e');
+      rethrow;
+    }
+  }
 }
