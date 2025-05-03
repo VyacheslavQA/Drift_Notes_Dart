@@ -18,10 +18,12 @@ import 'bite_record_screen.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
+  final DateTime? initialDate; // Добавляем параметр для начальной даты
 
   const AddFishingNoteScreen({
     Key? key,
     this.fishingType,
+    this.initialDate, // Добавляем в конструктор
   }) : super(key: key);
 
   @override
@@ -66,6 +68,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     // Если тип рыбалки передан через конструктор, используем его
     // иначе устанавливаем первый тип из списка по умолчанию
     _selectedFishingType = widget.fishingType ?? AppConstants.fishingTypes.first;
+
+    // Используем переданную дату или текущую
+    _startDate = widget.initialDate ?? DateTime.now();
+    _endDate = widget.initialDate ?? DateTime.now();
 
     // Настраиваем анимацию для плавного появления элементов
     _animationController = AnimationController(

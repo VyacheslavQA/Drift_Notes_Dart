@@ -9,6 +9,7 @@ import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../fishing_note/fishing_type_selection_screen.dart';
 import '../fishing_note/fishing_note_detail_screen.dart';
+import '../fishing_note/add_fishing_note_screen.dart';
 
 class FishingCalendarScreen extends StatefulWidget {
   const FishingCalendarScreen({Key? key}) : super(key: key);
@@ -149,14 +150,33 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     });
   }
 
+  // Обновляем метод для планирования рыбалки
   void _planNewFishing() async {
+    final selectedDate = _selectedDay ?? DateTime.now();
+
+    // Сначала выбираем тип рыбалки
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen()),
+      MaterialPageRoute(
+          builder: (context) => const FishingTypeSelectionScreen()
+      ),
     );
 
-    if (result == true) {
-      _loadFishingNotes();
+    // Если тип выбран, переходим к созданию заметки с выбранной датой
+    if (result != null && result is String) {
+      final noteCreated = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddFishingNoteScreen(
+            fishingType: result,
+            initialDate: selectedDate, // Передаем выбранную дату
+          ),
+        ),
+      );
+
+      if (noteCreated == true) {
+        _loadFishingNotes();
+      }
     }
   }
 
@@ -171,6 +191,103 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         _loadFishingNotes();
       }
     });
+  }
+
+  // Добавляем метод для быстрого выбора месяца и года
+  void _showMonthYearPicker() async {
+    final selectedDate = await showDialog<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        int selectedYear = _focusedDay.year;
+        int selectedMonth = _focusedDay.month;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.cardColor,
+              title: Text(
+                'Выберите месяц и год',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Выбор года
+                  DropdownButton<int>(
+                    value: selectedYear,
+                    dropdownColor: AppConstants.cardColor,
+                    style: TextStyle(color: AppConstants.textColor),
+                    items: List.generate(11, (index) => 2020 + index)
+                        .map((year) => DropdownMenuItem(
+                      value: year,
+                      child: Text(year.toString()),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedYear = value;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Выбор месяца
+                  DropdownButton<int>(
+                    value: selectedMonth,
+                    dropdownColor: AppConstants.cardColor,
+                    style: TextStyle(color: AppConstants.textColor),
+                    items: List.generate(12, (index) => index + 1)
+                        .map((month) => DropdownMenuItem(
+                      value: month,
+                      child: Text(_ruMonths[month] ?? ''),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedMonth = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Отмена',
+                    style: TextStyle(color: AppConstants.textColor),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      context,
+                      DateTime(selectedYear, selectedMonth),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                  ),
+                  child: const Text('Выбрать'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedDate != null) {
+      setState(() {
+        _focusedDay = selectedDate;
+      });
+    }
   }
 
   String _getTitleText() {
@@ -287,7 +404,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         eventLoader: _getEventsForDay,
         startingDayOfWeek: StartingDayOfWeek.monday,
-        locale: 'ru_RU', // Устанавливаем русскую локаль
+        locale: 'ru_RU',
         calendarStyle: CalendarStyle(
           // Стиль календаря
           defaultTextStyle: TextStyle(color: AppConstants.textColor),
@@ -338,13 +455,46 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         ),
         calendarBuilders: CalendarBuilders(
           dowBuilder: (context, day) {
-            final text = <String>['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][day.weekday - 1];
+            // Исправляем отображение дней недели
+            final text = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][day.weekday - 1];
             return Center(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  fontSize: 14,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            );
+          },
+          // Добавляем обработчик нажатия на заголовок
+          headerTitleBuilder: (context, date) {
+            return InkWell(
+              onTap: _showMonthYearPicker,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _getTitleText(),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: AppConstants.textColor,
+                    ),
+                  ],
                 ),
               ),
             );
@@ -429,7 +579,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
     return Expanded(
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), // Увеличиваем отступ снизу
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         itemCount: eventsForDay.length,
         itemBuilder: (context, index) {
           final note = eventsForDay[index];
