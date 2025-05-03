@@ -18,12 +18,12 @@ import 'bite_record_screen.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
-  final DateTime? initialDate; // Добавляем параметр для начальной даты
+  final DateTime? initialDate;
 
   const AddFishingNoteScreen({
     Key? key,
     this.fishingType,
-    this.initialDate, // Добавляем в конструктор
+    this.initialDate,
   }) : super(key: key);
 
   @override
@@ -39,8 +39,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   final _fishingNoteRepository = FishingNoteRepository();
   final _weatherService = WeatherService();
 
-  DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now();
+  late DateTime _startDate;
+  late DateTime _endDate;
   bool _isMultiDay = false;
   int _tripDays = 1; // Для отображения количества дней рыбалки
 
@@ -57,6 +57,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   List<BiteRecord> _biteRecords = [];
   String _selectedFishingType = '';
+
+  // Для хранения маркеров на карте
+  List<Map<String, dynamic>> _mapMarkers = [];
 
   // Для анимаций
   late AnimationController _animationController;

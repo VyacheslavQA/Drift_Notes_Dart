@@ -162,8 +162,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
       ),
     );
 
-    // Если тип выбран, переходим к созданию заметки с выбранной датой
+    // Если тип выбран и это строка (сам тип рыбалки)
     if (result != null && result is String) {
+      // Создаем заметку с выбранной датой
       final noteCreated = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -385,6 +386,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   Widget _buildCalendar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF12332E),
         borderRadius: BorderRadius.circular(24),
@@ -405,15 +407,14 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         eventLoader: _getEventsForDay,
         startingDayOfWeek: StartingDayOfWeek.monday,
         locale: 'ru_RU',
+        rowHeight: 52,
+        daysOfWeekHeight: 40,
         calendarStyle: CalendarStyle(
-          // Стиль календаря
           defaultTextStyle: TextStyle(color: AppConstants.textColor),
           weekendTextStyle: TextStyle(color: AppConstants.textColor),
           selectedTextStyle: const TextStyle(color: Colors.white),
           todayTextStyle: const TextStyle(color: Colors.white),
           outsideTextStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.3)),
-
-          // Декорации для ячеек
           defaultDecoration: const BoxDecoration(shape: BoxShape.circle),
           weekendDecoration: const BoxDecoration(shape: BoxShape.circle),
           selectedDecoration: BoxDecoration(
@@ -452,27 +453,19 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
             color: AppConstants.textColor.withOpacity(0.7),
             fontSize: 14,
           ),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: AppConstants.textColor.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+          ),
         ),
         calendarBuilders: CalendarBuilders(
           dowBuilder: (context, day) {
-            // Исправляем отображение дней недели
-            final text = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][day.weekday - 1];
-            return Center(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  text,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            );
+            return _buildDayOfWeekWidget(day);
           },
-          // Добавляем обработчик нажатия на заголовок
           headerTitleBuilder: (context, date) {
             return InkWell(
               onTap: _showMonthYearPicker,
@@ -501,11 +494,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
           },
           markerBuilder: (context, day, events) {
             if (events.isEmpty) return null;
-
-            // Определяем цвет маркера
             final isPast = _isPastFishing(day);
             final color = isPast ? _pastFishingColor : _futureFishingColor;
-
             return Positioned(
               bottom: 1,
               child: Container(
@@ -530,6 +520,101 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         },
       ),
     );
+  }
+
+  Widget _buildDayOfWeekWidget(DateTime day) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    String text;
+    if (screenWidth < 320) {
+      text = _getTwoLetters(day.weekday);
+    } else {
+      text = _getThreeLetters(day.weekday);
+    }
+
+    final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
+
+    return Container(
+      height: 35,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isWeekend
+              ? AppConstants.textColor.withOpacity(0.9)
+              : AppConstants.textColor.withOpacity(0.7),
+          fontSize: 14,
+          fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+// Функция для получения одной буквы дня недели
+  String _getOneLetter(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'П';
+      case DateTime.tuesday:
+        return 'В';
+      case DateTime.wednesday:
+        return 'С';
+      case DateTime.thursday:
+        return 'Ч';
+      case DateTime.friday:
+        return 'П';
+      case DateTime.saturday:
+        return 'С';
+      case DateTime.sunday:
+        return 'В';
+      default:
+        return '';
+    }
+  }
+
+// Функция для получения двух букв дня недели
+  String _getTwoLetters(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'пн';
+      case DateTime.tuesday:
+        return 'вт';
+      case DateTime.wednesday:
+        return 'ср';
+      case DateTime.thursday:
+        return 'чт';
+      case DateTime.friday:
+        return 'пт';
+      case DateTime.saturday:
+        return 'сб';
+      case DateTime.sunday:
+        return 'вс';
+      default:
+        return '';
+    }
+  }
+
+// Функция для получения трех букв дня недели
+  String _getThreeLetters(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Пн';
+      case DateTime.tuesday:
+        return 'Вт';
+      case DateTime.wednesday:
+        return 'Ср';
+      case DateTime.thursday:
+        return 'Чт';
+      case DateTime.friday:
+        return 'Пт';
+      case DateTime.saturday:
+        return 'Сб';
+      case DateTime.sunday:
+        return 'Вс';
+      default:
+        return '';
+    }
   }
 
   Widget _buildEventsList() {
