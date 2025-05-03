@@ -184,10 +184,24 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         onPressed: _addNewNote,
-        child: Image.asset(
-          'assets/images/app_logo.png',
-          width: 40,
-          height: 40,
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppConstants.textColor.withOpacity(0.6),
+                blurRadius: 8,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Image.asset(
+            'assets/images/app_logo.png',
+            width: 50,
+            height: 50,
+          ),
         ),
         elevation: 4,
         // Добавляем эффект нажатия

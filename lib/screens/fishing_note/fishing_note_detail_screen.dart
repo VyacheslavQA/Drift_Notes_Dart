@@ -10,7 +10,6 @@ import '../../utils/date_formatter.dart';
 import '../../widgets/loading_overlay.dart';
 import 'photo_gallery_screen.dart';
 import 'bite_records_section.dart';
-import 'bite_charts_section.dart';
 import 'cover_photo_selection_screen.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
@@ -181,133 +180,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ошибка при удалении записи: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // Обработчики для работы с графиками клёва
-  Future<void> _addBiteChart(Map<String, dynamic> chart) async {
-    if (_note == null) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      // Добавляем новый график в список
-      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts)..add(chart);
-
-      // Создаем обновленную модель заметки
-      final updatedNote = _note!.copyWith(
-        biteCharts: updatedBiteCharts,
-      );
-
-      // Сохраняем в репозитории
-      await _fishingNoteRepository.updateFishingNote(updatedNote);
-
-      // Обновляем локальное состояние
-      setState(() {
-        _note = updatedNote;
-        _isSaving = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('График клёва успешно добавлен'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка при добавлении графика: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _updateBiteChart(Map<String, dynamic> chart) async {
-    if (_note == null) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      // Обновляем график в списке
-      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts);
-      final index = updatedBiteCharts.indexWhere((c) => c['id'] == chart['id']);
-
-      if (index != -1) {
-        updatedBiteCharts[index] = chart;
-
-        // Создаем обновленную модель заметки
-        final updatedNote = _note!.copyWith(
-          biteCharts: updatedBiteCharts,
-        );
-
-        // Сохраняем в репозитории
-        await _fishingNoteRepository.updateFishingNote(updatedNote);
-
-        // Обновляем локальное состояние
-        setState(() {
-          _note = updatedNote;
-          _isSaving = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('График клёва успешно обновлен'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка при обновлении графика: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _deleteBiteChart(String chartId) async {
-    if (_note == null) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      // Удаляем график из списка
-      final updatedBiteCharts = List<Map<String, dynamic>>.from(_note!.biteCharts)
-        ..removeWhere((c) => c['id'] == chartId);
-
-      // Создаем обновленную модель заметки
-      final updatedNote = _note!.copyWith(
-        biteCharts: updatedBiteCharts,
-      );
-
-      // Сохраняем в репозитории
-      await _fishingNoteRepository.updateFishingNote(updatedNote);
-
-      // Обновляем локальное состояние
-      setState(() {
-        _note = updatedNote;
-        _isSaving = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('График клёва успешно удален'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка при удалении графика: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -582,14 +454,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
-          // Графики клёва
-          BiteChartsSection(
-            note: _note!,
-            onAddChart: _addBiteChart,
-            onUpdateChart: _updateBiteChart,
-            onDeleteChart: _deleteBiteChart,
-          ),
-
           const SizedBox(height: 20),
 
           // Поклевки
@@ -634,8 +498,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Путь: lib/screens/fishing_note/fishing_note_detail_screen.dart (продолжение)
-
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -654,66 +516,66 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionHeader('Фотографии'),
-            TextButton.icon(
-              icon: const Icon(Icons.fullscreen, size: 18),
-              label: const Text('Просмотр'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppConstants.primaryColor,
-              ),
-              onPressed: () => _viewPhotoGallery(0),
-            ),
-          ],
+      Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSectionHeader('Фотографии'),
+        TextButton.icon(
+          icon: const Icon(Icons.fullscreen, size: 18),
+          label: const Text('Просмотр'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppConstants.primaryColor,
+          ),
+          onPressed: () => _viewPhotoGallery(0),
         ),
-        SizedBox(
-          height: 200,
-          child: PageView.builder(
-            itemCount: _note!.photoUrls.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () => _viewPhotoGallery(index),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: CachedNetworkImage(
-                    imageUrl: _note!.photoUrls[index],
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => const Icon(
-                      Icons.error,
-                      color: Colors.red,
-                      size: 50,
-                    ),
-                  ),
-                ),
-              );
-            },
+      ],
+    ),
+    SizedBox(
+    height: 200,
+    child: PageView.builder(
+    itemCount: _note!.photoUrls.length,
+    itemBuilder: (context, index) {
+    return GestureDetector(
+    onTap: () => _viewPhotoGallery(index),
+    child: Container(
+    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+    decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(12),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: CachedNetworkImage(
+    imageUrl: _note!.photoUrls[index],
+    fit: BoxFit.cover,
+    placeholder: (context, url) => Center(
+    child: CircularProgressIndicator(
+    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+    ),
+    ),
+    errorWidget: (context, url, error) => const Icon(
+    Icons.error,
+    color: Colors.red,
+    size: 50,
+    ),
+    ),
+    ),
+    );
+    },
+    ),
+    ),
+    // Индикатор количества фотографий
+    if (_note!.photoUrls.length > 1)
+    Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Center(
+        child: Text(
+          'Свайпните для просмотра всех фото (${_note!.photoUrls.length})',
+          style: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+            fontSize: 14,
           ),
         ),
-        // Индикатор количества фотографий
-        if (_note!.photoUrls.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Center(
-              child: Text(
-                'Свайпните для просмотра всех фото (${_note!.photoUrls.length})',
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
+      ),
+    ),
       ],
     );
   }
