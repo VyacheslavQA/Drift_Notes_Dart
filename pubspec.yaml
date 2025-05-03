@@ -1,3 +1,5 @@
+# Путь: pubspec.yaml
+
 name: dtift_notes_dart
 description: "Мобильное приложение для рыболовов."
 publish_to: 'none'
@@ -20,7 +22,6 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Firebase
-
   firebase_core: ^2.32.0
   firebase_auth: ^4.20.0
   cloud_firestore: ^4.17.5
@@ -50,8 +51,8 @@ dependencies:
   just_audio: ^0.9.36
   audioplayers: ^5.2.1
 
-shared_preferences: ^2.2.2
-
+  # Календарь
+  table_calendar: ^3.0.9
 
 dev_dependencies:
   flutter_test:

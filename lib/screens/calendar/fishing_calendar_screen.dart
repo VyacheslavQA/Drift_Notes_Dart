@@ -1,0 +1,558 @@
+// Путь: lib/screens/calendar/fishing_calendar_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
+import '../../constants/app_constants.dart';
+import '../../models/fishing_note_model.dart';
+import '../../repositories/fishing_note_repository.dart';
+import '../../utils/date_formatter.dart';
+import '../fishing_note/fishing_type_selection_screen.dart';
+import '../fishing_note/fishing_note_detail_screen.dart';
+
+class FishingCalendarScreen extends StatefulWidget {
+  const FishingCalendarScreen({Key? key}) : super(key: key);
+
+  @override
+  _FishingCalendarScreenState createState() => _FishingCalendarScreenState();
+}
+
+class _FishingCalendarScreenState extends State<FishingCalendarScreen> with SingleTickerProviderStateMixin {
+  final _fishingNoteRepository = FishingNoteRepository();
+
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+
+  Map<DateTime, List<FishingNoteModel>> _fishingEvents = {};
+  List<FishingNoteModel> _allNotes = [];
+  bool _isLoading = true;
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Цвета для разных состояний
+  final Color _pastFishingColor = const Color(0xFF2E7D32); // Зеленый для прошедших
+  final Color _futureFishingColor = const Color(0xFFFF8F00); // Оранжевый для запланированных
+
+  // Карта с русскими названиями месяцев (для заголовка календаря)
+  final Map<int, String> _ruMonths = {
+    1: 'Январь',
+    2: 'Февраль',
+    3: 'Март',
+    4: 'Апрель',
+    5: 'Май',
+    6: 'Июнь',
+    7: 'Июль',
+    8: 'Август',
+    9: 'Сентябрь',
+    10: 'Октябрь',
+    11: 'Ноябрь',
+    12: 'Декабрь',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Настройка анимации
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Curves.easeInOut,
+        )
+    );
+
+    _loadFishingNotes();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFishingNotes() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      _allNotes = notes;
+      _processNotesForCalendar(notes);
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _animationController.forward();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки заметок: $e')),
+        );
+      }
+    }
+  }
+
+  void _processNotesForCalendar(List<FishingNoteModel> notes) {
+    _fishingEvents.clear();
+
+    for (var note in notes) {
+      // Если рыбалка однодневная
+      if (!note.isMultiDay) {
+        final dateKey = DateTime(note.date.year, note.date.month, note.date.day);
+        _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
+        _fishingEvents[dateKey]!.add(note);
+      } else {
+        // Если рыбалка многодневная
+        DateTime currentDate = note.date;
+        DateTime endDate = note.endDate ?? note.date;
+
+        while (currentDate.isBefore(endDate) || currentDate.isAtSameMomentAs(endDate)) {
+          final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
+          _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
+          _fishingEvents[dateKey]!.add(note);
+
+          currentDate = currentDate.add(const Duration(days: 1));
+        }
+      }
+    }
+  }
+
+  List<FishingNoteModel> _getEventsForDay(DateTime day) {
+    final dateKey = DateTime(day.year, day.month, day.day);
+    return _fishingEvents[dateKey] ?? [];
+  }
+
+  bool _isPastFishing(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final compareDate = DateTime(date.year, date.month, date.day);
+    return compareDate.isBefore(today);
+  }
+
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    setState(() {
+      _selectedDay = selectedDay;
+      _focusedDay = focusedDay;
+    });
+  }
+
+  void _planNewFishing() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen()),
+    );
+
+    if (result == true) {
+      _loadFishingNotes();
+    }
+  }
+
+  void _viewNoteDetails(FishingNoteModel note) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FishingNoteDetailScreen(noteId: note.id),
+      ),
+    ).then((value) {
+      if (value == true) {
+        _loadFishingNotes();
+      }
+    });
+  }
+
+  String _getTitleText() {
+    return '${_ruMonths[_focusedDay.month]} ${_focusedDay.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
+      appBar: AppBar(
+        title: Text(
+          'Календарь рыбалок',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add, color: AppConstants.textColor),
+            tooltip: 'Запланировать рыбалку',
+            onPressed: _planNewFishing,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+        ),
+      )
+          : FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            _buildCalendarHeader(),
+            _buildCalendar(),
+            const SizedBox(height: 16),
+            _buildEventsList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              _buildLegendItem('Прошедшие', _pastFishingColor),
+              const SizedBox(width: 16),
+              _buildLegendItem('Запланированные', _futureFishingColor),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12332E),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TableCalendar<FishingNoteModel>(
+        firstDay: DateTime.utc(2020, 1, 1),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: _focusedDay,
+        calendarFormat: _calendarFormat,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        eventLoader: _getEventsForDay,
+        startingDayOfWeek: StartingDayOfWeek.monday,
+        locale: 'ru_RU', // Устанавливаем русскую локаль
+        calendarStyle: CalendarStyle(
+          // Стиль календаря
+          defaultTextStyle: TextStyle(color: AppConstants.textColor),
+          weekendTextStyle: TextStyle(color: AppConstants.textColor),
+          selectedTextStyle: const TextStyle(color: Colors.white),
+          todayTextStyle: const TextStyle(color: Colors.white),
+          outsideTextStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.3)),
+
+          // Декорации для ячеек
+          defaultDecoration: const BoxDecoration(shape: BoxShape.circle),
+          weekendDecoration: const BoxDecoration(shape: BoxShape.circle),
+          selectedDecoration: BoxDecoration(
+            color: AppConstants.primaryColor,
+            shape: BoxShape.circle,
+          ),
+          todayDecoration: BoxDecoration(
+            color: AppConstants.primaryColor.withOpacity(0.5),
+            shape: BoxShape.circle,
+          ),
+          markerDecoration: BoxDecoration(
+            color: AppConstants.primaryColor,
+            shape: BoxShape.circle,
+          ),
+          markersMaxCount: 1,
+        ),
+        headerStyle: HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
+          titleTextFormatter: (date, locale) => _getTitleText(),
+          titleTextStyle: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          leftChevronIcon: Icon(Icons.chevron_left, color: AppConstants.textColor),
+          rightChevronIcon: Icon(Icons.chevron_right, color: AppConstants.textColor),
+          headerPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekdayStyle: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+            fontSize: 14,
+          ),
+          weekendStyle: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+            fontSize: 14,
+          ),
+        ),
+        calendarBuilders: CalendarBuilders(
+          dowBuilder: (context, day) {
+            final text = <String>['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][day.weekday - 1];
+            return Center(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+            );
+          },
+          markerBuilder: (context, day, events) {
+            if (events.isEmpty) return null;
+
+            // Определяем цвет маркера
+            final isPast = _isPastFishing(day);
+            final color = isPast ? _pastFishingColor : _futureFishingColor;
+
+            return Positioned(
+              bottom: 1,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          },
+        ),
+        onDaySelected: _onDaySelected,
+        onFormatChanged: (format) {
+          setState(() {
+            _calendarFormat = format;
+          });
+        },
+        onPageChanged: (focusedDay) {
+          _focusedDay = focusedDay;
+        },
+      ),
+    );
+  }
+
+  Widget _buildEventsList() {
+    final eventsForDay = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
+
+    if (eventsForDay.isEmpty) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today,
+                color: AppConstants.textColor.withOpacity(0.3),
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _selectedDay != null
+                    ? 'Нет рыбалок на эту дату'
+                    : 'Выберите дату для просмотра рыбалок',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 16,
+                ),
+              ),
+              if (_selectedDay != null && _selectedDay!.isAfter(DateTime.now())) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _planNewFishing,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Запланировать рыбалку'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), // Увеличиваем отступ снизу
+        itemCount: eventsForDay.length,
+        itemBuilder: (context, index) {
+          final note = eventsForDay[index];
+          return _buildEventCard(note);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEventCard(FishingNoteModel note) {
+    final isPast = _isPastFishing(note.date);
+    final statusColor = isPast ? _pastFishingColor : _futureFishingColor;
+    final statusText = isPast ? 'Прошедшая' : 'Запланированная';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: const Color(0xFF12332E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () => _viewNoteDetails(note),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      note.location,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: statusColor.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                note.isMultiDay
+                    ? DateFormatter.formatDateRange(note.date, note.endDate!)
+                    : DateFormatter.formatDate(note.date),
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.water,
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    note.fishingType,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (isPast && note.biteRecords.isNotEmpty) ...[
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.set_meal,
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (note.notes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  note.notes,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.6),
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

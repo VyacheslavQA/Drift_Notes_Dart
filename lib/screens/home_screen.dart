@@ -12,6 +12,7 @@ import '../utils/navigation.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
+import 'calendar/fishing_calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -91,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
     // Обработка нажатия на элементы меню
     switch (index) {
       case 0: // Таймер
-      // Навигация на экран таймеров
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const TimersScreen()),
@@ -106,8 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _navigateToAddNote();
         break;
       case 3: // Календарь
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Экран календаря в разработке')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const FishingCalendarScreen()),
         );
         break;
       case 4: // Уведомления
@@ -121,7 +123,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAddNote() {
     Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen())
+        MaterialPageRoute(
+            builder: (context) => const FishingTypeSelectionScreen())
     ).then((value) {
       if (value == true) {
         _loadFishingNotes(); // Обновить список заметок, если была создана новая
@@ -204,7 +207,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+                            MaterialPageRoute(builder: (
+                                context) => const FishingNotesListScreen()),
                           );
                         },
                         child: Text(
@@ -524,7 +528,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${note.fishingType} • ${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
+                  '${note.fishingType} • ${note.biteRecords
+                      .length} ${DateFormatter.getFishText(
+                      note.biteRecords.length)}',
                   style: TextStyle(
                     color: AppConstants.textColor.withOpacity(0.7),
                   ),
@@ -544,12 +550,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: note.photoUrls.first,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(
+                  placeholder: (context, url) =>
+                  const Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                     ),
                   ),
-                  errorWidget: (context, url, error) => const Icon(
+                  errorWidget: (context, url, error) =>
+                  const Icon(
                     Icons.image_not_supported,
                     color: Colors.grey,
                   ),
@@ -684,7 +692,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const FishingNotesListScreen()),
                 ).then((value) {
                   if (value == true) {
                     _loadFishingNotes();
@@ -701,6 +710,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const TimersScreen()),
+                );
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.calendar_today,
+              title: 'Календарь',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const FishingCalendarScreen()),
                 );
               },
             ),
@@ -793,199 +815,207 @@ class _HomeScreenState extends State<HomeScreen> {
   // Нижняя навигационная панель с выделенной кнопкой "Заметка"
   Widget _buildBottomNavigationBar() {
     return Container(
-        height: 90, // Увеличиваем высоту для размещения большой центральной кнопки
-        child: Stack(
+      height: 90,
+      // Увеличиваем высоту для размещения большой центральной кнопки
+      child: Stack(
         children: [
-        // Основная панель с 4 кнопками (без центральной)
-        Positioned(
-        left: 0,
-        right: 0,
-        bottom: 0,
-        child: Container(
-        height: 60, // Стандартная высота панели
-        decoration: BoxDecoration(
-        color: const Color(0xFF0B1F1D),
-    boxShadow: [
-    BoxShadow(
-    color: Colors.black.withOpacity(0.3),
-    spreadRadius: 1,
-    blurRadius: 5,
-    offset: const Offset(0, -1),
-    ),
-    ],
-    borderRadius: const BorderRadius.only(
-    topLeft: Radius.circular(20),
-    topRight: Radius.circular(20),
-    ),
-    ),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceAround,
-    children: [
-    // Таймер
-    Expanded(
-    child: InkWell(
-    onTap: () => _onItemTapped(0),
-    child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-    Icon(
-    Icons.access_time,
-    color: _selectedIndex == 0
-    ? AppConstants.textColor
-        : Colors.white54,
-    size: 22,
-    ),
-    const SizedBox(height: 4),
-    Text(
-    'Таймер',
-    style: TextStyle(
-    fontSize: 11,
-    color: _selectedIndex == 0 ? AppConstants
-        .textColor : Colors.white54,
-    ),
-    ),
-    ],
-    ),
-    ),
-    ),
-
-    // Погода
-    Expanded(
-    child: InkWell(
-    onTap: () => _onItemTapped(1),
-    child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-    Icon(
-    Icons.cloud,
-    color: _selectedIndex == 1
-    ? AppConstants.textColor
-        : Colors.white54,
-    size: 22,
-    ),
-    const SizedBox(height: 4),
-    Text(
-    'Погода',
-    style: TextStyle(
-    fontSize: 11,
-    color: _selectedIndex == 1 ? AppConstants
-        .textColor : Colors.white54,
-    ),
-    ),
-    ],
-    ),
-    ),
-    ),
-
-    // Пустое место для центральной кнопки
-    const Expanded(child: SizedBox()),
-
-    // Календарь
-    Expanded(
-    child: InkWell(
-    onTap: () => _onItemTapped(3),
-    child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-    Icon(
-    Icons.calendar_today,
-    color: _selectedIndex == 3
-    ? AppConstants.textColor
-        : Colors.white54,
-    size: 22,
-    ),
-    const SizedBox(height: 4),
-    Text(
-    'Календарь',
-    style: TextStyle(
-    fontSize: 11,
-    color: _selectedIndex == 3 ? AppConstants
-        .textColor : Colors.white54,
-    ),
-    ),
-    ],
-    ),
-    ),
-    ),
-
-    // Уведомления
-    Expanded(
-    child: InkWell(
-    onTap: () => _onItemTapped(4),
-    child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-    Stack(
-    alignment: Alignment.center,
-    children: [
-    Icon(
-    Icons.notifications,
-    color: _selectedIndex == 4 ? AppConstants
-        .textColor : Colors.white54,
-    size: 22,
-    ),
-    Positioned(
-    right: -2,
-    top: 0,
-    child: Container(
-    width: 8,
-    height: 8,
-    decoration: const BoxDecoration(
-    color: Colors.red,
-    shape: BoxShape.circle,
-    ),
-    ),
-    ),
-    ],
-    ),
-    const SizedBox(height: 4),
-    Text(
-    'Уведомл...',
-    style: TextStyle(
-    fontSize: 11,
-    color: _selectedIndex == 4 ? AppConstants
-        .textColor : Colors.white54,
-    ),
-    ),
-    ],
-    ),
-    ),
-    ),
-    ],
-    ),
-    ),
-    ),
-
-    // Центральная кнопка, размещенная выше панели
-    Positioned(
-    top: 0, // Размещаем кнопку в верхней части Container
-    left: 0,
-    right: 0,
-      child: GestureDetector(
-        onTap: () => _onItemTapped(2),
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 5,
-                spreadRadius: 1,
+          // Основная панель с 4 кнопками (без центральной)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 60, // Стандартная высота панели
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B1F1D),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  // Таймер
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _selectedIndex == 0
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Таймер',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 0
+                                  ? AppConstants.textColor
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Погода
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(1),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cloud,
+                            color: _selectedIndex == 1
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Погода',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 1
+                                  ? AppConstants.textColor
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Пустое место для центральной кнопки
+                  const Expanded(child: SizedBox()),
+
+                  // Календарь
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: _selectedIndex == 3
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Календарь',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 3
+                                  ? AppConstants.textColor
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Уведомления
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _onItemTapped(4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications,
+                                color: _selectedIndex == 4
+                                    ? AppConstants.textColor
+                                    : Colors.white54,
+                                size: 22,
+                              ),
+                              Positioned(
+                                right: -2,
+                                top: 0,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Уведомл...',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == 4
+                                  ? AppConstants.textColor
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: Image.asset(
-            'assets/images/app_logo.png',
-            width: 80,
-            height: 80,
+
+          // Центральная кнопка, размещенная выше панели
+          Positioned(
+            top: 0, // Размещаем кнопку в верхней части Container
+            left: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: () => _onItemTapped(2),
+              child: Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/images/app_logo.png',
+                    width: 80,
+                    height: 80,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
-    ),
-    ],
-    ),
     );
   }
 }
