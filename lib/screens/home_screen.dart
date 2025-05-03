@@ -582,7 +582,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Боковое меню
+  // Боковое меню с исправленной проблемой отображения email
   Widget _buildDrawer() {
     final user = _firebaseService.currentUser;
     final userName = user?.displayName ?? 'Пользователь';
@@ -594,49 +594,61 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
+            // Обновленный DrawerHeader с исправленной проблемой overflow
+            Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF0A1F1C),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Аватар пользователя
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: const Color(0xFF12332E),
-                    backgroundImage: user?.photoURL != null
-                        ? NetworkImage(user!.photoURL!)
-                        : null,
-                    child: user?.photoURL == null
-                        ? Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppConstants.textColor,
-                    )
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Аватар пользователя
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: const Color(0xFF12332E),
+                        backgroundImage: user?.photoURL != null
+                            ? NetworkImage(user!.photoURL!)
+                            : null,
+                        child: user?.photoURL == null
+                            ? Icon(
+                          Icons.person,
+                          size: 40,
+                          color: AppConstants.textColor,
+                        )
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
 
-                  // Имя пользователя
-                  Text(
-                    userName,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                      // Имя пользователя
+                      Text(
+                        userName,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
 
-                  // Email пользователя
-                  Text(
-                    userEmail,
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 14,
-                    ),
+                      // Email пользователя - с исправлением overflow
+                      Text(
+                        userEmail,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 
@@ -949,33 +961,31 @@ class _HomeScreenState extends State<HomeScreen> {
     top: 0, // Размещаем кнопку в верхней части Container
     left: 0,
     right: 0,
-    child: Center(
-    child: GestureDetector(
-    onTap: () => _onItemTapped(2),
-    child: Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 5,
-            spreadRadius: 1,
+      child: GestureDetector(
+        onTap: () => _onItemTapped(2),
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 5,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Image.asset(
-        'assets/images/app_logo.png',
-        width: 80,
-        height: 80,
-      ),
-    ),
-    ),
-    ),
-    ),
-        ],
+          child: Image.asset(
+            'assets/images/app_logo.png',
+            width: 80,
+            height: 80,
+          ),
         ),
+      ),
+    ),
+    ],
+    ),
     );
   }
 }
