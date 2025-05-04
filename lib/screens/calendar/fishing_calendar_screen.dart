@@ -150,34 +150,42 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     });
   }
 
-  // Обновляем метод для планирования рыбалки
+  // Обновленный метод для планирования рыбалки с передачей выбранной даты
   void _planNewFishing() async {
+    // Используем выбранную дату или текущую, если дата не выбрана
     final selectedDate = _selectedDay ?? DateTime.now();
 
-    // Сначала выбираем тип рыбалки
+    // Переходим сразу на экран создания заметки с выбранным типом и датой
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => const FishingTypeSelectionScreen()
+        builder: (context) => AddFishingNoteScreen(
+          fishingType: AppConstants.fishingTypes.first, // Используем первый тип по умолчанию
+          initialDate: selectedDate, // Передаем выбранную дату
+        ),
       ),
     );
 
-    // Если тип выбран и это строка (сам тип рыбалки)
-    if (result != null && result is String) {
-      // Создаем заметку с выбранной датой
-      final noteCreated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AddFishingNoteScreen(
-            fishingType: result,
-            initialDate: selectedDate, // Передаем выбранную дату
-          ),
-        ),
-      );
+    if (result == true) {
+      _loadFishingNotes();
+    }
+  }
 
-      if (noteCreated == true) {
-        _loadFishingNotes();
-      }
+  // Обновленный метод для планирования рыбалки с конкретной датой
+  void _planNewFishingForDate(DateTime date) async {
+    // Переходим сразу на экран создания заметки с выбранной датой
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddFishingNoteScreen(
+          fishingType: AppConstants.fishingTypes.first, // Используем первый тип по умолчанию
+          initialDate: date, // Передаем конкретную дату
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadFishingNotes();
     }
   }
 
@@ -644,7 +652,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               if (_selectedDay != null && _selectedDay!.isAfter(DateTime.now())) ...[
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _planNewFishing,
+                  onPressed: () => _planNewFishingForDate(_selectedDay!), // Передаем конкретную дату
                   icon: const Icon(Icons.add),
                   label: const Text('Запланировать рыбалку'),
                   style: ElevatedButton.styleFrom(
