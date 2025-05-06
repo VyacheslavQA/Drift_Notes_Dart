@@ -147,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  / Изменения в методе _calculateStatistics
   Map<String, dynamic> _calculateStatistics(List<FishingNoteModel> notes) {
     final stats = <String, dynamic>{};
 
@@ -184,19 +185,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     stats['totalDaysFishing'] = uniqueFishingDays.length;
 
-    // 4. Всего поймано рыб
+    // 4. Всего поймано рыб и нереализованных поклевок
     int totalFish = 0;
+    int missedBites = 0;
     for (var note in notes) {
-      totalFish += note.biteRecords.length;
+      for (var record in note.biteRecords) {
+        if (record.fishType.isNotEmpty && record.weight > 0) {
+          totalFish++;
+        } else {
+          missedBites++;
+        }
+      }
     }
     stats['totalFish'] = totalFish;
+    stats['missedBites'] = missedBites; // Новое поле
 
     // 5. Самая большая рыба
     BiteRecord? biggestFish;
     String biggestFishLocation = '';
     for (var note in notes) {
       for (var record in note.biteRecords) {
-        if (biggestFish == null || record.weight > biggestFish.weight) {
+        if (record.fishType.isNotEmpty && record.weight > 0 &&
+            (biggestFish == null || record.weight > biggestFish.weight)) {
           biggestFish = record;
           biggestFishLocation = note.location;
         }
@@ -216,8 +226,10 @@ class _HomeScreenState extends State<HomeScreen> {
     Map<String, int> fishByMonth = {};
     for (var note in notes) {
       for (var record in note.biteRecords) {
-        String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
-        fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
+        if (record.fishType.isNotEmpty && record.weight > 0) {
+          String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
+          fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
+        }
       }
     }
 
@@ -232,7 +244,131 @@ class _HomeScreenState extends State<HomeScreen> {
     stats['bestMonth'] = bestMonth;
     stats['bestMonthFish'] = bestMonthFish;
 
+    // 8. Процент реализации поклевок
+    final totalBites = totalFish + missedBites;
+    double realizationRate = 0;
+    if (totalBites > 0) {
+      realizationRate = (totalFish / totalBites) * 100;
+    }
+    stats['realizationRate'] = realizationRate;
+
     return stats;
+  }
+
+// Добавим новую карточку для нереализованных поклевок в _buildStatsGrid():
+  Widget _buildStatsGrid() {
+    // Фильтруем только прошедшие и текущие заметки
+    final now = DateTime.now();
+    final validNotes = _fishingNotes.where((note) =>
+    note.date.isBefore(now) || note.date.isAtSameMomentAs(now)
+    ).toList();
+
+    // Расчет статистики
+    final stats = _calculateStatistics(validNotes);
+
+    return Column(
+      children: [
+        _buildStatCard(
+          icon: Icons.format_list_bulleted,
+          title: 'Всего рыбалок',
+          value: stats['totalTrips'].toString(),
+          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildStatCard(
+          icon: Icons.access_time,
+          title: 'Самая долгая',
+          value: stats['longestTrip'].toString(),
+          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildStatCard(
+          icon: Icons.calendar_today,
+          title: 'Всего дней на рыбалке',
+          value: stats['totalDaysFishing'].toString(),
+          subtitle: 'дней на рыбалке',
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildStatCard(
+          icon: Icons.set_meal,
+          title: 'Всего поймано рыб',
+          value: stats['totalFish'].toString(),
+          subtitle: DateFormatter.getFishText(stats['totalFish']),
+          valueColor: Colors.green,
+        ),
+
+        const SizedBox(height: 16),
+
+        // Добавляем новую карточку для нереализованных поклевок
+        _buildStatCard(
+          icon: Icons.hourglass_empty,
+          title: 'Нереализованные поклевки',
+          value: stats['missedBites'].toString(),
+          subtitle: 'поклевок без поимки',
+          valueColor: Colors.red,
+        ),
+
+        const SizedBox(height: 16),
+
+        if (stats['biggestFish'] != null)
+          _buildStatCard(
+            icon: Icons.emoji_events,
+            title: 'Самая большая рыба',
+            value: '${stats['biggestFish'].weight} кг',
+            subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
+            valueColor: Colors.amber,
+          ),
+
+        const SizedBox(height: 16),
+
+        if (stats['lastTrip'] != null)
+          _buildStatCard(
+            icon: Icons.directions_car,
+            title: 'Последний выезд',
+            value: stats['lastTrip'].title.isNotEmpty
+                ? '«${stats['lastTrip'].title}»'
+                : stats['lastTrip'].location,
+            subtitle: DateFormat('d MMMM yyyy', 'ru').format(stats['lastTrip'].date),
+          ),
+
+        const SizedBox(height: 16),
+
+        if (stats['bestMonth'].isNotEmpty)
+          _buildStatCard(
+            icon: Icons.star,
+            title: 'Лучший месяц',
+            value: stats['bestMonth'],
+            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
+            valueColor: Colors.amber,
+          ),
+
+        // Добавляем карточку с процентом реализации поклевок, если есть поклевки
+        if (stats['totalFish'] > 0 || stats['missedBites'] > 0) ...[
+          const SizedBox(height: 16),
+
+          _buildStatCard(
+            icon: Icons.percent,
+            title: 'Реализация поклевок',
+            value: '${stats['realizationRate'].toStringAsFixed(1)}%',
+            subtitle: 'эффективность ловли',
+            valueColor: _getRealizationColor(stats['realizationRate']),
+          ),
+        ],
+      ],
+    );
+  }
+
+// Метод для определения цвета в зависимости от процента реализации
+  Color _getRealizationColor(double rate) {
+    if (rate >= 70) return Colors.green;
+    if (rate >= 40) return Colors.orange;
+    return Colors.red;
   }
 
   @override

@@ -63,6 +63,9 @@ class FishingStatistics {
   // Общее количество пойманных рыб
   final int totalFish;
 
+  // Новое поле: количество нереализованных поклевок
+  final int missedBites;
+
   // Информация о самой большой рыбе
   final BiggestFishInfo? biggestFish;
 
@@ -77,6 +80,7 @@ class FishingStatistics {
     this.longestTripDays = 0,
     this.totalDaysOnFishing = 0,
     this.totalFish = 0,
+    this.missedBites = 0, // Добавлено новое поле
     this.biggestFish,
     this.latestTrip,
     this.bestMonth,
@@ -91,6 +95,7 @@ class FishingStatistics {
     int? longestTripDays,
     int? totalDaysOnFishing,
     int? totalFish,
+    int? missedBites, // Добавлено новое поле
     BiggestFishInfo? biggestFish,
     LatestTripInfo? latestTrip,
     BestMonthInfo? bestMonth,
@@ -100,10 +105,18 @@ class FishingStatistics {
       longestTripDays: longestTripDays ?? this.longestTripDays,
       totalDaysOnFishing: totalDaysOnFishing ?? this.totalDaysOnFishing,
       totalFish: totalFish ?? this.totalFish,
+      missedBites: missedBites ?? this.missedBites, // Добавлено новое поле
       biggestFish: biggestFish ?? this.biggestFish,
       latestTrip: latestTrip ?? this.latestTrip,
       bestMonth: bestMonth ?? this.bestMonth,
     );
+  }
+
+  // Расчет процента реализации поклевок
+  double get realizationRate {
+    final totalBites = totalFish + missedBites;
+    if (totalBites == 0) return 0;
+    return totalFish / totalBites * 100;
   }
 }
 

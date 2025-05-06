@@ -40,6 +40,13 @@ class StatisticsProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  // Статистика поклевок
+  int _totalCaughtFish = 0;
+  int _totalMissedBites = 0;
+
+  int get totalCaughtFish => _totalCaughtFish;
+  int get totalMissedBites => _totalMissedBites;
+
   // Загрузка данных
   Future<void> loadData() async {
     _isLoading = true;
@@ -91,6 +98,9 @@ class StatisticsProvider extends ChangeNotifier {
 
     // Затем рассчитываем статистику на основе отфильтрованных заметок
     _calculateStatistics();
+
+    // Расчет статистики поклевок
+    _calculateBiteStatistics();
   }
 
   // Фильтрация заметок в зависимости от выбранного периода
@@ -188,7 +198,9 @@ class StatisticsProvider extends ChangeNotifier {
     // 4. Всего поймано рыб
     int totalFish = 0;
     for (var note in _filteredNotes) {
-      totalFish += note.biteRecords.length;
+      totalFish += note.biteRecords
+          .where((record) => record.fishType.isNotEmpty && record.weight > 0)
+          .length;
     }
 
     // 5. Самая большая рыба
@@ -196,7 +208,8 @@ class StatisticsProvider extends ChangeNotifier {
     double maxWeight = 0.0;
     for (var note in _filteredNotes) {
       for (var record in note.biteRecords) {
-        if (record.weight > maxWeight) {
+        // Проверяем, что это реализованная поклевка (пойманная рыба)
+        if (record.fishType.isNotEmpty && record.weight > 0 && record.weight > maxWeight) {
           maxWeight = record.weight;
           biggestFish = BiggestFishInfo(
             fishType: record.fishType,
@@ -228,8 +241,11 @@ class StatisticsProvider extends ChangeNotifier {
 
       for (var note in _filteredNotes) {
         for (var record in note.biteRecords) {
-          final key = '${record.time.year}-${record.time.month}';
-          fishCountByMonth[key] = (fishCountByMonth[key] ?? 0) + 1;
+          // Учитываем только реализованные поклевки (пойманную рыбу)
+          if (record.fishType.isNotEmpty && record.weight > 0) {
+            final key = '${record.time.year}-${record.time.month}';
+            fishCountByMonth[key] = (fishCountByMonth[key] ?? 0) + 1;
+          }
         }
       }
 
@@ -254,15 +270,85 @@ class StatisticsProvider extends ChangeNotifier {
       }
     }
 
+    // 8. Нереализованные поклевки (новый параметр)
+    int missedBites = 0;
+    for (var note in _filteredNotes) {
+      missedBites += note.biteRecords
+          .where((record) => record.fishType.isEmpty || record.weight <= 0)
+          .length;
+    }
+
     // Обновляем статистику
     _statistics = FishingStatistics(
       totalTrips: totalTrips,
       longestTripDays: longestTripDays,
       totalDaysOnFishing: totalDaysOnFishing,
       totalFish: totalFish,
+      missedBites: missedBites, // Добавляем новый параметр
       biggestFish: biggestFish,
       latestTrip: latestTrip,
       bestMonth: bestMonth,
     );
+  }
+
+  // Метод для расчета статистики поклевок
+  void _calculateBiteStatistics() {
+    _totalCaughtFish = 0;
+    _totalMissedBites = 0;
+
+    for (var note in _filteredNotes) {
+      for (var record in note.biteRecords) {
+        if (record.fishType.isNotEmpty && record.weight > 0) {
+          _totalCaughtFish++;
+        } else {
+          _totalMissedBites++;
+        }
+      }
+    }
+  }
+
+  // Получение процента реализации поклевок
+  double get biteRealizationRate {
+    final totalBites = _totalCaughtFish + _totalMissedBites;
+    if (totalBites == 0) return 0;
+    return _totalCaughtFish / totalBites * 100;
+  }
+
+  // Расчет результативности по отдельным рыбалкам
+  Map<String, int> calculateEfficiencyByFishingType() {
+    final Map<String, int> caughtByType = {};
+    final Map<String, int> totalByType = {};
+
+    for (var note in _filteredNotes) {
+      final fishingType = note.fishingType;
+
+      if (!caughtByType.containsKey(fishingType)) {
+        caughtByType[fishingType] = 0;
+        totalByType[fishingType] = 0;
+      }
+
+      for (var record in note.biteRecords) {
+        totalByType[fishingType] = (totalByType[fishingType] ?? 0) + 1;
+
+        if (record.fishType.isNotEmpty && record.weight > 0) {
+          caughtByType[fishingType] = (caughtByType[fishingType] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Расчет процента реализации по каждому типу рыбалки
+    final Map<String, int> efficiencyByType = {};
+
+    totalByType.forEach((type, total) {
+      if (total > 0) {
+        final caught = caughtByType[type] ?? 0;
+        final efficiency = (caught / total * 100).round();
+        efficiencyByType[type] = efficiency;
+      } else {
+        efficiencyByType[type] = 0;
+      }
+    });
+
+    return efficiencyByType;
   }
 }
