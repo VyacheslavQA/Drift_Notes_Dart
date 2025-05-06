@@ -701,7 +701,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
             const SizedBox(height: 12),
 
-            // Пойманные рыбы
+            /// Пойманные рыбы
             Row(
               children: [
                 Icon(
@@ -733,7 +733,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
             const SizedBox(height: 12),
 
-            // Нереализованные поклевки
+// Нереализованные поклевки
             Row(
               children: [
                 Icon(
