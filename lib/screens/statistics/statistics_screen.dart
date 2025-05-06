@@ -1,7 +1,6 @@
-// Путь: lib/screens/statistics/statistics_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/statistics_provider.dart';
 import '../../models/statistics_models.dart';
@@ -15,46 +14,32 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
-  late StatisticsPeriod _selectedPeriod;
-  CustomDateRange? _customDateRange;
-  bool _isLoading = false;
+  late StatisticsProvider _statisticsProvider;
 
   @override
   void initState() {
     super.initState();
+    _statisticsProvider = Provider.of<StatisticsProvider>(context, listen: false);
     _loadStatistics();
   }
 
   Future<void> _loadStatistics() async {
-    final provider = Provider.of<StatisticsProvider>(context, listen: false);
-    _selectedPeriod = provider.selectedPeriod;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    await provider.loadData();
-
-    setState(() {
-      _isLoading = false;
-    });
+    await _statisticsProvider.loadData();
   }
 
-  void _changePeriod(StatisticsPeriod period) {
-    final provider = Provider.of<StatisticsProvider>(context, listen: false);
-    provider.changePeriod(period);
-
-    setState(() {
-      _selectedPeriod = period;
-    });
+  void _onPeriodSelected(StatisticsPeriod period) {
+    if (period == StatisticsPeriod.custom) {
+      _showDateRangePicker();
+    } else {
+      _statisticsProvider.changePeriod(period);
+    }
   }
 
-  // Выбор пользовательского диапазона дат
-  Future<void> _selectCustomDateRange() async {
-    final provider = Provider.of<StatisticsProvider>(context, listen: false);
+  // Показать диалог выбора пользовательского диапазона дат
+  Future<void> _showDateRangePicker() async {
     final initialDateRange = DateTimeRange(
-      start: provider.customDateRange.startDate,
-      end: provider.customDateRange.endDate,
+      start: _statisticsProvider.customDateRange.startDate,
+      end: _statisticsProvider.customDateRange.endDate,
     );
 
     final pickedDateRange = await showDateRangePicker(
@@ -62,13 +47,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       initialDateRange: initialDateRange,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      saveText: 'Применить',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+      helpText: 'Выберите диапазон дат',
+      errorFormatText: 'Введите дату в правильном формате',
+      errorInvalidText: 'Введите правильную дату',
+      errorInvalidRangeText: 'Выберите правильный диапазон',
+      fieldStartHintText: 'Начальная дата',
+      fieldEndHintText: 'Конечная дата',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.dark(
               primary: AppConstants.primaryColor,
               onPrimary: AppConstants.textColor,
-              surface: AppConstants.surfaceColor,
+              surface: AppConstants.backgroundColor,
               onSurface: AppConstants.textColor,
             ),
             dialogBackgroundColor: AppConstants.backgroundColor,
@@ -79,17 +73,26 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
 
     if (pickedDateRange != null) {
-      provider.updateCustomDateRange(
+      _statisticsProvider.updateCustomDateRange(
         pickedDateRange.start,
         pickedDateRange.end,
       );
+      _statisticsProvider.changePeriod(StatisticsPeriod.custom);
+    }
+  }
 
-      // Переключаемся на пользовательский период
-      provider.changePeriod(StatisticsPeriod.custom);
-
-      setState(() {
-        _selectedPeriod = StatisticsPeriod.custom;
-      });
+  String _getPeriodTitle() {
+    switch (_statisticsProvider.selectedPeriod) {
+      case StatisticsPeriod.week:
+        return 'Последние 7 дней';
+      case StatisticsPeriod.month:
+        return 'Последние 30 дней';
+      case StatisticsPeriod.year:
+        return 'Текущий год';
+      case StatisticsPeriod.allTime:
+        return 'За всё время';
+      case StatisticsPeriod.custom:
+        return _statisticsProvider.customDateRange.format();
     }
   }
 
@@ -101,275 +104,425 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         title: const Text(
           'Статистика',
           style: TextStyle(
+            color: Colors.white,
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-        ),
-      )
-          : Consumer<StatisticsProvider>(
+      body: Consumer<StatisticsProvider>(
         builder: (context, provider, child) {
-          final statistics = provider.statistics;
-
-          if (statistics.hasNoData) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    color: AppConstants.textColor.withOpacity(0.5),
-                    size: 64,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Нет данных для статистики',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Добавьте заметки о рыбалке, чтобы увидеть статистику',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
+          final isLoading = provider.isLoading;
+          final errorMessage = provider.errorMessage;
+          final stats = provider.statistics;
 
           return RefreshIndicator(
             onRefresh: _loadStatistics,
             color: AppConstants.primaryColor,
-            backgroundColor: AppConstants.surfaceColor,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
+            child: isLoading
+                ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+                : errorMessage != null
+                ? Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Фильтр периодов
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Период',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Кнопки выбора периода
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildPeriodButton(
-                              title: 'Неделя',
-                              period: StatisticsPeriod.week,
-                              isSelected: _selectedPeriod == StatisticsPeriod.week,
-                            ),
-                            _buildPeriodButton(
-                              title: 'Месяц',
-                              period: StatisticsPeriod.month,
-                              isSelected: _selectedPeriod == StatisticsPeriod.month,
-                            ),
-                            _buildPeriodButton(
-                              title: 'Год',
-                              period: StatisticsPeriod.year,
-                              isSelected: _selectedPeriod == StatisticsPeriod.year,
-                            ),
-                            _buildPeriodButton(
-                              title: 'Всё время',
-                              period: StatisticsPeriod.allTime,
-                              isSelected: _selectedPeriod == StatisticsPeriod.allTime,
-                            ),
-                          ],
-                        ),
-
-                        // Кнопка выбора произвольного периода
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: ElevatedButton(
-                            onPressed: _selectCustomDateRange,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _selectedPeriod == StatisticsPeriod.custom
-                                  ? AppConstants.primaryColor
-                                  : AppConstants.surfaceColor,
-                              foregroundColor: AppConstants.textColor,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.date_range),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _selectedPeriod == StatisticsPeriod.custom
-                                      ? provider.customDateRange.format()
-                                      : 'Выбрать произвольный период',
-                                  style: TextStyle(
-                                    color: AppConstants.textColor,
-                                    fontSize: 14,
-                                    fontWeight: _selectedPeriod == StatisticsPeriod.custom
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 48,
                   ),
-
-                  // Карточки статистики
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStatCard(
-                          icon: Icons.directions_boat,
-                          title: 'Всего рыбалок',
-                          value: statistics.totalTrips.toString(),
-                          subtitle: DateFormatter.getFishingTripsText(statistics.totalTrips),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _buildStatCard(
-                          icon: Icons.calendar_today,
-                          title: 'Самая долгая рыбалка',
-                          value: statistics.longestTripDays.toString(),
-                          subtitle: DateFormatter.getDaysText(statistics.longestTripDays),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _buildStatCard(
-                          icon: Icons.watch_later,
-                          title: 'Всего дней на рыбалке',
-                          value: statistics.totalDaysOnFishing.toString(),
-                          subtitle: 'дней',
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _buildStatCard(
-                          icon: Icons.set_meal,
-                          title: 'Всего поймано рыб',
-                          value: statistics.totalFish.toString(),
-                          subtitle: DateFormatter.getFishText(statistics.totalFish),
-                          valueColor: Colors.green,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _buildStatCard(
-                          icon: Icons.hourglass_empty,
-                          title: 'Нереализованные поклевки',
-                          value: statistics.missedBites.toString(),
-                          subtitle: 'поклевок без поимки',
-                          valueColor: Colors.red,
-                        ),
-
-                        if (statistics.biggestFish != null) ...[
-                          const SizedBox(height: 16),
-
-                          _buildStatCard(
-                            icon: Icons.emoji_events,
-                            title: 'Самая крупная рыба',
-                            value: statistics.biggestFish!.formattedText,
-                            subtitle: '',
-                            valueColor: Colors.amber,
-                          ),
-                        ],
-
-                        if (statistics.bestMonth != null) ...[
-                          const SizedBox(height: 16),
-
-                          _buildStatCard(
-                            icon: Icons.star,
-                            title: 'Лучший месяц',
-                            value: statistics.bestMonth!.formattedText,
-                            subtitle: '',
-                            valueColor: Colors.amber,
-                          ),
-                        ],
-
-                        const SizedBox(height: 16),
-
-                        _buildStatCard(
-                          icon: Icons.percent,
-                          title: 'Процент реализации поклевок',
-                          value: '${provider.biteRealizationRate.toStringAsFixed(1)}%',
-                          subtitle: 'эффективность ловли',
-                          valueColor: _getRealizationColor(provider.biteRealizationRate),
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+                  Text(
+                    errorMessage,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-
-                  // Дополнительный отступ внизу для скролла
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _loadStatistics,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                    ),
+                    child: const Text('Повторить'),
+                  ),
                 ],
               ),
-            ),
+            )
+                : stats.hasNoData
+                ? _buildEmptyState()
+                : _buildStatisticsContent(),
           );
         },
       ),
     );
   }
 
-  Widget _buildPeriodButton({
-    required String title,
-    required StatisticsPeriod period,
-    required bool isSelected,
-  }) {
-    return ElevatedButton(
-      onPressed: () => _changePeriod(period),
-      style: ElevatedButton.styleFrom(
-        backgroundColor:
-        isSelected ? AppConstants.primaryColor : AppConstants.surfaceColor,
-        foregroundColor: AppConstants.textColor,
-        elevation: isSelected ? 2 : 0,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.query_stats,
+            color: AppConstants.textColor.withOpacity(0.3),
+            size: 80,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Нет данных для отображения',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Создайте заметки о рыбалке для отображения статистики',
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsContent() {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPeriodSelector(),
+
+            const SizedBox(height: 24),
+
+            // Заголовок с выбранным периодом
+            Text(
+              _getPeriodTitle(),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Основная статистика в новом порядке
+            _buildMainStatistics(),
+
+            const SizedBox(height: 24),
+
+            // Дополнительные разделы статистики
+            _buildEfficiencySection(),
+
+            const SizedBox(height: 100), // Доп. отступ внизу для скролла
+          ],
         ),
       ),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    );
+  }
+
+  // Селектор периодов (недельный, месячный, годовой и т.д.)
+  Widget _buildPeriodSelector() {
+    return Container(
+      height: 50,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _buildPeriodButton(
+            'Неделя',
+            _statisticsProvider.selectedPeriod == StatisticsPeriod.week,
+                () => _onPeriodSelected(StatisticsPeriod.week),
+          ),
+          const SizedBox(width: 8),
+          _buildPeriodButton(
+            'Месяц',
+            _statisticsProvider.selectedPeriod == StatisticsPeriod.month,
+                () => _onPeriodSelected(StatisticsPeriod.month),
+          ),
+          const SizedBox(width: 8),
+          _buildPeriodButton(
+            'Год',
+            _statisticsProvider.selectedPeriod == StatisticsPeriod.year,
+                () => _onPeriodSelected(StatisticsPeriod.year),
+          ),
+          const SizedBox(width: 8),
+          _buildPeriodButton(
+            'Всё время',
+            _statisticsProvider.selectedPeriod == StatisticsPeriod.allTime,
+                () => _onPeriodSelected(StatisticsPeriod.allTime),
+          ),
+          const SizedBox(width: 8),
+          _buildPeriodButton(
+            'Выбрать',
+            _statisticsProvider.selectedPeriod == StatisticsPeriod.custom,
+                () => _onPeriodSelected(StatisticsPeriod.custom),
+            Icons.date_range,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodButton(
+      String text,
+      bool isSelected,
+      VoidCallback onTap, [
+        IconData? icon,
+      ]) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(25),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppConstants.primaryColor
+              : AppConstants.primaryColor.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                color: AppConstants.textColor,
+                size: 18,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              text,
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  // Основные статистические показатели в обновленном порядке
+  Widget _buildMainStatistics() {
+    final stats = _statisticsProvider.statistics;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Самая большая рыба
+        if (stats.biggestFish != null)
+          _buildStatCard(
+            icon: Icons.emoji_events,
+            title: 'Самая большая рыба',
+            value: '${stats.biggestFish!.weight} кг',
+            subtitle: stats.biggestFish!.formattedText,
+            valueColor: Colors.amber,
+          ),
+
+        const SizedBox(height: 16),
+
+        // 2. Всего поймано рыб
+        _buildStatCard(
+          icon: Icons.set_meal,
+          title: 'Всего поймано рыб',
+          value: stats.totalFish.toString(),
+          subtitle: DateFormatter.getFishText(stats.totalFish),
+          valueColor: Colors.green,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 3. Нереализованные поклевки
+        _buildStatCard(
+          icon: Icons.hourglass_empty,
+          title: 'Нереализованные поклевки',
+          value: stats.missedBites.toString(),
+          subtitle: 'поклевок без поимки',
+          valueColor: Colors.red,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 4. Реализация поклевок
+        _buildStatCard(
+          icon: Icons.percent,
+          title: 'Реализация поклевок',
+          value: '${stats.realizationRate.toStringAsFixed(1)}%',
+          subtitle: 'эффективность ловли',
+          valueColor: _getRealizationColor(stats.realizationRate),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 5. Всего рыбалок
+        _buildStatCard(
+          icon: Icons.format_list_bulleted,
+          title: 'Всего рыбалок',
+          value: stats.totalTrips.toString(),
+          subtitle: DateFormatter.getFishingTripsText(stats.totalTrips),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 6. Самая долгая рыбалка
+        _buildStatCard(
+          icon: Icons.access_time,
+          title: 'Самая долгая рыбалка',
+          value: stats.longestTripDays.toString(),
+          subtitle: DateFormatter.getDaysText(stats.longestTripDays),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 7. Всего дней на рыбалке
+        _buildStatCard(
+          icon: Icons.calendar_today,
+          title: 'Всего дней на рыбалке',
+          value: stats.totalDaysOnFishing.toString(),
+          subtitle: 'дней на рыбалке',
+        ),
+
+        const SizedBox(height: 16),
+
+        // 8. Последний выезд
+        if (stats.latestTrip != null)
+          _buildStatCard(
+            icon: Icons.directions_car,
+            title: 'Последний выезд',
+            value: stats.latestTrip!.tripName,
+            subtitle: stats.latestTrip!.formattedText,
+          ),
+
+        const SizedBox(height: 16),
+
+        // 9. Лучший месяц
+        if (stats.bestMonth != null)
+          _buildStatCard(
+            icon: Icons.star,
+            title: 'Лучший месяц',
+            value: DateFormatter.getMonthInNominative(stats.bestMonth!.month),
+            subtitle: stats.bestMonth!.formattedText,
+            valueColor: Colors.amber,
+          ),
+      ],
+    );
+  }
+
+  // Секция с данными об эффективности по типам рыбалки
+  Widget _buildEfficiencySection() {
+    final efficiencyByType = _statisticsProvider.calculateEfficiencyByFishingType();
+
+    if (efficiencyByType.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Эффективность по типам рыбалки',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppConstants.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: efficiencyByType.entries.map((entry) {
+              final efficiency = entry.value;
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          entry.key,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 7,
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: efficiency / 100,
+                              child: Container(
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: _getEfficiencyColor(efficiency),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 40,
+                        child: Text(
+                          '$efficiency%',
+                          style: TextStyle(
+                            color: _getEfficiencyColor(efficiency),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  if (entry.key != efficiencyByType.keys.last)
+                    const Divider(height: 24, color: Colors.white24),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -383,7 +536,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
+        color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -392,7 +545,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppConstants.primaryColor.withOpacity(0.2),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
@@ -417,11 +570,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   value,
                   style: TextStyle(
                     color: valueColor ?? AppConstants.textColor,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 if (subtitle.isNotEmpty)
                   Text(
@@ -439,10 +590,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  // Метод для определения цвета в зависимости от процента реализации
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
     if (rate >= 40) return Colors.orange;
+    return Colors.red;
+  }
+
+  Color _getEfficiencyColor(int efficiency) {
+    if (efficiency >= 70) return Colors.green;
+    if (efficiency >= 40) return Colors.orange;
     return Colors.red;
   }
 }

@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return stats;
   }
 
-  // Добавим новую карточку для нереализованных поклевок в _buildStatsGrid():
+  // Обновлённый метод _buildStatsGrid() с новым порядком статистики
   Widget _buildStatsGrid() {
     // Фильтруем только прошедшие и текущие заметки
     final now = DateTime.now();
@@ -268,54 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        _buildStatCard(
-          icon: Icons.format_list_bulleted,
-          title: 'Всего рыбалок',
-          value: stats['totalTrips'].toString(),
-          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.access_time,
-          title: 'Самая долгая',
-          value: stats['longestTrip'].toString(),
-          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.calendar_today,
-          title: 'Всего дней на рыбалке',
-          value: stats['totalDaysFishing'].toString(),
-          subtitle: 'дней на рыбалке',
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.set_meal,
-          title: 'Всего поймано рыб',
-          value: stats['totalFish'].toString(),
-          subtitle: DateFormatter.getFishText(stats['totalFish']),
-          valueColor: Colors.green,
-        ),
-
-        const SizedBox(height: 16),
-
-        // Добавляем новую карточку для нереализованных поклевок
-        _buildStatCard(
-          icon: Icons.hourglass_empty,
-          title: 'Нереализованные поклевки',
-          value: stats['missedBites'].toString(),
-          subtitle: 'поклевок без поимки',
-          valueColor: Colors.red,
-        ),
-
-        const SizedBox(height: 16),
-
+        // 1. Самая большая рыба
         if (stats['biggestFish'] != null)
           _buildStatCard(
             icon: Icons.emoji_events,
@@ -327,6 +280,71 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
+        // 2. Всего поймано рыб
+        _buildStatCard(
+          icon: Icons.set_meal,
+          title: 'Всего поймано рыб',
+          value: stats['totalFish'].toString(),
+          subtitle: DateFormatter.getFishText(stats['totalFish']),
+          valueColor: Colors.green,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 3. Нереализованные поклевки
+        _buildStatCard(
+          icon: Icons.hourglass_empty,
+          title: 'Нереализованные поклевки',
+          value: stats['missedBites'].toString(),
+          subtitle: 'поклевок без поимки',
+          valueColor: Colors.red,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 4. Реализация поклевок
+        if (stats['totalFish'] > 0 || stats['missedBites'] > 0)
+          _buildStatCard(
+            icon: Icons.percent,
+            title: 'Реализация поклевок',
+            value: '${stats['realizationRate'].toStringAsFixed(1)}%',
+            subtitle: 'эффективность ловли',
+            valueColor: _getRealizationColor(stats['realizationRate']),
+          ),
+
+        const SizedBox(height: 16),
+
+        // 5. Всего рыбалок
+        _buildStatCard(
+          icon: Icons.format_list_bulleted,
+          title: 'Всего рыбалок',
+          value: stats['totalTrips'].toString(),
+          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 6. Самая долгая рыбалка
+        _buildStatCard(
+          icon: Icons.access_time,
+          title: 'Самая долгая',
+          value: stats['longestTrip'].toString(),
+          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 7. Всего дней на рыбалке
+        _buildStatCard(
+          icon: Icons.calendar_today,
+          title: 'Всего дней на рыбалке',
+          value: stats['totalDaysFishing'].toString(),
+          subtitle: 'дней на рыбалке',
+        ),
+
+        const SizedBox(height: 16),
+
+        // 8. Последний выезд
         if (stats['lastTrip'] != null)
           _buildStatCard(
             icon: Icons.directions_car,
@@ -339,6 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
+        // 9. Лучший месяц
         if (stats['bestMonth'].isNotEmpty)
           _buildStatCard(
             icon: Icons.star,
@@ -347,19 +366,6 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
             valueColor: Colors.amber,
           ),
-
-        // Добавляем карточку с процентом реализации поклевок, если есть поклевки
-        if (stats['totalFish'] > 0 || stats['missedBites'] > 0) ...[
-          const SizedBox(height: 16),
-
-          _buildStatCard(
-            icon: Icons.percent,
-            title: 'Реализация поклевок',
-            value: '${stats['realizationRate'].toStringAsFixed(1)}%',
-            subtitle: 'эффективность ловли',
-            valueColor: _getRealizationColor(stats['realizationRate']),
-          ),
-        ],
       ],
     );
   }
