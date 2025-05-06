@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  / Изменения в методе _calculateStatistics
+  // Изменения в методе _calculateStatistics
   Map<String, dynamic> _calculateStatistics(List<FishingNoteModel> notes) {
     final stats = <String, dynamic>{};
 
@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return stats;
   }
 
-// Добавим новую карточку для нереализованных поклевок в _buildStatsGrid():
+  // Добавим новую карточку для нереализованных поклевок в _buildStatsGrid():
   Widget _buildStatsGrid() {
     // Фильтруем только прошедшие и текущие заметки
     final now = DateTime.now();
@@ -364,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-// Метод для определения цвета в зависимости от процента реализации
+  // Метод для определения цвета в зависимости от процента реализации
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
     if (rate >= 40) return Colors.orange;
@@ -514,89 +514,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    // Фильтруем только прошедшие и текущие заметки
-    final now = DateTime.now();
-    final validNotes = _fishingNotes.where((note) =>
-    note.date.isBefore(now) || note.date.isAtSameMomentAs(now)
-    ).toList();
-
-    // Расчет статистики
-    final stats = _calculateStatistics(validNotes);
-
-    return Column(
-      children: [
-        _buildStatCard(
-          icon: Icons.format_list_bulleted,
-          title: 'Всего рыбалок',
-          value: stats['totalTrips'].toString(),
-          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.access_time,
-          title: 'Самая долгая',
-          value: stats['longestTrip'].toString(),
-          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.calendar_today,
-          title: 'Всего дней на рыбалке',
-          value: stats['totalDaysFishing'].toString(),
-          subtitle: 'дней на рыбалке',
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildStatCard(
-          icon: Icons.set_meal,
-          title: 'Всего поймано рыб',
-          value: stats['totalFish'].toString(),
-          subtitle: DateFormatter.getFishText(stats['totalFish']),
-        ),
-
-        const SizedBox(height: 16),
-
-        if (stats['biggestFish'] != null)
-          _buildStatCard(
-            icon: Icons.emoji_events,
-            title: 'Самая большая рыба',
-            value: '${stats['biggestFish'].weight} кг',
-            subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
-            valueColor: Colors.amber,
-          ),
-
-        const SizedBox(height: 16),
-
-        if (stats['lastTrip'] != null)
-          _buildStatCard(
-            icon: Icons.directions_car,
-            title: 'Последний выезд',
-            value: stats['lastTrip'].title.isNotEmpty
-                ? '«${stats['lastTrip'].title}»'
-                : stats['lastTrip'].location,
-            subtitle: DateFormat('d MMMM yyyy', 'ru').format(stats['lastTrip'].date),
-          ),
-
-        const SizedBox(height: 16),
-
-        if (stats['bestMonth'].isNotEmpty)
-          _buildStatCard(
-            icon: Icons.star,
-            title: 'Лучший месяц',
-            value: stats['bestMonth'],
-            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
-            valueColor: Colors.amber,
-          ),
-      ],
     );
   }
 
