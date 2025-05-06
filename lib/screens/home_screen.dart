@@ -1,11 +1,12 @@
-// Путь: lib/screens/home_screen.dart
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
+import '../repositories/user_repository.dart';
 import '../models/fishing_note_model.dart';
+import '../models/user_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
 import '../utils/navigation.dart';
@@ -13,6 +14,9 @@ import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
 import 'calendar/fishing_calendar_screen.dart';
+import 'profile/profile_screen.dart';
+import 'map/map_screen.dart';
+import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,10 +29,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _firebaseService = FirebaseService();
   final _fishingNoteRepository = FishingNoteRepository();
+  final _userRepository = UserRepository();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool _isLoading = false;
   List<FishingNoteModel> _fishingNotes = [];
+  bool _hasNewNotifications = true; // Временно устанавливаем в true для демонстрации
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
@@ -38,9 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFishingNotes();
-
-    // Синхронизируем офлайн заметки при запуске
+    _loadFishingNotes(); // Оставляем для статистики
     _fishingNoteRepository.syncOfflineDataOnStartup();
   }
 
@@ -69,7 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Метод для открытия URL
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
     try {
@@ -90,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
 
-    // Обработка нажатия на элементы меню
     switch (index) {
       case 0: // Таймер
         Navigator.push(
@@ -113,9 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) => const FishingCalendarScreen()),
         );
         break;
-      case 4: // Уведомления
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Экран уведомлений в разработке')),
+      case 4: // Карта (вместо уведомлений)
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MapScreen()),
         );
         break;
     }
@@ -128,9 +131,108 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context) => const FishingTypeSelectionScreen())
     ).then((value) {
       if (value == true) {
-        _loadFishingNotes(); // Обновить список заметок, если была создана новая
+        _loadFishingNotes();
       }
     });
+  }
+
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+    ).then((_) {
+      setState(() {
+        _hasNewNotifications = false; // Сбрасываем индикатор после посещения
+      });
+    });
+  }
+
+  Map<String, dynamic> _calculateStatistics(List<FishingNoteModel> notes) {
+    final stats = <String, dynamic>{};
+
+    // 1. Всего рыбалок
+    stats['totalTrips'] = notes.length;
+
+    // 2. Самая долгая рыбалка
+    int longestTrip = 0;
+    String longestTripName = '';
+    for (var note in notes) {
+      if (note.isMultiDay && note.endDate != null) {
+        int days = note.endDate!.difference(note.date).inDays + 1;
+        if (days > longestTrip) {
+          longestTrip = days;
+          longestTripName = note.title.isNotEmpty ? note.title : note.location;
+        }
+      } else {
+        if (longestTrip == 0) longestTrip = 1;
+      }
+    }
+    stats['longestTrip'] = longestTrip;
+    stats['longestTripName'] = longestTripName;
+
+    // 3. Всего дней на рыбалке
+    Set<DateTime> uniqueFishingDays = {};
+    for (var note in notes) {
+      DateTime startDate = DateTime(note.date.year, note.date.month, note.date.day);
+      DateTime endDate = note.endDate != null
+          ? DateTime(note.endDate!.year, note.endDate!.month, note.endDate!.day)
+          : startDate;
+
+      for (int i = 0; i <= endDate.difference(startDate).inDays; i++) {
+        uniqueFishingDays.add(startDate.add(Duration(days: i)));
+      }
+    }
+    stats['totalDaysFishing'] = uniqueFishingDays.length;
+
+    // 4. Всего поймано рыб
+    int totalFish = 0;
+    for (var note in notes) {
+      totalFish += note.biteRecords.length;
+    }
+    stats['totalFish'] = totalFish;
+
+    // 5. Самая большая рыба
+    BiteRecord? biggestFish;
+    String biggestFishLocation = '';
+    for (var note in notes) {
+      for (var record in note.biteRecords) {
+        if (biggestFish == null || record.weight > biggestFish.weight) {
+          biggestFish = record;
+          biggestFishLocation = note.location;
+        }
+      }
+    }
+    stats['biggestFish'] = biggestFish;
+    stats['biggestFishLocation'] = biggestFishLocation;
+
+    // 6. Последний выезд
+    FishingNoteModel? lastTrip;
+    if (notes.isNotEmpty) {
+      lastTrip = notes.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
+    }
+    stats['lastTrip'] = lastTrip;
+
+    // 7. Лучший месяц по количеству рыбы
+    Map<String, int> fishByMonth = {};
+    for (var note in notes) {
+      for (var record in note.biteRecords) {
+        String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
+        fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
+      }
+    }
+
+    String bestMonth = '';
+    int bestMonthFish = 0;
+    fishByMonth.forEach((month, count) {
+      if (count > bestMonthFish) {
+        bestMonthFish = count;
+        bestMonth = month;
+      }
+    });
+    stats['bestMonth'] = bestMonth;
+    stats['bestMonthFish'] = bestMonthFish;
+
+    return stats;
   }
 
   @override
@@ -151,11 +253,38 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.menu, color: AppConstants.textColor),
+          icon: Icon(Icons.menu_rounded, color: AppConstants.textColor, size: 26),
           onPressed: () {
             _scaffoldKey.currentState?.openDrawer();
           },
         ),
+        actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: Icon(Icons.notifications_rounded,
+                    color: AppConstants.textColor,
+                    size: 26),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_hasNewNotifications)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       drawer: _buildDrawer(),
       body: RefreshIndicator(
@@ -189,59 +318,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Статистика
                 _buildStatsGrid(),
 
-                const SizedBox(height: 24),
-
-                // Недавние заметки (если есть)
-                if (_fishingNotes.isNotEmpty) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Недавние заметки',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppConstants.textColor,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (
-                                context) => const FishingNotesListScreen()),
-                          );
-                        },
-                        child: Text(
-                          'Все заметки',
-                          style: TextStyle(
-                            color: AppConstants.primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Список недавних заметок (максимум 3)
-                  _buildRecentNotesList(),
-                ],
-
-                const SizedBox(height: 100),
-                // Большой отступ внизу для плавающей кнопки
+                const SizedBox(height: 40),
+                // Убрали отображение заметок
+                // Добавляем дополнительный отступ снизу для компенсации навигационной панели
+                const SizedBox(height: 90), // Высота равна высоте bottomNavigationBar
               ],
             ),
           ),
         ),
       ),
       extendBody: true,
-      // Позволяет контенту скроллиться под нижней панелью
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  // Виджет для отображения рекламы канала YouTube с возможностью перехода по ссылке
   Widget _buildYoutubePromoCard() {
     return GestureDetector(
       onTap: () =>
@@ -257,7 +347,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Stack(
           children: [
-            // Затемнение для лучшей читаемости текста
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -271,8 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
-            // Текст "Посетите наш YouTube канал"
             Positioned(
               bottom: 16,
               left: 0,
@@ -294,304 +381,157 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Сетка со статистикой
   Widget _buildStatsGrid() {
-    // Подсчет значений статистики на основе заметок
-    int totalTrips = _fishingNotes.length;
-    double biggestFish = 0.0;
-    DateTime? biggestFishDate;
-    int totalFish = 0;
-    int longestTripDays = 0;
+    // Фильтруем только прошедшие и текущие заметки
+    final now = DateTime.now();
+    final validNotes = _fishingNotes.where((note) =>
+    note.date.isBefore(now) || note.date.isAtSameMomentAs(now)
+    ).toList();
 
-    for (var note in _fishingNotes) {
-      // Общее количество рыб
-      totalFish += note.biteRecords.length;
+    // Расчет статистики
+    final stats = _calculateStatistics(validNotes);
 
-      // Самая большая рыба
-      for (var record in note.biteRecords) {
-        if (record.weight > biggestFish) {
-          biggestFish = record.weight;
-          biggestFishDate = note.date;
-        }
-      }
-
-      // Самая долгая рыбалка
-      if (note.isMultiDay && note.endDate != null) {
-        int days = note.endDate!.difference(note.date).inDays + 1;
-        if (days > longestTripDays) {
-          longestTripDays = days;
-        }
-      }
-    }
-
-    // Если нет данных, устанавливаем значения по умолчанию
-    bool hasData = _fishingNotes.isNotEmpty;
-
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return Column(
       children: [
-        // Всего рыбалок
         _buildStatCard(
-          title: 'Всего рыбалок',
-          value: hasData ? totalTrips.toString() : '0',
-          subtitle: DateFormatter.getFishingTripsText(hasData ? totalTrips : 0),
           icon: Icons.format_list_bulleted,
-          chartData: hasData ? const [0.2, 0.4, 0.3, 0.5, 0.7, 0.2] : null,
-          isEmpty: !hasData,
+          title: 'Всего рыбалок',
+          value: stats['totalTrips'].toString(),
+          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
         ),
 
-        // Самая большая рыба
+        const SizedBox(height: 16),
+
         _buildStatCard(
-          title: 'Самая большая рыба',
-          value: biggestFish > 0 ? biggestFish.toString() : '0',
-          subtitle: biggestFishDate != null
-              ? 'кг, ${DateFormatter.formatShortDate(biggestFishDate)}'
-              : 'кг',
-          icon: Icons.catching_pokemon,
-          isEmpty: biggestFish <= 0,
+          icon: Icons.access_time,
+          title: 'Самая долгая',
+          value: stats['longestTrip'].toString(),
+          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
         ),
 
-        // Всего рыб
+        const SizedBox(height: 16),
+
         _buildStatCard(
-          title: 'Всего поймано',
-          value: hasData ? totalFish.toString() : '0',
-          subtitle: DateFormatter.getFishText(hasData ? totalFish : 0),
+          icon: Icons.calendar_today,
+          title: 'Всего дней на рыбалке',
+          value: stats['totalDaysFishing'].toString(),
+          subtitle: 'дней на рыбалке',
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildStatCard(
           icon: Icons.set_meal,
-          progressValue: hasData ? (totalFish / 100).clamp(0.0, 1.0) : 0.0,
-          isEmpty: !hasData || totalFish <= 0,
+          title: 'Всего поймано рыб',
+          value: stats['totalFish'].toString(),
+          subtitle: DateFormatter.getFishText(stats['totalFish']),
         ),
 
-        // Самая долгая рыбалка
-        _buildStatCard(
-          title: 'Самая долгая рыбалка',
-          value: longestTripDays > 0 ? longestTripDays.toString() : '0',
-          subtitle: DateFormatter.getDaysText(longestTripDays),
-          icon: Icons.timer,
-          isEmpty: longestTripDays <= 0,
-        ),
+        const SizedBox(height: 16),
+
+        if (stats['biggestFish'] != null)
+          _buildStatCard(
+            icon: Icons.emoji_events,
+            title: 'Самая большая рыба',
+            value: '${stats['biggestFish'].weight} кг',
+            subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
+            valueColor: Colors.amber,
+          ),
+
+        const SizedBox(height: 16),
+
+        if (stats['lastTrip'] != null)
+          _buildStatCard(
+            icon: Icons.directions_car,
+            title: 'Последний выезд',
+            value: stats['lastTrip'].title.isNotEmpty
+                ? '«${stats['lastTrip'].title}»'
+                : stats['lastTrip'].location,
+            subtitle: DateFormat('d MMMM yyyy', 'ru').format(stats['lastTrip'].date),
+          ),
+
+        const SizedBox(height: 16),
+
+        if (stats['bestMonth'].isNotEmpty)
+          _buildStatCard(
+            icon: Icons.star,
+            title: 'Лучший месяц',
+            value: stats['bestMonth'],
+            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
+            valueColor: Colors.amber,
+          ),
       ],
     );
   }
 
-  // Карточка со статистикой
   Widget _buildStatCard({
+    required IconData icon,
     required String title,
     required String value,
     required String subtitle,
-    required IconData icon,
-    List<double>? chartData,
-    double? progressValue,
-    bool isEmpty = false,
+    Color? valueColor,
   }) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(12),
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isEmpty
-                      ? Colors.grey.withOpacity(0.5)
-                      : AppConstants.textColor,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isEmpty
-                          ? Colors.grey.withOpacity(0.8)
-                          : Colors.white70,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isEmpty
-                    ? Colors.grey.withOpacity(0.8)
-                    : AppConstants.textColor,
-              ),
+            child: Icon(
+              icon,
+              color: valueColor ?? AppConstants.textColor,
+              size: 24,
             ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: isEmpty
-                    ? Colors.grey.withOpacity(0.7)
-                    : Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (chartData != null && chartData.isNotEmpty)
-              SizedBox(
-                height: 24,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: chartData.map((value) {
-                    return Container(
-                      width: 12,
-                      height: value * 24,
-                      decoration: BoxDecoration(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            if (progressValue != null)
-              LinearProgressIndicator(
-                value: progressValue,
-                backgroundColor: Colors.white.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppConstants.textColor.withOpacity(0.8),
-                ),
-              ),
-            if (isEmpty)
-              Expanded(
-                child: Center(
-                  child: Text(
-                    'Нет данных',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.withOpacity(0.7),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Список недавних заметок
-  Widget _buildRecentNotesList() {
-    // Отображаем только последние 3 заметки
-    final recentNotes = _fishingNotes.take(3).toList();
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: recentNotes.length,
-      itemBuilder: (context, index) {
-        final note = recentNotes[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: const Color(0xFF12332E),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            title: Text(
-              note.location,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Column(
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 4),
                 Text(
-                  note.isMultiDay && note.endDate != null
-                      ? DateFormatter.formatDateRange(note.date, note.endDate!)
-                      : DateFormatter.formatDate(note.date),
+                  title,
                   style: TextStyle(
                     color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${note.fishingType} • ${note.biteRecords
-                      .length} ${DateFormatter.getFishText(
-                      note.biteRecords.length)}',
+                  value,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: valueColor ?? AppConstants.textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
-            leading: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: note.photoUrls.isNotEmpty
-                  ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: note.photoUrls.first,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) =>
-                  const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
-                  ),
-                  errorWidget: (context, url, error) =>
-                  const Icon(
-                    Icons.image_not_supported,
-                    color: Colors.grey,
-                  ),
-                ),
-              )
-                  : Icon(
-                Icons.photo_camera,
-                color: AppConstants.textColor,
-              ),
-            ),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppConstants.textColor,
-            ),
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/fishing_note_detail',
-                arguments: note.id,
-              ).then((value) {
-                if (value == true) {
-                  _loadFishingNotes();
-                }
-              });
-            },
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  // Боковое меню с исправленной проблемой отображения email
   Widget _buildDrawer() {
     final user = _firebaseService.currentUser;
     final userName = user?.displayName ?? 'Пользователь';
@@ -600,199 +540,211 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Обновленный DrawerHeader с исправленной проблемой overflow
-            Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF0A1F1C),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Аватар пользователя
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: const Color(0xFF12332E),
-                        backgroundImage: user?.photoURL != null
-                            ? NetworkImage(user!.photoURL!)
-                            : null,
-                        child: user?.photoURL == null
-                            ? Icon(
-                          Icons.person,
-                          size: 40,
-                          color: AppConstants.textColor,
-                        )
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
+        child: StreamBuilder<UserModel?>(
+          stream: _userRepository.getUserStream(),
+          builder: (context, snapshot) {
+            final userModel = snapshot.data;
 
-                      // Имя пользователя
-                      Text(
-                        userName,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0A1F1C),
+                  ),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileScreen(),
+                                ),
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 36,
+                              backgroundColor: const Color(0xFF12332E),
+                              backgroundImage: userModel?.avatarUrl != null
+                                  ? NetworkImage(userModel!.avatarUrl!)
+                                  : user?.photoURL != null
+                                  ? NetworkImage(user!.photoURL!)
+                                  : null,
+                              child: (userModel?.avatarUrl == null && user?.photoURL == null)
+                                  ? Icon(
+                                Icons.person,
+                                size: 40,
+                                color: AppConstants.textColor,
+                              )
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            userName,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            userEmail,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-
-                      // Email пользователя - с исправлением overflow
-                      Text(
-                        userEmail,
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // Основные разделы
-            _buildDrawerItem(
-              icon: Icons.person,
-              title: 'Личный кабинет',
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text(
-                      'Экран личного кабинета будет доступен позже')),
-                );
-              },
-            ),
-
-            _buildDrawerItem(
-              icon: Icons.bar_chart,
-              title: 'Статистика',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StatisticsScreen()),
-                ).then((value) {
-                  // Обновим данные, если вернулись с экрана статистики
-                  _loadFishingNotes();
-                });
-              },
-            ),
-
-            _buildDrawerItem(
-              icon: Icons.edit_note,
-              title: 'Мои заметки',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const FishingNotesListScreen()),
-                ).then((value) {
-                  if (value == true) {
-                    _loadFishingNotes();
-                  }
-                });
-              },
-            ),
-
-            _buildDrawerItem(
-              icon: Icons.timer,
-              title: 'Таймеры',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TimersScreen()),
-                );
-              },
-            ),
-
-            _buildDrawerItem(
-              icon: Icons.calendar_today,
-              title: 'Календарь',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const FishingCalendarScreen()),
-                );
-              },
-            ),
-
-            const Divider(
-              color: Colors.white24,
-              height: 1,
-              thickness: 1,
-              indent: 16,
-              endIndent: 16,
-            ),
-
-            // Дополнительный раздел "Прочее"
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Прочее',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 14,
+                _buildDrawerItem(
+                  icon: Icons.person,
+                  title: 'Личный кабинет',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    ).then((_) => setState(() {}));
+                  },
                 ),
-              ),
-            ),
 
-            _buildDrawerItem(
-              icon: Icons.settings,
-              title: 'Настройки',
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Экран настроек будет доступен позже')),
-                );
-              },
-            ),
+                _buildDrawerItem(
+                  icon: Icons.bar_chart,
+                  title: 'Статистика',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StatisticsScreen(),
+                      ),
+                    );
+                  },
+                ),
 
-            _buildDrawerItem(
-              icon: Icons.help_outline,
-              title: 'Помощь/Связь',
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Экран помощи будет доступен позже')),
-                );
-              },
-            ),
+                _buildDrawerItem(
+                  icon: Icons.edit_note,
+                  title: 'Мои заметки',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const FishingNotesListScreen()),
+                    ).then((value) {
+                      if (value == true) {
+                        _loadFishingNotes();
+                      }
+                    });
+                  },
+                ),
 
-            _buildDrawerItem(
-              icon: Icons.exit_to_app,
-              title: 'Выйти',
-              onTap: () async {
-                Navigator.pop(context);
-                await _firebaseService.signOut();
-                if (mounted) {
-                  Navigator.of(context).pushReplacementNamed('/login');
-                }
-              },
-            ),
-          ],
+                _buildDrawerItem(
+                  icon: Icons.timer,
+                  title: 'Таймеры',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TimersScreen()),
+                    );
+                  },
+                ),
+
+                _buildDrawerItem(
+                  icon: Icons.calendar_today,
+                  title: 'Календарь',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const FishingCalendarScreen()),
+                    );
+                  },
+                ),
+
+                const Divider(
+                  color: Colors.white24,
+                  height: 1,
+                  thickness: 1,
+                  indent: 16,
+                  endIndent: 16,
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Прочее',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+
+                _buildDrawerItem(
+                  icon: Icons.settings,
+                  title: 'Настройки',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Экран настроек будет доступен позже')),
+                    );
+                  },
+                ),
+
+                _buildDrawerItem(
+                  icon: Icons.help_outline,
+                  title: 'Помощь/Связь',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Экран помощи будет доступен позже')),
+                    );
+                  },
+                ),
+
+                _buildDrawerItem(
+                  icon: Icons.exit_to_app,
+                  title: 'Выйти',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _firebaseService.signOut();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacementNamed('/login');
+                    }
+                  },
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  // Элемент бокового меню
   Widget _buildDrawerItem({
     required IconData icon,
     required String title,
@@ -816,20 +768,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Нижняя навигационная панель с выделенной кнопкой "Заметка"
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 90,
-      // Увеличиваем высоту для размещения большой центральной кнопки
       child: Stack(
         children: [
-          // Основная панель с 4 кнопками (без центральной)
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
-              height: 60, // Стандартная высота панели
+              height: 60,
               decoration: BoxDecoration(
                 color: const Color(0xFF0B1F1D),
                 boxShadow: [
@@ -856,11 +805,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.access_time,
+                            Icons.timelapse_rounded,
                             color: _selectedIndex == 0
                                 ? AppConstants.textColor
                                 : Colors.white54,
-                            size: 22,
+                            size: 26,
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -885,11 +834,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.cloud,
+                            Icons.cloud_queue_rounded,
                             color: _selectedIndex == 1
                                 ? AppConstants.textColor
                                 : Colors.white54,
-                            size: 22,
+                            size: 26,
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -917,11 +866,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.calendar_today,
+                            Icons.event_note_rounded,
                             color: _selectedIndex == 3
                                 ? AppConstants.textColor
                                 : Colors.white54,
-                            size: 22,
+                            size: 26,
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -938,40 +887,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // Уведомления
+                  // Карта (вместо уведомлений)
                   Expanded(
                     child: InkWell(
                       onTap: () => _onItemTapped(4),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications,
-                                color: _selectedIndex == 4
-                                    ? AppConstants.textColor
-                                    : Colors.white54,
-                                size: 22,
-                              ),
-                              Positioned(
-                                right: -2,
-                                top: 0,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.explore_rounded,
+                            color: _selectedIndex == 4
+                                ? AppConstants.textColor
+                                : Colors.white54,
+                            size: 26,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Уведомл...',
+                            'Карта',
                             style: TextStyle(
                               fontSize: 11,
                               color: _selectedIndex == 4
@@ -988,9 +920,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Центральная кнопка, размещенная выше панели
+          // Центральная кнопка
           Positioned(
-            top: 0, // Размещаем кнопку в верхней части Container
+            top: 0,
             left: 0,
             right: 0,
             child: GestureDetector(

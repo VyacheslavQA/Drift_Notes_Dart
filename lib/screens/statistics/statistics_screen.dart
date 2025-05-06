@@ -1,11 +1,7 @@
-// Путь: lib/screens/statistics/statistics_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
-import '../../models/statistics_models.dart';
-import '../../providers/statistics_provider.dart';
+import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 
@@ -13,676 +9,433 @@ class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
 
   @override
-  State<StatisticsScreen> createState() => _StatisticsScreenState();
+  _StatisticsScreenState createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
-  // Контроллер анимации для плавного появления элементов
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+class _StatisticsScreenState extends State<StatisticsScreen> {
+  final _fishingNoteRepository = FishingNoteRepository();
+
+  String _selectedPeriod = 'Неделя';
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
+  bool _isLoading = true;
+  List<FishingNoteModel> _filteredNotes = [];
+  List<FishingNoteModel> _allNotes = [];
+
+  // Периоды для фильтрации
+  final List<String> _periods = ['Неделя', 'Месяц', 'Год', 'С дата', 'По дату'];
 
   @override
   void initState() {
     super.initState();
+    _loadNotes();
+  }
 
-    // Настройка анимации
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
+  Future<void> _loadNotes() async {
+    setState(() => _isLoading = true);
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
-    );
+    try {
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      // Фильтруем только прошедшие и текущие заметки
+      final now = DateTime.now();
+      final validNotes = notes.where((note) =>
+      note.date.isBefore(now) || note.date.isAtSameMomentAs(now)
+      ).toList();
 
-    // Инициализируем провайдер статистики, если нужно
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<StatisticsProvider>(context, listen: false);
-      if (provider.statistics.hasNoData && !provider.isLoading) {
-        provider.loadData();
-      }
-      _animationController.forward();
+      setState(() {
+        _allNotes = validNotes;
+        _filterNotes();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка загрузки данных: $e')),
+      );
+    }
+  }
+
+  void _filterNotes() {
+    final now = DateTime.now();
+    List<FishingNoteModel> filtered = List.from(_allNotes);
+
+    switch (_selectedPeriod) {
+      case 'Неделя':
+        final weekAgo = now.subtract(const Duration(days: 7));
+        filtered = filtered.where((note) => note.date.isAfter(weekAgo)).toList();
+        break;
+      case 'Месяц':
+        final monthAgo = now.subtract(const Duration(days: 30));
+        filtered = filtered.where((note) => note.date.isAfter(monthAgo)).toList();
+        break;
+      case 'Год':
+        final yearAgo = now.subtract(const Duration(days: 365));
+        filtered = filtered.where((note) => note.date.isAfter(yearAgo)).toList();
+        break;
+      case 'С дата':
+        if (_customStartDate != null && _customEndDate != null) {
+          filtered = filtered.where((note) =>
+          note.date.isAfter(_customStartDate!) &&
+              note.date.isBefore(_customEndDate!)
+          ).toList();
+        }
+        break;
+      case 'По дату':
+      // Показываем все заметки
+        break;
+    }
+
+    setState(() {
+      _filteredNotes = filtered;
     });
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  // Расчет статистики
+  Map<String, dynamic> _calculateStatistics() {
+    final stats = <String, dynamic>{};
+
+    // 1. Всего рыбалок
+    stats['totalTrips'] = _filteredNotes.length;
+
+    // 2. Самая долгая рыбалка
+    int longestTrip = 0;
+    String longestTripName = '';
+    for (var note in _filteredNotes) {
+      if (note.isMultiDay && note.endDate != null) {
+        int days = note.endDate!.difference(note.date).inDays + 1;
+        if (days > longestTrip) {
+          longestTrip = days;
+          longestTripName = note.title.isNotEmpty ? note.title : note.location;
+        }
+      } else {
+        if (longestTrip == 0) longestTrip = 1;
+      }
+    }
+    stats['longestTrip'] = longestTrip;
+    stats['longestTripName'] = longestTripName;
+
+    // 3. Всего дней на рыбалке
+    Set<DateTime> uniqueFishingDays = {};
+    for (var note in _filteredNotes) {
+      DateTime startDate = DateTime(note.date.year, note.date.month, note.date.day);
+      DateTime endDate = note.endDate != null
+          ? DateTime(note.endDate!.year, note.endDate!.month, note.endDate!.day)
+          : startDate;
+
+      for (int i = 0; i <= endDate.difference(startDate).inDays; i++) {
+        uniqueFishingDays.add(startDate.add(Duration(days: i)));
+      }
+    }
+    stats['totalDaysFishing'] = uniqueFishingDays.length;
+
+    // 4. Всего поймано рыб
+    int totalFish = 0;
+    for (var note in _filteredNotes) {
+      totalFish += note.biteRecords.length;
+    }
+    stats['totalFish'] = totalFish;
+
+    // 5. Самая большая рыба
+    BiteRecord? biggestFish;
+    String biggestFishLocation = '';
+    for (var note in _filteredNotes) {
+      for (var record in note.biteRecords) {
+        if (biggestFish == null || record.weight > biggestFish.weight) {
+          biggestFish = record;
+          biggestFishLocation = note.location;
+        }
+      }
+    }
+    stats['biggestFish'] = biggestFish;
+    stats['biggestFishLocation'] = biggestFishLocation;
+
+    // 6. Последний выезд
+    FishingNoteModel? lastTrip;
+    if (_filteredNotes.isNotEmpty) {
+      lastTrip = _filteredNotes.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
+    }
+    stats['lastTrip'] = lastTrip;
+
+    // 7. Лучший месяц по количеству рыбы
+    Map<String, int> fishByMonth = {};
+    for (var note in _filteredNotes) {
+      for (var record in note.biteRecords) {
+        String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
+        fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
+      }
+    }
+
+    String bestMonth = '';
+    int bestMonthFish = 0;
+    fishByMonth.forEach((month, count) {
+      if (count > bestMonthFish) {
+        bestMonthFish = count;
+        bestMonth = month;
+      }
+    });
+    stats['bestMonth'] = bestMonth;
+    stats['bestMonthFish'] = bestMonthFish;
+
+    return stats;
   }
 
   @override
   Widget build(BuildContext context) {
+    final stats = _calculateStatistics();
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
+        backgroundColor: AppConstants.backgroundColor,
+        elevation: 0,
         title: Text(
           'Статистика',
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppConstants.textColor),
-            onPressed: () {
-              final provider = Provider.of<StatisticsProvider>(context, listen: false);
-              provider.loadData();
-            },
-          ),
-        ],
       ),
-      body: Consumer<StatisticsProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Фильтр периода
+            _buildPeriodFilter(),
+            const SizedBox(height: 24),
+
+            // Статистические карточки
+            _buildStatCard(
+              icon: Icons.format_list_bulleted,
+              title: 'Всего рыбалок',
+              value: stats['totalTrips'].toString(),
+              subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildStatCard(
+              icon: Icons.access_time,
+              title: 'Самая долгая',
+              value: stats['longestTrip'].toString(),
+              subtitle: DateFormatter.getDaysText(stats['longestTrip']),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildStatCard(
+              icon: Icons.calendar_today,
+              title: 'Всего дней на рыбалке',
+              value: stats['totalDaysFishing'].toString(),
+              subtitle: 'дней на рыбалке',
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildStatCard(
+              icon: Icons.set_meal,
+              title: 'Всего поймано рыб',
+              value: stats['totalFish'].toString(),
+              subtitle: DateFormatter.getFishText(stats['totalFish']),
+            ),
+
+            const SizedBox(height: 16),
+
+            if (stats['biggestFish'] != null)
+              _buildStatCard(
+                icon: Icons.emoji_events,
+                title: 'Самая большая рыба',
+                value: '${stats['biggestFish'].weight} кг',
+                subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
+                valueColor: Colors.amber,
               ),
-            );
-          }
 
-          if (provider.errorMessage != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Colors.red,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    child: Text(
-                      provider.errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => provider.loadData(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      foregroundColor: AppConstants.textColor,
-                    ),
-                    child: const Text('Повторить'),
-                  ),
-                ],
+            const SizedBox(height: 16),
+
+            if (stats['lastTrip'] != null)
+              _buildStatCard(
+                icon: Icons.directions_car,
+                title: 'Последний выезд',
+                value: stats['lastTrip'].title.isNotEmpty
+                    ? '«${stats['lastTrip'].title}»'
+                    : stats['lastTrip'].location,
+                subtitle: DateFormat('d MMMM yyyy', 'ru').format(stats['lastTrip'].date),
               ),
-            );
-          }
 
-          // Основной контент
-          return FadeTransition(
-            opacity: _fadeAnimation,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Блок фильтрации по периоду
-                  _buildPeriodFilter(provider),
-                  const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-                  // Если нет данных
-                  if (provider.statistics.hasNoData)
-                    _buildNoDataState()
-                  else
-                  // Блоки статистики
-                    _buildStatisticsBlocks(provider.statistics),
-                ],
+            if (stats['bestMonth'].isNotEmpty)
+              _buildStatCard(
+                icon: Icons.star,
+                title: 'Лучший месяц',
+                value: stats['bestMonth'],
+                subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
+                valueColor: Colors.amber,
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Виджет фильтрации по периоду
-  Widget _buildPeriodFilter(StatisticsProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Период',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Кнопки предустановленных интервалов
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
-              children: [
-                _buildPeriodButton(
-                  'Неделя',
-                  provider.selectedPeriod == StatisticsPeriod.week,
-                      () => provider.changePeriod(StatisticsPeriod.week),
-                ),
-                const SizedBox(width: 12),
-                _buildPeriodButton(
-                  'Месяц',
-                  provider.selectedPeriod == StatisticsPeriod.month,
-                      () => provider.changePeriod(StatisticsPeriod.month),
-                ),
-                const SizedBox(width: 12),
-                _buildPeriodButton(
-                  'Год',
-                  provider.selectedPeriod == StatisticsPeriod.year,
-                      () => provider.changePeriod(StatisticsPeriod.year),
-                ),
-                const SizedBox(width: 12),
-                _buildPeriodButton(
-                  'Всё время',
-                  provider.selectedPeriod == StatisticsPeriod.allTime,
-                      () => provider.changePeriod(StatisticsPeriod.allTime),
-                ),
-                const SizedBox(width: 12),
-                _buildPeriodButton(
-                  'Интервал',
-                  provider.selectedPeriod == StatisticsPeriod.custom,
-                      () => provider.changePeriod(StatisticsPeriod.custom),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Блок выбора пользовательского интервала
-        if (provider.selectedPeriod == StatisticsPeriod.custom)
-          _buildCustomDateRangePicker(provider),
-      ],
-    );
-  }
-
-  // Кнопка выбора периода
-  Widget _buildPeriodButton(String text, bool isSelected, VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppConstants.primaryColor
-                : AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? AppConstants.primaryColor
-                  : Colors.grey.withOpacity(0.5),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              fontSize: 16,
-            ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  // Виджет выбора пользовательского интервала
-  Widget _buildCustomDateRangePicker(StatisticsProvider provider) {
+  Widget _buildPeriodFilter() {
     return Container(
-      margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Выберите интервал дат',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDatePicker(
-                  'С даты',
-                  provider.customDateRange.startDate,
-                      (newDate) {
-                    if (newDate != null) {
-                      // Если новая дата начала позже текущей даты окончания,
-                      // устанавливаем дату окончания равной дате начала
-                      final endDate = newDate.isAfter(provider.customDateRange.endDate)
-                          ? newDate
-                          : provider.customDateRange.endDate;
-
-                      provider.updateCustomDateRange(newDate, endDate);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDatePicker(
-                  'По дату',
-                  provider.customDateRange.endDate,
-                      (newDate) {
-                    if (newDate != null) {
-                      // Если новая дата окончания раньше текущей даты начала,
-                      // устанавливаем дату начала равной дате окончания
-                      final startDate = newDate.isBefore(provider.customDateRange.startDate)
-                          ? newDate
-                          : provider.customDateRange.startDate;
-
-                      provider.updateCustomDateRange(startDate, newDate);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Виджет для выбора даты
-  Widget _buildDatePicker(String label, DateTime initialDate, ValueChanged<DateTime?> onDateSelected) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: initialDate,
-              firstDate: DateTime(2020),
-              lastDate: DateTime.now(),
-              builder: (context, child) {
-                return Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.dark(
-                      primary: AppConstants.primaryColor,
-                      onPrimary: AppConstants.textColor,
-                      surface: AppConstants.surfaceColor,
-                      onSurface: AppConstants.textColor,
-                    ),
-                    dialogBackgroundColor: AppConstants.backgroundColor,
-                  ),
-                  child: child!,
-                );
-              },
-            );
-            onDateSelected(date);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppConstants.backgroundColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Colors.grey.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  DateFormat('dd.MM.yyyy').format(initialDate),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
+              children: _periods.map((period) =>
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(period),
+                      selected: _selectedPeriod == period,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedPeriod = period;
+                            if (period == 'С дата' || period == 'По дату') {
+                              _selectDateRange();
+                            } else {
+                              _filterNotes();
+                            }
+                          });
+                        }
+                      },
+                      selectedColor: AppConstants.primaryColor,
+                      labelStyle: TextStyle(
+                        color: _selectedPeriod == period
+                            ? AppConstants.textColor
+                            : AppConstants.textColor.withOpacity(0.7),
+                      ),
+                      backgroundColor: AppConstants.surfaceColor,
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.calendar_today,
+              ).toList(),
+            ),
+          ),
+          if (_selectedPeriod == 'С дата' && _customStartDate != null && _customEndDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '${DateFormat('dd.MM.yyyy').format(_customStartDate!)} - ${DateFormat('dd.MM.yyyy').format(_customEndDate!)}',
+                style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
-                  size: 16,
+                  fontSize: 14,
                 ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Виджет при отсутствии данных
-  Widget _buildNoDataState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 40),
-          Icon(
-            Icons.bar_chart,
-            color: AppConstants.textColor.withOpacity(0.3),
-            size: 80,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Нет данных для статистики',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'Добавьте заметки о рыбалке, чтобы увидеть статистику',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 16,
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, '/fishing_type_selection');
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить заметку'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
-              foregroundColor: AppConstants.textColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // Блоки статистики
-  Widget _buildStatisticsBlocks(FishingStatistics statistics) {
-    return Column(
-      children: [
-        // Первый ряд: всего рыбалок и самая долгая рыбалка
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Всего рыбалок',
-                statistics.totalTrips.toString(),
-                DateFormatter.getFishingTripsText(statistics.totalTrips),
-                Icons.directions_boat,
-                Colors.blue,
-              ),
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: AppConstants.primaryColor,
+              onPrimary: AppConstants.textColor,
+              surface: AppConstants.surfaceColor,
+              onSurface: AppConstants.textColor,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                'Самая долгая рыбалка',
-                statistics.longestTripDays.toString(),
-                DateFormatter.getDaysText(statistics.longestTripDays),
-                Icons.timer,
-                Colors.orange,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Второй ряд: всего дней на рыбалке и всего рыб
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Всего дней на рыбалке',
-                statistics.totalDaysOnFishing.toString(),
-                DateFormatter.getDaysText(statistics.totalDaysOnFishing),
-                Icons.calendar_today,
-                Colors.green,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                'Всего поймано',
-                statistics.totalFish.toString(),
-                DateFormatter.getFishText(statistics.totalFish),
-                Icons.set_meal,
-                Colors.purple,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Третий ряд: самая большая рыба (полная ширина)
-        if (statistics.biggestFish != null)
-          _buildDetailedStatCard(
-            'Самая большая рыба',
-            statistics.biggestFish!.formattedText,
-            Icons.emoji_events,
-            Colors.amber,
           ),
-        if (statistics.biggestFish != null)
-          const SizedBox(height: 16),
-
-        // Четвертый ряд: последний выезд (полная ширина)
-        if (statistics.latestTrip != null)
-          _buildDetailedStatCard(
-            'Последний выезд',
-            statistics.latestTrip!.formattedText,
-            Icons.access_time,
-            Colors.teal,
-          ),
-        if (statistics.latestTrip != null)
-          const SizedBox(height: 16),
-
-        // Пятый ряд: лучший месяц по рыбе (полная ширина)
-        if (statistics.bestMonth != null)
-          _buildDetailedStatCard(
-            'Лучший месяц по рыбе',
-            statistics.bestMonth!.formattedText,
-            Icons.insights,
-            Colors.deepPurple,
-          ),
-
-        // Отступ в конце
-        const SizedBox(height: 32),
-      ],
+          child: child!,
+        );
+      },
     );
+
+    if (picked != null) {
+      setState(() {
+        _customStartDate = picked.start;
+        _customEndDate = picked.end;
+        _filterNotes();
+      });
+    }
   }
 
-  // Карточка статистики (маленькая)
-  Widget _buildStatCard(
-      String title,
-      String value,
-      String subtitle,
-      IconData icon,
-      Color iconColor,
-      ) {
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String subtitle,
+    Color? valueColor,
+  }) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20), // Увеличиваем вертикальный отступ
-      height: 150, // Фиксированная высота для всех карточек
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Равномерно распределяем
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 24, // Увеличиваем размер иконки
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: valueColor ?? AppConstants.textColor,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   style: TextStyle(
                     color: AppConstants.textColor.withOpacity(0.7),
                     fontSize: 14,
                   ),
-                  maxLines: 2, // Разрешаем 2 строки для заголовка
-                  overflow: TextOverflow.ellipsis, // Добавляем многоточие, если текст не помещается
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 40, // Увеличиваем размер основного значения
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: AppConstants.textColor.withOpacity(0.7),
-              fontSize: 16, // Увеличиваем размер подтекста
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Карточка статистики (широкая, с детальной информацией)
-  Widget _buildDetailedStatCard(
-      String title,
-      String content,
-      IconData icon,
-      Color iconColor,
-      ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20), // Увеличиваем отступы
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 24, // Увеличиваем размер иконки
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
+                const SizedBox(height: 4),
+                Text(
+                  value,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 16, // Увеличиваем размер заголовка
+                    color: valueColor ?? AppConstants.textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20), // Увеличиваем отступ для лучшего разделения
-          Padding(
-            padding: const EdgeInsets.only(left: 4.0), // Уменьшаем отступ слева
-            child: Text(
-              content,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 22, // Оставляем такой же размер текста
-                fontWeight: FontWeight.bold,
-              ),
-              // Убираем ограничение на количество строк
-              // и позволяем тексту иметь нужную высоту
-              softWrap: true,
-              overflow: TextOverflow.visible, // Текст будет виден полностью
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
