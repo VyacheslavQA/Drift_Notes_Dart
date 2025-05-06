@@ -67,6 +67,17 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
         .where((record) => record.dayIndex == _selectedDayIndex)
         .toList();
 
+    // Считаем количество пойманных рыб (с названием и весом)
+    final caughtFishCount = widget.note.biteRecords
+        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
+        .length;
+
+    // Считаем общее количество поклевок
+    final totalBitesCount = widget.note.biteRecords.length;
+
+    // Количество непойманных рыб (просто поклевки)
+    final missedBitesCount = totalBitesCount - caughtFishCount;
+
     // Сортируем записи по времени
     final sortedRecords = List<BiteRecord>.from(selectedDayRecords)
       ..sort((a, b) => b.time.compareTo(a.time)); // Сначала новые
@@ -74,19 +85,41 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Заголовок секции
+        // Заголовок секции с информацией о пойманных рыбах и поклевках
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                'Записи о поклёвках',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Записи о поклёвках',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (caughtFishCount > 0)
+                    Text(
+                      'Поймано: ${caughtFishCount} ${DateFormatter.getFishText(caughtFishCount)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  if (missedBitesCount > 0)
+                    Text(
+                      'Поклёвок без поимки: $missedBitesCount',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
               ),
             ),
             ElevatedButton.icon(
@@ -108,13 +141,24 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
         // Селектор дней рыбалки (только для многодневных рыбалок)
         if (totalDays > 1) ...[
           const SizedBox(height: 8),
-          _buildDaysTabs(totalDays, allDays),
+          _buildDaysList(totalDays, allDays),
           const SizedBox(height: 12),
         ],
 
         // График поклевок
-        if (sortedRecords.isNotEmpty)
+        if (sortedRecords.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            'График поклёвок',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
           _buildBiteRecordsTimeline(context, sortedRecords),
+        ],
 
         const SizedBox(height: 12),
 
@@ -147,43 +191,50 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     return 'День ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
   }
 
-  // Строим табы для переключения между днями
-  Widget _buildDaysTabs(int totalDays, List<DateTime> days) {
+  // Строим список дней (выпадающее меню)
+  Widget _buildDaysList(int totalDays, List<DateTime> days) {
     return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: totalDays,
-        itemBuilder: (context, index) {
-          final isSelected = index == _selectedDayIndex;
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDayIndex = index;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _getDayName(index, days[index]),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
+      width: double.infinity,
+      child: DropdownButtonHideUnderline(
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppConstants.primaryColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButton<int>(
+            value: _selectedDayIndex,
+            isExpanded: true,
+            dropdownColor: AppConstants.primaryColor,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-          );
-        },
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: AppConstants.textColor,
+            ),
+            items: List.generate(totalDays, (index) {
+              return DropdownMenuItem<int>(
+                value: index,
+                child: Text(
+                  _getDayName(index, days[index]),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                  ),
+                ),
+              );
+            }),
+            onChanged: (int? value) {
+              if (value != null) {
+                setState(() {
+                  _selectedDayIndex = value;
+                });
+              }
+            },
+          ),
+        ),
       ),
     );
   }
@@ -227,8 +278,16 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     }
   }
 
+  // Определяет, является ли запись пойманной рыбой или просто поклевкой
+  bool _isFishCaught(BiteRecord record) {
+    return record.fishType.isNotEmpty && record.weight > 0;
+  }
+
   // Построение карточки записи о поклёвке
   Widget _buildBiteRecordCard(BuildContext context, BiteRecord record) {
+    // Определяем, является ли запись пойманной рыбой или просто поклевкой
+    final bool isCaught = _isFishCaught(record);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFF12332E),
@@ -264,6 +323,41 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                             fontSize: 16,
                           ),
                         ),
+                        if (isCaught) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Поймана',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Поклевка',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -399,63 +493,44 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   // Построение графика поклёвок
   Widget _buildBiteRecordsTimeline(BuildContext context, List<BiteRecord> records) {
-    // Если нет записей, не показываем график
-    if (records.isEmpty) return const SizedBox();
-
     // Создаем временную шкалу от 00:00 до 23:59
     const hoursInDay = 24;
     const divisions = 48; // 30-минутные интервалы
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0, top: 16.0),
-          child: Text(
-            'График поклёвок',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+    return Container(
+      height: 130,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12332E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: CustomPaint(
+              size: Size(MediaQuery.of(context).size.width - 50, 80),
+              painter: _BiteRecordsTimelinePainter(
+                biteRecords: records,
+                isFishCaughtCallback: _isFishCaught,
+              ),
             ),
           ),
-        ),
-        Container(
-          height: 130,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF12332E),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: CustomPaint(
-                  size: Size(MediaQuery.of(context).size.width - 50, 80),
-                  painter: _BiteRecordsTimelinePainter(
-                    biteRecords: records,
-                    divisions: divisions,
+              for (int i = 0; i <= hoursInDay; i += 4)
+                Text(
+                  '$i:00',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.8),
+                    fontSize: 10,
                   ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (int i = 0; i <= hoursInDay; i += 4)
-                    Text(
-                      '$i:00',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 10,
-                      ),
-                    ),
-                ],
-              ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -507,11 +582,11 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 // Класс для отрисовки графика поклевок (таймлайна)
 class _BiteRecordsTimelinePainter extends CustomPainter {
   final List<BiteRecord> biteRecords;
-  final int divisions;
+  final bool Function(BiteRecord) isFishCaughtCallback;
 
   _BiteRecordsTimelinePainter({
     required this.biteRecords,
-    required this.divisions,
+    required this.isFishCaughtCallback,
   });
 
   @override
@@ -528,6 +603,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     );
 
     // Рисуем деления
+    final divisions = 48; // 30-минутные интервалы
     final divisionWidth = size.width / divisions;
     for (int i = 0; i <= divisions; i++) {
       final x = i * divisionWidth;
@@ -541,24 +617,29 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     }
 
     // Рисуем точки поклевок
-    final bitePaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.fill;
-
     for (final record in biteRecords) {
       final timeInMinutes = record.time.hour * 60 + record.time.minute;
       final totalMinutes = 24 * 60;
       final position = timeInMinutes / totalMinutes * size.width;
 
+      final bool isCaught = isFishCaughtCallback(record);
+
+      // Используем разные цвета для пойманных рыб и просто поклевок
+      final Color dotColor = isCaught ? Colors.green : Colors.orange;
+
+      final dotPaint = Paint()
+        ..color = dotColor
+        ..style = PaintingStyle.fill;
+
       // Рисуем кружок для поклевки
       canvas.drawCircle(
         Offset(position, size.height / 2),
         7,
-        bitePaint,
+        dotPaint,
       );
 
-      // Если есть вес или рыба имеет тип, рисуем обводку
-      if (record.weight > 0 || record.fishType.isNotEmpty) {
+      // Для пойманных рыб рисуем обводку, размер которой зависит от веса
+      if (isCaught) {
         final weightPaint = Paint()
           ..color = Colors.orange
           ..style = PaintingStyle.stroke
@@ -571,9 +652,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         const maxRadius = 18.0;
 
         final weight = record.weight.clamp(0.1, maxWeight);
-        final radius = record.weight > 0
-            ? minRadius + (weight / maxWeight) * (maxRadius - minRadius)
-            : minRadius;
+        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
 
         canvas.drawCircle(
           Offset(position, size.height / 2),
