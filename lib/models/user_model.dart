@@ -5,6 +5,7 @@ class UserModel {
   final String email;
   final String? displayName;
   final String? photoUrl;
+  final String? avatarUrl; // Добавленное поле
   final String? country;
   final String? city;
   final String? experience;
@@ -15,6 +16,7 @@ class UserModel {
     required this.email,
     this.displayName,
     this.photoUrl,
+    this.avatarUrl, // Добавленное поле
     this.country,
     this.city,
     this.experience,
@@ -27,6 +29,7 @@ class UserModel {
       email: json['email'] ?? '',
       displayName: json['displayName'],
       photoUrl: json['photoUrl'],
+      avatarUrl: json['avatarUrl'], // Добавленное поле
       country: json['country'],
       city: json['city'],
       experience: json['experience'],
@@ -40,6 +43,7 @@ class UserModel {
       'email': email,
       'displayName': displayName,
       'photoUrl': photoUrl,
+      'avatarUrl': avatarUrl, // Добавленное поле
       'country': country,
       'city': city,
       'experience': experience,
@@ -52,6 +56,7 @@ class UserModel {
     String? email,
     String? displayName,
     String? photoUrl,
+    String? avatarUrl, // Добавленное поле
     String? country,
     String? city,
     String? experience,
@@ -62,6 +67,7 @@ class UserModel {
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
+      avatarUrl: avatarUrl ?? this.avatarUrl, // Добавленное поле
       country: country ?? this.country,
       city: city ?? this.city,
       experience: experience ?? this.experience,

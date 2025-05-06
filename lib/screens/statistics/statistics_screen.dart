@@ -1,3 +1,5 @@
+// Путь: lib/screens/statistics/statistics_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
@@ -15,15 +17,15 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   final _fishingNoteRepository = FishingNoteRepository();
 
-  String _selectedPeriod = 'Неделя';
+  String _selectedPeriod = 'Месяц';
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   bool _isLoading = true;
   List<FishingNoteModel> _filteredNotes = [];
   List<FishingNoteModel> _allNotes = [];
 
-  // Периоды для фильтрации
-  final List<String> _periods = ['Неделя', 'Месяц', 'Год', 'С дата', 'По дату'];
+  // Обновленные периоды для фильтрации
+  final List<String> _periods = ['Неделя', 'Месяц', 'Год', 'Все время', 'Период'];
 
   @override
   void initState() {
@@ -72,16 +74,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         final yearAgo = now.subtract(const Duration(days: 365));
         filtered = filtered.where((note) => note.date.isAfter(yearAgo)).toList();
         break;
-      case 'С дата':
+      case 'Период':
         if (_customStartDate != null && _customEndDate != null) {
-          filtered = filtered.where((note) =>
-          note.date.isAfter(_customStartDate!) &&
-              note.date.isBefore(_customEndDate!)
-          ).toList();
+          filtered = filtered.where((note) {
+            final noteDate = DateTime(note.date.year, note.date.month, note.date.day);
+            final startDate = DateTime(_customStartDate!.year, _customStartDate!.month, _customStartDate!.day);
+            final endDate = DateTime(_customEndDate!.year, _customEndDate!.month, _customEndDate!.day);
+            return !noteDate.isBefore(startDate) && !noteDate.isAfter(endDate);
+          }).toList();
         }
         break;
-      case 'По дату':
-      // Показываем все заметки
+      case 'Все время':
+      // Показываем все заметки без фильтрации
         break;
     }
 
@@ -308,7 +312,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         if (selected) {
                           setState(() {
                             _selectedPeriod = period;
-                            if (period == 'С дата' || period == 'По дату') {
+                            if (period == 'Период') {
                               _selectDateRange();
                             } else {
                               _filterNotes();
@@ -328,7 +332,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ).toList(),
             ),
           ),
-          if (_selectedPeriod == 'С дата' && _customStartDate != null && _customEndDate != null)
+          if (_selectedPeriod == 'Период' && _customStartDate != null && _customEndDate != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
