@@ -8,7 +8,7 @@ import '../../models/fishing_note_model.dart';
 import '../../utils/date_formatter.dart';
 import 'bite_record_screen.dart';
 
-class BiteRecordsSection extends StatelessWidget {
+class BiteRecordsSection extends StatefulWidget {
   final FishingNoteModel note;
   final Function(BiteRecord) onAddRecord;
   final Function(BiteRecord) onUpdateRecord;
@@ -23,9 +23,52 @@ class BiteRecordsSection extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _BiteRecordsSectionState createState() => _BiteRecordsSectionState();
+}
+
+class _BiteRecordsSectionState extends State<BiteRecordsSection> {
+  // Текущий выбранный день (индекс)
+  int _selectedDayIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
+    // Определяем количество дней рыбалки
+    int totalDays = 1;
+    List<DateTime> allDays = [];
+
+    if (widget.note.isMultiDay && widget.note.endDate != null) {
+      // Создаем список всех дней рыбалки
+      DateTime currentDay = DateTime(
+          widget.note.date.year,
+          widget.note.date.month,
+          widget.note.date.day
+      );
+
+      DateTime endDay = DateTime(
+          widget.note.endDate!.year,
+          widget.note.endDate!.month,
+          widget.note.endDate!.day
+      );
+
+      // Добавляем все дни включительно от начальной до конечной даты
+      while (!currentDay.isAfter(endDay)) {
+        allDays.add(currentDay);
+        currentDay = currentDay.add(const Duration(days: 1));
+      }
+
+      totalDays = allDays.length;
+    } else {
+      // Для однодневной рыбалки
+      allDays.add(widget.note.date);
+    }
+
+    // Фильтруем записи по выбранному дню
+    final selectedDayRecords = widget.note.biteRecords
+        .where((record) => record.dayIndex == _selectedDayIndex)
+        .toList();
+
     // Сортируем записи по времени
-    final sortedRecords = List<BiteRecord>.from(note.biteRecords)
+    final sortedRecords = List<BiteRecord>.from(selectedDayRecords)
       ..sort((a, b) => b.time.compareTo(a.time)); // Сначала новые
 
     return Column(
@@ -62,6 +105,13 @@ class BiteRecordsSection extends StatelessWidget {
           ],
         ),
 
+        // Селектор дней рыбалки (только для многодневных рыбалок)
+        if (totalDays > 1) ...[
+          const SizedBox(height: 8),
+          _buildDaysTabs(totalDays, allDays),
+          const SizedBox(height: 12),
+        ],
+
         // График поклевок
         if (sortedRecords.isNotEmpty)
           _buildBiteRecordsTimeline(context, sortedRecords),
@@ -74,7 +124,9 @@ class BiteRecordsSection extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Нет записей о поклёвках',
+                totalDays > 1
+                    ? 'Нет записей о поклёвках за ${_getDayName(_selectedDayIndex, allDays[_selectedDayIndex])}'
+                    : 'Нет записей о поклёвках',
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontStyle: FontStyle.italic,
@@ -90,17 +142,65 @@ class BiteRecordsSection extends StatelessWidget {
     );
   }
 
+  // Метод для получения форматированного названия дня
+  String _getDayName(int index, DateTime date) {
+    return 'День ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
+  }
+
+  // Строим табы для переключения между днями
+  Widget _buildDaysTabs(int totalDays, List<DateTime> days) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: totalDays,
+        itemBuilder: (context, index) {
+          final isSelected = index == _selectedDayIndex;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDayIndex = index;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _getDayName(index, days[index]),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // Добавление новой записи о поклёвке
   Future<void> _addBiteRecord(BuildContext context) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const BiteRecordScreen(),
+        builder: (context) => BiteRecordScreen(
+          dayIndex: _selectedDayIndex,
+        ),
       ),
     );
 
     if (result != null && result is BiteRecord) {
-      onAddRecord(result);
+      widget.onAddRecord(result);
     }
   }
 
@@ -119,10 +219,10 @@ class BiteRecordsSection extends StatelessWidget {
     if (result != null) {
       if (result == 'delete') {
         // Если пришла команда удаления
-        onDeleteRecord(record.id);
+        widget.onDeleteRecord(record.id);
       } else if (result is BiteRecord) {
         // Если пришла обновленная запись
-        onUpdateRecord(result);
+        widget.onUpdateRecord(result);
       }
     }
   }
@@ -391,7 +491,7 @@ class BiteRecordsSection extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              onDeleteRecord(record.id);
+              widget.onDeleteRecord(record.id);
             },
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
@@ -457,8 +557,8 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         bitePaint,
       );
 
-      // Если есть вес, рисуем размер круга в зависимости от веса
-      if (record.weight > 0) {
+      // Если есть вес или рыба имеет тип, рисуем обводку
+      if (record.weight > 0 || record.fishType.isNotEmpty) {
         final weightPaint = Paint()
           ..color = Colors.orange
           ..style = PaintingStyle.stroke
@@ -471,7 +571,9 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         const maxRadius = 18.0;
 
         final weight = record.weight.clamp(0.1, maxWeight);
-        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
+        final radius = record.weight > 0
+            ? minRadius + (weight / maxWeight) * (maxRadius - minRadius)
+            : minRadius;
 
         canvas.drawCircle(
           Offset(position, size.height / 2),

@@ -11,8 +11,8 @@ import '../../widgets/loading_overlay.dart';
 import '../../services/firebase/firebase_service.dart';
 
 class BiteRecordScreen extends StatefulWidget {
-  final BiteRecord? initialRecord; // Добавлен параметр для редактирования
-  final int dayIndex;
+  final BiteRecord? initialRecord; // Параметр для редактирования
+  final int dayIndex; // Добавлен параметр для выбранного дня
 
   const BiteRecordScreen({
     Key? key,
@@ -28,7 +28,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fishTypeController;
   late TextEditingController _weightController;
-  late TextEditingController _lengthController; // Новое поле
+  late TextEditingController _lengthController;
   late TextEditingController _notesController;
   final _firebaseService = FirebaseService();
 
@@ -163,8 +163,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       }
     });
   }
-
-  // Путь: lib/screens/fishing_note/bite_record_screen.dart (продолжение)
 
   // Загрузка выбранных фото в Firebase Storage
   Future<List<String>> _uploadPhotos() async {
@@ -336,6 +334,19 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
+                // Информация о выбранном дне (для многодневной рыбалки)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    'День рыбалки: ${widget.dayIndex + 1}',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: 16,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+
                 // Время поклевки
                 _buildSectionHeader('Время поклёвки*'),
                 GestureDetector(

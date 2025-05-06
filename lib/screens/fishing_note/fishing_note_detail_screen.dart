@@ -456,13 +456,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           const SizedBox(height: 20),
 
-          // Поклевки
-          BiteRecordsSection(
-            note: _note!,
-            onAddRecord: _addBiteRecord,
-            onUpdateRecord: _updateBiteRecord,
-            onDeleteRecord: _deleteBiteRecord,
-          ),
+    // Поклевки
+    BiteRecordsSection(
+    note: _note!,
+    onAddRecord: _addBiteRecord,
+    onUpdateRecord: _updateBiteRecord,
+    onDeleteRecord: _deleteBiteRecord,
+    ),
 
           const SizedBox(height: 20),
 
