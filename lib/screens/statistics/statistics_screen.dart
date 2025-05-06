@@ -229,11 +229,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             // Основная статистика в новом порядке
             _buildMainStatistics(),
 
-            const SizedBox(height: 24),
-
-            // Дополнительные разделы статистики
-            _buildEfficiencySection(),
-
             const SizedBox(height: 100), // Доп. отступ внизу для скролла
           ],
         ),
@@ -430,102 +425,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  // Секция с данными об эффективности по типам рыбалки
-  Widget _buildEfficiencySection() {
-    final efficiencyByType = _statisticsProvider.calculateEfficiencyByFishingType();
-
-    if (efficiencyByType.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Эффективность по типам рыбалки',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: efficiencyByType.entries.map((entry) {
-              final efficiency = entry.value;
-              return Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          entry.key,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 7,
-                        child: Stack(
-                          children: [
-                            Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                            FractionallySizedBox(
-                              widthFactor: efficiency / 100,
-                              child: Container(
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: _getEfficiencyColor(efficiency),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 40,
-                        child: Text(
-                          '$efficiency%',
-                          style: TextStyle(
-                            color: _getEfficiencyColor(efficiency),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  if (entry.key != efficiencyByType.keys.last)
-                    const Divider(height: 24, color: Colors.white24),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatCard({
     required IconData icon,
     required String title,
@@ -593,12 +492,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
     if (rate >= 40) return Colors.orange;
-    return Colors.red;
-  }
-
-  Color _getEfficiencyColor(int efficiency) {
-    if (efficiency >= 70) return Colors.green;
-    if (efficiency >= 40) return Colors.orange;
     return Colors.red;
   }
 }
