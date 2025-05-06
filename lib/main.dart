@@ -16,6 +16,7 @@ import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'providers/timer_provider.dart';
 import 'firebase_options.dart';
+import 'providers/statistics_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => TimerProvider()),
+        // Добавляем провайдер статистики без внешних зависимостей
+        ChangeNotifierProvider(create: (context) => StatisticsProvider()),
       ],
       child: const DriftNotesApp(),
     ),

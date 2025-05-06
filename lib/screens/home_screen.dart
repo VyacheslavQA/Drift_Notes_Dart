@@ -13,6 +13,7 @@ import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
 import 'calendar/fishing_calendar_screen.dart';
+import 'statistics/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -678,10 +679,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: 'Статистика',
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Экран статистики будет доступен позже')),
-                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+                ).then((value) {
+                  // Обновим данные, если вернулись с экрана статистики
+                  _loadFishingNotes();
+                });
               },
             ),
 
