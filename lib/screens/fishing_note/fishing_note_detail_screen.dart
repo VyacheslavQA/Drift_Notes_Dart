@@ -418,6 +418,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   Widget _buildNoteDetails() {
     if (_note == null) return const SizedBox();
 
+    // Подсчет пойманных рыб и нереализованных поклевок
+    final caughtFishCount = _note!.biteRecords
+        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
+        .length;
+    final missedBitesCount = _note!.biteRecords.length - caughtFishCount;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -430,7 +436,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           const SizedBox(height: 20),
 
           // Общая информация
-          _buildInfoCard(),
+          _buildInfoCard(
+              caughtFishCount: caughtFishCount,
+              missedBitesCount: missedBitesCount
+          ),
 
           const SizedBox(height: 20),
 
@@ -456,13 +465,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           const SizedBox(height: 20),
 
-    // Поклевки
-    BiteRecordsSection(
-    note: _note!,
-    onAddRecord: _addBiteRecord,
-    onUpdateRecord: _updateBiteRecord,
-    onDeleteRecord: _deleteBiteRecord,
-    ),
+          // Поклевки
+          BiteRecordsSection(
+            note: _note!,
+            onAddRecord: _addBiteRecord,
+            onUpdateRecord: _updateBiteRecord,
+            onDeleteRecord: _deleteBiteRecord,
+          ),
 
           const SizedBox(height: 20),
 
@@ -516,71 +525,71 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-      Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSectionHeader('Фотографии'),
-        TextButton.icon(
-          icon: const Icon(Icons.fullscreen, size: 18),
-          label: const Text('Просмотр'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppConstants.primaryColor,
-          ),
-          onPressed: () => _viewPhotoGallery(0),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Фотографии'),
+            TextButton.icon(
+              icon: const Icon(Icons.fullscreen, size: 18),
+              label: const Text('Просмотр'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppConstants.primaryColor,
+              ),
+              onPressed: () => _viewPhotoGallery(0),
+            ),
+          ],
         ),
-      ],
-    ),
-    SizedBox(
-    height: 200,
-    child: PageView.builder(
-    itemCount: _note!.photoUrls.length,
-    itemBuilder: (context, index) {
-    return GestureDetector(
-    onTap: () => _viewPhotoGallery(index),
-    child: Container(
-    margin: const EdgeInsets.symmetric(horizontal: 4.0),
-    decoration: BoxDecoration(
-    borderRadius: BorderRadius.circular(12),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: CachedNetworkImage(
-    imageUrl: _note!.photoUrls[index],
-    fit: BoxFit.cover,
-    placeholder: (context, url) => Center(
-    child: CircularProgressIndicator(
-    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-    ),
-    ),
-    errorWidget: (context, url, error) => const Icon(
-    Icons.error,
-    color: Colors.red,
-    size: 50,
-    ),
-    ),
-    ),
-    );
-    },
-    ),
-    ),
-    // Индикатор количества фотографий
-    if (_note!.photoUrls.length > 1)
-    Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Center(
-        child: Text(
-          'Свайпните для просмотра всех фото (${_note!.photoUrls.length})',
-          style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
-            fontSize: 14,
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            itemCount: _note!.photoUrls.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () => _viewPhotoGallery(index),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: CachedNetworkImage(
+                    imageUrl: _note!.photoUrls[index],
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
+                      Icons.error,
+                      color: Colors.red,
+                      size: 50,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
-      ),
-    ),
+        // Индикатор количества фотографий
+        if (_note!.photoUrls.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: Text(
+                'Свайпните для просмотра всех фото (${_note!.photoUrls.length})',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildInfoCard() {
+  Widget _buildInfoCard({required int caughtFishCount, required int missedBitesCount}) {
     // Получение самой крупной рыбы
     final biggestFish = _note!.biggestFish;
 
@@ -692,17 +701,17 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
             const SizedBox(height: 12),
 
-            // Количество рыб
+            // Пойманные рыбы
             Row(
               children: [
                 Icon(
                   Icons.set_meal,
-                  color: AppConstants.textColor,
+                  color: Colors.green,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Поклёвок:',
+                  'Поймано:',
                   style: TextStyle(
                     color: AppConstants.textColor.withOpacity(0.7),
                     fontSize: 14,
@@ -711,9 +720,41 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${_note!.biteRecords.length} ${DateFormatter.getFishText(_note!.biteRecords.length)}',
+                    '$caughtFishCount ${DateFormatter.getFishText(caughtFishCount)}',
                     style: TextStyle(
-                      color: AppConstants.textColor,
+                      color: Colors.green,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Нереализованные поклевки
+            Row(
+              children: [
+                Icon(
+                  Icons.hourglass_empty,
+                  color: Colors.red,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Нереализовано:',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$missedBitesCount ${missedBitesCount == 1 ? "поклевка" : (missedBitesCount > 1 && missedBitesCount < 5) ? "поклевки" : "поклевок"}',
+                    style: TextStyle(
+                      color: Colors.red,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),

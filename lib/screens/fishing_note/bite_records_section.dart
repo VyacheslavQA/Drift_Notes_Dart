@@ -67,17 +67,6 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
         .where((record) => record.dayIndex == _selectedDayIndex)
         .toList();
 
-    // Считаем количество пойманных рыб (с названием и весом)
-    final caughtFishCount = widget.note.biteRecords
-        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
-        .length;
-
-    // Считаем общее количество поклевок
-    final totalBitesCount = widget.note.biteRecords.length;
-
-    // Количество непойманных рыб (просто поклевки)
-    final missedBitesCount = totalBitesCount - caughtFishCount;
-
     // Сортируем записи по времени
     final sortedRecords = List<BiteRecord>.from(selectedDayRecords)
       ..sort((a, b) => b.time.compareTo(a.time)); // Сначала новые
@@ -85,41 +74,19 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Заголовок секции с информацией о пойманных рыбах и поклевках
+        // Заголовок секции
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Записи о поклёвках',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (caughtFishCount > 0)
-                    Text(
-                      'Поймано: ${caughtFishCount} ${DateFormatter.getFishText(caughtFishCount)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                  if (missedBitesCount > 0)
-                    Text(
-                      'Поклёвок без поимки: $missedBitesCount',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                ],
+              child: Text(
+                'Записи о поклёвках',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             ElevatedButton.icon(
@@ -345,13 +312,13 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.2),
+                              color: Colors.red.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Поклевка',
                               style: TextStyle(
-                                color: Colors.orange,
+                                color: Colors.red,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -625,7 +592,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       final bool isCaught = isFishCaughtCallback(record);
 
       // Используем разные цвета для пойманных рыб и просто поклевок
-      final Color dotColor = isCaught ? Colors.green : Colors.orange;
+      final Color dotColor = isCaught ? Colors.green : Colors.red;
 
       final dotPaint = Paint()
         ..color = dotColor
