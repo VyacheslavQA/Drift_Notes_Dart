@@ -33,7 +33,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   late MarkerMapModel _markerMap;
   bool _isLoading = false;
-  bool _isEditing = false;
   bool _hasChanges = false;
 
   // Текущий выбранный маркер для просмотра
@@ -302,39 +301,212 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Кнопка редактирования - доступна только в режиме редактирования
-                  if (_isEditing)
-                    TextButton.icon(
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Редактировать'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppConstants.primaryColor,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _showEditMarkerDialog(marker);
-                      },
+                  // Кнопка редактирования
+                  TextButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Редактировать'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppConstants.primaryColor,
                     ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showEditMarkerDialog(marker);
+                    },
+                  ),
                   const SizedBox(width: 16),
-                  // Кнопка удаления - доступна только в режиме редактирования
-                  if (_isEditing)
-                    TextButton.icon(
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Удалить'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _confirmDeleteMarker(marker);
-                      },
+                  // Кнопка удаления
+                  TextButton.icon(
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Удалить'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
                     ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmDeleteMarker(marker);
+                    },
+                  ),
                 ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  // Показ информации о маркерах и помощи
+  void _showMarkerInfo() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Маркерная карта',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                'Типы маркеров:',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Список типов маркеров
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _bottomTypes.map((type) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _bottomTypeColors[type]?.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _bottomTypeColors[type] ?? Colors.grey,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _bottomTypeIcons[type],
+                          color: _bottomTypeColors[type],
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getBottomTypeName(type),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 20),
+
+              Text(
+                'Как использовать:',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _buildInfoItem(
+                icon: Icons.add_location,
+                title: 'Добавление маркера',
+                description: 'Нажмите + для добавления нового маркера',
+              ),
+
+              _buildInfoItem(
+                icon: Icons.touch_app,
+                title: 'Просмотр деталей',
+                description: 'Нажмите на маркер для просмотра деталей',
+              ),
+
+              _buildInfoItem(
+                icon: Icons.edit,
+                title: 'Редактирование',
+                description: 'В режиме деталей вы можете редактировать или удалять маркеры',
+              ),
+
+              const SizedBox(height: 16),
+
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppConstants.primaryColor,
+                  ),
+                  child: const Text('Закрыть'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Вспомогательный метод для создания элемента справки
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: AppConstants.primaryColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1267,22 +1439,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     }
   }
 
-  // Переключение режима редактирования
-  void _toggleEditingMode() {
-    setState(() {
-      _isEditing = !_isEditing;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isEditing
-            ? 'Режим редактирования включен'
-            : 'Режим просмотра включен'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1299,14 +1455,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // Кнопка переключения режима
+          // Кнопка информации о маркерах
           IconButton(
             icon: Icon(
-              _isEditing ? Icons.visibility : Icons.edit,
+              Icons.info_outline,
               color: AppConstants.textColor,
             ),
-            tooltip: _isEditing ? 'Режим просмотра' : 'Режим редактирования',
-            onPressed: _toggleEditingMode,
+            tooltip: 'Информация о маркерах',
+            onPressed: _showMarkerInfo,
           ),
           // Кнопка сохранения (активна только при наличии изменений)
           IconButton(
@@ -1339,13 +1495,13 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           ),
         ),
       ),
-      // Кнопка добавления маркера - доступна только в режиме редактирования
-      floatingActionButton: _isEditing ? FloatingActionButton(
+      // Кнопка добавления маркера
+      floatingActionButton: FloatingActionButton(
         onPressed: _showAddMarkerDialog,
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         child: const Icon(Icons.add_location),
-      ) : null,
+      ),
       // Отображаем информацию о карте внизу экрана
       bottomNavigationBar: SizedBox(
         height: 40,
@@ -1438,46 +1594,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     markers: _markerMap.markers,
                     bottomTypeColors: _bottomTypeColors,
                     bottomTypeIcons: _bottomTypeIcons,
-                    isEditing: _isEditing,
+                    isEditing: true, // Всегда в режиме редактирования
                     onMarkerTap: _showMarkerDetails,
                     context: context,
                   ),
                 ),
-
-                // Подсказка при отсутствии маркеров
-                if (_markerMap.markers.isEmpty)
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.location_off,
-                          color: AppConstants.textColor.withOpacity(0.5),
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'На этой карте пока нет маркеров',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (_isEditing) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Нажмите на "+" чтобы добавить маркер',
-                            style: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
               ],
             );
           }
@@ -1691,7 +1812,7 @@ class RaysAndMarkersPainter extends CustomPainter {
         strokePaint,
       );
 
-      // Добавляем внутреннюю точку
+    // Добавляем внутреннюю точку
       final centerDotPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
