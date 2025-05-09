@@ -37,6 +37,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Текущий выбранный маркер для просмотра
   Map<String, dynamic>? _selectedMarker;
 
+  // Сохранение последнего выбранного луча
+  int _lastSelectedRayIndex = 0;
+
   // Настройки лучей
   final int _raysCount = 7;
   final double _maxDistance = 200.0;
@@ -525,9 +528,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     _notesController.text = '';
     _distanceController.text = '';
 
-    // Настройки для выбора луча и дистанции
-    int selectedRayIndex = 0;
-    String selectedBottomType = 'ил';
+    // Используем последний выбранный луч по умолчанию
+    int selectedRayIndex = _lastSelectedRayIndex;
+    String selectedBottomType = _currentBottomType;
 
     showDialog(
       context: context,
@@ -575,6 +578,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                                   setState(() {
                                     selectedRayIndex = value;
                                   });
+                                  // Сохраняем выбранный луч
+                                  _lastSelectedRayIndex = value;
                                 }
                               },
                             ),
@@ -744,11 +749,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'ratio': distance / _maxDistance,
                     };
 
+                    // Сохраняем последний выбранный луч и тип дна для следующего добавления
+                    _lastSelectedRayIndex = selectedRayIndex;
+                    _currentBottomType = selectedBottomType;
+
                     // Добавляем маркер
                     setState(() {
                       _markerMap.markers.add(newMarker);
                       _hasChanges = true;
-                      _currentBottomType = selectedBottomType; // Запоминаем последний выбранный тип
                     });
 
                     Navigator.pop(context);
@@ -834,6 +842,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                                   setState(() {
                                     currentRayIndex = value;
                                   });
+                                  // Сохраняем выбранный луч для последующих добавлений
+                                  _lastSelectedRayIndex = value;
                                 }
                               },
                             ),
@@ -913,6 +923,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                               setState(() {
                                 selectedBottomType = type;
                               });
+                              // Сохраняем выбранный тип дна
+                              _currentBottomType = type;
                             }
                           },
                         );
