@@ -29,6 +29,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final _nameController = TextEditingController();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
+  final _distanceController = TextEditingController();
 
   late MarkerMapModel _markerMap;
   bool _isLoading = false;
@@ -42,8 +43,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final int _raysCount = 7;
   final double _maxDistance = 200.0;
   final double _distanceStep = 10.0;
-  int _selectedRayIndex = -1;
-  double _selectedDistance = 0.0;
 
   // Типы дна для маркеров
   final List<String> _bottomTypes = [
@@ -100,6 +99,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     _nameController.dispose();
     _depthController.dispose();
     _notesController.dispose();
+    _distanceController.dispose();
     super.dispose();
   }
 
@@ -160,23 +160,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       default:
         return type; // Возвращаем как есть, если это новый тип
     }
-  }
-
-  // Вычисление координат маркера на луче
-  Map<String, double> _calculateMarkerPosition(int rayIndex, double distance) {
-    // Вычисляем координаты относительно центра лучей внизу экрана
-    final angle = _calculateRayAngle(rayIndex);
-
-    // Пропорция расстояния к максимальному расстоянию
-    final distanceRatio = distance / _maxDistance;
-
-    // Нормализуем в координаты от 0 до 1, где 0 - нижняя точка, 1 - верхняя граница
-    return {
-      'rayIndex': rayIndex.toDouble(),
-      'distance': distance,
-      'ratio': distanceRatio,
-      'angle': angle,
-    };
   }
 
   // Вычисление угла луча
@@ -371,10 +354,10 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     _nameController.text = '';
     _depthController.text = '';
     _notesController.text = '';
+    _distanceController.text = '';
 
     // Настройки для выбора луча и дистанции
     int selectedRayIndex = 0;
-    double selectedDistance = 50.0;
     String selectedBottomType = 'ил';
 
     showDialog(
@@ -412,7 +395,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Выбор луча
+                    // Выбор луча через выпадающий список
                     Row(
                       children: [
                         Text(
@@ -449,41 +432,21 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Дистанция
-                    Row(
-                      children: [
-                        Text(
-                          'Дистанция (м):',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
-                            fontSize: 14,
-                          ),
+                    // Ввод дистанции цифрами
+                    TextField(
+                      controller: _distanceController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Дистанция (м)',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Slider(
-                            value: selectedDistance,
-                            min: 0,
-                            max: _maxDistance,
-                            divisions: (_maxDistance / _distanceStep).toInt(),
-                            label: selectedDistance.toInt().toString(),
-                            activeColor: AppConstants.primaryColor,
-                            inactiveColor: AppConstants.textColor.withOpacity(0.3),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedDistance = value;
-                              });
-                            },
-                          ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
                         ),
-                        Text(
-                          '${selectedDistance.toInt()} м',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      ),
+                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
 
@@ -583,11 +546,41 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     foregroundColor: AppConstants.textColor,
                   ),
                   onPressed: () {
+                    // Проверка валидности ввода
+                    if (_distanceController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите дистанцию'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Парсим введенную дистанцию
+                    double? distance = double.tryParse(_distanceController.text);
+                    if (distance == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите корректное числовое значение для дистанции'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Ограничиваем дистанцию максимальным значением
+                    if (distance > _maxDistance) {
+                      distance = _maxDistance;
+                    } else if (distance < 0) {
+                      distance = 0;
+                    }
+
                     // Создаем новый маркер
                     final newMarker = {
                       'id': const Uuid().v4(),
                       'rayIndex': selectedRayIndex.toDouble(),
-                      'distance': selectedDistance,
+                      'distance': distance,
                       'name': _nameController.text.trim().isEmpty
                           ? 'Маркер'
                           : _nameController.text.trim(),
@@ -598,7 +591,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'bottomType': selectedBottomType,
                       // Сохраняем также угол и соотношение для отображения
                       'angle': _calculateRayAngle(selectedRayIndex),
-                      'ratio': selectedDistance / _maxDistance,
+                      'ratio': distance / _maxDistance,
                     };
 
                     // Добавляем маркер
@@ -638,13 +631,13 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     _nameController.text = marker['name'] ?? '';
     _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
     _notesController.text = marker['notes'] ?? marker['description'] ?? '';
+    _distanceController.text = marker['distance'].toString();
 
     // Определяем тип дна (с учетом обратной совместимости)
     String selectedBottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
 
-    // Сохраняем текущие значения луча и дистанции
+    // Сохраняем текущие значения луча
     int currentRayIndex = marker['rayIndex'].toInt();
-    double currentDistance = marker['distance'];
 
     showDialog(
       context: context,
@@ -718,41 +711,21 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Дистанция
-                    Row(
-                      children: [
-                        Text(
-                          'Дистанция (м):',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
-                            fontSize: 14,
-                          ),
+                    // Ввод дистанции цифрами
+                    TextField(
+                      controller: _distanceController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Дистанция (м)',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Slider(
-                            value: currentDistance,
-                            min: 0,
-                            max: _maxDistance,
-                            divisions: (_maxDistance / _distanceStep).toInt(),
-                            label: currentDistance.toInt().toString(),
-                            activeColor: AppConstants.primaryColor,
-                            inactiveColor: AppConstants.textColor.withOpacity(0.3),
-                            onChanged: (value) {
-                              setState(() {
-                                currentDistance = value;
-                              });
-                            },
-                          ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
                         ),
-                        Text(
-                          '${currentDistance.toInt()} м',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      ),
+                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
 
@@ -852,6 +825,36 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     foregroundColor: AppConstants.textColor,
                   ),
                   onPressed: () {
+                    // Проверка валидности ввода
+                    if (_distanceController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите дистанцию'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Парсим введенную дистанцию
+                    double? distance = double.tryParse(_distanceController.text);
+                    if (distance == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите корректное числовое значение для дистанции'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Ограничиваем дистанцию максимальным значением
+                    if (distance > _maxDistance) {
+                      distance = _maxDistance;
+                    } else if (distance < 0) {
+                      distance = 0;
+                    }
+
                     // Обновляем маркер
                     final updatedMarker = {
                       ...marker,
@@ -859,7 +862,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                           ? 'Маркер'
                           : _nameController.text.trim(),
                       'rayIndex': currentRayIndex.toDouble(),
-                      'distance': currentDistance,
+                      'distance': distance,
                       'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
@@ -867,7 +870,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'bottomType': selectedBottomType,
                       // Обновляем угол и соотношение
                       'angle': _calculateRayAngle(currentRayIndex),
-                      'ratio': currentDistance / _maxDistance,
+                      'ratio': distance / _maxDistance,
                     };
 
                     // Удаляем старые поля, если они существуют (для обратной совместимости)
@@ -1324,22 +1327,16 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: 'Подождите...',
-        child: Column(
-          children: [
-            // Карта на весь экран - основная часть
-            Expanded(
-              flex: 4,
-              child: _buildMarkerMapView(),
-            ),
-
-            // Уменьшенная нижняя часть со списком маркеров
-            Expanded(
-              flex: 1,
-              child: _markerMap.markers.isEmpty
-                  ? _buildEmptyMarkersState()
-                  : _buildMarkersList(),
-            ),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            children: [
+              // Карта на весь экран - основная часть
+              Expanded(
+                child: _buildMarkerMapView(),
+              ),
+            ],
+          ),
         ),
       ),
       // Кнопка добавления маркера - доступна только в режиме редактирования
@@ -1412,7 +1409,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Виджет маркерной карты во весь экран
   Widget _buildMarkerMapView() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       decoration: BoxDecoration(
         color: const Color(0xFF0B1F1D), // Темно-зеленый фон для глубины
         borderRadius: BorderRadius.circular(12),
@@ -1430,9 +1426,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             // Нижняя точка лучей (точка 0)
             final originY = maxHeight * 0.95;
 
-            // Сохраняем текущие значения для проверки
-            bool hasSelectedRay = _selectedRayIndex >= 0;
-
             return Stack(
               children: [
                 // Лучи и отметки
@@ -1442,108 +1435,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     rayCount: _raysCount,
                     maxDistance: _maxDistance,
                     distanceStep: _distanceStep,
-                    selectedRayIndex: _selectedRayIndex,
-                    selectedDistance: _selectedDistance,
                     markers: _markerMap.markers,
                     bottomTypeColors: _bottomTypeColors,
                     bottomTypeIcons: _bottomTypeIcons,
                     isEditing: _isEditing,
+                    onMarkerTap: _showMarkerDetails,
+                    context: context,
                   ),
                 ),
-
-                // Интерактивная область для выбора луча и дистанции в режиме редактирования
-                if (_isEditing)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTapDown: (details) {
-                        // Определяем координаты нажатия относительно центра
-                        final touchX = details.localPosition.dx;
-                        final touchY = details.localPosition.dy;
-
-                        // Вычисляем расстояние от нижней центральной точки
-                        final dx = touchX - centerX;
-                        final dy = originY - touchY;
-
-                        if (dy <= 0) return; // Нажатие ниже точки отсчета
-
-                        // Вычисляем угол в радианах
-                        double angle = atan2(dy, dx);
-                        if (angle < 0) angle += 2 * math.pi; // Приводим к положительному углу
-
-                        // Проверяем, попадает ли угол в диапазон лучей
-                        // Конвертируем угол в градусы
-                        double angleDegrees = (angle * 180 / math.pi) % 360;
-
-                        // Проверяем, находится ли угол в допустимом диапазоне (от 45° до 135°)
-                        if (angleDegrees >= 45 && angleDegrees <= 135) {
-                          // Находим ближайший луч
-                          double rayFraction = (_raysCount - 1) * (135 - angleDegrees) / 90;
-                          int rayIndex = rayFraction.round();
-                          rayIndex = rayIndex.clamp(0, _raysCount - 1);
-
-                          // Вычисляем дистанцию в метрах
-                          // Гипотенуза треугольника - это дистанция
-                          double distance = math.sqrt(dx * dx + dy * dy);
-                          // Нормализуем относительно максимальной высоты карты
-                          distance = (distance / maxHeight) * _maxDistance * 1.05; // Коэффициент для компенсации
-                          // Округляем до шага дистанции
-                          distance = (distance / _distanceStep).round() * _distanceStep;
-                          // Ограничиваем значением максимальной дистанции
-                          distance = distance.clamp(0.0, _maxDistance);
-
-                          setState(() {
-                            _selectedRayIndex = rayIndex;
-                            _selectedDistance = distance;
-                          });
-
-                          // Открываем диалог добавления маркера если нажали на карту
-                          _showAddMarkerDialog();
-                        }
-                      },
-                      behavior: HitTestBehavior.translucent,
-                      child: Container(
-                        color: Colors.transparent, // Важно добавить цвет, чтобы GestureDetector работал
-                      ),
-                    ),
-                  ),
-
-                // Текущие выбранные параметры
-                if (_isEditing && hasSelectedRay)
-                  Positioned(
-                    top: 20,
-                    left: 20,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppConstants.backgroundColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppConstants.primaryColor.withOpacity(0.5),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Луч: ${_selectedRayIndex + 1}',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Дистанция: ${_selectedDistance.toInt()} м',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
 
                 // Подсказка при отсутствии маркеров
                 if (_markerMap.markers.isEmpty)
@@ -1568,7 +1467,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         if (_isEditing) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Нажмите на карту или на "+" чтобы\nдобавить маркер',
+                            'Нажмите на "+" чтобы добавить маркер',
                             style: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.7),
                               fontSize: 14,
@@ -1585,193 +1484,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       ),
     );
   }
-
-  // Пустое состояние, когда нет маркеров
-  Widget _buildEmptyMarkersState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'На этой карте пока нет маркеров',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (_isEditing) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Нажмите на "+" чтобы добавить маркер',
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // Список маркеров с горизонтальной прокруткой
-  Widget _buildMarkersList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Text(
-            'Список маркеров (${_markerMap.markers.length})',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        // Отображаем все маркеры в виде горизонтального списка
-        Expanded(
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: _markerMap.markers.length,
-            itemBuilder: (context, index) {
-              final marker = _markerMap.markers[index];
-              return _buildMarkerItem(marker);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Элемент списка маркеров для горизонтального списка
-  Widget _buildMarkerItem(Map<String, dynamic> marker) {
-    // Определяем тип дна (с учетом обратной совместимости)
-    final bottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
-    final Color markerColor = _bottomTypeColors[bottomType] ?? Colors.blue;
-    final IconData markerIcon = _bottomTypeIcons[bottomType] ?? Icons.location_on;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      color: AppConstants.cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: InkWell(
-        onTap: () => _showMarkerDetails(marker),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 160,
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Название и иконка
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: markerColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      markerIcon,
-                      color: markerColor,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      marker['name'] ?? 'Маркер',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 4),
-
-              // Луч и дистанция
-              Text(
-                'Луч ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} м',
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  fontSize: 12,
-                ),
-              ),
-
-              // Глубина если есть
-              if (marker['depth'] != null)
-                Text(
-                  'Глубина: ${marker['depth']} м',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                ),
-
-              // Заметки (если есть)
-              if ((marker['notes'] != null && marker['notes'].isNotEmpty) ||
-                  (marker['description'] != null && marker['description'].isNotEmpty))
-                Expanded(
-                  child: Text(
-                    marker['notes'] ?? marker['description'] ?? '',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.6),
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-
-              // Кнопки управления если в режиме редактирования
-              if (_isEditing)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.edit,
-                        color: AppConstants.primaryColor,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => _showEditMarkerDialog(marker),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => _confirmDeleteMarker(marker),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // Кастомная отрисовка лучей и маркеров
@@ -1779,23 +1491,23 @@ class RaysAndMarkersPainter extends CustomPainter {
   final int rayCount;
   final double maxDistance;
   final double distanceStep;
-  final int selectedRayIndex;
-  final double selectedDistance;
   final List<Map<String, dynamic>> markers;
   final Map<String, Color> bottomTypeColors;
   final Map<String, IconData> bottomTypeIcons;
   final bool isEditing;
+  final Function(Map<String, dynamic>) onMarkerTap;
+  final BuildContext context;
 
   RaysAndMarkersPainter({
     required this.rayCount,
     required this.maxDistance,
     required this.distanceStep,
-    required this.selectedRayIndex,
-    required this.selectedDistance,
     required this.markers,
     required this.bottomTypeColors,
     required this.bottomTypeIcons,
     required this.isEditing,
+    required this.onMarkerTap,
+    required this.context,
   });
 
   @override
@@ -1813,8 +1525,6 @@ class RaysAndMarkersPainter extends CustomPainter {
 
     // Отрисовка лучей
     for (int i = 0; i < rayCount; i++) {
-      final isSelected = i == selectedRayIndex;
-
       // Вычисляем угол для текущего луча
       // Распределяем равномерно в диапазоне от 135° до 45°
       final totalAngle = 90.0; // общий угол охвата
@@ -1826,10 +1536,10 @@ class RaysAndMarkersPainter extends CustomPainter {
       final maxDy = originY - (maxDistance * pixelsPerMeter);
       final maxDx = centerX + (originY - maxDy) * math.tan(math.pi/2 - angleRadians);
 
-      // Создаем кисть для луча (выбранный луч выделяем)
+      // Создаем кисть для луча
       final rayPaint = Paint()
-        ..color = isSelected ? Colors.white : Colors.white.withOpacity(0.4)
-        ..strokeWidth = isSelected ? 2.0 : 1.0
+        ..color = Colors.white.withOpacity(0.4)
+        ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke;
 
       // Рисуем основной луч
@@ -1856,17 +1566,14 @@ class RaysAndMarkersPainter extends CustomPainter {
           radius = 1.5;
         }
 
-        // Если это выбранное расстояние на выбранном луче, выделяем
-        bool isSelectedDistance = isSelected && (d == selectedDistance);
-
         // Рисуем точку
         final pointPaint = Paint()
-          ..color = isSelectedDistance ? Colors.yellow : (isSelected ? Colors.white : Colors.white.withOpacity(0.4))
+          ..color = Colors.white.withOpacity(0.4)
           ..style = PaintingStyle.fill;
 
         canvas.drawCircle(
           Offset(dx, dy),
-          isSelectedDistance ? radius * 1.5 : radius,
+          radius,
           pointPaint,
         );
 
@@ -1877,9 +1584,8 @@ class RaysAndMarkersPainter extends CustomPainter {
             text: TextSpan(
               text: d.toInt().toString(),
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
+                color: Colors.white.withOpacity(0.6),
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
             textDirection: ui.TextDirection.ltr,
@@ -1909,9 +1615,8 @@ class RaysAndMarkersPainter extends CustomPainter {
         text: TextSpan(
           text: 'Луч ${i + 1}',
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+            color: Colors.white.withOpacity(0.7),
             fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
         textDirection: ui.TextDirection.ltr,
@@ -1996,50 +1701,33 @@ class RaysAndMarkersPainter extends CustomPainter {
         2,
         centerDotPaint,
       );
-    }
 
-    // Выделяем выбранную точку (в режиме редактирования)
-    if (isEditing && selectedRayIndex >= 0 && selectedDistance > 0) {
-      // Вычисляем позицию выбранной точки
-      final totalAngle = 90.0;
-      final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = 135 - (selectedRayIndex * angleStep);
-      final angleRadians = angleDegrees * (math.pi / 180);
-
-      final ratio = selectedDistance / maxDistance;
-      final maxDy = originY - (maxDistance * pixelsPerMeter);
-      final maxDx = centerX + (originY - maxDy) * math.tan(math.pi/2 - angleRadians);
-
-      final dx = centerX + (maxDx - centerX) * ratio;
-      final dy = originY - (originY - maxDy) * ratio;
-
-      // Рисуем маркер выбранной точки
-      final selectedPointPaint = Paint()
-        ..color = Colors.yellow
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(
-        Offset(dx, dy),
-        6,
-        selectedPointPaint,
-      );
-
-      // Добавляем пульсирующую обводку
-      final pulsePaint = Paint()
-        ..color = Colors.white.withOpacity(0.7)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-
-      canvas.drawCircle(
-        Offset(dx, dy),
-        10,
-        pulsePaint,
-      );
+      // Сохраняем позицию маркера для обработки тапов (хитбокс)
+      marker['_hitboxCenter'] = Offset(dx, dy);
+      marker['_hitboxRadius'] = 15.0; // Увеличиваем зону нажатия
     }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
+  }
+
+  @override
+  bool? hitTest(Offset position) {
+    // Проверяем, нажал ли пользователь на маркер
+    for (final marker in markers) {
+      if (marker.containsKey('_hitboxCenter') && marker.containsKey('_hitboxRadius')) {
+        final center = marker['_hitboxCenter'] as Offset;
+        final radius = marker['_hitboxRadius'] as double;
+
+        if ((center - position).distance <= radius) {
+          // Нажатие на маркер
+          onMarkerTap(marker);
+          return true;
+        }
+      }
+    }
+    return null;
   }
 }
