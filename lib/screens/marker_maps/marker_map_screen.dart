@@ -1705,8 +1705,9 @@ class RaysAndMarkersPainter extends CustomPainter {
             text: TextSpan(
               text: d.toInt().toString(),
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.greenAccent, // Яркий зеленый
                 fontSize: 12,
+                fontWeight: FontWeight.bold, // Жирный шрифт
               ),
             ),
             textDirection: ui.TextDirection.ltr,
