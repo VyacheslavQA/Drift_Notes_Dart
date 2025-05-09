@@ -18,7 +18,7 @@ import 'profile/profile_screen.dart';
 import 'map/map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
-import 'screens/marker_maps/marker_maps_list_screen.dart';
+import 'marker_maps/marker_maps_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);

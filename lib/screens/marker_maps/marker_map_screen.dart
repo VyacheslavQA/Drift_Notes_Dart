@@ -635,8 +635,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   void _addNewMarker(String type) {
     final id = const Uuid().v4();
 
-    // Получаем текущий центр карты
-    final position = _mapController?.cameraPosition?.target ?? _mapCenter;
+    // Определяем позицию для нового маркера
+    // Используем _mapCenter как позицию для нового маркера
+    LatLng position = _mapCenter;
 
     setState(() {
       _markerMap.markers.add({
@@ -838,9 +839,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Подтверждение удаления карты
   void _confirmDeleteMap() {
     showDialog(
-        context: context,
-        builder: (BuildContext context) {
-      return AlertDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
             'Удалить карту',
@@ -856,32 +857,32 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             ),
           ),
           actions: [
-          TextButton(
-          onPressed: () {
-        Navigator.of(context).pop();
-      },
-    child: Text(
-    'Отмена',
-    style: TextStyle(
-    color: AppConstants.textColor,
-    ),
-    ),
-    ),
-    TextButton(
-    onPressed: () {
-    Navigator.of(context).pop();
-    _deleteMap();
-    },
-    child: const Text(
-    'Удалить',
-      style: TextStyle(
-        color: Colors.redAccent,
-      ),
-    ),
-    ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Отмена',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteMap();
+              },
+              child: const Text(
+                'Удалить',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                ),
+              ),
+            ),
           ],
-      );
-        },
+        );
+      },
     );
   }
 
@@ -1034,10 +1035,12 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               onTap: _isEditing
                   ? (position) {
                 // В режиме редактирования создаем новый маркер по клику
-                _selectedMarker = {
-                  'latitude': position.latitude,
-                  'longitude': position.longitude,
-                };
+                setState(() {
+                  _selectedMarker = {
+                    'latitude': position.latitude,
+                    'longitude': position.longitude,
+                  };
+                });
                 _showEditMarkerDialog(null);
               }
                   : null,
@@ -1103,7 +1106,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     child: const Icon(Icons.my_location),
                   ),
                   const SizedBox(height: 8),
-                  // Кнопка изменения типа карты (спутник/схема)
+                  // Кнопка увеличения масштаба
                   FloatingActionButton(
                     heroTag: 'map_type',
                     backgroundColor: AppConstants.primaryColor,
@@ -1117,6 +1120,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     child: const Icon(Icons.add),
                   ),
                   const SizedBox(height: 8),
+                  // Кнопка уменьшения масштаба
                   FloatingActionButton(
                     heroTag: 'zoom_out',
                     backgroundColor: AppConstants.primaryColor,
