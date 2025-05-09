@@ -26,7 +26,6 @@ class MarkerMapScreen extends StatefulWidget {
 
 class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
-  final _nameController = TextEditingController();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
   final _distanceController = TextEditingController();
@@ -95,7 +94,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _depthController.dispose();
     _notesController.dispose();
     _distanceController.dispose();
@@ -523,7 +521,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Диалог добавления нового маркера
   void _showAddMarkerDialog() {
     // Сбрасываем поля формы
-    _nameController.text = '';
     _depthController.text = '';
     _notesController.text = '';
     _distanceController.text = '';
@@ -550,23 +547,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Название маркера
-                    TextField(
-                      controller: _nameController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Название маркера',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
                     // Выбор луча через выпадающий список
                     Row(
                       children: [
@@ -753,9 +733,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'id': const Uuid().v4(),
                       'rayIndex': selectedRayIndex.toDouble(),
                       'distance': distance,
-                      'name': _nameController.text.trim().isEmpty
-                          ? 'Маркер'
-                          : _nameController.text.trim(),
+                      'name': 'Маркер', // Установка дефолтного названия
                       'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
@@ -800,7 +778,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Диалог редактирования маркера
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
-    _nameController.text = marker['name'] ?? '';
     _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
     _notesController.text = marker['notes'] ?? marker['description'] ?? '';
     _distanceController.text = marker['distance'].toString();
@@ -829,23 +806,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Название маркера
-                    TextField(
-                      controller: _nameController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Название маркера',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
                     // Выбор луча
                     Row(
                       children: [
@@ -1030,9 +990,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     // Обновляем маркер
                     final updatedMarker = {
                       ...marker,
-                      'name': _nameController.text.trim().isEmpty
-                          ? 'Маркер'
-                          : _nameController.text.trim(),
                       'rayIndex': currentRayIndex.toDouble(),
                       'distance': distance,
                       'depth': _depthController.text.isEmpty
@@ -1813,7 +1770,7 @@ class RaysAndMarkersPainter extends CustomPainter {
         strokePaint,
       );
 
-    // Добавляем внутреннюю точку
+      // Добавляем внутреннюю точку
       final centerDotPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
