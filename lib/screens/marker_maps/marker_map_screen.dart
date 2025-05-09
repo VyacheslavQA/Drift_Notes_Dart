@@ -45,6 +45,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final double _maxDistance = 200.0;
   final double _distanceStep = 10.0;
 
+  // Параметры угла лучей (скорректированные)
+  // Изменено с 110-70 на 105-75 для лучшей видимости крайних лучей
+  final double _leftAngle = 105.0;
+  final double _rightAngle = 75.0;
+
   // Типы дна для маркеров
   final List<String> _bottomTypes = [
     'ил',
@@ -164,11 +169,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Вычисление угла луча
   double _calculateRayAngle(int rayIndex) {
-    // Распределяем лучи равномерно в диапазоне от 110° до 70° (где 90° - прямо вверх)
+    // Распределяем лучи равномерно в диапазоне от _leftAngle до _rightAngle (где 90° - прямо вверх)
     // 0-й луч будет самым левым, последний - самым правым
-    final totalAngle = 40.0; // общий угол охвата в градусах (110° - 70° = 40°)
+    final totalAngle = _leftAngle - _rightAngle; // общий угол охвата в градусах
     final angleStep = totalAngle / (_raysCount - 1);
-    return (110 - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
+    return (_leftAngle - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
   }
 
   // Показ диалога с деталями маркера
@@ -1566,6 +1571,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     isEditing: true, // Всегда в режиме редактирования
                     onMarkerTap: _showMarkerDetails,
                     context: context,
+                    leftAngle: _leftAngle,
+                    rightAngle: _rightAngle,
                   ),
                 ),
               ],
@@ -1587,6 +1594,8 @@ class RaysAndMarkersPainter extends CustomPainter {
   final bool isEditing;
   final Function(Map<String, dynamic>) onMarkerTap;
   final BuildContext context;
+  final double leftAngle;
+  final double rightAngle;
 
   RaysAndMarkersPainter({
     required this.rayCount,
@@ -1598,6 +1607,8 @@ class RaysAndMarkersPainter extends CustomPainter {
     required this.isEditing,
     required this.onMarkerTap,
     required this.context,
+    this.leftAngle = 105.0,
+    this.rightAngle = 75.0,
   });
 
   @override
@@ -1616,10 +1627,10 @@ class RaysAndMarkersPainter extends CustomPainter {
     // Отрисовка лучей
     for (int i = 0; i < rayCount; i++) {
       // Вычисляем угол для текущего луча
-      // Распределяем равномерно в диапазоне от 110° до 70°
-      final totalAngle = 40.0; // общий угол охвата
+      // Распределяем равномерно в диапазоне от leftAngle до rightAngle
+      final totalAngle = leftAngle - rightAngle; // общий угол охвата
       final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = 110 - (i * angleStep);
+      final angleDegrees = leftAngle - (i * angleStep);
       final angleRadians = angleDegrees * (math.pi / 180);
 
       // Конечная точка луча (максимальная дистанция)
@@ -1730,9 +1741,9 @@ class RaysAndMarkersPainter extends CustomPainter {
       final distance = marker['distance'] as double? ?? 0;
 
       // Вычисляем угол для луча
-      final totalAngle = 40.0;
+      final totalAngle = leftAngle - rightAngle;
       final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = 110 - (rayIndex * angleStep);
+      final angleDegrees = leftAngle - (rayIndex * angleStep);
       final angleRadians = angleDegrees * (math.pi / 180);
 
       // Вычисляем позицию маркера
