@@ -9,7 +9,7 @@ import '../../repositories/marker_map_repository.dart';
 import '../../widgets/loading_overlay.dart';
 // Необходимые импорты для функций
 import 'dart:math' as math;
-import 'dart:math' show sin, cos, atan2;
+import 'dart:math' show sin, cos, atan2, sqrt;
 import 'dart:ui' as ui;
 
 class MarkerMapScreen extends StatefulWidget {
@@ -28,7 +28,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
   final _nameController = TextEditingController();
   final _depthController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _notesController = TextEditingController();
 
   late MarkerMapModel _markerMap;
   bool _isLoading = false;
@@ -45,16 +45,48 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   int _selectedRayIndex = -1;
   double _selectedDistance = 0.0;
 
-  // Текущий новый маркер
-  String _newMarkerType = 'default';
+  // Типы дна для маркеров
+  final List<String> _bottomTypes = [
+    'ил',
+    'глубокий_ил',
+    'ракушка',
+    'ровно_твердо',
+    'камни',
+    'трава_водоросли',
+    'зацеп',
+    'бугор',
+    'точка_кормления'
+  ];
 
-  // Константные цвета для типов маркеров
-  final Map<String, Color> _markerTypeColors = {
-    'default': Colors.blue,
-    'dropoff': Colors.red,
-    'weed': Colors.green,
-    'sandbar': Colors.amber,
-    'structure': Colors.orange,
+  // Текущий тип дна для нового маркера
+  String _currentBottomType = 'ил';
+
+  // Константные цвета для типов дна маркеров
+  final Map<String, Color> _bottomTypeColors = {
+    'ил': Colors.brown.shade400,
+    'глубокий_ил': Colors.brown.shade800,
+    'ракушка': Colors.cyan,
+    'ровно_твердо': Colors.amber,
+    'камни': Colors.grey,
+    'трава_водоросли': Colors.green,
+    'зацеп': Colors.red,
+    'бугор': Colors.orange,
+    'точка_кормления': Colors.deepPurple,
+    'default': Colors.blue, // для обратной совместимости
+  };
+
+  // Иконки для типов дна
+  final Map<String, IconData> _bottomTypeIcons = {
+    'ил': Icons.terrain,
+    'глубокий_ил': Icons.filter_hdr,
+    'ракушка': Icons.waves,
+    'ровно_твердо': Icons.view_agenda,
+    'камни': Icons.circle,
+    'трава_водоросли': Icons.grass,
+    'зацеп': Icons.warning,
+    'бугор': Icons.landscape,
+    'точка_кормления': Icons.room_service,
+    'default': Icons.location_on, // для обратной совместимости
   };
 
   @override
@@ -67,13 +99,34 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   void dispose() {
     _nameController.dispose();
     _depthController.dispose();
-    _descriptionController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
-  // Получение названия типа маркера
-  String _getMarkerTypeName(String? type) {
+  // Получение названия типа дна
+  String _getBottomTypeName(String? type) {
+    if (type == null) return 'Ил';
+
     switch (type) {
+      case 'ил':
+        return 'Ил';
+      case 'глубокий_ил':
+        return 'Глубокий ил';
+      case 'ракушка':
+        return 'Ракушка';
+      case 'ровно_твердо':
+        return 'Ровно/Твердо';
+      case 'камни':
+        return 'Камни';
+      case 'трава_водоросли':
+        return 'Трава/Водоросли';
+      case 'зацеп':
+        return 'Зацеп';
+      case 'бугор':
+        return 'Бугор';
+      case 'точка_кормления':
+        return 'Точка кормления';
+    // Для обратной совместимости со старыми типами
       case 'dropoff':
         return 'Свал';
       case 'weed':
@@ -82,8 +135,30 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         return 'Песчаная отмель';
       case 'structure':
         return 'Структура';
-      default:
+      case 'default':
         return 'Обычный';
+      default:
+        return 'Ил';
+    }
+  }
+
+  // Конвертация старых типов в новые (для совместимости)
+  String _convertLegacyTypeToNew(String? type) {
+    if (type == null) return 'ил';
+
+    switch (type) {
+      case 'dropoff':
+        return 'свал';
+      case 'weed':
+        return 'трава_водоросли';
+      case 'sandbar':
+        return 'ровно_твердо';
+      case 'structure':
+        return 'зацеп';
+      case 'default':
+        return 'ил';
+      default:
+        return type; // Возвращаем как есть, если это новый тип
     }
   }
 
@@ -110,7 +185,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     // 0-й луч будет самым левым, последний - самым правым
     final totalAngle = 90.0; // общий угол охвата в градусах (135° - 45° = 90°)
     final angleStep = totalAngle / (_raysCount - 1);
-    return (135 - (rayIndex * angleStep)) * (3.14159 / 180); // конвертируем в радианы
+    return (135 - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
   }
 
   // Показ диалога с деталями маркера
@@ -177,8 +252,48 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 const SizedBox(height: 8),
               ],
 
+              // Тип дна
+              if (marker['bottomType'] != null || marker['type'] != null) ...[
+                Row(
+                  children: [
+                    Icon(
+                        _getBottomTypeIcon(marker['bottomType'] ?? marker['type']),
+                        color: AppConstants.textColor
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Тип дна: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+
               // Описание
-              if (marker['description'] != null && marker['description'].isNotEmpty) ...[
+              if (marker['notes'] != null && marker['notes'].isNotEmpty) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.description, color: AppConstants.textColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        marker['notes'],
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ] else if (marker['description'] != null && marker['description'].isNotEmpty) ...[
+                // Для обратной совместимости
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -198,23 +313,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 const SizedBox(height: 8),
               ],
 
-              // Тип
-              if (marker['type'] != null) ...[
-                Row(
-                  children: [
-                    Icon(Icons.category, color: AppConstants.textColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Тип: ${_getMarkerTypeName(marker['type'])}',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
+              const SizedBox(height: 16),
 
               // Кнопки управления
               Row(
@@ -256,12 +355,292 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
+  // Получение иконки для типа дна
+  IconData _getBottomTypeIcon(String? type) {
+    if (type == null) return Icons.terrain;
+
+    // Пробуем конвертировать старый тип в новый
+    final newType = _convertLegacyTypeToNew(type);
+
+    return _bottomTypeIcons[newType] ?? Icons.terrain;
+  }
+
+  // Диалог добавления нового маркера
+  void _showAddMarkerDialog() {
+    // Сбрасываем поля формы
+    _nameController.text = '';
+    _depthController.text = '';
+    _notesController.text = '';
+
+    // Настройки для выбора луча и дистанции
+    int selectedRayIndex = 0;
+    double selectedDistance = 50.0;
+    String selectedBottomType = 'ил';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.cardColor,
+              title: Text(
+                'Добавление маркера',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Название маркера
+                    TextField(
+                      controller: _nameController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Название маркера',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Выбор луча
+                    Row(
+                      children: [
+                        Text(
+                          'Луч:',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: selectedRayIndex,
+                              dropdownColor: AppConstants.surfaceColor,
+                              style: TextStyle(color: AppConstants.textColor),
+                              items: List.generate(_raysCount, (index) {
+                                return DropdownMenuItem<int>(
+                                  value: index,
+                                  child: Text('Луч ${index + 1}'),
+                                );
+                              }),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    selectedRayIndex = value;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Дистанция
+                    Row(
+                      children: [
+                        Text(
+                          'Дистанция (м):',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Slider(
+                            value: selectedDistance,
+                            min: 0,
+                            max: _maxDistance,
+                            divisions: (_maxDistance / _distanceStep).toInt(),
+                            label: selectedDistance.toInt().toString(),
+                            activeColor: AppConstants.primaryColor,
+                            inactiveColor: AppConstants.textColor.withOpacity(0.3),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedDistance = value;
+                              });
+                            },
+                          ),
+                        ),
+                        Text(
+                          '${selectedDistance.toInt()} м',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Глубина
+                    TextField(
+                      controller: _depthController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Глубина (м)',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Тип дна
+                    Text(
+                      'Тип дна:',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _bottomTypes.map((type) {
+                        return ChoiceChip(
+                          label: Text(_getBottomTypeName(type)),
+                          selected: selectedBottomType == type,
+                          backgroundColor: _bottomTypeColors[type]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
+                          selectedColor: _bottomTypeColors[type]?.withOpacity(0.5) ?? Colors.grey.withOpacity(0.5),
+                          labelStyle: TextStyle(
+                            color: AppConstants.textColor,
+                            fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          avatar: Icon(
+                            _bottomTypeIcons[type],
+                            color: selectedBottomType == type ?
+                            AppConstants.textColor : AppConstants.textColor.withOpacity(0.7),
+                            size: 18,
+                          ),
+                          onSelected: (bool selected) {
+                            if (selected) {
+                              setState(() {
+                                selectedBottomType = type;
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Заметки
+                    TextField(
+                      controller: _notesController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Заметки',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Отмена',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                  ),
+                  onPressed: () {
+                    // Создаем новый маркер
+                    final newMarker = {
+                      'id': const Uuid().v4(),
+                      'rayIndex': selectedRayIndex.toDouble(),
+                      'distance': selectedDistance,
+                      'name': _nameController.text.trim().isEmpty
+                          ? 'Маркер'
+                          : _nameController.text.trim(),
+                      'depth': _depthController.text.isEmpty
+                          ? null
+                          : double.tryParse(_depthController.text),
+                      'notes': _notesController.text.trim(),
+                      'bottomType': selectedBottomType,
+                      // Сохраняем также угол и соотношение для отображения
+                      'angle': _calculateRayAngle(selectedRayIndex),
+                      'ratio': selectedDistance / _maxDistance,
+                    };
+
+                    // Добавляем маркер
+                    setState(() {
+                      _markerMap.markers.add(newMarker);
+                      _hasChanges = true;
+                      _currentBottomType = selectedBottomType; // Запоминаем последний выбранный тип
+                    });
+
+                    Navigator.pop(context);
+
+                    // Показываем сообщение
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Маркер добавлен'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Добавить',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   // Диалог редактирования маркера
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
     _nameController.text = marker['name'] ?? '';
     _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
-    _descriptionController.text = marker['description'] ?? '';
-    String selectedType = marker['type'] ?? 'default';
+    _notesController.text = marker['notes'] ?? marker['description'] ?? '';
+
+    // Определяем тип дна (с учетом обратной совместимости)
+    String selectedBottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
 
     // Сохраняем текущие значения луча и дистанции
     int currentRayIndex = marker['rayIndex'].toInt();
@@ -395,27 +774,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Описание
-                    TextField(
-                      controller: _descriptionController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Описание',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Тип маркера
+                    // Тип дна маркера
                     Text(
-                      'Тип маркера:',
+                      'Тип дна:',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
@@ -425,25 +786,50 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     Wrap(
                       spacing: 8,
-                      children: _markerTypeColors.entries.map((entry) {
+                      runSpacing: 8,
+                      children: _bottomTypes.map((type) {
                         return ChoiceChip(
-                          label: Text(_getMarkerTypeName(entry.key)),
-                          selected: selectedType == entry.key,
-                          backgroundColor: entry.value.withOpacity(0.2),
-                          selectedColor: entry.value.withOpacity(0.5),
+                          label: Text(_getBottomTypeName(type)),
+                          selected: selectedBottomType == type,
+                          backgroundColor: _bottomTypeColors[type]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
+                          selectedColor: _bottomTypeColors[type]?.withOpacity(0.5) ?? Colors.grey.withOpacity(0.5),
                           labelStyle: TextStyle(
                             color: AppConstants.textColor,
-                            fontWeight: selectedType == entry.key ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          avatar: Icon(
+                            _bottomTypeIcons[type],
+                            color: selectedBottomType == type ?
+                            AppConstants.textColor : AppConstants.textColor.withOpacity(0.7),
+                            size: 18,
                           ),
                           onSelected: (bool selected) {
                             if (selected) {
                               setState(() {
-                                selectedType = entry.key;
+                                selectedBottomType = type;
                               });
                             }
                           },
                         );
                       }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Заметки
+                    TextField(
+                      controller: _notesController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Заметки',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      maxLines: 3,
                     ),
                   ],
                 ),
@@ -460,7 +846,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                   ),
                 ),
-                TextButton(
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                  ),
                   onPressed: () {
                     // Обновляем маркер
                     final updatedMarker = {
@@ -473,19 +863,33 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
-                      'description': _descriptionController.text.trim(),
-                      'type': selectedType,
+                      'notes': _notesController.text.trim(),
+                      'bottomType': selectedBottomType,
+                      // Обновляем угол и соотношение
+                      'angle': _calculateRayAngle(currentRayIndex),
+                      'ratio': currentDistance / _maxDistance,
                     };
+
+                    // Удаляем старые поля, если они существуют (для обратной совместимости)
+                    updatedMarker.remove('type');
+                    updatedMarker.remove('description');
 
                     // Обновляем в списке
                     _updateMarker(marker['id'], updatedMarker);
 
                     Navigator.pop(context);
+
+                    // Показываем сообщение
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Маркер обновлен'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
                   },
-                  child: Text(
+                  child: const Text(
                     'Сохранить',
                     style: TextStyle(
-                      color: AppConstants.primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -545,6 +949,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               onPressed: () {
                 _deleteMarker(marker);
                 Navigator.of(context).pop();
+
+                // Показываем сообщение
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Маркер удален'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               },
               child: const Text(
                 'Удалить',
@@ -565,226 +977,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       _markerMap.markers.removeWhere((item) => item['id'] == marker['id']);
       _hasChanges = true;
     });
-  }
-
-  // Добавление нового маркера
-  void _addNewMarker() {
-    if (_selectedRayIndex < 0 || _selectedDistance <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Выберите луч и дистанцию для добавления маркера'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    _nameController.text = '';
-    _depthController.text = '';
-    _descriptionController.text = '';
-    String selectedType = _newMarkerType;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: AppConstants.cardColor,
-              title: Text(
-                'Новый маркер',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Информация о выбранной позиции
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppConstants.primaryColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: AppConstants.primaryColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Луч ${_selectedRayIndex + 1}, ${_selectedDistance.toInt()} м',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Название маркера
-                    TextField(
-                      controller: _nameController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Название маркера',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Глубина
-                    TextField(
-                      controller: _depthController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Глубина (м)',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Описание
-                    TextField(
-                      controller: _descriptionController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Описание',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Тип маркера
-                    Text(
-                      'Тип маркера:',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Wrap(
-                      spacing: 8,
-                      children: _markerTypeColors.entries.map((entry) {
-                        return ChoiceChip(
-                          label: Text(_getMarkerTypeName(entry.key)),
-                          selected: selectedType == entry.key,
-                          backgroundColor: entry.value.withOpacity(0.2),
-                          selectedColor: entry.value.withOpacity(0.5),
-                          labelStyle: TextStyle(
-                            color: AppConstants.textColor,
-                            fontWeight: selectedType == entry.key ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          onSelected: (bool selected) {
-                            if (selected) {
-                              setState(() {
-                                selectedType = entry.key;
-                              });
-                            }
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Отмена',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Создаем новый маркер
-                    final newMarker = {
-                      'id': const Uuid().v4(),
-                      'rayIndex': _selectedRayIndex.toDouble(),
-                      'distance': _selectedDistance,
-                      'name': _nameController.text.trim().isEmpty
-                          ? 'Маркер'
-                          : _nameController.text.trim(),
-                      'depth': _depthController.text.isEmpty
-                          ? null
-                          : double.tryParse(_depthController.text),
-                      'description': _descriptionController.text.trim(),
-                      'type': selectedType,
-                      // Сохраняем также угол и соотношение для отображения
-                      'angle': _calculateRayAngle(_selectedRayIndex),
-                      'ratio': _selectedDistance / _maxDistance,
-                    };
-
-                    // Добавляем маркер
-                    setState(() {
-                      _markerMap.markers.add(newMarker);
-                      _hasChanges = true;
-                      _newMarkerType = selectedType; // Запоминаем последний выбранный тип
-                    });
-
-                    Navigator.pop(context);
-
-                    // Показываем сообщение
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Маркер добавлен'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'Добавить',
-                    style: TextStyle(
-                      color: AppConstants.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   // Показать меню действий
@@ -905,7 +1097,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 ),
               ),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+              ),
               onPressed: () {
                 if (nameController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -925,11 +1121,18 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 });
 
                 Navigator.pop(context);
+
+                // Показываем сообщение
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Информация обновлена'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               },
-              child: Text(
+              child: const Text(
                 'Сохранить',
                 style: TextStyle(
-                  color: AppConstants.primaryColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1039,7 +1242,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       setState(() {
         _isLoading = false;
         _hasChanges = false;
-        _isEditing = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1124,15 +1326,15 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         message: 'Подождите...',
         child: Column(
           children: [
-            // Верхняя часть - маркерная карта и панель управления
+            // Карта на весь экран - основная часть
             Expanded(
-              flex: 3,
+              flex: 4,
               child: _buildMarkerMapView(),
             ),
 
-            // Нижняя часть - список маркеров
+            // Уменьшенная нижняя часть со списком маркеров
             Expanded(
-              flex: 2,
+              flex: 1,
               child: _markerMap.markers.isEmpty
                   ? _buildEmptyMarkersState()
                   : _buildMarkersList(),
@@ -1142,106 +1344,80 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       ),
       // Кнопка добавления маркера - доступна только в режиме редактирования
       floatingActionButton: _isEditing ? FloatingActionButton(
-        onPressed: _selectedRayIndex >= 0 ? _addNewMarker : null,
-        backgroundColor: _selectedRayIndex >= 0
-            ? AppConstants.primaryColor
-            : AppConstants.primaryColor.withOpacity(0.5),
+        onPressed: _showAddMarkerDialog,
+        backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         child: const Icon(Icons.add_location),
       ) : null,
       // Отображаем информацию о карте внизу экрана
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppConstants.backgroundColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today,
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Дата: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            if (_markerMap.sector != null && _markerMap.sector!.isNotEmpty) ...[
-              const SizedBox(height: 4),
+      bottomNavigationBar: SizedBox(
+        height: 40,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppConstants.backgroundColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Row(
                 children: [
                   Icon(
-                    Icons.grid_on,
+                    Icons.calendar_today,
                     color: AppConstants.textColor.withOpacity(0.7),
                     size: 16,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   Text(
-                    'Сектор: ${_markerMap.sector}',
+                    'Дата: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
-            ],
-            if (_markerMap.noteName != null && _markerMap.noteName!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.note,
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Заметка: ${_markerMap.noteName}',
+              if (_markerMap.sector != null && _markerMap.sector!.isNotEmpty)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.grid_on,
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Сектор: ${_markerMap.sector}',
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 14,
+                        fontSize: 12,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // Виджет маркерной карты
+  // Виджет маркерной карты во весь экран
   Widget _buildMarkerMapView() {
     return Container(
-      margin: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
+        color: const Color(0xFF0B1F1D), // Темно-зеленый фон для глубины
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppConstants.textColor.withOpacity(0.3),
+          color: AppConstants.textColor.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -1269,12 +1445,13 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     selectedRayIndex: _selectedRayIndex,
                     selectedDistance: _selectedDistance,
                     markers: _markerMap.markers,
-                    markerColors: _markerTypeColors,
+                    bottomTypeColors: _bottomTypeColors,
+                    bottomTypeIcons: _bottomTypeIcons,
                     isEditing: _isEditing,
                   ),
                 ),
 
-                // Интерактивная область для выбора луча и дистанции
+                // Интерактивная область для выбора луча и дистанции в режиме редактирования
                 if (_isEditing)
                   Positioned.fill(
                     child: GestureDetector(
@@ -1291,11 +1468,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                         // Вычисляем угол в радианах
                         double angle = atan2(dy, dx);
-                        if (angle < 0) angle += 2 * 3.14159; // Приводим к положительному углу
+                        if (angle < 0) angle += 2 * math.pi; // Приводим к положительному углу
 
                         // Проверяем, попадает ли угол в диапазон лучей
                         // Конвертируем угол в градусы
-                        double angleDegrees = (angle * 180 / 3.14159) % 360;
+                        double angleDegrees = (angle * 180 / math.pi) % 360;
 
                         // Проверяем, находится ли угол в допустимом диапазоне (от 45° до 135°)
                         if (angleDegrees >= 45 && angleDegrees <= 135) {
@@ -1306,7 +1483,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                           // Вычисляем дистанцию в метрах
                           // Гипотенуза треугольника - это дистанция
-                          double distance = sqrt(dx * dx + dy * dy);
+                          double distance = math.sqrt(dx * dx + dy * dy);
                           // Нормализуем относительно максимальной высоты карты
                           distance = (distance / maxHeight) * _maxDistance * 1.05; // Коэффициент для компенсации
                           // Округляем до шага дистанции
@@ -1318,6 +1495,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                             _selectedRayIndex = rayIndex;
                             _selectedDistance = distance;
                           });
+
+                          // Открываем диалог добавления маркера если нажали на карту
+                          _showAddMarkerDialog();
                         }
                       },
                       behavior: HitTestBehavior.translucent,
@@ -1364,6 +1544,41 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       ),
                     ),
                   ),
+
+                // Подсказка при отсутствии маркеров
+                if (_markerMap.markers.isEmpty)
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.location_off,
+                          color: AppConstants.textColor.withOpacity(0.5),
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'На этой карте пока нет маркеров',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_isEditing) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Нажмите на карту или на "+" чтобы\nдобавить маркер',
+                            style: TextStyle(
+                              color: AppConstants.textColor.withOpacity(0.7),
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
               ],
             );
           }
@@ -1377,27 +1592,21 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.location_off,
-            color: AppConstants.textColor.withOpacity(0.5),
-            size: 48,
-          ),
-          const SizedBox(height: 16),
           Text(
             'На этой карте пока нет маркеров',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
           if (_isEditing) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
-              'Выберите луч и дистанцию на карте,\nзатем добавьте маркер',
+              'Нажмите на "+" чтобы добавить маркер',
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 14,
+                fontSize: 12,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1407,26 +1616,27 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // Список маркеров
+  // Список маркеров с горизонтальной прокруткой
   Widget _buildMarkersList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Text(
             'Список маркеров (${_markerMap.markers.length})',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        // Отображаем все маркеры в виде списка
+        // Отображаем все маркеры в виде горизонтального списка
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             itemCount: _markerMap.markers.length,
             itemBuilder: (context, index) {
               final marker = _markerMap.markers[index];
@@ -1438,65 +1648,127 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // Элемент списка маркеров
+  // Элемент списка маркеров для горизонтального списка
   Widget _buildMarkerItem(Map<String, dynamic> marker) {
-    final markerType = marker['type'] ?? 'default';
-    final Color markerColor = _markerTypeColors[markerType] ?? Colors.blue;
+    // Определяем тип дна (с учетом обратной совместимости)
+    final bottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
+    final Color markerColor = _bottomTypeColors[bottomType] ?? Colors.blue;
+    final IconData markerIcon = _bottomTypeIcons[bottomType] ?? Icons.location_on;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       color: AppConstants.cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: markerColor.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.location_on,
-            color: markerColor,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          marker['name'] ?? 'Маркер',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Луч ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} м',
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 12,
+      child: InkWell(
+        onTap: () => _showMarkerDetails(marker),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 160,
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Название и иконка
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: markerColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      markerIcon,
+                      color: markerColor,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      marker['name'] ?? 'Маркер',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            if (marker['depth'] != null)
+
+              const SizedBox(height: 4),
+
+              // Луч и дистанция
               Text(
-                'Глубина: ${marker['depth']} м',
+                'Луч ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} м',
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 12,
                 ),
               ),
-          ],
+
+              // Глубина если есть
+              if (marker['depth'] != null)
+                Text(
+                  'Глубина: ${marker['depth']} м',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+
+              // Заметки (если есть)
+              if ((marker['notes'] != null && marker['notes'].isNotEmpty) ||
+                  (marker['description'] != null && marker['description'].isNotEmpty))
+                Expanded(
+                  child: Text(
+                    marker['notes'] ?? marker['description'] ?? '',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.6),
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+              // Кнопки управления если в режиме редактирования
+              if (_isEditing)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.edit,
+                        color: AppConstants.primaryColor,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => _showEditMarkerDialog(marker),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => _confirmDeleteMarker(marker),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
-        trailing: _isEditing
-            ? IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
-          onPressed: () => _confirmDeleteMarker(marker),
-        )
-            : null,
-        onTap: () => _showMarkerDetails(marker),
       ),
     );
   }
@@ -1510,7 +1782,8 @@ class RaysAndMarkersPainter extends CustomPainter {
   final int selectedRayIndex;
   final double selectedDistance;
   final List<Map<String, dynamic>> markers;
-  final Map<String, Color> markerColors;
+  final Map<String, Color> bottomTypeColors;
+  final Map<String, IconData> bottomTypeIcons;
   final bool isEditing;
 
   RaysAndMarkersPainter({
@@ -1520,7 +1793,8 @@ class RaysAndMarkersPainter extends CustomPainter {
     required this.selectedRayIndex,
     required this.selectedDistance,
     required this.markers,
-    required this.markerColors,
+    required this.bottomTypeColors,
+    required this.bottomTypeIcons,
     required this.isEditing,
   });
 
@@ -1530,8 +1804,8 @@ class RaysAndMarkersPainter extends CustomPainter {
     final centerX = size.width / 2;
     final originY = size.height * 0.95; // Нижняя точка
 
-    // Фон для маркерной карты (добавлено)
-    paint.color = AppConstants.surfaceColor;
+    // Фон для маркерной карты
+    paint.color = const Color(0xFF0B1F1D); // темно-зеленый фон
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
 
     // Вычисляем масштаб для перевода метров в пиксели
@@ -1579,7 +1853,7 @@ class RaysAndMarkersPainter extends CustomPainter {
           radius = 4.0;
         } else {
           // Обычные точки
-          radius = 2.0;
+          radius = 1.5;
         }
 
         // Если это выбранное расстояние на выбранном луче, выделяем
@@ -1598,16 +1872,13 @@ class RaysAndMarkersPainter extends CustomPainter {
 
         // Для круглых отметок дистанции добавляем текст
         if (d % (distanceStep * 5) == 0) {
-          // Вычисляем смещение для текста
-          final textOffsetX = (dx > centerX) ? 14.0 : -34.0;
-
-          // Рисуем текст
+          // Текстовые метки (50м, 100м, 150м, 200м)
           final textPainter = TextPainter(
             text: TextSpan(
               text: d.toInt().toString(),
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -1615,20 +1886,31 @@ class RaysAndMarkersPainter extends CustomPainter {
           );
 
           textPainter.layout();
+
+          // Смещение текста в зависимости от положения луча
+          double textOffsetX;
+          if (i == 0) {
+            textOffsetX = -textPainter.width - 5; // Крайний левый луч
+          } else if (i == rayCount - 1) {
+            textOffsetX = 5; // Крайний правый луч
+          } else {
+            textOffsetX = -textPainter.width / 2; // Центрирование для остальных лучей
+          }
+
           textPainter.paint(
             canvas,
-            Offset(dx + textOffsetX, dy - 6),
+            Offset(dx + textOffsetX, dy - textPainter.height / 2),
           );
         }
       }
 
-      // Надпись с номером луча
+      // Надпись с номером луча сверху
       final textPainter = TextPainter(
         text: TextSpan(
           text: 'Луч ${i + 1}',
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -1637,10 +1919,11 @@ class RaysAndMarkersPainter extends CustomPainter {
 
       textPainter.layout();
       // Размещаем текст над лучом
-      final textDx = maxDx + ((maxDx > centerX) ? 5 : -textPainter.width - 5);
+      final textDx = maxDx - textPainter.width / 2;
+      final textDy = maxDy - textPainter.height - 5;
       textPainter.paint(
         canvas,
-        Offset(textDx, maxDy - textPainter.height - 5),
+        Offset(textDx, textDy),
       );
     }
 
@@ -1664,9 +1947,20 @@ class RaysAndMarkersPainter extends CustomPainter {
       final dx = centerX + (maxDx - centerX) * ratio;
       final dy = originY - (originY - maxDy) * ratio;
 
-      // Определяем цвет по типу маркера
-      final markerType = marker['type'] ?? 'default';
-      final markerColor = markerColors[markerType] ?? Colors.blue;
+      // Определяем цвет по типу дна (с учетом обратной совместимости)
+      String bottomType = marker['bottomType'] ?? 'default';
+      if (bottomType == 'default' && marker['type'] != null) {
+        // Для обратной совместимости
+        switch (marker['type']) {
+          case 'dropoff': bottomType = 'свал'; break;
+          case 'weed': bottomType = 'трава_водоросли'; break;
+          case 'sandbar': bottomType = 'ровно_твердо'; break;
+          case 'structure': bottomType = 'зацеп'; break;
+          default: bottomType = 'ил';
+        }
+      }
+
+      final markerColor = bottomTypeColors[bottomType] ?? Colors.blue;
 
       // Рисуем маркер
       final markerPaint = Paint()
@@ -1690,6 +1984,17 @@ class RaysAndMarkersPainter extends CustomPainter {
         Offset(dx, dy),
         8,
         strokePaint,
+      );
+
+      // Добавляем внутреннюю точку
+      final centerDotPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(
+        Offset(dx, dy),
+        2,
+        centerDotPaint,
       );
     }
 
@@ -1738,14 +2043,3 @@ class RaysAndMarkersPainter extends CustomPainter {
     return true;
   }
 }
-
-// Вспомогательная функция для вычисления тангенса
-double tan(double radians) {
-  return sin(radians) / cos(radians);
-}
-
-// Вспомогательная функция для вычисления квадратного корня
-double sqrt(double value) {
-  return value <= 0 ? 0 : math.sqrt(value);
-}
-
