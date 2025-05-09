@@ -1,7 +1,6 @@
 // Путь: lib/screens/marker_maps/marker_map_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
@@ -28,26 +27,13 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   bool _isEditing = false;
   bool _hasChanges = false;
 
-  // Текущий выбранный маркер для редактирования
+  // Текущий выбранный маркер для просмотра
   Map<String, dynamic>? _selectedMarker;
-
-  // Контроллеры для текстовых полей маркера
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _depthController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _depthController.dispose();
-    super.dispose();
   }
 
   // Получение названия типа маркера
@@ -169,36 +155,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-
-              // Кнопки
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Изменить'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppConstants.textColor,
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showEditMarkerDialog(marker);
-                    },
-                  ),
-                  const SizedBox(width: 16),
-                  TextButton.icon(
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Удалить'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.redAccent,
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _confirmDeleteMarker(marker);
-                    },
-                  ),
-                ],
-              ),
             ],
           ),
         );
@@ -264,357 +220,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     });
   }
 
-  // Показать диалог добавления/редактирования маркера
-  void _showEditMarkerDialog(Map<String, dynamic>? marker) {
-    final bool isEditing = marker != null;
-
-    // Очищаем или заполняем поля в зависимости от режима
-    if (isEditing) {
-      _nameController.text = marker['name'] ?? '';
-      _descriptionController.text = marker['description'] ?? '';
-      _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
-    } else {
-      _nameController.clear();
-      _descriptionController.clear();
-      _depthController.clear();
-    }
-
-    // Координаты для нового маркера (может быть получено от пользователя)
-    final TextEditingController latController = TextEditingController(
-      text: isEditing ? marker!['latitude'].toString() : '',
-    );
-    final TextEditingController lngController = TextEditingController(
-      text: isEditing ? marker!['longitude'].toString() : '',
-    );
-
-    // Выбранный тип маркера
-    String selectedType = isEditing ? (marker!['type'] ?? 'default') : 'default';
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: AppConstants.cardColor,
-              title: Text(
-                isEditing ? 'Редактировать маркер' : 'Новый маркер',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Название маркера
-                    TextField(
-                      controller: _nameController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Название маркера',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Координаты (широта)
-                    TextField(
-                      controller: latController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Широта',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Координаты (долгота)
-                    TextField(
-                      controller: lngController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Долгота',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Глубина
-                    TextField(
-                      controller: _depthController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Глубина (м)',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Описание
-                    TextField(
-                      controller: _descriptionController,
-                      style: TextStyle(color: AppConstants.textColor),
-                      decoration: InputDecoration(
-                        labelText: 'Описание',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
-                        ),
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Выбор типа маркера
-                    Row(
-                      children: [
-                        Text(
-                          'Тип маркера:',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Типы маркеров
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildMarkerTypeOption(
-                            'default',
-                            'Обычный',
-                            Colors.blue,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
-                        ),
-                        _buildMarkerTypeOption(
-                            'dropoff',
-                            'Свал',
-                            Colors.red,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
-                        ),
-                        _buildMarkerTypeOption(
-                            'weed',
-                            'Растительность',
-                            Colors.green,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
-                        ),
-                        _buildMarkerTypeOption(
-                            'sandbar',
-                            'Отмель',
-                            Colors.amber,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
-                        ),
-                        _buildMarkerTypeOption(
-                            'structure',
-                            'Структура',
-                            Colors.orange,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    'Отмена',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Проверка корректности ввода координат
-                    double? lat, lng;
-                    try {
-                      lat = double.parse(latController.text);
-                      lng = double.parse(lngController.text);
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Введите корректные координаты')),
-                      );
-                      return;
-                    }
-
-                    if (isEditing) {
-                      _updateMarker(marker!, selectedType, lat, lng);
-                    } else {
-                      _addNewMarker(selectedType, lat, lng);
-                    }
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    isEditing ? 'Сохранить' : 'Добавить',
-                    style: TextStyle(
-                      color: AppConstants.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // Построение опции выбора типа маркера
-  Widget _buildMarkerTypeOption(
-      String type,
-      String label,
-      Color color,
-      String selectedValue,
-      Function(String) onSelect
-      ) {
-    final isSelected = selectedValue == type;
-
-    return GestureDetector(
-      onTap: () => onSelect(type),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor.withOpacity(0.2)
-              : AppConstants.backgroundColor.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Обновление существующего маркера
-  void _updateMarker(Map<String, dynamic> marker, String type, double lat, double lng) {
-    final index = _markerMap.markers.indexWhere((m) => m['id'] == marker['id']);
-    if (index != -1) {
-      setState(() {
-        _markerMap.markers[index] = {
-          'id': marker['id'],
-          'latitude': lat,
-          'longitude': lng,
-          'name': _nameController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'depth': _depthController.text.isEmpty
-              ? null
-              : double.tryParse(_depthController.text),
-          'type': type,
-        };
-        _hasChanges = true;
-      });
-    }
-  }
-
-  // Добавление нового маркера
-  void _addNewMarker(String type, double lat, double lng) {
-    final id = const Uuid().v4();
-
-    setState(() {
-      _markerMap.markers.add({
-        'id': id,
-        'latitude': lat,
-        'longitude': lng,
-        'name': _nameController.text.trim().isEmpty
-            ? 'Маркер ${_markerMap.markers.length + 1}'
-            : _nameController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'depth': _depthController.text.isEmpty
-            ? null
-            : double.tryParse(_depthController.text),
-        'type': type,
-      });
-      _hasChanges = true;
-    });
-
-    // Показываем уведомление
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Маркер добавлен'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
   // Показать меню действий
   void _showActionMenu() {
     showModalBottomSheet(
@@ -629,23 +234,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: Icon(
-                  Icons.add_location,
-                  color: AppConstants.textColor,
-                ),
-                title: Text(
-                  'Добавить маркер',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showEditMarkerDialog(null);
-                },
-              ),
               ListTile(
                 leading: Icon(
                   Icons.edit,
@@ -971,15 +559,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             ? _buildEmptyState()
             : _buildMarkersList(),
       ),
-      // Кнопка добавления маркера (только в режиме редактирования)
-      floatingActionButton: _isEditing
-          ? FloatingActionButton(
-        onPressed: () => _showEditMarkerDialog(null),
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        child: const Icon(Icons.add_location),
-      )
-          : null,
+      // Убрана кнопка добавления маркера
       // Отображаем информацию о карте внизу экрана
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1086,28 +666,13 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _isEditing
-                ? 'Нажмите кнопку + чтобы добавить новый маркер'
-                : 'Включите режим редактирования для добавления маркеров',
+            'Функция добавления маркеров временно недоступна',
             style: TextStyle(
               color: AppConstants.textColor.withOpacity(0.7),
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
           ),
-          if (_isEditing) ...[
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_location),
-              label: const Text('Добавить маркер'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              onPressed: () => _showEditMarkerDialog(null),
-            ),
-          ],
         ],
       ),
     );
@@ -1198,18 +763,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           ],
         ),
         trailing: _isEditing
-            ? Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.edit, color: AppConstants.textColor),
-              onPressed: () => _showEditMarkerDialog(marker),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDeleteMarker(marker),
-            ),
-          ],
+            ? IconButton(
+          icon: const Icon(Icons.delete, color: Colors.red),
+          onPressed: () => _confirmDeleteMarker(marker),
         )
             : null,
         onTap: () => _showMarkerDetails(marker),
