@@ -908,32 +908,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
                 const SizedBox(height: 20),
 
-                // Маркерная карта (перемещена перед записями о поклевках)
-                if (_selectedFishingType == 'Карповая рыбалка') ...[
-                  _buildSectionHeader('Маркерная карта'),
-                  ElevatedButton.icon(
-                    icon: Icon(
-                      Icons.location_searching,
-                      color: AppConstants.textColor,
-                    ),
-                    label: Text(
-                      'Создать маркерную карту',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _openMarkerMap,
-                  ),
-                  const SizedBox(height: 20),
-                ],
 
                 // Записи о поклевках
                 _buildSectionHeader('Записи о поклевках'),
