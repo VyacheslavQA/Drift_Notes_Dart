@@ -164,11 +164,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Вычисление угла луча
   double _calculateRayAngle(int rayIndex) {
-    // Распределяем лучи равномерно в диапазоне от 135° до 45° (где 90° - прямо вверх)
+    // Распределяем лучи равномерно в диапазоне от 110° до 70° (где 90° - прямо вверх)
     // 0-й луч будет самым левым, последний - самым правым
-    final totalAngle = 90.0; // общий угол охвата в градусах (135° - 45° = 90°)
+    final totalAngle = 40.0; // общий угол охвата в градусах (110° - 70° = 40°)
     final angleStep = totalAngle / (_raysCount - 1);
-    return (135 - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
+    return (110 - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
   }
 
   // Показ диалога с деталями маркера
@@ -1514,7 +1514,7 @@ class RaysAndMarkersPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
     final centerX = size.width / 2;
-    final originY = size.height * 0.95; // Нижняя точка
+    final originY = size.height * 1.00; // Нижняя точка
 
     // Фон для маркерной карты
     paint.color = const Color(0xFF0B1F1D); // темно-зеленый фон
@@ -1526,10 +1526,10 @@ class RaysAndMarkersPainter extends CustomPainter {
     // Отрисовка лучей
     for (int i = 0; i < rayCount; i++) {
       // Вычисляем угол для текущего луча
-      // Распределяем равномерно в диапазоне от 135° до 45°
-      final totalAngle = 90.0; // общий угол охвата
+      // Распределяем равномерно в диапазоне от 110° до 70°
+      final totalAngle = 40.0; // общий угол охвата
       final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = 135 - (i * angleStep);
+      final angleDegrees = 110 - (i * angleStep);
       final angleRadians = angleDegrees * (math.pi / 180);
 
       // Конечная точка луча (максимальная дистанция)
@@ -1639,9 +1639,9 @@ class RaysAndMarkersPainter extends CustomPainter {
       final distance = marker['distance'] as double? ?? 0;
 
       // Вычисляем угол для луча
-      final totalAngle = 90.0;
+      final totalAngle = 40.0;
       final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = 135 - (rayIndex * angleStep);
+      final angleDegrees = 110 - (rayIndex * angleStep);
       final angleRadians = angleDegrees * (math.pi / 180);
 
       // Вычисляем позицию маркера
