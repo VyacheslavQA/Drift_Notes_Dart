@@ -485,10 +485,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                           fontSize: 16,
                         ),
                       ),
-                      leading: Icon(
-                        _getFishingTypeIcon(type),
-                        color: AppConstants.textColor,
-                      ),
+                      leading: FishingTypeIcons.getIconWidget(type, size: 24),
                       trailing: _selectedFishingType == type
                           ? Icon(
                         Icons.check_circle,
@@ -532,75 +529,53 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     );
   }
 
-  // Вспомогательный метод для получения иконки для типа рыбалки
-  IconData _getFishingTypeIcon(String type) {
-    switch (type) {
-      case 'Карповая рыбалка':
-        return Icons.waves;
-      case 'Спиннинг':
-        return Icons.sailing;
-      case 'Фидер':
-        return Icons.add_road;
-      case 'Поплавочная':
-        return Icons.crop_free;
-      case 'Зимняя рыбалка':
-        return Icons.ac_unit;
-      case 'Нахлыст':
-        return Icons.air;
-      case 'Троллинг':
-        return Icons.directions_boat;
-      default:
-        return Icons.category;
-    }
-  }
-
   // Диалог подтверждения отмены редактирования
   void _showCancelConfirmationDialog() {
     showDialog(
-        context: context,
-        builder: (BuildContext context) {
-      return AlertDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
-          'Отменить редактирование',
-          style: TextStyle(
-          color: AppConstants.textColor,
-          fontWeight: FontWeight.bold,
-      ),
-    ),
-    content: Text(
-    'Вы уверены, что хотите отменить редактирование заметки? Все внesены изменения будут потеряны.',
-      style: TextStyle(
-        color: AppConstants.textColor,
-      ),
-    ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Закрыть диалог
-            },
-            child: Text(
-              'Нет',
-              style: TextStyle(
-                color: AppConstants.textColor,
-              ),
+            'Отменить редактирование',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Закрыть диалог
-              Navigator.of(context).pop(); // Вернуться на предыдущий экран
-            },
-            child: const Text(
-              'Да, отменить',
-              style: TextStyle(
-                color: Colors.redAccent,
-              ),
+          content: Text(
+            'Вы уверены, что хотите отменить редактирование заметки? Все внесенные изменения будут потеряны.',
+            style: TextStyle(
+              color: AppConstants.textColor,
             ),
           ),
-        ],
-      );
-        },
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Закрыть диалог
+              },
+              child: Text(
+                'Нет',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Закрыть диалог
+                Navigator.of(context).pop(); // Вернуться на предыдущий экран
+              },
+              child: const Text(
+                'Да, отменить',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -921,6 +896,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                           backgroundColor: AppConstants.primaryColor,
                           foregroundColor: AppConstants.textColor,
                           padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: _takePhoto,
                       ),
@@ -1527,63 +1505,63 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
 
     // Рисуем горизонтальную линию
     canvas.drawLine(
-        Offset(0, size.height / 2),
-        Offset(size.width, size.height / 2),
-    paint,
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      paint,
     );
 
     // Рисуем деления
     final divisionWidth = size.width / divisions;
     for (int i = 0; i <= divisions; i++) {
-    final x = i * divisionWidth;
-    final height = i % 2 == 0 ? 10.0 : 5.0;
+      final x = i * divisionWidth;
+      final height = i % 2 == 0 ? 10.0 : 5.0;
 
-    canvas.drawLine(
-    Offset(x, size.height / 2 - height / 2),
-    Offset(x, size.height / 2 + height / 2),
-    paint,
-    );
+      canvas.drawLine(
+        Offset(x, size.height / 2 - height / 2),
+        Offset(x, size.height / 2 + height / 2),
+        paint,
+      );
     }
 
     // Рисуем точки поклевок
     final bitePaint = Paint()
-    ..color = Colors.green
-    ..style = PaintingStyle.fill;
+      ..color = Colors.green
+      ..style = PaintingStyle.fill;
 
     for (final record in biteRecords) {
-    final timeInMinutes = record.time.hour * 60 + record.time.minute;
-    final totalMinutes = 24 * 60;
-    final position = timeInMinutes / totalMinutes * size.width;
+      final timeInMinutes = record.time.hour * 60 + record.time.minute;
+      final totalMinutes = 24 * 60;
+      final position = timeInMinutes / totalMinutes * size.width;
 
-    // Рисуем кружок для поклевки
-    canvas.drawCircle(
-    Offset(position, size.height / 2),
-    7,
-    bitePaint,
-    );
+      // Рисуем кружок для поклевки
+      canvas.drawCircle(
+        Offset(position, size.height / 2),
+        7,
+        bitePaint,
+      );
 
-    // Если есть вес, рисуем размер круга в зависимости от веса
-    if (record.weight > 0) {
-    final weightPaint = Paint()
-    ..color = Colors.orange
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.0;
+      // Если есть вес, рисуем размер круга в зависимости от веса
+      if (record.weight > 0) {
+        final weightPaint = Paint()
+          ..color = Colors.orange
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
 
-    // Максимальный вес для отображения (15 кг)
-    const maxWeight = 15.0;
-    // Минимальный и максимальный радиус
-    const minRadius = 8.0;
-    const maxRadius = 18.0;
+        // Максимальный вес для отображения (15 кг)
+        const maxWeight = 15.0;
+        // Минимальный и максимальный радиус
+        const minRadius = 8.0;
+        const maxRadius = 18.0;
 
-    final weight = record.weight.clamp(0.1, maxWeight);
-    final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
+        final weight = record.weight.clamp(0.1, maxWeight);
+        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
 
-    canvas.drawCircle(
-    Offset(position, size.height / 2),
-    radius,
-    weightPaint,
-    );
-    }
+        canvas.drawCircle(
+          Offset(position, size.height / 2),
+          radius,
+          weightPaint,
+        );
+      }
     }
   }
 

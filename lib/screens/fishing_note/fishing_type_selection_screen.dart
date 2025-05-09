@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
+import '../../utils/fishing_type_icons.dart'; // Добавьте этот импорт
 import 'add_fishing_note_screen.dart';
 
 class FishingTypeSelectionScreen extends StatefulWidget {
@@ -31,28 +32,6 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
         builder: (context) => AddFishingNoteScreen(fishingType: _selectedFishingType),
       ),
     );
-  }
-
-  // Получение иконки для типа рыбалки
-  IconData _getFishingTypeIcon(String type) {
-    switch (type) {
-      case 'Карповая рыбалка':
-        return Icons.waves;
-      case 'Спиннинг':
-        return Icons.sailing;
-      case 'Фидер':
-        return Icons.add_road;
-      case 'Поплавочная':
-        return Icons.crop_free;
-      case 'Зимняя рыбалка':
-        return Icons.ac_unit;
-      case 'Нахлыст':
-        return Icons.air;
-      case 'Троллинг':
-        return Icons.directions_boat;
-      default:
-        return Icons.category;
-    }
   }
 
   // Метод для отображения выпадающего списка типов рыбалки как на скриншоте
@@ -126,11 +105,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                               value: type,
                               child: Row(
                                 children: [
-                                  Icon(
-                                    _getFishingTypeIcon(type),
-                                    color: AppConstants.textColor,
-                                    size: 24,
-                                  ),
+                                  // Используем FishingTypeIcons.getIconWidget вместо Icon
+                                  FishingTypeIcons.getIconWidget(type, size: 36.0),
                                   const SizedBox(width: 12),
                                   Text(type),
                                 ],
