@@ -9,6 +9,7 @@ import '../../models/fishing_note_model.dart';
 import '../../repositories/marker_map_repository.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/navigation.dart';
+import '../../widgets/loading_overlay.dart';
 import 'marker_map_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
@@ -56,6 +57,72 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         _errorMessage = 'Ошибка загрузки данных: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _clearAllMaps() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.cardColor,
+        title: Text(
+          'Удалить все карты',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Вы уверены, что хотите удалить ВСЕ маркерные карты? Это действие нельзя отменить.',
+          style: TextStyle(
+            color: AppConstants.textColor,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Отмена',
+              style: TextStyle(
+                color: AppConstants.textColor,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Удалить все'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        setState(() => _isLoading = true);
+
+        await _markerMapRepository.clearAllMarkerMaps();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Все маркерные карты удалены'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Перезагружаем данные
+        _loadData();
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -306,11 +373,14 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     ).then((result) async {
       if (result != null && result is MarkerMapModel) {
         try {
+          setState(() => _isLoading = true);
+
           // Сохраняем новую карту
           final mapId = await _markerMapRepository.addMarkerMap(result);
 
           // Открываем экран редактирования карты
           if (context.mounted) {
+            setState(() => _isLoading = false);
             final map = result.copyWith(id: mapId);
             Navigator.push(
               context,
@@ -320,6 +390,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             ).then((_) => _loadData());
           }
         } catch (e) {
+          setState(() => _isLoading = false);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Ошибка создания карты: $e')),
@@ -344,14 +415,43 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          // Добавляем кнопку очистки карт
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: AppConstants.textColor),
+            color: AppConstants.cardColor,
+            onSelected: (value) {
+              if (value == 'clear') {
+                _clearAllMaps();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Удалить все карты',
+                      style: TextStyle(color: AppConstants.textColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
-          : _errorMessage != null
-          ? _buildErrorState()
-          : _maps.isEmpty
-          ? _buildEmptyState()
-          : _buildMapsList(),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        message: 'Загрузка...',
+        child: _errorMessage != null
+            ? _buildErrorState()
+            : _maps.isEmpty
+            ? _buildEmptyState()
+            : _buildMapsList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateMapDialog,
         backgroundColor: AppConstants.primaryColor,

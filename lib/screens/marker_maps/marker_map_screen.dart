@@ -1,8 +1,6 @@
 // Путь: lib/screens/marker_maps/marker_map_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
@@ -26,15 +24,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
 
   late MarkerMapModel _markerMap;
-  GoogleMapController? _mapController;
-  Set<Marker> _markers = {};
   bool _isLoading = false;
   bool _isEditing = false;
   bool _hasChanges = false;
-
-  // Позиция для центра карты
-  LatLng _mapCenter = const LatLng(55.751244, 37.618423); // Москва по умолчанию
-  final double _defaultZoom = 14.0;
 
   // Текущий выбранный маркер для редактирования
   Map<String, dynamic>? _selectedMarker;
@@ -48,17 +40,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
-
-    // Если у карты уже есть маркеры, устанавливаем центр на первый маркер
-    if (_markerMap.markers.isNotEmpty) {
-      final firstMarker = _markerMap.markers.first;
-      _mapCenter = LatLng(firstMarker['latitude'], firstMarker['longitude']);
-    } else {
-      // Иначе пытаемся определить текущее местоположение
-      _determinePosition();
-    }
-
-    _updateMapMarkers();
   }
 
   @override
@@ -66,106 +47,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _depthController.dispose();
-    _mapController?.dispose();
     super.dispose();
-  }
-
-  // Определение текущего местоположения
-  Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    try {
-      // Проверяем, включены ли службы геолокации
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return;
-      }
-
-      // Проверяем разрешения на доступ к геолокации
-      permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        return;
-      }
-
-      // Получаем текущее местоположение
-      final position = await Geolocator.getCurrentPosition();
-
-      if (mounted) {
-        setState(() {
-          _mapCenter = LatLng(position.latitude, position.longitude);
-        });
-
-        // Перемещаем камеру к текущему местоположению
-        _mapController?.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: _mapCenter,
-              zoom: _defaultZoom,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Ошибка определения местоположения: $e');
-    }
-  }
-
-  // Обновление маркеров на карте из модели
-  void _updateMapMarkers() {
-    Set<Marker> markers = {};
-
-    for (var markerData in _markerMap.markers) {
-      final markerId = markerData['id'].toString();
-      final position = LatLng(
-        markerData['latitude'],
-        markerData['longitude'],
-      );
-
-      markers.add(
-        Marker(
-          markerId: MarkerId(markerId),
-          position: position,
-          infoWindow: InfoWindow(
-            title: markerData['name'] ?? 'Маркер',
-            snippet: markerData['depth'] != null
-                ? 'Глубина: ${markerData['depth']} м'
-                : 'Нажмите для подробностей',
-          ),
-          icon: _getMarkerIcon(markerData['type']),
-          onTap: () {
-            _showMarkerDetails(markerData);
-          },
-        ),
-      );
-    }
-
-    setState(() {
-      _markers = markers;
-    });
-  }
-
-  // Получение иконки маркера в зависимости от типа
-  BitmapDescriptor _getMarkerIcon(String? type) {
-    switch (type) {
-      case 'dropoff':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-      case 'weed':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-      case 'sandbar':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
-      case 'structure':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-      default:
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-    }
   }
 
   // Получение названия типа маркера
@@ -212,6 +94,24 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+
+              // Координаты
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: AppConstants.textColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Координаты: ${marker['latitude'].toStringAsFixed(6)}, ${marker['longitude'].toStringAsFixed(6)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
 
               // Глубина
               if (marker['depth'] != null) ...[
@@ -361,7 +261,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     setState(() {
       _markerMap.markers.removeWhere((item) => item['id'] == marker['id']);
       _hasChanges = true;
-      _updateMapMarkers();
     });
   }
 
@@ -379,6 +278,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       _descriptionController.clear();
       _depthController.clear();
     }
+
+    // Координаты для нового маркера (может быть получено от пользователя)
+    final TextEditingController latController = TextEditingController(
+      text: isEditing ? marker!['latitude'].toString() : '',
+    );
+    final TextEditingController lngController = TextEditingController(
+      text: isEditing ? marker!['longitude'].toString() : '',
+    );
 
     // Выбранный тип маркера
     String selectedType = isEditing ? (marker!['type'] ?? 'default') : 'default';
@@ -415,6 +322,42 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                           borderSide: BorderSide(color: AppConstants.primaryColor),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Координаты (широта)
+                    TextField(
+                      controller: latController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Широта',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Координаты (долгота)
+                    TextField(
+                      controller: lngController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Долгота',
+                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
                     const SizedBox(height: 16),
 
@@ -476,7 +419,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildMarkerTypeOption(
                             'default',
                             'Обычный',
-                            BitmapDescriptor.hueAzure,
+                            Colors.blue,
                             selectedType,
                                 (value) {
                               setState(() => selectedType = value);
@@ -485,7 +428,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildMarkerTypeOption(
                             'dropoff',
                             'Свал',
-                            BitmapDescriptor.hueRed,
+                            Colors.red,
                             selectedType,
                                 (value) {
                               setState(() => selectedType = value);
@@ -494,7 +437,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildMarkerTypeOption(
                             'weed',
                             'Растительность',
-                            BitmapDescriptor.hueGreen,
+                            Colors.green,
                             selectedType,
                                 (value) {
                               setState(() => selectedType = value);
@@ -503,7 +446,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildMarkerTypeOption(
                             'sandbar',
                             'Отмель',
-                            BitmapDescriptor.hueYellow,
+                            Colors.amber,
                             selectedType,
                                 (value) {
                               setState(() => selectedType = value);
@@ -512,7 +455,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildMarkerTypeOption(
                             'structure',
                             'Структура',
-                            BitmapDescriptor.hueOrange,
+                            Colors.orange,
                             selectedType,
                                 (value) {
                               setState(() => selectedType = value);
@@ -537,10 +480,22 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 ),
                 TextButton(
                   onPressed: () {
+                    // Проверка корректности ввода координат
+                    double? lat, lng;
+                    try {
+                      lat = double.parse(latController.text);
+                      lng = double.parse(lngController.text);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Введите корректные координаты')),
+                      );
+                      return;
+                    }
+
                     if (isEditing) {
-                      _updateMarker(marker!, selectedType);
+                      _updateMarker(marker!, selectedType, lat, lng);
                     } else {
-                      _addNewMarker(selectedType);
+                      _addNewMarker(selectedType, lat, lng);
                     }
                     Navigator.of(context).pop();
                   },
@@ -564,7 +519,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   Widget _buildMarkerTypeOption(
       String type,
       String label,
-      double hue,
+      Color color,
       String selectedValue,
       Function(String) onSelect
       ) {
@@ -591,7 +546,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor(),
+                color: color,
                 shape: BoxShape.circle,
               ),
             ),
@@ -610,14 +565,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   }
 
   // Обновление существующего маркера
-  void _updateMarker(Map<String, dynamic> marker, String type) {
+  void _updateMarker(Map<String, dynamic> marker, String type, double lat, double lng) {
     final index = _markerMap.markers.indexWhere((m) => m['id'] == marker['id']);
     if (index != -1) {
       setState(() {
         _markerMap.markers[index] = {
           'id': marker['id'],
-          'latitude': marker['latitude'],
-          'longitude': marker['longitude'],
+          'latitude': lat,
+          'longitude': lng,
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
           'depth': _depthController.text.isEmpty
@@ -626,24 +581,19 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           'type': type,
         };
         _hasChanges = true;
-        _updateMapMarkers();
       });
     }
   }
 
   // Добавление нового маркера
-  void _addNewMarker(String type) {
+  void _addNewMarker(String type, double lat, double lng) {
     final id = const Uuid().v4();
-
-    // Определяем позицию для нового маркера
-    // Используем _mapCenter как позицию для нового маркера
-    LatLng position = _mapCenter;
 
     setState(() {
       _markerMap.markers.add({
         'id': id,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
+        'latitude': lat,
+        'longitude': lng,
         'name': _nameController.text.trim().isEmpty
             ? 'Маркер ${_markerMap.markers.length + 1}'
             : _nameController.text.trim(),
@@ -654,13 +604,12 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         'type': type,
       });
       _hasChanges = true;
-      _updateMapMarkers();
     });
 
     // Показываем уведомление
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Маркер добавлен в центр карты'),
+        content: Text('Маркер добавлен'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -967,7 +916,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_isEditing
-            ? 'Режим редактирования включен. Нажмите на карту, чтобы добавить маркер.'
+            ? 'Режим редактирования включен'
             : 'Режим просмотра включен'),
         duration: const Duration(seconds: 2),
       ),
@@ -1018,126 +967,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: 'Подождите...',
-        child: Stack(
-          children: [
-            // Карта Google Maps
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _mapCenter,
-                zoom: _defaultZoom,
-              ),
-              onMapCreated: (controller) {
-                _mapController = controller;
-                // Устанавливаем темную тему карты
-                _mapController!.setMapStyle(_mapStyle);
-              },
-              markers: _markers,
-              onTap: _isEditing
-                  ? (position) {
-                // В режиме редактирования создаем новый маркер по клику
-                setState(() {
-                  _selectedMarker = {
-                    'latitude': position.latitude,
-                    'longitude': position.longitude,
-                  };
-                });
-                _showEditMarkerDialog(null);
-              }
-                  : null,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              compassEnabled: true,
-              mapType: MapType.hybrid, // Карта со спутника с дорогами
-              zoomControlsEnabled: false,
-            ),
-
-            // Информационная панель
-            if (_markerMap.markers.isNotEmpty)
-              Positioned(
-                bottom: 90,
-                left: 16,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppConstants.backgroundColor.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Маркеры: ${_markerMap.markers.length}',
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isEditing
-                            ? 'Нажмите на карту, чтобы добавить новый маркер.'
-                            : 'Нажмите на маркер для просмотра деталей.',
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Кнопки управления
-            Positioned(
-              bottom: 30,
-              right: 16,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Кнопка моего местоположения
-                  FloatingActionButton(
-                    heroTag: 'my_location',
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    mini: true,
-                    onPressed: _determinePosition,
-                    child: const Icon(Icons.my_location),
-                  ),
-                  const SizedBox(height: 8),
-                  // Кнопка увеличения масштаба
-                  FloatingActionButton(
-                    heroTag: 'map_type',
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    mini: true,
-                    onPressed: () {
-                      _mapController?.animateCamera(
-                        CameraUpdate.zoomIn(),
-                      );
-                    },
-                    child: const Icon(Icons.add),
-                  ),
-                  const SizedBox(height: 8),
-                  // Кнопка уменьшения масштаба
-                  FloatingActionButton(
-                    heroTag: 'zoom_out',
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    mini: true,
-                    onPressed: () {
-                      _mapController?.animateCamera(
-                        CameraUpdate.zoomOut(),
-                      );
-                    },
-                    child: const Icon(Icons.remove),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: _markerMap.markers.isEmpty
+            ? _buildEmptyState()
+            : _buildMarkersList(),
       ),
       // Кнопка добавления маркера (только в режиме редактирования)
       floatingActionButton: _isEditing
@@ -1232,193 +1064,156 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // Стиль для темной темы Google Maps
-  static const _mapStyle = '''
-  [
-    {
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#212121"
-        }
-      ]
-    },
-    {
-      "elementType": "labels.icon",
-      "stylers": [
-        {
-          "visibility": "off"
-        }
-      ]
-    },
-    {
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#757575"
-        }
-      ]
-    },
-    {
-      "elementType": "labels.text.stroke",
-      "stylers": [
-        {
-          "color": "#212121"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#757575"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative.country",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#9e9e9e"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative.land_parcel",
-      "stylers": [
-        {
-          "visibility": "off"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative.locality",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#bdbdbd"
-        }
-      ]
-    },
-    {
-      "featureType": "poi",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#757575"
-        }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#181818"
-        }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#616161"
-        }
-      ]
-    },
-    {
-      "featureType": "poi.park",
-      "elementType": "labels.text.stroke",
-      "stylers": [
-        {
-          "color": "#1b1b1b"
-        }
-      ]
-    },
-    {
-      "featureType": "road",
-      "elementType": "geometry.fill",
-      "stylers": [
-        {
-          "color": "#2c2c2c"
-        }
-      ]
-    },
-    {
-      "featureType": "road",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#8a8a8a"
-        }
-      ]
-    },
-    {
-      "featureType": "road.arterial",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#373737"
-        }
-      ]
-    },
-    {
-      "featureType": "road.highway",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#3c3c3c"
-        }
-      ]
-    },
-    {
-      "featureType": "road.highway.controlled_access",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#4e4e4e"
-        }
-      ]
-    },
-    {
-      "featureType": "road.local",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#616161"
-        }
-      ]
-    },
-    {
-      "featureType": "transit",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#757575"
-        }
-      ]
-    },
-    {
-      "featureType": "water",
-      "elementType": "geometry",
-      "stylers": [
-        {
-          "color": "#000814"
-        }
-      ]
-    },
-    {
-      "featureType": "water",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#3d3d3d"
-        }
-      ]
+  // Пустое состояние (когда нет маркеров)
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.location_off,
+            color: AppConstants.textColor.withOpacity(0.5),
+            size: 64,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'На этой карте пока нет маркеров',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isEditing
+                ? 'Нажмите кнопку + чтобы добавить новый маркер'
+                : 'Включите режим редактирования для добавления маркеров',
+            style: TextStyle(
+              color: AppConstants.textColor.withOpacity(0.7),
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (_isEditing) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add_location),
+              label: const Text('Добавить маркер'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              onPressed: () => _showEditMarkerDialog(null),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Список маркеров
+  Widget _buildMarkersList() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Список маркеров (${_markerMap.markers.length})',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Отображаем все маркеры в виде списка
+        ..._markerMap.markers.map((marker) => _buildMarkerItem(marker)).toList(),
+      ],
+    );
+  }
+
+  // Элемент списка маркеров
+  Widget _buildMarkerItem(Map<String, dynamic> marker) {
+    Color markerColor;
+    switch (marker['type']) {
+      case 'dropoff':
+        markerColor = Colors.red;
+        break;
+      case 'weed':
+        markerColor = Colors.green;
+        break;
+      case 'sandbar':
+        markerColor = Colors.amber;
+        break;
+      case 'structure':
+        markerColor = Colors.orange;
+        break;
+      default:
+        markerColor = Colors.blue;
+        break;
     }
-  ]
-  ''';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: markerColor.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.location_on,
+            color: markerColor,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          marker['name'] ?? 'Маркер',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Координаты: ${marker['latitude'].toStringAsFixed(6)}, ${marker['longitude'].toStringAsFixed(6)}',
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+                fontSize: 12,
+              ),
+            ),
+            if (marker['depth'] != null)
+              Text(
+                'Глубина: ${marker['depth']} м',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+          ],
+        ),
+        trailing: _isEditing
+            ? Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit, color: AppConstants.textColor),
+              onPressed: () => _showEditMarkerDialog(marker),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmDeleteMarker(marker),
+            ),
+          ],
+        )
+            : null,
+        onTap: () => _showMarkerDetails(marker),
+      ),
+    );
+  }
 }
