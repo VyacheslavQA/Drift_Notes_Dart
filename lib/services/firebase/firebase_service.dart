@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -32,6 +33,10 @@ class FirebaseService {
       // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
       throw _handleAuthException(e);
     }
+  }
+
+  Future<SharedPreferences> getSharedPreferences() async {
+    return await SharedPreferences.getInstance();
   }
 
   // Вход пользователя с email и паролем

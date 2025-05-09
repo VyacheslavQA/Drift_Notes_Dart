@@ -18,6 +18,7 @@ import 'profile/profile_screen.dart';
 import 'map/map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
+import 'screens/marker_maps/marker_maps_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -738,6 +739,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                           builder: (context) => const FishingCalendarScreen()),
+                    );
+                  },
+                ),
+
+                _buildDrawerItem(
+                  icon: Icons.map,
+                  title: 'Маркерные карты',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MarkerMapsListScreen(),
+                      ),
                     );
                   },
                 ),
