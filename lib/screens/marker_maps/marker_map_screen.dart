@@ -766,6 +766,12 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     Navigator.pop(context);
 
+                    // Обновляем состояние основного экрана вне диалога
+                    setState(() {
+                      _markerMap.markers.add(newMarker);
+                      _hasChanges = true;  // Устанавливаем флаг изменений
+                    });
+
                     // Показываем сообщение
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1386,7 +1392,26 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         _isLoading = true;
       });
 
-      await _markerMapRepository.updateMarkerMap(_markerMap);
+      // Создаем копию списка маркеров без UI-данных
+      final cleanedMarkers = _markerMap.markers.map((marker) {
+        // Создаем новую копию маркера без ключей, начинающихся с подчеркивания
+        final cleanedMarker = <String, dynamic>{};
+        marker.forEach((key, value) {
+          // Исключаем ключи, начинающиеся с подчеркивания (временные UI-данные)
+          if (!key.startsWith('_')) {
+            cleanedMarker[key] = value;
+          }
+        });
+        return cleanedMarker;
+      }).toList();
+
+      // Создаем новую копию маркерной карты с очищенными маркерами
+      final cleanedMarkerMap = _markerMap.copyWith(
+        markers: cleanedMarkers,
+      );
+
+      // Сохраняем очищенную версию
+      await _markerMapRepository.updateMarkerMap(cleanedMarkerMap);
 
       setState(() {
         _isLoading = false;
