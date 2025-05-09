@@ -120,7 +120,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         DateTime currentDate = note.date;
         DateTime endDate = note.endDate ?? note.date;
 
-        while (currentDate.isBefore(endDate) || currentDate.isAtSameMomentAs(endDate)) {
+        // Исправлено условие цикла, чтобы включать последний день
+        while (!currentDate.isAfter(endDate)) {
           final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
           _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
           _fishingEvents[dateKey]!.add(note);
