@@ -11,6 +11,7 @@ import '../../widgets/loading_overlay.dart';
 import 'photo_gallery_screen.dart';
 import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
+import 'edit_fishing_note_screen.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -186,6 +187,23 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // Метод для перехода к редактированию заметки
+  Future<void> _editNote() async {
+    if (_note == null) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditFishingNoteScreen(note: _note!),
+      ),
+    );
+
+    if (result == true) {
+      // Перезагружаем заметку, чтобы отобразить изменения
+      _loadNote();
+    }
+  }
+
   // Выбор обложки
   Future<void> _selectCoverPhoto() async {
     if (_note == null || _note!.photoUrls.isEmpty) {
@@ -355,6 +373,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
         actions: [
           if (!_isLoading && _note != null) ...[
+            // Кнопка редактирования
+            IconButton(
+              icon: Icon(Icons.edit, color: AppConstants.textColor),
+              tooltip: 'Редактировать',
+              onPressed: _editNote,
+            ),
             // Кнопка для выбора обложки
             IconButton(
               icon: const Icon(Icons.image),
