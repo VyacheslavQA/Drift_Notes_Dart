@@ -98,6 +98,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
+    print('DEBUG: _hasChanges при initState(): $_hasChanges');
   }
 
   @override
@@ -758,19 +759,21 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     _lastSelectedRayIndex = selectedRayIndex;
                     _currentBottomType = selectedBottomType;
 
-                    // Добавляем маркер
+                    print('DEBUG: _hasChanges перед добавлением маркера: $_hasChanges');
+
+                    // Создаем копию списка маркеров и добавляем новый маркер
+                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+                    updatedMarkers.add(newMarker);
+
                     setState(() {
-                      _markerMap.markers.add(newMarker);
+                      // Вместо модификации списка создаем новую модель
+                      _markerMap = _markerMap.copyWith(markers: updatedMarkers);
                       _hasChanges = true;
                     });
 
-                    Navigator.pop(context);
+                    print('DEBUG: _hasChanges после добавления маркера: $_hasChanges');
 
-                    // Обновляем состояние основного экрана вне диалога
-                    setState(() {
-                      _markerMap.markers.add(newMarker);
-                      _hasChanges = true;  // Устанавливаем флаг изменений
-                    });
+                    Navigator.pop(context);
 
                     // Показываем сообщение
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -779,6 +782,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         backgroundColor: Colors.green,
                       ),
                     );
+
+                    // Обновляем UI чтобы кнопка сохранения стала активной
+                    Future.microtask(() => setState(() {}));
                   },
                   child: const Text(
                     'Добавить',
@@ -1041,6 +1047,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         backgroundColor: Colors.green,
                       ),
                     );
+
+                    // Обновляем UI чтобы кнопка сохранения стала активной
+                    Future.microtask(() => setState(() {}));
                   },
                   child: const Text(
                     'Сохранить',
@@ -1059,13 +1068,20 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Обновление маркера
   void _updateMarker(String markerId, Map<String, dynamic> updatedMarker) {
-    setState(() {
-      final index = _markerMap.markers.indexWhere((m) => m['id'] == markerId);
-      if (index != -1) {
-        _markerMap.markers[index] = updatedMarker;
+    print('DEBUG: _hasChanges перед обновлением маркера: $_hasChanges');
+
+    final index = _markerMap.markers.indexWhere((m) => m['id'] == markerId);
+    if (index != -1) {
+      final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+      updatedMarkers[index] = updatedMarker;
+
+      setState(() {
+        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
         _hasChanges = true;
-      }
-    });
+      });
+
+      print('DEBUG: _hasChanges после обновления маркера: $_hasChanges');
+    }
   }
 
   // Диалог подтверждения удаления маркера
@@ -1128,10 +1144,20 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Удаление маркера
   void _deleteMarker(Map<String, dynamic> marker) {
+    print('DEBUG: _hasChanges перед удалением маркера: $_hasChanges');
+
+    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+    updatedMarkers.removeWhere((item) => item['id'] == marker['id']);
+
     setState(() {
-      _markerMap.markers.removeWhere((item) => item['id'] == marker['id']);
+      _markerMap = _markerMap.copyWith(markers: updatedMarkers);
       _hasChanges = true;
     });
+
+    print('DEBUG: _hasChanges после удаления маркера: $_hasChanges');
+
+    // Обновляем UI чтобы кнопка сохранения стала активной
+    Future.microtask(() => setState(() {}));
   }
 
   // Показать меню действий
@@ -1265,6 +1291,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   return;
                 }
 
+                print('DEBUG: _hasChanges перед обновлением информации карты: $_hasChanges');
+
                 setState(() {
                   _markerMap = _markerMap.copyWith(
                     name: nameController.text.trim(),
@@ -1275,6 +1303,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   _hasChanges = true;
                 });
 
+                print('DEBUG: _hasChanges после обновления информации карты: $_hasChanges');
+
                 Navigator.pop(context);
 
                 // Показываем сообщение
@@ -1284,6 +1314,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
+
+                // Обновляем UI чтобы кнопка сохранения стала активной
+                Future.microtask(() => setState(() {}));
               },
               child: const Text(
                 'Сохранить',
@@ -1392,26 +1425,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         _isLoading = true;
       });
 
-      // Создаем копию списка маркеров без UI-данных
-      final cleanedMarkers = _markerMap.markers.map((marker) {
-        // Создаем новую копию маркера без ключей, начинающихся с подчеркивания
-        final cleanedMarker = <String, dynamic>{};
-        marker.forEach((key, value) {
-          // Исключаем ключи, начинающиеся с подчеркивания (временные UI-данные)
-          if (!key.startsWith('_')) {
-            cleanedMarker[key] = value;
-          }
-        });
-        return cleanedMarker;
-      }).toList();
-
-      // Создаем новую копию маркерной карты с очищенными маркерами
-      final cleanedMarkerMap = _markerMap.copyWith(
-        markers: cleanedMarkers,
-      );
-
-      // Сохраняем очищенную версию
-      await _markerMapRepository.updateMarkerMap(cleanedMarkerMap);
+      await _markerMapRepository.updateMarkerMap(_markerMap);
 
       setState(() {
         _isLoading = false;
@@ -1440,6 +1454,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: _hasChanges при build(): $_hasChanges');
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
