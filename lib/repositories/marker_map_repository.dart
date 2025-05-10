@@ -22,15 +22,19 @@ class MarkerMapRepository {
   Future<List<MarkerMapModel>> getUserMarkerMaps() async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
+
+      debugPrint('Запрос маркерных карт для пользователя: $userId');
 
       // Простой запрос без сложной сортировки, чтобы избежать проблем с индексами
       final snapshot = await _firestore
           .collection('marker_maps')
           .where('userId', isEqualTo: userId)
           .get();
+
+      debugPrint('Получено документов: ${snapshot.docs.length}');
 
       // Преобразуем документы в модели
       final List<MarkerMapModel> maps = snapshot.docs
@@ -55,7 +59,7 @@ class MarkerMapRepository {
         debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
         try {
           final userId = _firebaseService.currentUserId;
-          if (userId == null) {
+          if (userId == null || userId.isEmpty) {
             throw Exception('Пользователь не авторизован');
           }
 
@@ -91,15 +95,17 @@ class MarkerMapRepository {
   Future<String> addMarkerMap(MarkerMapModel map) async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
+
+      debugPrint('Добавление маркерной карты для пользователя: $userId');
 
       // Генерируем уникальный ID, если его еще нет
       final String mapId = map.id.isEmpty ? const Uuid().v4() : map.id;
       final mapToAdd = map.copyWith(
         id: mapId,
-        userId: userId,
+        userId: userId, // Убедимся, что ID пользователя установлен
         // Убедимся, что дата установлена
         date: map.date ?? DateTime.now(),
       );
@@ -108,8 +114,16 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
+        // Перед сохранением, проверим, что userId точно установлен
+        final jsonData = mapToAdd.toJson();
+        if (jsonData['userId'] == null || jsonData['userId'].isEmpty) {
+          jsonData['userId'] = userId; // Двойная проверка
+        }
+
+        debugPrint('Сохранение маркерной карты с данными: $jsonData');
+
         // Если есть интернет, добавляем карту в Firestore
-        await _firestore.collection('marker_maps').doc(mapId).set(mapToAdd.toJson());
+        await _firestore.collection('marker_maps').doc(mapId).set(jsonData);
 
         // Синхронизируем офлайн карты, если они есть
         await _syncOfflineMaps();
@@ -133,12 +147,23 @@ class MarkerMapRepository {
         throw Exception('ID карты не может быть пустым');
       }
 
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Пользователь не авторизован');
+      }
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
+        // Перед сохранением, убедимся что userId установлен
+        final jsonData = map.toJson();
+        if (jsonData['userId'] == null || jsonData['userId'].isEmpty) {
+          jsonData['userId'] = userId;
+        }
+
         // Если есть интернет, обновляем карту в Firestore
-        await _firestore.collection('marker_maps').doc(map.id).update(map.toJson());
+        await _firestore.collection('marker_maps').doc(map.id).update(jsonData);
       } else {
         // Если нет интернета, сохраняем обновление локально
         await _saveMapUpdateOffline(map);
@@ -177,7 +202,7 @@ class MarkerMapRepository {
   Future<void> clearAllMarkerMaps() async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
 
@@ -340,7 +365,7 @@ class MarkerMapRepository {
       if (!isOnline) return;
 
       final userId = _firebaseService.currentUserId;
-      if (userId == null) return;
+      if (userId == null || userId.isEmpty) return;
 
       final prefs = await _firebaseService.getSharedPreferences();
 
@@ -382,7 +407,9 @@ class MarkerMapRepository {
             }
 
             // Убедимся, что есть userId
-            mapData['userId'] = userId;
+            if (mapData['userId'] == null || mapData['userId'].isEmpty) {
+              mapData['userId'] = userId;
+            }
 
             final mapId = mapData['id'];
 
@@ -410,6 +437,11 @@ class MarkerMapRepository {
           try {
             final mapId = entry.key;
             final mapData = entry.value as Map<String, dynamic>;
+
+            // Убедимся, что есть userId
+            if (mapData['userId'] == null || mapData['userId'].isEmpty) {
+              mapData['userId'] = userId;
+            }
 
             // Удаляем ID из данных, т.к. оно будет идентификатором документа
             if (mapData.containsKey('id')) {
