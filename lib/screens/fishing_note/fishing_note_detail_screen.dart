@@ -497,34 +497,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             onDeleteRecord: _deleteBiteRecord,
           ),
 
-          const SizedBox(height: 20),
-
-          // Если это карповая рыбалка, показываем кнопку "Маркерная карта"
-          if (_note!.fishingType == 'Карповая рыбалка') ...[
-            const SizedBox(height: 8),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.map),
-                label: const Text('Маркерная карта'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Функция маркерной карты будет доступна в ближайшее время'),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-
           const SizedBox(height: 40),
         ],
       ),
