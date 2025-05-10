@@ -5,13 +5,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
+import '../../models/marker_map_model.dart';
 import '../../repositories/fishing_note_repository.dart';
+import '../../repositories/marker_map_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/loading_overlay.dart';
 import 'photo_gallery_screen.dart';
 import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
 import 'edit_fishing_note_screen.dart';
+import '../marker_maps/marker_map_screen.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -27,11 +30,16 @@ class FishingNoteDetailScreen extends StatefulWidget {
 
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   final _fishingNoteRepository = FishingNoteRepository();
+  final _markerMapRepository = MarkerMapRepository();
 
   FishingNoteModel? _note;
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
+
+  // Список маркерных карт, привязанных к этой заметке
+  List<MarkerMapModel> _linkedMarkerMaps = [];
+  bool _isLoadingMarkerMaps = false;
 
   @override
   void initState() {
@@ -52,10 +60,40 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         _note = note;
         _isLoading = false;
       });
+
+      // После загрузки заметки загружаем связанные маркерные карты
+      _loadLinkedMarkerMaps();
     } catch (e) {
       setState(() {
         _errorMessage = 'Ошибка загрузки заметки: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  // Метод для загрузки связанных маркерных карт
+  Future<void> _loadLinkedMarkerMaps() async {
+    if (_note == null) return;
+
+    setState(() {
+      _isLoadingMarkerMaps = true;
+    });
+
+    try {
+      // Получаем все маркерные карты пользователя
+      final allMaps = await _markerMapRepository.getUserMarkerMaps();
+
+      // Фильтруем только те, которые привязаны к текущей заметке
+      final linkedMaps = allMaps.where((map) => map.noteId == _note!.id).toList();
+
+      setState(() {
+        _linkedMarkerMaps = linkedMaps;
+        _isLoadingMarkerMaps = false;
+      });
+    } catch (e) {
+      print('Ошибка при загрузке связанных маркерных карт: $e');
+      setState(() {
+        _isLoadingMarkerMaps = false;
       });
     }
   }
@@ -185,6 +223,19 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
       );
     }
+  }
+
+  // Метод для перехода к просмотру маркерной карты
+  void _viewMarkerMap(MarkerMapModel map) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MarkerMapScreen(markerMap: map),
+      ),
+    ).then((_) {
+      // Обновляем список маркерных карт после возвращения
+      _loadLinkedMarkerMaps();
+    });
   }
 
   // Метод для перехода к редактированию заметки
@@ -473,6 +524,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
+          // Маркерные карты
+          if (_linkedMarkerMaps.isNotEmpty || _isLoadingMarkerMaps) ...[
+            _buildMarkerMapsSection(),
+            const SizedBox(height: 20),
+          ],
+
           // Снасти
           if (_note!.tackle.isNotEmpty) ...[
             _buildSectionHeader('Снасти'),
@@ -501,6 +558,154 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ],
       ),
     );
+  }
+
+  // Секция маркерных карт
+  Widget _buildMarkerMapsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Маркерные карты'),
+
+        if (_isLoadingMarkerMaps)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: _linkedMarkerMaps.map((map) => _buildMarkerMapCard(map)).toList(),
+          ),
+      ],
+    );
+  }
+
+  // Карточка для маркерной карты
+  Widget _buildMarkerMapCard(MarkerMapModel map) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: const Color(0xFF12332E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () => _viewMarkerMap(map),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Иконка маркерной карты
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.map,
+                      color: AppConstants.primaryColor,
+                      size: 24,
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Название и дата
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          map.name,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat('dd.MM.yyyy').format(map.date),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Количество маркеров
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppConstants.primaryColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${map.markers.length} ${_getMarkerText(map.markers.length)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Сектор (если есть)
+              if (map.sector != null && map.sector!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.grid_on,
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Сектор: ${map.sector}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Метод для правильного склонения слова "маркер"
+  String _getMarkerText(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'маркер';
+    } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+        (count % 100 < 10 || count % 100 >= 20)) {
+      return 'маркера';
+    } else {
+      return 'маркеров';
+    }
   }
 
   Widget _buildSectionHeader(String title) {
