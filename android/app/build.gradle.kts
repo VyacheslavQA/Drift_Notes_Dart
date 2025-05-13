@@ -1,9 +1,9 @@
-// Путь: android/app/build.gradle.kts
+// РџСѓС‚СЊ: android/app/build.gradle.kts
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    id("com.google.gms.google-services")  // Google Services плагин
+    id("com.google.gms.google-services")  // Google Services РїР»Р°РіРёРЅ
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -32,7 +32,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Исправляем эту часть для согласования версий Java
+        // РСЃРїСЂР°РІР»СЏРµРј СЌС‚Сѓ С‡Р°СЃС‚СЊ РґР»СЏ СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РІРµСЂСЃРёР№ Java
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_11
             targetCompatibility = JavaVersion.VERSION_11
@@ -53,7 +53,7 @@ flutter {
     source = "../.."
 }
 
-// Эти зависимости могут потребоваться для Firebase
+// Р­С‚Рё Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РјРѕРіСѓС‚ РїРѕС‚СЂРµР±РѕРІР°С‚СЊСЃСЏ РґР»СЏ Firebase
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics")
