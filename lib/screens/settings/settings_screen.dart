@@ -41,34 +41,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _getFormattedSyncTime() {
+  String _getFormattedSyncDateTime() {
     if (_syncStatus['lastSyncTime'] == null) {
       return 'Нет данных';
     }
 
     try {
-      DateTime dateTime;
+      DateTime? dateTime;
 
       if (_syncStatus['lastSyncTime'] is DateTime) {
-        dateTime = _syncStatus['lastSyncTime'];
+        dateTime = _syncStatus['lastSyncTime'] as DateTime;
       } else if (_syncStatus['lastSyncTime'] is int) {
-        dateTime = DateTime.fromMillisecondsSinceEpoch(_syncStatus['lastSyncTime']);
+        dateTime = DateTime.fromMillisecondsSinceEpoch(_syncStatus['lastSyncTime'] as int);
       } else {
-        try {
-          // Пытаемся получить значение через millisecondsSinceEpoch
-          dateTime = DateTime.fromMillisecondsSinceEpoch(
-              _syncStatus['lastSyncTime'].millisecondsSinceEpoch);
-        } catch (e) {
-          return 'Недавно';
-        }
+        return 'Недавно';
       }
 
-      // Форматируем дату и время по отдельности
-      String date = '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year}';
-      String time = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      if (dateTime == null) {
+        return 'Недавно';
+      }
 
-      // Возвращаем с явным пробелом между датой и временем
-      return '$date $time';
+      // Форматируем дату и время
+      final String formattedDate = DateFormat('dd.MM.yyyy').format(dateTime);
+      final String formattedTime = DateFormat('HH:mm').format(dateTime);
+
+      return '$formattedDate $formattedTime';
     } catch (e) {
       debugPrint('Ошибка при форматировании времени: $e');
       return 'Недавно';
@@ -239,8 +236,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Последняя синхронизация
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Последняя синхронизация',
@@ -249,9 +246,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                // Принудительное разделение даты и времени
+                                const SizedBox(height: 4),
                                 Text(
-                                  _getFormattedSyncTime(),
+                                  _getFormattedSyncDateTime(),
                                   style: TextStyle(
                                     color: AppConstants.textColor,
                                     fontSize: 14,
