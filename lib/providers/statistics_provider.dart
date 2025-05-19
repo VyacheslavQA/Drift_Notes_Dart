@@ -5,6 +5,7 @@ import 'dart:collection';
 import '../models/statistics_models.dart';
 import '../models/fishing_note_model.dart';
 import '../repositories/fishing_note_repository.dart';
+import '../utils/date_formatter.dart'; // Добавляем импорт DateFormatter
 
 class StatisticsProvider extends ChangeNotifier {
   late final FishingNoteRepository _fishingNoteRepository;
@@ -195,12 +196,21 @@ class StatisticsProvider extends ChangeNotifier {
     }
     final totalDaysOnFishing = uniqueFishingDays.length;
 
-    // 4. Всего поймано рыб
+    // 4. Всего поймано рыб и нереализованных поклевок
     int totalFish = 0;
+    int missedBites = 0;
+    double totalWeight = 0.0; // Новая переменная для общего веса
+
     for (var note in _filteredNotes) {
-      totalFish += note.biteRecords
-          .where((record) => record.fishType.isNotEmpty && record.weight > 0)
-          .length;
+      for (var record in note.biteRecords) {
+        // Проверяем, что это реализованная поклевка (пойманная рыба)
+        if (record.fishType.isNotEmpty && record.weight > 0) {
+          totalFish++;
+          totalWeight += record.weight; // Добавляем вес к общему
+        } else {
+          missedBites++;
+        }
+      }
     }
 
     // 5. Самая большая рыба
@@ -228,7 +238,7 @@ class StatisticsProvider extends ChangeNotifier {
         ..sort((a, b) => b.date.compareTo(a.date));
 
       latestTrip = LatestTripInfo(
-        tripName: sortedNotes[0].location,
+        tripName: sortedNotes[0].title.isNotEmpty ? sortedNotes[0].title : sortedNotes[0].location,
         tripDate: sortedNotes[0].date,
       );
     }
@@ -238,6 +248,7 @@ class StatisticsProvider extends ChangeNotifier {
     if (totalFish > 0) {
       // Создаем словарь для подсчета рыбы по месяцам
       final Map<String, int> fishCountByMonth = {};
+      final Map<String, Map<String, int>> monthDetails = {}; // Для хранения года и номера месяца
 
       for (var note in _filteredNotes) {
         for (var record in note.biteRecords) {
@@ -245,6 +256,14 @@ class StatisticsProvider extends ChangeNotifier {
           if (record.fishType.isNotEmpty && record.weight > 0) {
             final key = '${record.time.year}-${record.time.month}';
             fishCountByMonth[key] = (fishCountByMonth[key] ?? 0) + 1;
+
+            // Сохраняем номер месяца и год для этого ключа
+            if (!monthDetails.containsKey(key)) {
+              monthDetails[key] = {
+                'month': record.time.month,
+                'year': record.time.year
+              };
+            }
           }
         }
       }
@@ -260,22 +279,16 @@ class StatisticsProvider extends ChangeNotifier {
         }
       });
 
-      if (bestMonthKey.isNotEmpty) {
-        final parts = bestMonthKey.split('-');
+      if (bestMonthKey.isNotEmpty && monthDetails.containsKey(bestMonthKey)) {
+        final monthNum = monthDetails[bestMonthKey]!['month']!;
+        final year = monthDetails[bestMonthKey]!['year']!;
+
         bestMonth = BestMonthInfo(
-          year: int.parse(parts[0]),
-          month: int.parse(parts[1]),
+          year: year,
+          month: monthNum,
           fishCount: maxFishCount,
         );
       }
-    }
-
-    // 8. Нереализованные поклевки (новый параметр)
-    int missedBites = 0;
-    for (var note in _filteredNotes) {
-      missedBites += note.biteRecords
-          .where((record) => record.fishType.isEmpty || record.weight <= 0)
-          .length;
     }
 
     // Обновляем статистику
@@ -284,7 +297,8 @@ class StatisticsProvider extends ChangeNotifier {
       longestTripDays: longestTripDays,
       totalDaysOnFishing: totalDaysOnFishing,
       totalFish: totalFish,
-      missedBites: missedBites, // Добавляем новый параметр
+      missedBites: missedBites,
+      totalWeight: totalWeight, // Добавляем новое поле
       biggestFish: biggestFish,
       latestTrip: latestTrip,
       bestMonth: bestMonth,

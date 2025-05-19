@@ -63,8 +63,11 @@ class FishingStatistics {
   // Общее количество пойманных рыб
   final int totalFish;
 
-  // Новое поле: количество нереализованных поклевок
+  // Количество нереализованных поклевок
   final int missedBites;
+
+  // Общий вес пойманных рыб
+  final double totalWeight;
 
   // Информация о самой большой рыбе
   final BiggestFishInfo? biggestFish;
@@ -80,7 +83,8 @@ class FishingStatistics {
     this.longestTripDays = 0,
     this.totalDaysOnFishing = 0,
     this.totalFish = 0,
-    this.missedBites = 0, // Добавлено новое поле
+    this.missedBites = 0,
+    this.totalWeight = 0.0,
     this.biggestFish,
     this.latestTrip,
     this.bestMonth,
@@ -95,7 +99,8 @@ class FishingStatistics {
     int? longestTripDays,
     int? totalDaysOnFishing,
     int? totalFish,
-    int? missedBites, // Добавлено новое поле
+    int? missedBites,
+    double? totalWeight,
     BiggestFishInfo? biggestFish,
     LatestTripInfo? latestTrip,
     BestMonthInfo? bestMonth,
@@ -105,7 +110,8 @@ class FishingStatistics {
       longestTripDays: longestTripDays ?? this.longestTripDays,
       totalDaysOnFishing: totalDaysOnFishing ?? this.totalDaysOnFishing,
       totalFish: totalFish ?? this.totalFish,
-      missedBites: missedBites ?? this.missedBites, // Добавлено новое поле
+      missedBites: missedBites ?? this.missedBites,
+      totalWeight: totalWeight ?? this.totalWeight,
       biggestFish: biggestFish ?? this.biggestFish,
       latestTrip: latestTrip ?? this.latestTrip,
       bestMonth: bestMonth ?? this.bestMonth,
@@ -174,6 +180,7 @@ class BestMonthInfo {
   // Форматированный вывод
   String get formattedText {
     final monthName = DateFormatter.getMonthInNominative(month);
-    return '$monthName $year — $fishCount ${DateFormatter.getFishText(fishCount)}';
+    return '$monthName $year — $fishCount ${DateFormatter.getFishText(
+        fishCount)}';
   }
 }

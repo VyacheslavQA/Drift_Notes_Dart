@@ -371,7 +371,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
         const SizedBox(height: 16),
 
-        // 5. Всего рыбалок
+        // 5. Общий вес пойманных рыб
+        _buildStatCard(
+          icon: Icons.scale,
+          title: 'Общий вес улова',
+          value: '${stats.totalWeight.toStringAsFixed(1)} кг',
+          subtitle: 'суммарный вес пойманных рыб',
+          valueColor: Colors.green,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 6. Всего рыбалок
         _buildStatCard(
           icon: Icons.format_list_bulleted,
           title: 'Всего рыбалок',
@@ -381,7 +392,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
         const SizedBox(height: 16),
 
-        // 6. Самая долгая рыбалка
+        // 7. Самая долгая рыбалка
         _buildStatCard(
           icon: Icons.access_time,
           title: 'Самая долгая рыбалка',
@@ -391,7 +402,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
         const SizedBox(height: 16),
 
-        // 7. Всего дней на рыбалке
+        // 8. Всего дней на рыбалке
         _buildStatCard(
           icon: Icons.calendar_today,
           title: 'Всего дней на рыбалке',
@@ -401,7 +412,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
         const SizedBox(height: 16),
 
-        // 8. Последний выезд
+        // 9. Последний выезд
         if (stats.latestTrip != null)
           _buildStatCard(
             icon: Icons.directions_car,
@@ -412,7 +423,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
         const SizedBox(height: 16),
 
-        // 9. Лучший месяц
+        // 10. Лучший месяц
         if (stats.bestMonth != null)
           _buildStatCard(
             icon: Icons.star,

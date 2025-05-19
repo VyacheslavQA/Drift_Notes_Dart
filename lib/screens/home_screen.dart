@@ -1,3 +1,5 @@
+// Путь: lib/screens/home_screen.dart
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -189,17 +191,21 @@ class _HomeScreenState extends State<HomeScreen> {
     // 4. Всего поймано рыб и нереализованных поклевок
     int totalFish = 0;
     int missedBites = 0;
+    double totalWeight = 0.0; // Новая переменная для общего веса
+
     for (var note in notes) {
       for (var record in note.biteRecords) {
         if (record.fishType.isNotEmpty && record.weight > 0) {
           totalFish++;
+          totalWeight += record.weight; // Добавляем вес к общему
         } else {
           missedBites++;
         }
       }
     }
     stats['totalFish'] = totalFish;
-    stats['missedBites'] = missedBites; // Новое поле
+    stats['missedBites'] = missedBites;
+    stats['totalWeight'] = totalWeight; // Новое поле
 
     // 5. Самая большая рыба
     BiteRecord? biggestFish;
@@ -223,26 +229,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     stats['lastTrip'] = lastTrip;
 
-    // 7. Лучший месяц по количеству рыбы
+    // 7. Лучший месяц по количеству рыбы - ИЗМЕНЕНО
     Map<String, int> fishByMonth = {};
+    Map<String, Map<String, int>> monthDetails = {}; // Для хранения номера месяца и года
+
     for (var note in notes) {
       for (var record in note.biteRecords) {
         if (record.fishType.isNotEmpty && record.weight > 0) {
+          // Используем формат "MMMM yyyy" для отображения
           String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
           fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
+
+          // Сохраняем номер месяца и год для каждого ключа
+          if (!monthDetails.containsKey(monthKey)) {
+            monthDetails[monthKey] = {
+              'month': record.time.month,
+              'year': record.time.year
+            };
+          }
         }
       }
     }
 
     String bestMonth = '';
     int bestMonthFish = 0;
+    int bestMonthNumber = 0;
+    int bestYear = 0;
+
     fishByMonth.forEach((month, count) {
       if (count > bestMonthFish) {
         bestMonthFish = count;
         bestMonth = month;
+
+        // Получаем номер месяца и год из сохраненных данных
+        if (monthDetails.containsKey(month)) {
+          bestMonthNumber = monthDetails[month]!['month']!;
+          bestYear = monthDetails[month]!['year']!;
+        }
       }
     });
-    stats['bestMonth'] = bestMonth;
+
+    // Используем именительный падеж для названия месяца
+    if (bestMonthNumber > 0) {
+      stats['bestMonth'] = '${DateFormatter.getMonthInNominative(bestMonthNumber)} $bestYear';
+    } else {
+      stats['bestMonth'] = bestMonth;
+    }
     stats['bestMonthFish'] = bestMonthFish;
 
     // 8. Процент реализации поклевок
@@ -315,7 +347,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 5. Всего рыбалок
+        // 5. Общий вес пойманных рыб (НОВЫЙ БЛОК)
+        _buildStatCard(
+          icon: Icons.scale,
+          title: 'Общий вес улова',
+          value: '${stats['totalWeight'].toStringAsFixed(1)} кг',
+          subtitle: 'суммарный вес пойманных рыб',
+          valueColor: Colors.green,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 6. Всего рыбалок
         _buildStatCard(
           icon: Icons.format_list_bulleted,
           title: 'Всего рыбалок',
@@ -325,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 6. Самая долгая рыбалка
+        // 7. Самая долгая рыбалка
         _buildStatCard(
           icon: Icons.access_time,
           title: 'Самая долгая',
@@ -335,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 7. Всего дней на рыбалке
+        // 8. Всего дней на рыбалке
         _buildStatCard(
           icon: Icons.calendar_today,
           title: 'Всего дней на рыбалке',
@@ -345,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 8. Последний выезд
+        // 9. Последний выезд
         if (stats['lastTrip'] != null)
           _buildStatCard(
             icon: Icons.directions_car,
@@ -358,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 9. Лучший месяц
+        // 10. Лучший месяц
         if (stats['bestMonth'].isNotEmpty)
           _buildStatCard(
             icon: Icons.star,
