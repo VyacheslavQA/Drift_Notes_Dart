@@ -105,7 +105,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Добавляем новую запись в список
+      // Создаем копию списка и добавляем новую запись
       final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)..add(record);
 
       // Создаем обновленную модель заметки
@@ -145,7 +145,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Обновляем запись в списке
+      // Создаем копию списка и обновляем запись
       final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords);
       final index = updatedBiteRecords.indexWhere((r) => r.id == record.id);
 
@@ -172,6 +172,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             backgroundColor: Colors.green,
           ),
         );
+      } else {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Запись не найдена'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     } catch (e) {
       setState(() => _isSaving = false);
@@ -190,7 +198,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Удаляем запись из списка
+      // Создаем копию списка и удаляем запись
       final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)
         ..removeWhere((r) => r.id == recordId);
 
@@ -795,278 +803,278 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final biggestFish = _note!.biggestFish;
 
     return Card(
-      color: const Color(0xFF12332E),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF12332E),
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    // Тип рыбалки
+    Row(
+    children: [
+    Icon(
+    Icons.category,
+    color: AppConstants.textColor,
+    size: 18,
+    ),
+    const SizedBox(width: 8),
+    Text(
+    'Тип рыбалки:',
+    style: TextStyle(
+    color: AppConstants.textColor.withOpacity(0.7),
+    fontSize: 14,
+    ),
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+    child: Text(
+    _note!.fishingType,
+    style: TextStyle(
+    color: AppConstants.textColor,
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    ),
+    ),
+    ),
+    ],
+    ),
+
+    const SizedBox(height: 12),
+
+    // Место
+    Row(
+    children: [
+    Icon(
+    Icons.location_on,
+    color: AppConstants.textColor,
+    size: 18,
+    ),
+    const SizedBox(width: 8),
+    Text(
+    'Место:',
+    style: TextStyle(
+    color: AppConstants.textColor.withOpacity(0.7),
+    fontSize: 14,
+    ),
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+    child: Text(
+    _note!.location,
+    style: TextStyle(
+    color: AppConstants.textColor,
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    ),
+    ),
+    ),
+    ],
+    ),
+
+      const SizedBox(height: 12),
+
+      // Даты
+      Row(
+        children: [
+          Icon(
+            Icons.calendar_today,
+            color: AppConstants.textColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Даты:',
+            style: TextStyle(
+              color: AppConstants.textColor.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _note!.isMultiDay
+                  ? DateFormatter.formatDateRange(_note!.date, _note!.endDate!)
+                  : DateFormatter.formatDate(_note!.date),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Тип рыбалки
-            Row(
-              children: [
-                Icon(
-                  Icons.category,
-                  color: AppConstants.textColor,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Тип рыбалки:',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _note!.fishingType,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+
+      const SizedBox(height: 12),
+
+      /// Пойманные рыбы
+      Row(
+        children: [
+          Icon(
+            Icons.set_meal,
+            color: Colors.green,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Поймано:',
+            style: TextStyle(
+              color: AppConstants.textColor.withOpacity(0.7),
+              fontSize: 14,
             ),
-
-            const SizedBox(height: 12),
-
-            // Место
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on,
-                  color: AppConstants.textColor,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Место:',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _note!.location,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$caughtFishCount ${DateFormatter.getFishText(caughtFishCount)}',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ),
+        ],
+      ),
 
-            const SizedBox(height: 12),
-
-            // Даты
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today,
-                  color: AppConstants.textColor,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Даты:',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _note!.isMultiDay
-                        ? DateFormatter.formatDateRange(_note!.date, _note!.endDate!)
-                        : DateFormatter.formatDate(_note!.date),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            /// Пойманные рыбы
-            Row(
-              children: [
-                Icon(
-                  Icons.set_meal,
-                  color: Colors.green,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Поймано:',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$caughtFishCount ${DateFormatter.getFishText(caughtFishCount)}',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
+      const SizedBox(height: 12),
 
 // Нереализованные поклевки
-            Row(
-              children: [
-                Icon(
-                  Icons.hourglass_empty,
-                  color: Colors.red,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Нереализовано:',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$missedBitesCount ${missedBitesCount == 1 ? "поклевка" : (missedBitesCount > 1 && missedBitesCount < 5) ? "поклевки" : "поклевок"}',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+      Row(
+        children: [
+          Icon(
+            Icons.hourglass_empty,
+            color: Colors.red,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Нереализовано:',
+            style: TextStyle(
+              color: AppConstants.textColor.withOpacity(0.7),
+              fontSize: 14,
             ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$missedBitesCount ${missedBitesCount == 1 ? "поклевка" : (missedBitesCount > 1 && missedBitesCount < 5) ? "поклевки" : "поклевок"}',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
 
-            // Самая крупная рыба, если есть
-            if (biggestFish != null) ...[
-              const SizedBox(height: 12),
+      // Самая крупная рыба, если есть
+      if (biggestFish != null) ...[
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(
+              Icons.emoji_events,
+              color: Colors.amber,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Самая крупная рыба:',
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 26.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (biggestFish.fishType.isNotEmpty)
+                Text(
+                  biggestFish.fishType,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               Row(
                 children: [
-                  Icon(
-                    Icons.emoji_events,
-                    color: Colors.amber,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
-                    'Самая крупная рыба:',
+                    'Вес: ${biggestFish.weight} кг',
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      fontSize: 14,
+                      color: AppConstants.textColor,
+                      fontSize: 15,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.only(left: 26.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (biggestFish.fishType.isNotEmpty)
-                      Text(
-                        biggestFish.fishType,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    Row(
-                      children: [
-                        Text(
-                          'Вес: ${biggestFish.weight} кг',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 15,
-                          ),
-                        ),
-                        if (biggestFish.length > 0) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            'Длина: ${biggestFish.length} см',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  if (biggestFish.length > 0) ...[
+                    const SizedBox(width: 8),
                     Text(
-                      'Время: ${DateFormat('dd.MM.yyyy HH:mm').format(biggestFish.time)}',
+                      'Длина: ${biggestFish.length} см',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 14,
+                        color: AppConstants.textColor,
+                        fontSize: 15,
                       ),
                     ),
                   ],
+                ],
+              ),
+              Text(
+                'Время: ${DateFormat('dd.MM.yyyy HH:mm').format(biggestFish.time)}',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.8),
+                  fontSize: 14,
                 ),
               ),
             ],
+          ),
+        ),
+      ],
 
-            // Если есть координаты
-            if (_note!.latitude != 0 && _note!.longitude != 0) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.map,
-                    color: AppConstants.textColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Координаты:',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_note!.latitude.toStringAsFixed(6)}, ${_note!.longitude.toStringAsFixed(6)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+      // Если есть координаты
+      if (_note!.latitude != 0 && _note!.longitude != 0) ...[
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(
+              Icons.map,
+              color: AppConstants.textColor,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Координаты:',
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+                fontSize: 14,
               ),
-            ],
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${_note!.latitude.toStringAsFixed(6)}, ${_note!.longitude.toStringAsFixed(6)}',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ],
         ),
-      ),
+      ],
+    ],
+    ),
+    ),
     );
   }
 

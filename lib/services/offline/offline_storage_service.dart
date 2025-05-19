@@ -54,29 +54,54 @@ class OfflineStorageService {
 
       // Проверяем, есть ли уже заметка с таким ID
       final noteId = noteData['id'];
-      bool noteExists = false;
+      if (noteId == null || noteId.toString().isEmpty) {
+        throw Exception('ID заметки не может быть пустым');
+      }
 
+      bool noteExists = false;
       List<String> updatedNotes = [];
+
       for (var noteJson in offlineNotesJson) {
-        final note = jsonDecode(noteJson) as Map<String, dynamic>;
-        if (note['id'] == noteId) {
-          // Обновляем существующую заметку
-          updatedNotes.add(jsonEncode(noteData));
-          noteExists = true;
-        } else {
+        try {
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          if (note['id'] == noteId) {
+            // Обновляем существующую заметку
+            updatedNotes.add(jsonEncode(noteData));
+            noteExists = true;
+            debugPrint('📝 Обновлена существующая заметка $noteId в офлайн хранилище');
+          } else {
+            updatedNotes.add(noteJson);
+          }
+        } catch (e) {
+          // Если с парсингом JSON проблема, сохраняем оригинальную строку
           updatedNotes.add(noteJson);
+          debugPrint('⚠️ Ошибка при декодировании существующей заметки: $e');
         }
       }
 
       // Если такой заметки нет, добавляем новую
       if (!noteExists) {
         updatedNotes.add(jsonEncode(noteData));
+        debugPrint('📝 Добавлена новая заметка $noteId в офлайн хранилище');
       }
 
       await prefs.setStringList(_offlineNotesKey, updatedNotes);
-      debugPrint('Заметка $noteId сохранена в офлайн хранилище');
+      debugPrint('✅ Заметка $noteId сохранена в офлайн хранилище');
+
+      // Удаляем из списка обновлений, так как мы теперь имеем полную копию заметки
+      String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
+      try {
+        Map<String, dynamic> updates = jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
+        if (updates.containsKey(noteId.toString())) {
+          updates.remove(noteId.toString());
+          await prefs.setString(_offlineNotesUpdatesKey, jsonEncode(updates));
+          debugPrint('🧹 Удалено устаревшее обновление для заметки $noteId');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при обработке списка обновлений: $e');
+      }
     } catch (e) {
-      debugPrint('Ошибка при сохранении заметки в офлайн хранилище: $e');
+      debugPrint('⚠️ Ошибка при сохранении заметки в офлайн хранилище: $e');
       rethrow;
     }
   }
