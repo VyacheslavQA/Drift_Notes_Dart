@@ -1,7 +1,10 @@
 // Путь: lib/screens/settings/storage_cleanup_screen.dart
 
+// Путь: lib/screens/settings/storage_cleanup_screen.dart
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart'; // Добавлен импорт для DateFormat
 import '../../constants/app_constants.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../widgets/loading_overlay.dart';
