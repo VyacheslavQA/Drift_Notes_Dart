@@ -344,7 +344,12 @@ class OfflineStorageService {
 
       List<Map<String, dynamic>> notes = [];
       for (var noteJson in offlineNotesJson) {
-        notes.add(jsonDecode(noteJson) as Map<String, dynamic>);
+        try {
+          notes.add(jsonDecode(noteJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('Ошибка при декодировании заметки: $e');
+          // Пропускаем заметки с неверным форматом JSON
+        }
       }
 
       return notes;
@@ -362,7 +367,12 @@ class OfflineStorageService {
 
       List<Map<String, dynamic>> maps = [];
       for (var mapJson in offlineMapsJson) {
-        maps.add(jsonDecode(mapJson) as Map<String, dynamic>);
+        try {
+          maps.add(jsonDecode(mapJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('Ошибка при декодировании маркерной карты: $e');
+          // Пропускаем карты с неверным форматом JSON
+        }
       }
 
       return maps;
@@ -468,8 +478,13 @@ class OfflineStorageService {
 
       List<String> updatedNotes = [];
       for (var noteJson in offlineNotesJson) {
-        final note = jsonDecode(noteJson) as Map<String, dynamic>;
-        if (note['id'] != noteId) {
+        try {
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          if (note['id'] != noteId) {
+            updatedNotes.add(noteJson);
+          }
+        } catch (e) {
+          // Если JSON неверный, добавляем заметку как есть
           updatedNotes.add(noteJson);
         }
       }
@@ -501,8 +516,13 @@ class OfflineStorageService {
 
       List<String> updatedMaps = [];
       for (var mapJson in offlineMapsJson) {
-        final map = jsonDecode(mapJson) as Map<String, dynamic>;
-        if (map['id'] != mapId) {
+        try {
+          final map = jsonDecode(mapJson) as Map<String, dynamic>;
+          if (map['id'] != mapId) {
+            updatedMaps.add(mapJson);
+          }
+        } catch (e) {
+          // Если JSON неверный, добавляем карту как есть
           updatedMaps.add(mapJson);
         }
       }
@@ -534,6 +554,68 @@ class OfflineStorageService {
     } catch (e) {
       debugPrint('Ошибка при очистке всех офлайн данных: $e');
       rethrow;
+    }
+  }
+
+  /// Очистить проблемную заметку по ID
+  Future<bool> clearCorruptedNote(String noteId) async {
+    try {
+      final prefs = await preferences;
+      final offlineNotesJson = prefs.getStringList(_offlineNotesKey) ?? [];
+
+      // Проверяем, есть ли заметка с таким ID
+      bool noteExists = false;
+      List<String> updatedNotes = [];
+
+      for (var noteJson in offlineNotesJson) {
+        try {
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          if (note['id'] == noteId) {
+            noteExists = true;
+            // Пропускаем эту заметку (не добавляем в обновленный список)
+            debugPrint('Удаляем проблемную заметку с ID: $noteId');
+          } else {
+            updatedNotes.add(noteJson);
+          }
+        } catch (e) {
+          // Если JSON неверный, пропускаем эту заметку
+          debugPrint('Пропущена заметка с неверным форматом JSON');
+        }
+      }
+
+      if (noteExists) {
+        // Обновляем список заметок
+        await prefs.setStringList(_offlineNotesKey, updatedNotes);
+
+        // Удаляем соответствующие данные
+        String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
+        try {
+          Map<String, dynamic> updates = jsonDecode(offlineUpdatesJson);
+          updates.remove(noteId);
+          await prefs.setString(_offlineNotesUpdatesKey, jsonEncode(updates));
+        } catch (e) {
+          // Игнорируем ошибки при работе с обновлениями
+        }
+
+        // Удаляем пути к фото
+        String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
+        try {
+          Map<String, dynamic> photosMap = jsonDecode(offlinePhotosJson);
+          photosMap.remove(noteId);
+          await prefs.setString(_offlinePhotosKey, jsonEncode(photosMap));
+        } catch (e) {
+          // Игнорируем ошибки при работе с путями к фото
+        }
+
+        debugPrint('✅ Проблемная заметка $noteId успешно удалена из хранилища');
+        return true;
+      } else {
+        debugPrint('⚠️ Заметка $noteId не найдена в хранилище');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при удалении проблемной заметки: $e');
+      return false;
     }
   }
 }

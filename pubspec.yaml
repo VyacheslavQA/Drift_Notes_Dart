@@ -54,6 +54,9 @@ dependencies:
   # Календарь
   table_calendar: ^3.0.9
 
+  package_info_plus: ^4.0.2  # Для получения информации о приложении
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
