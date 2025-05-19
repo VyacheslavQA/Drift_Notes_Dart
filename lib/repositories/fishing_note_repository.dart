@@ -441,6 +441,16 @@ class FishingNoteRepository {
     }
   }
 
+  // Публичный метод для сохранения обновления заметки в офлайн режиме
+  Future<void> saveOfflineNoteUpdate(FishingNoteModel note, List<File> newPhotos) async {
+    try {
+      await _saveOfflineNoteUpdate(note, newPhotos);
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при сохранении обновления заметки: $e');
+      rethrow;
+    }
+  }
+
   // Удаление заметки
   Future<void> deleteFishingNote(String noteId) async {
     try {
