@@ -1,6 +1,6 @@
 # Путь: pubspec.yaml
 
-name: dtift_notes_dart
+name: drift_notes_dart
 description: "Мобильное приложение для рыболовов."
 publish_to: 'none'
 

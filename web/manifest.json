@@ -1,6 +1,6 @@
 {
-    "name": "dtift_notes_dart",
-    "short_name": "dtift_notes_dart",
+    "name": "drift_notes_dart",
+    "short_name": "drift_notes_dart",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
