@@ -17,6 +17,9 @@ import 'screens/auth/forgot_password_screen.dart';
 import 'providers/timer_provider.dart';
 import 'firebase_options.dart';
 import 'providers/statistics_provider.dart';
+import 'services/offline/offline_storage_service.dart';
+import 'services/offline/sync_service.dart';
+import 'utils/network_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +52,27 @@ void main() async {
   } catch (e) {
     debugPrint('Ошибка инициализации Firebase: $e');
   }
+
+  // Инициализация сервисов для офлайн режима
+  final offlineStorage = OfflineStorageService();
+  await offlineStorage.initialize();
+
+  // Запуск мониторинга сети
+  final networkMonitor = NetworkUtils();
+  networkMonitor.startNetworkMonitoring();
+
+  // Добавление слушателя для запуска синхронизации при появлении сети
+  networkMonitor.addConnectionListener((isConnected) {
+    if (isConnected) {
+      debugPrint('🌐 Соединение с интернетом восстановлено, запускаем синхронизацию');
+      SyncService().syncAll();
+    } else {
+      debugPrint('🔴 Соединение с интернетом потеряно, переход в офлайн режим');
+    }
+  });
+
+  // Запуск периодической синхронизации
+  SyncService().startPeriodicSync();
 
   runApp(
     MultiProvider(
