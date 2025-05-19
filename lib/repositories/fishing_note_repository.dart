@@ -16,55 +16,89 @@ class FishingNoteRepository {
   final FirebaseService _firebaseService = FirebaseService();
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final SyncService _syncService = SyncService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Получение всех заметок пользователя
   Future<List<FishingNoteModel>> getUserFishingNotes() async {
     try {
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
+        debugPrint('⚠️ getUserFishingNotes: Пользователь не авторизован');
         throw Exception('Пользователь не авторизован');
       }
+
+      debugPrint('📝 Запрос заметок для пользователя: $userId');
+
+      // Получаем офлайн заметки в любом случае
+      final offlineNotes = await _getOfflineNotes(userId);
 
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+      debugPrint('📱 Офлайн заметок: ${offlineNotes.length}');
+
       if (isOnline) {
         // Если есть подключение, получаем заметки из Firestore
-        final snapshot = await _firebaseService.getUserFishingNotes(userId);
+        try {
+          final snapshot = await _firestore
+              .collection('fishing_notes')
+              .where('userId', isEqualTo: userId)
+              .get();
 
-        // Преобразуем результаты в модели
-        final onlineNotes = snapshot.docs
-            .map((doc) => FishingNoteModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id))
-            .toList();
+          // Преобразуем результаты в модели
+          final onlineNotes = snapshot.docs
+              .map((doc) => FishingNoteModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id))
+              .toList();
 
-        // Получаем офлайн заметки, которые еще не были синхронизированы
-        final offlineNotes = await _getOfflineNotes(userId);
+          debugPrint('☁️ Онлайн заметок: ${onlineNotes.length}');
 
-        // Объединяем списки, избегая дубликатов
-        final allNotes = [...onlineNotes];
+          // Объединяем списки, избегая дубликатов
+          final Map<String, FishingNoteModel> uniqueNotes = {};
 
-        for (var offlineNote in offlineNotes) {
-          // Проверяем, что такой заметки еще нет в списке
-          if (!allNotes.any((note) => note.id == offlineNote.id)) {
-            allNotes.add(offlineNote);
+          // Сначала добавляем онлайн заметки
+          for (var note in onlineNotes) {
+            uniqueNotes[note.id] = note;
           }
+
+          // Затем добавляем офлайн заметки, которых нет в онлайн списке
+          for (var note in offlineNotes) {
+            if (!uniqueNotes.containsKey(note.id)) {
+              uniqueNotes[note.id] = note;
+              debugPrint('➕ Добавлена офлайн заметка: ${note.id}');
+            }
+          }
+
+          // Преобразуем обратно в список и сортируем по дате
+          final allNotes = uniqueNotes.values.toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+
+          debugPrint('📊 Всего уникальных заметок: ${allNotes.length}');
+
+          // Запускаем синхронизацию в фоне
+          _syncService.syncAll();
+
+          return allNotes;
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при получении онлайн заметок: $e');
+          // Если ошибка при получении онлайн заметок, возвращаем офлайн заметки
+          return offlineNotes;
         }
-
-        // Запускаем синхронизацию в фоне
-        _syncService.syncAll();
-
-        return allNotes;
       } else {
-        // Если нет подключения, получаем заметки из офлайн хранилища
-        return await _getOfflineNotes(userId);
+        // Если нет подключения, возвращаем заметки из офлайн хранилища
+        debugPrint('📱 Возвращаем только офлайн заметки');
+        return offlineNotes;
       }
     } catch (e) {
-      debugPrint('Ошибка при получении заметок: $e');
+      debugPrint('⚠️ Ошибка в getUserFishingNotes: $e');
 
       // В случае ошибки, пытаемся вернуть хотя бы офлайн заметки
       try {
-        return await _getOfflineNotes(_firebaseService.currentUserId ?? '');
-      } catch (_) {
+        final userId = _firebaseService.currentUserId ?? '';
+        debugPrint('🔄 Пытаемся получить офлайн заметки для: $userId');
+        return await _getOfflineNotes(userId);
+      } catch (innerError) {
+        debugPrint('❌ Критическая ошибка при получении офлайн заметок: $innerError');
         rethrow;
       }
     }
@@ -74,14 +108,32 @@ class FishingNoteRepository {
   Future<List<FishingNoteModel>> _getOfflineNotes(String userId) async {
     try {
       final offlineNotes = await _offlineStorage.getAllOfflineNotes();
+      debugPrint('📱 Всего офлайн заметок в хранилище: ${offlineNotes.length}');
+
+      // Выводим id всех заметок для отладки
+      for (var note in offlineNotes) {
+        debugPrint('📄 Офлайн заметка: ${note['id']} (user: ${note['userId']})');
+      }
+
       final offlineNoteModels = offlineNotes
           .where((note) => note['userId'] == userId) // Фильтруем по userId
-          .map((note) => FishingNoteModel.fromJson(note, id: note['id'] as String))
+          .map((note) {
+        final id = note['id']?.toString() ?? '';
+        if (id.isEmpty) {
+          debugPrint('⚠️ Обнаружена заметка без ID!');
+        }
+        return FishingNoteModel.fromJson(note, id: id);
+      })
           .toList();
+
+      debugPrint('📱 Заметок для пользователя $userId: ${offlineNoteModels.length}');
+
+      // Сортируем по дате
+      offlineNoteModels.sort((a, b) => b.date.compareTo(a.date));
 
       return offlineNoteModels;
     } catch (e) {
-      debugPrint('Ошибка при получении офлайн заметок: $e');
+      debugPrint('⚠️ Ошибка при получении офлайн заметок: $e');
       return [];
     }
   }
@@ -91,11 +143,13 @@ class FishingNoteRepository {
     try {
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
+        debugPrint('⚠️ addFishingNote: Пользователь не авторизован');
         throw Exception('Пользователь не авторизован');
       }
 
       // Генерируем ID, если его нет
       final noteId = note.id.isEmpty ? const Uuid().v4() : note.id;
+      debugPrint('📝 Добавление заметки с ID: $noteId');
 
       // Создаем копию заметки с установленным ID и UserID
       final noteToAdd = note.copyWith(
@@ -105,6 +159,7 @@ class FishingNoteRepository {
 
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети при добавлении: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
         // Если есть интернет, загружаем фото и добавляем заметку в Firestore
@@ -112,12 +167,18 @@ class FishingNoteRepository {
 
         // Загружаем фото и получаем URL
         if (photos != null && photos.isNotEmpty) {
+          debugPrint('🖼️ Загрузка ${photos.length} фото');
           for (var photo in photos) {
-            final bytes = await photo.readAsBytes();
-            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photos.indexOf(photo)}.jpg';
-            final path = 'users/$userId/photos/$fileName';
-            final url = await _firebaseService.uploadImage(path, bytes);
-            photoUrls.add(url);
+            try {
+              final bytes = await photo.readAsBytes();
+              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photos.indexOf(photo)}.jpg';
+              final path = 'users/$userId/photos/$fileName';
+              final url = await _firebaseService.uploadImage(path, bytes);
+              photoUrls.add(url);
+              debugPrint('🖼️ Фото загружено: $url');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка при загрузке фото: $e');
+            }
           }
         }
 
@@ -127,19 +188,33 @@ class FishingNoteRepository {
         );
 
         // Добавляем заметку в Firestore
-        final docRef = await _firebaseService.addFishingNote(noteWithPhotos.toJson());
+        try {
+          final docRef = await _firestore
+              .collection('fishing_notes')
+              .doc(noteId)
+              .set(noteWithPhotos.toJson());
 
-        // Проверяем, есть ли офлайн заметки для отправки
-        await _syncService.syncAll();
+          debugPrint('✅ Заметка $noteId добавлена в Firestore');
 
-        return docRef.id;
+          // Проверяем, есть ли офлайн заметки для отправки
+          _syncService.syncAll();
+
+          return noteId;
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при добавлении заметки в Firestore: $e');
+
+          // Если ошибка при добавлении в Firestore, сохраняем заметку локально
+          await _saveNoteOffline(noteWithPhotos, photos);
+          return noteId;
+        }
       } else {
         // Если нет интернета, сохраняем заметку локально
+        debugPrint('📱 Сохранение заметки в офлайн режиме');
         await _saveNoteOffline(noteToAdd, photos);
         return noteId;
       }
     } catch (e) {
-      debugPrint('Ошибка при добавлении заметки: $e');
+      debugPrint('⚠️ Ошибка при добавлении заметки: $e');
       rethrow;
     }
   }
@@ -147,71 +222,29 @@ class FishingNoteRepository {
   // Сохранение заметки в офлайн режиме
   Future<void> _saveNoteOffline(FishingNoteModel note, List<File>? photos) async {
     try {
+      // Проверяем, что у заметки есть ID
+      if (note.id.isEmpty) {
+        debugPrint('⚠️ Попытка сохранить заметку без ID!');
+        throw Exception('ID заметки не может быть пустым');
+      }
+
+      debugPrint('📱 Сохранение заметки ${note.id} в офлайн режиме');
+
       // Сохраняем заметку
-      await _offlineStorage.saveOfflineNote(note.toJson());
+      final noteJson = note.toJson();
+      noteJson['id'] = note.id; // Явно добавляем ID в JSON
+      await _offlineStorage.saveOfflineNote(noteJson);
 
       // Сохраняем пути к фотографиям
       if (photos != null && photos.isNotEmpty) {
         final photoPaths = photos.map((file) => file.path).toList();
         await _offlineStorage.saveOfflinePhotoPaths(note.id, photoPaths);
+        debugPrint('📱 Сохранено ${photoPaths.length} путей к фото для заметки ${note.id}');
       }
 
-      debugPrint('Заметка ${note.id} сохранена в офлайн режиме');
+      debugPrint('✅ Заметка ${note.id} сохранена в офлайн режиме');
     } catch (e) {
-      debugPrint('Ошибка при сохранении заметки офлайн: $e');
-      rethrow;
-    }
-  }
-
-  // Получение заметки по ID
-  Future<FishingNoteModel> getFishingNoteById(String noteId) async {
-    try {
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        // Если есть интернет, получаем заметку из Firestore
-        final doc = await FirebaseFirestore.instance
-            .collection('fishing_notes')
-            .doc(noteId)
-            .get();
-
-        if (!doc.exists) {
-          // Если заметка не найдена в Firestore, пробуем найти в офлайн хранилище
-          return await _getOfflineNoteById(noteId);
-        }
-
-        return FishingNoteModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id);
-      } else {
-        // Если нет интернета, ищем заметку в офлайн хранилище
-        return await _getOfflineNoteById(noteId);
-      }
-    } catch (e) {
-      debugPrint('Ошибка при получении заметки по ID: $e');
-
-      // В случае ошибки, пытаемся получить заметку из офлайн хранилища
-      try {
-        return await _getOfflineNoteById(noteId);
-      } catch (_) {
-        rethrow;
-      }
-    }
-  }
-
-  // Получение заметки из офлайн хранилища по ID
-  Future<FishingNoteModel> _getOfflineNoteById(String noteId) async {
-    try {
-      final allOfflineNotes = await _offlineStorage.getAllOfflineNotes();
-
-      // Ищем заметку по ID
-      final noteData = allOfflineNotes.firstWhere(
-            (note) => note['id'] == noteId,
-        orElse: () => throw Exception('Заметка не найдена в офлайн хранилище'),
-      );
-
-      return FishingNoteModel.fromJson(noteData, id: noteId);
-    } catch (e) {
-      debugPrint('Ошибка при получении заметки из офлайн хранилища: $e');
+      debugPrint('⚠️ Ошибка при сохранении заметки офлайн: $e');
       rethrow;
     }
   }
@@ -219,73 +252,50 @@ class FishingNoteRepository {
   // Обновление заметки
   Future<void> updateFishingNote(FishingNoteModel note) async {
     try {
+      if (note.id.isEmpty) {
+        debugPrint('⚠️ Попытка обновить заметку без ID!');
+        throw Exception('ID заметки не может быть пустым');
+      }
+
+      debugPrint('🔄 Обновление заметки: ${note.id}');
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети при обновлении: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
         // Если есть интернет, обновляем заметку в Firestore
-        await _firebaseService.updateFishingNote(note.id, note.toJson());
+        try {
+          await _firestore
+              .collection('fishing_notes')
+              .doc(note.id)
+              .update(note.toJson());
+
+          debugPrint('✅ Заметка ${note.id} обновлена в Firestore');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при обновлении заметки в Firestore: $e');
+
+          // В случае ошибки сохраняем обновление локально
+          await _offlineStorage.saveNoteUpdate(note.id, note.toJson());
+          debugPrint('📱 Обновление заметки ${note.id} сохранено локально');
+        }
       } else {
         // Если нет интернета, сохраняем обновление локально
         await _offlineStorage.saveNoteUpdate(note.id, note.toJson());
+        debugPrint('📱 Обновление заметки ${note.id} сохранено локально (офлайн)');
       }
     } catch (e) {
-      debugPrint('Ошибка при обновлении заметки: $e');
+      debugPrint('⚠️ Ошибка при обновлении заметки: $e');
 
-      // В случае ошибки, сохраняем обновление локально
+      // В случае ошибки, пытаемся сохранить обновление локально
       try {
         await _offlineStorage.saveNoteUpdate(note.id, note.toJson());
-      } catch (_) {
+        debugPrint('📱 Обновление заметки ${note.id} сохранено локально (после ошибки)');
+      } catch (innerError) {
+        debugPrint('❌ Критическая ошибка при сохранении обновления: $innerError');
         rethrow;
       }
     }
-  }
-
-  // Удаление заметки
-  Future<void> deleteFishingNote(String noteId) async {
-    try {
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        // Если есть интернет, удаляем заметку из Firestore
-        await FirebaseFirestore.instance
-            .collection('fishing_notes')
-            .doc(noteId)
-            .delete();
-
-        // Удаляем локальную копию, если она есть
-        try {
-          await _offlineStorage.removeOfflineNote(noteId);
-        } catch (e) {
-          debugPrint('Ошибка при удалении локальной копии заметки: $e');
-        }
-      } else {
-        // Если нет интернета, отмечаем заметку для удаления при появлении соединения
-        await _offlineStorage.markForDeletion(noteId, false);
-
-        // Удаляем локальную копию
-        try {
-          await _offlineStorage.removeOfflineNote(noteId);
-        } catch (e) {
-          debugPrint('Ошибка при удалении локальной копии заметки: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint('Ошибка при удалении заметки: $e');
-
-      // В случае ошибки, отмечаем заметку для удаления
-      try {
-        await _offlineStorage.markForDeletion(noteId, false);
-      } catch (_) {
-        rethrow;
-      }
-    }
-  }
-
-  // Синхронизация при запуске приложения
-  Future<void> syncOfflineDataOnStartup() async {
-    await _syncService.syncAll();
   }
 
   // Обновление заметки с загрузкой новых фотографий
@@ -296,8 +306,15 @@ class FishingNoteRepository {
         throw Exception('Пользователь не авторизован');
       }
 
+      if (note.id.isEmpty) {
+        throw Exception('ID заметки не может быть пустым');
+      }
+
+      debugPrint('🔄 Обновление заметки с новыми фото: ${note.id}');
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
         // Список для хранения всех URL фотографий (существующие + новые)
@@ -305,12 +322,18 @@ class FishingNoteRepository {
 
         // Загрузка новых фото
         if (newPhotos.isNotEmpty) {
+          debugPrint('🖼️ Загрузка ${newPhotos.length} новых фото');
           for (var photo in newPhotos) {
-            final bytes = await photo.readAsBytes();
-            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${newPhotos.indexOf(photo)}.jpg';
-            final path = 'users/$userId/photos/$fileName';
-            final url = await _firebaseService.uploadImage(path, bytes);
-            allPhotoUrls.add(url);
+            try {
+              final bytes = await photo.readAsBytes();
+              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${newPhotos.indexOf(photo)}.jpg';
+              final path = 'users/$userId/photos/$fileName';
+              final url = await _firebaseService.uploadImage(path, bytes);
+              allPhotoUrls.add(url);
+              debugPrint('🖼️ Фото загружено: $url');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка при загрузке фото: $e');
+            }
           }
         }
 
@@ -318,26 +341,45 @@ class FishingNoteRepository {
         final updatedNote = note.copyWith(photoUrls: allPhotoUrls);
 
         // Обновляем заметку в Firestore
-        await _firebaseService.updateFishingNote(note.id, updatedNote.toJson());
+        try {
+          await _firestore
+              .collection('fishing_notes')
+              .doc(note.id)
+              .update(updatedNote.toJson());
 
-        return updatedNote;
+          debugPrint('✅ Заметка ${note.id} обновлена с новыми фото');
+          return updatedNote;
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при обновлении заметки в Firestore: $e');
+
+          // Если ошибка при обновлении, сохраняем локально
+          await saveOfflineNoteUpdate(updatedNote, newPhotos);
+          debugPrint('📱 Обновление заметки ${note.id} с фото сохранено локально');
+          return updatedNote;
+        }
       } else {
         // Если нет интернета, сохраняем обновление локально
+        debugPrint('📱 Сохранение обновления заметки ${note.id} с фото в офлайн режиме');
         await saveOfflineNoteUpdate(note, newPhotos);
 
         // Добавляем пути к новым фото в модель
         // Это временное решение для отображения пользователю
         final updatedNote = note.copyWith(
-          photoUrls: [...note.photoUrls, ...newPhotos.map((_) => 'offline')],
+          photoUrls: [...note.photoUrls, ...newPhotos.map((_) => 'offline_photo')],
         );
 
         return updatedNote;
       }
     } catch (e) {
-      debugPrint('Ошибка при обновлении заметки с фото: $e');
+      debugPrint('⚠️ Ошибка при обновлении заметки с фото: $e');
 
       // В случае ошибки, сохраняем обновление локально
-      await saveOfflineNoteUpdate(note, newPhotos);
+      try {
+        await saveOfflineNoteUpdate(note, newPhotos);
+        debugPrint('📱 Обновление заметки с фото сохранено локально (после ошибки)');
+      } catch (_) {
+        // Игнорируем вторичную ошибку
+      }
       rethrow;
     }
   }
@@ -345,8 +387,14 @@ class FishingNoteRepository {
   // Сохранение обновления заметки в офлайн режиме
   Future<void> saveOfflineNoteUpdate(FishingNoteModel note, List<File> newPhotos) async {
     try {
+      if (note.id.isEmpty) {
+        throw Exception('ID заметки не может быть пустым');
+      }
+
       // Сохраняем обновление заметки
-      await _offlineStorage.saveNoteUpdate(note.id, note.toJson());
+      final noteJson = note.toJson();
+      noteJson['id'] = note.id; // Явно добавляем ID в JSON
+      await _offlineStorage.saveNoteUpdate(note.id, noteJson);
 
       // Если есть новые фото
       if (newPhotos.isNotEmpty) {
@@ -359,27 +407,198 @@ class FishingNoteRepository {
 
         // Сохраняем обновленные пути
         await _offlineStorage.saveOfflinePhotoPaths(note.id, allPaths);
+        debugPrint('📱 Сохранено ${newPaths.length} новых путей к фото (всего: ${allPaths.length})');
       }
 
-      debugPrint('Обновление заметки ${note.id} сохранено в офлайн режиме');
+      debugPrint('✅ Обновление заметки ${note.id} сохранено в офлайн режиме');
     } catch (e) {
-      debugPrint('Ошибка при сохранении обновления заметки офлайн: $e');
+      debugPrint('⚠️ Ошибка при сохранении обновления заметки офлайн: $e');
       rethrow;
+    }
+  }
+
+  // Удаление заметки
+  Future<void> deleteFishingNote(String noteId) async {
+    try {
+      if (noteId.isEmpty) {
+        throw Exception('ID заметки не может быть пустым');
+      }
+
+      debugPrint('🗑️ Удаление заметки: $noteId');
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+
+      if (isOnline) {
+        // Если есть интернет, удаляем заметку из Firestore
+        try {
+          await _firestore
+              .collection('fishing_notes')
+              .doc(noteId)
+              .delete();
+
+          debugPrint('✅ Заметка $noteId удалена из Firestore');
+
+          // Удаляем локальную копию, если она есть
+          try {
+            await _offlineStorage.removeOfflineNote(noteId);
+            debugPrint('📱 Локальная копия заметки $noteId удалена');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка при удалении локальной копии заметки: $e');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при удалении заметки из Firestore: $e');
+
+          // Если ошибка при удалении из Firestore, отмечаем для удаления
+          await _offlineStorage.markForDeletion(noteId, false);
+          debugPrint('📱 Заметка $noteId отмечена для удаления');
+
+          // Удаляем локальную копию
+          try {
+            await _offlineStorage.removeOfflineNote(noteId);
+            debugPrint('📱 Локальная копия заметки $noteId удалена');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка при удалении локальной копии заметки: $e');
+          }
+        }
+      } else {
+        // Если нет интернета, отмечаем заметку для удаления при появлении соединения
+        await _offlineStorage.markForDeletion(noteId, false);
+        debugPrint('📱 Заметка $noteId отмечена для удаления (офлайн)');
+
+        // Удаляем локальную копию
+        try {
+          await _offlineStorage.removeOfflineNote(noteId);
+          debugPrint('📱 Локальная копия заметки $noteId удалена');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при удалении локальной копии заметки: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при удалении заметки: $e');
+
+      // В случае ошибки, отмечаем заметку для удаления
+      try {
+        await _offlineStorage.markForDeletion(noteId, false);
+        debugPrint('📱 Заметка $noteId отмечена для удаления (после ошибки)');
+      } catch (_) {
+        // Игнорируем вторичную ошибку
+      }
+      rethrow;
+    }
+  }
+
+  // Получение заметки по ID
+  Future<FishingNoteModel> getFishingNoteById(String noteId) async {
+    try {
+      if (noteId.isEmpty) {
+        throw Exception('ID заметки не может быть пустым');
+      }
+
+      debugPrint('🔍 Получение заметки по ID: $noteId');
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+
+      if (isOnline) {
+        // Если есть интернет, получаем заметку из Firestore
+        try {
+          final doc = await _firestore
+              .collection('fishing_notes')
+              .doc(noteId)
+              .get();
+
+          if (!doc.exists) {
+            debugPrint('⚠️ Заметка не найдена в Firestore, ищем в офлайн хранилище');
+            // Если заметка не найдена в Firestore, пробуем найти в офлайн хранилище
+            return await _getOfflineNoteById(noteId);
+          }
+
+          debugPrint('✅ Заметка $noteId получена из Firestore');
+          return FishingNoteModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id);
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при получении заметки из Firestore: $e');
+
+          // Если ошибка при получении из Firestore, ищем в офлайн хранилище
+          return await _getOfflineNoteById(noteId);
+        }
+      } else {
+        // Если нет интернета, ищем заметку в офлайн хранилище
+        debugPrint('📱 Ищем заметку $noteId в офлайн хранилище');
+        return await _getOfflineNoteById(noteId);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при получении заметки по ID: $e');
+
+      // В случае ошибки, пытаемся получить заметку из офлайн хранилища
+      try {
+        debugPrint('🔄 Пытаемся получить заметку $noteId из офлайн хранилища');
+        return await _getOfflineNoteById(noteId);
+      } catch (innerError) {
+        debugPrint('❌ Критическая ошибка при получении офлайн заметки: $innerError');
+        rethrow;
+      }
+    }
+  }
+
+  // Получение заметки из офлайн хранилища по ID
+  Future<FishingNoteModel> _getOfflineNoteById(String noteId) async {
+    try {
+      final allOfflineNotes = await _offlineStorage.getAllOfflineNotes();
+      debugPrint('📱 Всего офлайн заметок: ${allOfflineNotes.length}');
+
+      // Ищем заметку по ID
+      final noteDataList = allOfflineNotes.where((note) => note['id'] == noteId).toList();
+
+      if (noteDataList.isEmpty) {
+        debugPrint('⚠️ Заметка $noteId не найдена в офлайн хранилище');
+        throw Exception('Заметка не найдена в офлайн хранилище');
+      }
+
+      // Берем первую найденную заметку
+      final noteData = noteDataList.first;
+
+      debugPrint('✅ Заметка $noteId найдена в офлайн хранилище');
+      return FishingNoteModel.fromJson(noteData, id: noteId);
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при получении заметки из офлайн хранилища: $e');
+      rethrow;
+    }
+  }
+
+  // Синхронизация при запуске приложения
+  Future<void> syncOfflineDataOnStartup() async {
+    try {
+      debugPrint('🔄 Запуск синхронизации при запуске приложения');
+      await _syncService.syncAll();
+      debugPrint('✅ Синхронизация при запуске завершена');
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при синхронизации при запуске: $e');
     }
   }
 
   // Принудительная синхронизация данных
   Future<bool> forceSyncData() async {
     try {
-      return await _syncService.forceSyncAll();
+      debugPrint('🔄 Запуск принудительной синхронизации');
+      final result = await _syncService.forceSyncAll();
+      debugPrint('✅ Принудительная синхронизация завершена: ${result ? 'успешно' : 'есть ошибки'}');
+      return result;
     } catch (e) {
-      debugPrint('Ошибка при принудительной синхронизации: $e');
+      debugPrint('⚠️ Ошибка при принудительной синхронизации: $e');
       return false;
     }
   }
 
   // Получить статус синхронизации
   Future<Map<String, dynamic>> getSyncStatus() async {
-    return await _syncService.getSyncStatus();
+    try {
+      return await _syncService.getSyncStatus();
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при получении статуса синхронизации: $e');
+      return {'error': e.toString()};
+    }
   }
 }

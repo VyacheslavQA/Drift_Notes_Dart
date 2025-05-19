@@ -22,9 +22,17 @@ class SyncService {
   final FirebaseService _firebaseService = FirebaseService();
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   bool _isSyncing = false;
   Timer? _syncTimer;
+
+  // Хранение последней попытки синхронизации для каждого типа данных
+  final Map<String, DateTime> _lastSyncAttempt = {};
+  // Счетчики ошибок
+  final Map<String, int> _errorCounters = {};
+  // Максимальное количество попыток
+  final int _maxRetries = 3;
 
   /// Запустить периодическую синхронизацию данных
   void startPeriodicSync({Duration period = const Duration(minutes: 5)}) {
@@ -39,32 +47,32 @@ class SyncService {
       }
     });
 
-    debugPrint('Запущена периодическая синхронизация каждые ${period.inMinutes} минут');
+    debugPrint('🕒 Запущена периодическая синхронизация каждые ${period.inMinutes} минут');
   }
 
   /// Остановить периодическую синхронизацию
   void stopPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
-    debugPrint('Периодическая синхронизация остановлена');
+    debugPrint('⏹️ Периодическая синхронизация остановлена');
   }
 
   /// Синхронизировать все данные
   Future<void> syncAll() async {
     if (_isSyncing) {
-      debugPrint('Синхронизация уже выполняется, пропускаем');
+      debugPrint('⚠️ Синхронизация уже выполняется, пропускаем');
       return;
     }
 
     _isSyncing = true;
 
     try {
-      debugPrint('Начинаем синхронизацию всех данных...');
+      debugPrint('🔄 Начинаем синхронизацию всех данных...');
 
       // Проверяем подключение к интернету
       final isConnected = await NetworkUtils.isNetworkAvailable();
       if (!isConnected) {
-        debugPrint('Нет подключения к интернету, синхронизация невозможна');
+        debugPrint('❌ Нет подключения к интернету, синхронизация невозможна');
         _isSyncing = false;
         return;
       }
@@ -72,7 +80,7 @@ class SyncService {
       // Проверяем авторизацию пользователя
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
-        debugPrint('Пользователь не авторизован, синхронизация невозможна');
+        debugPrint('❌ Пользователь не авторизован, синхронизация невозможна');
         _isSyncing = false;
         return;
       }
@@ -86,9 +94,9 @@ class SyncService {
       // Обновляем время последней синхронизации
       await _offlineStorage.updateLastSyncTime();
 
-      debugPrint('Синхронизация всех данных завершена успешно');
+      debugPrint('✅ Синхронизация всех данных завершена успешно');
     } catch (e) {
-      debugPrint('Ошибка при синхронизации данных: $e');
+      debugPrint('❌ Ошибка при синхронизации данных: $e');
     } finally {
       _isSyncing = false;
     }
@@ -96,13 +104,22 @@ class SyncService {
 
   /// Синхронизировать заметки
   Future<void> _syncNotes(String userId) async {
+    const dataType = 'notes';
+
+    // Проверка на слишком частые попытки синхронизации с ошибками
+    if (_shouldSkipSync(dataType)) {
+      debugPrint('⏭️ Пропускаем синхронизацию заметок из-за частых ошибок');
+      return;
+    }
+
     try {
-      debugPrint('Начинаем синхронизацию заметок...');
+      debugPrint('🔄 Начинаем синхронизацию заметок...');
+      _lastSyncAttempt[dataType] = DateTime.now();
 
       // Проверяем флаг на удаление всех заметок
       final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(false);
       if (shouldDeleteAll) {
-        debugPrint('Обнаружен флаг на удаление всех заметок');
+        debugPrint('⚠️ Обнаружен флаг на удаление всех заметок');
 
         try {
           // Получаем все заметки пользователя и удаляем их
@@ -119,9 +136,10 @@ class SyncService {
 
           await batch.commit();
           await _offlineStorage.clearDeleteAllFlag(false);
-          debugPrint('Все заметки пользователя удалены (${snapshot.docs.length} шт.)');
+          debugPrint('✅ Все заметки пользователя удалены (${snapshot.docs.length} шт.)');
         } catch (e) {
-          debugPrint('Ошибка при удалении всех заметок: $e');
+          debugPrint('❌ Ошибка при удалении всех заметок: $e');
+          _incrementErrorCounter(dataType);
         }
 
         // Если все заметки удалены, нет смысла продолжать синхронизацию
@@ -131,14 +149,14 @@ class SyncService {
       // Синхронизируем отдельные удаления
       final notesToDelete = await _offlineStorage.getIdsToDelete(false);
       if (notesToDelete.isNotEmpty) {
-        debugPrint('Синхронизация удалений заметок (${notesToDelete.length} шт.)');
+        debugPrint('🗑️ Синхронизация удалений заметок (${notesToDelete.length} шт.)');
 
         for (var noteId in notesToDelete) {
           try {
             await _firestore.collection('fishing_notes').doc(noteId).delete();
-            debugPrint('Заметка $noteId удалена из Firestore');
+            debugPrint('✅ Заметка $noteId удалена из Firestore');
           } catch (e) {
-            debugPrint('Ошибка при удалении заметки $noteId из Firestore: $e');
+            debugPrint('❌ Ошибка при удалении заметки $noteId из Firestore: $e');
           }
         }
 
@@ -146,17 +164,52 @@ class SyncService {
         await _offlineStorage.clearIdsToDelete(false);
       }
 
+      // Синхронизируем обновления заметок
+      final noteUpdates = await _offlineStorage.getAllNoteUpdates();
+      if (noteUpdates.isNotEmpty) {
+        debugPrint('🔄 Синхронизация обновлений заметок (${noteUpdates.length} шт.)');
+
+        for (var entry in noteUpdates.entries) {
+          try {
+            final noteId = entry.key;
+            final noteData = entry.value as Map<String, dynamic>;
+
+            // Проверяем и устанавливаем userId
+            if (noteData['userId'] == null || noteData['userId'].isEmpty) {
+              noteData['userId'] = userId;
+            }
+
+            // Проверяем наличие ID в данных
+            if (!noteData.containsKey('id')) {
+              noteData['id'] = noteId;
+            }
+
+            // Сохраняем обновления в Firestore
+            await _firestore.collection('fishing_notes').doc(noteId).set(
+                noteData, SetOptions(merge: true));
+
+            debugPrint('✅ Обновление заметки $noteId успешно синхронизировано');
+          } catch (e) {
+            debugPrint('❌ Ошибка при синхронизации обновления заметки: $e');
+            _incrementErrorCounter(dataType);
+          }
+        }
+
+        // Очищаем список обновлений
+        await _offlineStorage.clearUpdates(false);
+      }
+
       // Синхронизируем новые заметки
       final offlineNotes = await _offlineStorage.getAllOfflineNotes();
       if (offlineNotes.isNotEmpty) {
-        debugPrint('Синхронизация новых заметок (${offlineNotes.length} шт.)');
+        debugPrint('🔄 Синхронизация новых заметок (${offlineNotes.length} шт.)');
 
         for (var noteData in offlineNotes) {
           try {
             // Удостоверяемся, что у заметки есть ID и UserID
-            final noteId = noteData['id'];
+            final noteId = noteData['id']?.toString();
             if (noteId == null || noteId.isEmpty) {
-              debugPrint('Заметка без ID, пропускаем');
+              debugPrint('⚠️ Заметка без ID, пропускаем');
               continue;
             }
 
@@ -171,7 +224,7 @@ class SyncService {
 
             // Загружаем фотографии
             if (photoPaths.isNotEmpty) {
-              debugPrint('Загрузка фотографий для заметки $noteId (${photoPaths.length} шт.)');
+              debugPrint('🖼️ Загрузка фотографий для заметки $noteId (${photoPaths.length} шт.)');
 
               for (var path in photoPaths) {
                 try {
@@ -183,12 +236,12 @@ class SyncService {
 
                     final url = await _firebaseService.uploadImage(storagePath, bytes);
                     photoUrls.add(url);
-                    debugPrint('Фото загружено: $url');
+                    debugPrint('✅ Фото загружено: $url');
                   } else {
-                    debugPrint('Файл не существует: $path');
+                    debugPrint('⚠️ Файл не существует: $path');
                   }
                 } catch (e) {
-                  debugPrint('Ошибка при загрузке фото из $path: $e');
+                  debugPrint('❌ Ошибка при загрузке фото из $path: $e');
                 }
               }
 
@@ -202,57 +255,43 @@ class SyncService {
             // Удаляем заметку из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineNote(noteId);
 
-            debugPrint('Заметка $noteId успешно синхронизирована');
+            debugPrint('✅ Заметка $noteId успешно синхронизирована');
           } catch (e) {
-            debugPrint('Ошибка при синхронизации заметки: $e');
+            debugPrint('❌ Ошибка при синхронизации заметки: $e');
+            _incrementErrorCounter(dataType);
           }
         }
       }
 
-      // Синхронизируем обновления заметок
-      final noteUpdates = await _offlineStorage.getAllNoteUpdates();
-      if (noteUpdates.isNotEmpty) {
-        debugPrint('Синхронизация обновлений заметок (${noteUpdates.length} шт.)');
+      debugPrint('✅ Синхронизация заметок завершена');
 
-        for (var entry in noteUpdates.entries) {
-          try {
-            final noteId = entry.key;
-            final noteData = entry.value as Map<String, dynamic>;
-
-            // Проверяем и устанавливаем userId
-            if (noteData['userId'] == null || noteData['userId'].isEmpty) {
-              noteData['userId'] = userId;
-            }
-
-            // Сохраняем обновления в Firestore
-            await _firestore.collection('fishing_notes').doc(noteId).update(noteData);
-
-            debugPrint('Обновление заметки $noteId успешно синхронизировано');
-          } catch (e) {
-            debugPrint('Ошибка при синхронизации обновления заметки: $e');
-          }
-        }
-
-        // Очищаем список обновлений
-        await _offlineStorage.clearUpdates(false);
-      }
-
-      debugPrint('Синхронизация заметок завершена');
+      // Сбрасываем счетчик ошибок, если все прошло успешно
+      _errorCounters[dataType] = 0;
     } catch (e) {
-      debugPrint('Ошибка при синхронизации заметок: $e');
+      debugPrint('❌ Ошибка при синхронизации заметок: $e');
+      _incrementErrorCounter(dataType);
       rethrow;
     }
   }
 
   /// Синхронизировать маркерные карты
   Future<void> _syncMarkerMaps(String userId) async {
+    const dataType = 'marker_maps';
+
+    // Проверка на слишком частые попытки синхронизации с ошибками
+    if (_shouldSkipSync(dataType)) {
+      debugPrint('⏭️ Пропускаем синхронизацию маркерных карт из-за частых ошибок');
+      return;
+    }
+
     try {
-      debugPrint('Начинаем синхронизацию маркерных карт...');
+      debugPrint('🔄 Начинаем синхронизацию маркерных карт...');
+      _lastSyncAttempt[dataType] = DateTime.now();
 
       // Проверяем флаг на удаление всех маркерных карт
       final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(true);
       if (shouldDeleteAll) {
-        debugPrint('Обнаружен флаг на удаление всех маркерных карт');
+        debugPrint('⚠️ Обнаружен флаг на удаление всех маркерных карт');
 
         try {
           // Получаем все маркерные карты пользователя и удаляем их
@@ -269,9 +308,10 @@ class SyncService {
 
           await batch.commit();
           await _offlineStorage.clearDeleteAllFlag(true);
-          debugPrint('Все маркерные карты пользователя удалены (${snapshot.docs.length} шт.)');
+          debugPrint('✅ Все маркерные карты пользователя удалены (${snapshot.docs.length} шт.)');
         } catch (e) {
-          debugPrint('Ошибка при удалении всех маркерных карт: $e');
+          debugPrint('❌ Ошибка при удалении всех маркерных карт: $e');
+          _incrementErrorCounter(dataType);
         }
 
         // Если все маркерные карты удалены, нет смысла продолжать синхронизацию
@@ -281,14 +321,14 @@ class SyncService {
       // Синхронизируем отдельные удаления
       final mapsToDelete = await _offlineStorage.getIdsToDelete(true);
       if (mapsToDelete.isNotEmpty) {
-        debugPrint('Синхронизация удалений маркерных карт (${mapsToDelete.length} шт.)');
+        debugPrint('🗑️ Синхронизация удалений маркерных карт (${mapsToDelete.length} шт.)');
 
         for (var mapId in mapsToDelete) {
           try {
             await _firestore.collection('marker_maps').doc(mapId).delete();
-            debugPrint('Маркерная карта $mapId удалена из Firestore');
+            debugPrint('✅ Маркерная карта $mapId удалена из Firestore');
           } catch (e) {
-            debugPrint('Ошибка при удалении маркерной карты $mapId из Firestore: $e');
+            debugPrint('❌ Ошибка при удалении маркерной карты $mapId из Firestore: $e');
           }
         }
 
@@ -296,17 +336,52 @@ class SyncService {
         await _offlineStorage.clearIdsToDelete(true);
       }
 
+      // Синхронизируем обновления маркерных карт
+      final mapUpdates = await _offlineStorage.getAllMarkerMapUpdates();
+      if (mapUpdates.isNotEmpty) {
+        debugPrint('🔄 Синхронизация обновлений маркерных карт (${mapUpdates.length} шт.)');
+
+        for (var entry in mapUpdates.entries) {
+          try {
+            final mapId = entry.key;
+            final mapData = entry.value as Map<String, dynamic>;
+
+            // Проверяем и устанавливаем userId
+            if (mapData['userId'] == null || mapData['userId'].isEmpty) {
+              mapData['userId'] = userId;
+            }
+
+            // Проверяем наличие ID в данных
+            if (!mapData.containsKey('id')) {
+              mapData['id'] = mapId;
+            }
+
+            // Сохраняем обновления в Firestore
+            await _firestore.collection('marker_maps').doc(mapId).set(
+                mapData, SetOptions(merge: true));
+
+            debugPrint('✅ Обновление маркерной карты $mapId успешно синхронизировано');
+          } catch (e) {
+            debugPrint('❌ Ошибка при синхронизации обновления маркерной карты: $e');
+            _incrementErrorCounter(dataType);
+          }
+        }
+
+        // Очищаем список обновлений
+        await _offlineStorage.clearUpdates(true);
+      }
+
       // Синхронизируем новые маркерные карты
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
       if (offlineMaps.isNotEmpty) {
-        debugPrint('Синхронизация новых маркерных карт (${offlineMaps.length} шт.)');
+        debugPrint('🔄 Синхронизация новых маркерных карт (${offlineMaps.length} шт.)');
 
         for (var mapData in offlineMaps) {
           try {
             // Удостоверяемся, что у карты есть ID и UserID
-            final mapId = mapData['id'];
+            final mapId = mapData['id']?.toString();
             if (mapId == null || mapId.isEmpty) {
-              debugPrint('Маркерная карта без ID, пропускаем');
+              debugPrint('⚠️ Маркерная карта без ID, пропускаем');
               continue;
             }
 
@@ -321,46 +396,49 @@ class SyncService {
             // Удаляем маркерную карту из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineMarkerMap(mapId);
 
-            debugPrint('Маркерная карта $mapId успешно синхронизирована');
+            debugPrint('✅ Маркерная карта $mapId успешно синхронизирована');
           } catch (e) {
-            debugPrint('Ошибка при синхронизации маркерной карты: $e');
+            debugPrint('❌ Ошибка при синхронизации маркерной карты: $e');
+            _incrementErrorCounter(dataType);
           }
         }
       }
 
-      // Синхронизируем обновления маркерных карт
-      final mapUpdates = await _offlineStorage.getAllMarkerMapUpdates();
-      if (mapUpdates.isNotEmpty) {
-        debugPrint('Синхронизация обновлений маркерных карт (${mapUpdates.length} шт.)');
+      debugPrint('✅ Синхронизация маркерных карт завершена');
 
-        for (var entry in mapUpdates.entries) {
-          try {
-            final mapId = entry.key;
-            final mapData = entry.value as Map<String, dynamic>;
-
-            // Проверяем и устанавливаем userId
-            if (mapData['userId'] == null || mapData['userId'].isEmpty) {
-              mapData['userId'] = userId;
-            }
-
-            // Сохраняем обновления в Firestore
-            await _firestore.collection('marker_maps').doc(mapId).update(mapData);
-
-            debugPrint('Обновление маркерной карты $mapId успешно синхронизировано');
-          } catch (e) {
-            debugPrint('Ошибка при синхронизации обновления маркерной карты: $e');
-          }
-        }
-
-        // Очищаем список обновлений
-        await _offlineStorage.clearUpdates(true);
-      }
-
-      debugPrint('Синхронизация маркерных карт завершена');
+      // Сбрасываем счетчик ошибок, если все прошло успешно
+      _errorCounters[dataType] = 0;
     } catch (e) {
-      debugPrint('Ошибка при синхронизации маркерных карт: $e');
+      debugPrint('❌ Ошибка при синхронизации маркерных карт: $e');
+      _incrementErrorCounter(dataType);
       rethrow;
     }
+  }
+
+  // Проверка, следует ли пропустить синхронизацию для данного типа данных
+  bool _shouldSkipSync(String dataType) {
+    final lastAttempt = _lastSyncAttempt[dataType];
+    final errorCount = _errorCounters[dataType] ?? 0;
+
+    // Если ошибок нет, продолжаем синхронизацию
+    if (errorCount < _maxRetries) return false;
+
+    // Если была попытка синхронизации менее 5 минут назад и были частые ошибки,
+    // пропускаем синхронизацию
+    if (lastAttempt != null &&
+        DateTime.now().difference(lastAttempt).inMinutes < 5 &&
+        errorCount >= _maxRetries) {
+      return true;
+    }
+
+    // В остальных случаях продолжаем синхронизацию
+    return false;
+  }
+
+  // Увеличение счетчика ошибок для данного типа данных
+  void _incrementErrorCounter(String dataType) {
+    _errorCounters[dataType] = (_errorCounters[dataType] ?? 0) + 1;
+    debugPrint('⚠️ Счетчик ошибок для $dataType: ${_errorCounters[dataType]}');
   }
 
   /// Получить информацию о статусе синхронизации
@@ -383,6 +461,8 @@ class SyncService {
           notesToDelete.length +
           mapsToDelete.length;
 
+      final isConnected = await NetworkUtils.isNetworkAvailable();
+
       return {
         'lastSyncTime': lastSyncTime,
         'isSyncing': _isSyncing,
@@ -393,9 +473,11 @@ class SyncService {
         'offlineMapUpdates': offlineMapUpdates.length,
         'notesToDelete': notesToDelete.length,
         'mapsToDelete': mapsToDelete.length,
+        'isOnline': isConnected,
+        'errorCounters': _errorCounters,
       };
     } catch (e) {
-      debugPrint('Ошибка при получении статуса синхронизации: $e');
+      debugPrint('❌ Ошибка при получении статуса синхронизации: $e');
       return {
         'error': e.toString(),
       };
@@ -406,21 +488,24 @@ class SyncService {
   Future<bool> forceSyncAll() async {
     try {
       if (_isSyncing) {
-        debugPrint('Синхронизация уже запущена, пропускаем');
+        debugPrint('⚠️ Синхронизация уже запущена, пропускаем');
         return false;
       }
 
       // Проверяем подключение к интернету
       final isConnected = await NetworkUtils.isNetworkAvailable();
       if (!isConnected) {
-        debugPrint('Нет подключения к интернету, синхронизация невозможна');
+        debugPrint('❌ Нет подключения к интернету, синхронизация невозможна');
         return false;
       }
+
+      // Сбрасываем счетчики ошибок
+      _errorCounters.clear();
 
       await syncAll();
       return true;
     } catch (e) {
-      debugPrint('Ошибка при принудительной синхронизации: $e');
+      debugPrint('❌ Ошибка при принудительной синхронизации: $e');
       return false;
     }
   }

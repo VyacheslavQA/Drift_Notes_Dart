@@ -20,6 +20,9 @@ class FirebaseService {
   static const String _authUserIdKey = 'auth_user_id';
   static const String _authUserDisplayNameKey = 'auth_user_display_name';
 
+  // Кэшированные данные для быстрого доступа
+  static String? _cachedUserId;
+
   // Получение текущего пользователя
   User? get currentUser => _auth.currentUser;
 
@@ -38,12 +41,25 @@ class FirebaseService {
 
   // Получение ID пользователя из кэша
   String? _getCachedUserId() {
+    // Используем статическую переменную для кэширования userId
+    if (_cachedUserId != null) {
+      return _cachedUserId;
+    }
+
+    // Если у нас нет закэшированного ID, возвращаем null
+    // А затем асинхронно пытаемся загрузить его из SharedPreferences
+    _loadCachedUserIdAsync();
+    return null;
+  }
+
+  // Асинхронная загрузка userId из SharedPreferences
+  Future<void> _loadCachedUserIdAsync() async {
     try {
-      final prefs = SharedPreferences.getInstance();
-      return prefs.then((value) => value.getString(_authUserIdKey));
+      final prefs = await SharedPreferences.getInstance();
+      _cachedUserId = prefs.getString(_authUserIdKey);
+      debugPrint('Загружен кэшированный ID пользователя: $_cachedUserId');
     } catch (e) {
-      debugPrint('Ошибка при получении ID пользователя из кэша: $e');
-      return null;
+      debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
     }
   }
 
@@ -98,6 +114,9 @@ class FirebaseService {
       await prefs.setString(_authUserEmailKey, user.email ?? '');
       await prefs.setString(_authUserIdKey, user.uid);
       await prefs.setString(_authUserDisplayNameKey, user.displayName ?? '');
+
+      // Обновляем статический кэш
+      _cachedUserId = user.uid;
 
       // Также сохраняем в сервисе офлайн хранилища
       await _offlineStorage.saveUserData({
@@ -162,6 +181,9 @@ class FirebaseService {
       await prefs.remove(_authUserEmailKey);
       await prefs.remove(_authUserIdKey);
       await prefs.remove(_authUserDisplayNameKey);
+
+      // Очищаем статический кэш
+      _cachedUserId = null;
     } catch (e) {
       debugPrint('Ошибка при удалении кэшированных данных пользователя: $e');
     }
