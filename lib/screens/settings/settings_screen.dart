@@ -17,17 +17,42 @@ class SettingsScreen extends StatefulWidget {
   _SettingsScreenState createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final SyncService _syncService = SyncService();
 
   bool _isLoading = false;
+  bool _isSyncing = false;
   Map<String, dynamic> _syncStatus = {};
+
+  // Контроллер для анимации кнопки синхронизации
+  late AnimationController _syncAnimationController;
+  late Animation<double> _syncRotationAnimation;
 
   @override
   void initState() {
     super.initState();
     _loadSyncStatus();
+
+    // Инициализация анимации для кнопки синхронизации
+    _syncAnimationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _syncRotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 2 * 3.14159, // 360 градусов в радианах
+    ).animate(CurvedAnimation(
+      parent: _syncAnimationController,
+      curve: Curves.linear,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _syncAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSyncStatus() async {
@@ -73,7 +98,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _forceSyncData() async {
-    setState(() => _isLoading = true);
+    if (_isSyncing) return; // Предотвращаем повторный запуск синхронизации
+
+    setState(() {
+      _isSyncing = true;
+    });
+
+    // Запускаем анимацию вращения
+    _syncAnimationController.reset();
+    _syncAnimationController.repeat();
 
     try {
       // Проверяем подключение к интернету
@@ -85,7 +118,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() => _isLoading = false);
+
+        // Останавливаем анимацию
+        _syncAnimationController.stop();
+
+        setState(() {
+          _isSyncing = false;
+        });
         return;
       }
 
@@ -94,7 +133,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Обновляем статус синхронизации
       await _loadSyncStatus();
 
-      setState(() => _isLoading = false);
+      // Останавливаем анимацию
+      _syncAnimationController.stop();
+
+      setState(() {
+        _isSyncing = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -105,7 +149,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     } catch (e) {
-      setState(() => _isLoading = false);
+      // Останавливаем анимацию
+      _syncAnimationController.stop();
+
+      setState(() {
+        _isSyncing = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -220,14 +269,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    ListTile(
-                      title: const Text('Принудительная синхронизация'),
-                      subtitle: const Text(
-                          'Синхронизировать данные сейчас'),
-                      leading: const Icon(Icons.sync),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: _forceSyncData,
+                    // Заменяем ListTile на более красивую кнопку синхронизации
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: InkWell(
+                        onTap: _isSyncing ? null : _forceSyncData,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppConstants.primaryColor,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Анимированная иконка синхронизации
+                              AnimatedBuilder(
+                                animation: _syncAnimationController,
+                                builder: (_, child) {
+                                  return Transform.rotate(
+                                    angle: _syncRotationAnimation.value,
+                                    child: Icon(
+                                      Icons.sync,
+                                      color: _isSyncing
+                                          ? AppConstants.primaryColor
+                                          : AppConstants.textColor,
+                                      size: 24,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 16),
+                              // Текст кнопки
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Принудительная синхронизация',
+                                      style: TextStyle(
+                                        color: AppConstants.textColor,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _isSyncing
+                                          ? 'Синхронизация выполняется...'
+                                          : 'Синхронизировать все данные сейчас',
+                                      style: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
+
                     if (_syncStatus.isNotEmpty) ...[
                       const Divider(height: 1, color: Colors.white10),
                       Padding(
@@ -291,13 +399,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                Text(
-                                  _syncStatus['isOnline'] == true ? 'Онлайн' : 'Офлайн',
-                                  style: TextStyle(
-                                    color: AppConstants.textColor,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _syncStatus['isOnline'] == true ?
+                                        Colors.green : Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _syncStatus['isOnline'] == true ? 'Онлайн' : 'Офлайн',
+                                      style: TextStyle(
+                                        color: AppConstants.textColor,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
