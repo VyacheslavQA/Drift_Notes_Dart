@@ -16,6 +16,7 @@ import 'cover_photo_selection_screen.dart';
 import 'edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart'; // Добавляем импорт нашего нового виджета
+import '../../widgets/universal_image.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -499,6 +500,93 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
+  // Метод для построения изображения обложки с учётом настроек кадрирования
+  Widget _buildCoverImage(String photoUrl, Map<String, dynamic>? cropSettings) {
+    // Если нет настроек кадрирования, просто показываем изображение
+    if (cropSettings == null) {
+      return UniversalImage(
+        imageUrl: photoUrl,
+        fit: BoxFit.cover,
+        placeholder: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+            strokeWidth: 2.0,
+          ),
+        ),
+        errorWidget: Container(
+          color: AppConstants.backgroundColor.withOpacity(0.7),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.grey[400],
+                  size: 40,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Изображение недоступно',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Если есть настройки кадрирования, применяем их
+    final offsetX = cropSettings['offsetX'] as double? ?? 0.0;
+    final offsetY = cropSettings['offsetY'] as double? ?? 0.0;
+    final scale = cropSettings['scale'] as double? ?? 1.0;
+
+    return ClipRect(
+      child: Transform.scale(
+        scale: scale,
+        child: Transform.translate(
+          offset: Offset(offsetX, offsetY),
+          child: UniversalImage(
+            imageUrl: photoUrl,
+            fit: BoxFit.cover,
+            placeholder: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                strokeWidth: 2.0,
+              ),
+            ),
+            errorWidget: Container(
+              color: AppConstants.backgroundColor.withOpacity(0.7),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.grey[400],
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Изображение недоступно',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNoteDetails() {
     if (_note == null) return const SizedBox();
 
@@ -538,8 +626,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 ),
               ],
             ),
-
-          const SizedBox(height: 20),
 
           // Общая информация
           _buildInfoCard(

@@ -22,6 +22,7 @@ class FishingNoteModel {
   final Map<String, dynamic>? coverCropSettings;
   final String title;
 
+
   FishingNoteModel({
     required this.id,
     required this.userId,
@@ -43,6 +44,7 @@ class FishingNoteModel {
     this.coverPhotoUrl = '',
     this.coverCropSettings,
     this.title = '',
+
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
