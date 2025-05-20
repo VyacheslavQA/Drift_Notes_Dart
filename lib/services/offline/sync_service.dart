@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../firebase/firebase_service.dart';
 import 'offline_storage_service.dart';
 import '../../utils/network_utils.dart';
+import '../local/local_file_service.dart'; // Новый импорт
 
 /// Сервис для синхронизации данных между локальным хранилищем и облаком
 class SyncService {
@@ -23,6 +24,7 @@ class SyncService {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final LocalFileService _localFileService = LocalFileService(); // Новый сервис
 
   bool _isSyncing = false;
   Timer? _syncTimer;
@@ -99,6 +101,61 @@ class SyncService {
       debugPrint('❌ Ошибка при синхронизации данных: $e');
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  /// Обрабатывает локальные URI файлов в структуре данных и заменяет их на серверные URL
+  Future<void> _processLocalFileUrls(Map<String, dynamic> data, String userId) async {
+    // Проверяем наличие списка photoUrls
+    if (data['photoUrls'] is List) {
+      final photoUrls = List<String>.from(data['photoUrls']);
+      final List<String> processedUrls = [];
+      bool hasChanges = false;
+
+      for (var url in photoUrls) {
+        // Проверяем, является ли URL локальным файлом или placeholder
+        if (_localFileService.isLocalFileUri(url)) {
+          // Обрабатываем локальный файл
+          try {
+            final file = _localFileService.localUriToFile(url);
+            if (file != null && await file.exists()) {
+              // Загружаем файл на сервер
+              final bytes = await file.readAsBytes();
+              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${url.hashCode}.jpg';
+              final path = 'users/$userId/photos/$fileName';
+              final serverUrl = await _firebaseService.uploadImage(path, bytes);
+
+              processedUrls.add(serverUrl);
+              hasChanges = true;
+
+              // Удаляем локальную копию после успешной загрузки
+              await _localFileService.deleteLocalFile(url);
+              debugPrint('🔄 Локальный файл $url заменен на серверный $serverUrl');
+            } else {
+              // Если файл не существует, сохраняем исходный URL (будет обработан как ошибка)
+              processedUrls.add(url);
+              debugPrint('⚠️ Локальный файл $url не существует');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Ошибка при обработке локального файла $url: $e');
+            // Если произошла ошибка, сохраняем исходный URL
+            processedUrls.add(url);
+          }
+        } else if (url == 'offline_photo') {
+          // Удаляем placeholder
+          hasChanges = true;
+          debugPrint('🧹 Удален placeholder offline_photo');
+        } else {
+          // Сохраняем исходный URL
+          processedUrls.add(url);
+        }
+      }
+
+      // Обновляем список URL только если были изменения
+      if (hasChanges) {
+        // Фильтруем, удаляя placeholder 'offline_photo'
+        data['photoUrls'] = processedUrls.where((url) => url != 'offline_photo').toList();
+      }
     }
   }
 
@@ -184,6 +241,9 @@ class SyncService {
               noteData['id'] = noteId;
             }
 
+            // Обрабатываем локальные URI файлов перед сохранением
+            await _processLocalFileUrls(noteData, userId);
+
             // Сохраняем обновления в Firestore
             await _firestore.collection('fishing_notes').doc(noteId).set(
                 noteData, SetOptions(merge: true));
@@ -220,11 +280,19 @@ class SyncService {
 
             // Проверяем, есть ли фотографии для загрузки
             final photoPaths = await _offlineStorage.getOfflinePhotoPaths(noteId);
-            final List<String> photoUrls = List<String>.from(noteData['photoUrls'] ?? []);
 
-            // Загружаем фотографии
+            // Обрабатываем локальные URI в данных заметки
+            await _processLocalFileUrls(noteData, userId);
+
+            // Загрузка исходных фотографий из сохраненных путей
             if (photoPaths.isNotEmpty) {
               debugPrint('🖼️ Загрузка фотографий для заметки $noteId (${photoPaths.length} шт.)');
+
+              // Получаем текущий список URL фотографий
+              List<String> photoUrls = [];
+              if (noteData['photoUrls'] is List) {
+                photoUrls = List<String>.from(noteData['photoUrls']);
+              }
 
               for (var path in photoPaths) {
                 try {
@@ -235,7 +303,10 @@ class SyncService {
                     final storagePath = 'users/$userId/photos/$fileName';
 
                     final url = await _firebaseService.uploadImage(storagePath, bytes);
-                    photoUrls.add(url);
+                    // Добавляем URL только если его еще нет в списке
+                    if (!photoUrls.contains(url)) {
+                      photoUrls.add(url);
+                    }
                     debugPrint('✅ Фото загружено: $url');
                   } else {
                     debugPrint('⚠️ Файл не существует: $path');
@@ -463,6 +534,10 @@ class SyncService {
 
       final isConnected = await NetworkUtils.isNetworkAvailable();
 
+      // Получаем размер кэша локальных файлов
+      final localFilesCount = await _getLocalFilesCount();
+      final localFilesCacheSize = await _localFileService.getCacheSize();
+
       return {
         'lastSyncTime': lastSyncTime,
         'isSyncing': _isSyncing,
@@ -475,12 +550,38 @@ class SyncService {
         'mapsToDelete': mapsToDelete.length,
         'isOnline': isConnected,
         'errorCounters': _errorCounters,
+        'localFilesCount': localFilesCount,
+        'localFilesCacheSize': _formatFileSize(localFilesCacheSize),
       };
     } catch (e) {
       debugPrint('❌ Ошибка при получении статуса синхронизации: $e');
       return {
         'error': e.toString(),
       };
+    }
+  }
+
+  /// Форматирует размер файла в человекочитаемый вид
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes Б';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} КБ';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} ГБ';
+  }
+
+  /// Получить количество локальных файлов
+  Future<int> _getLocalFilesCount() async {
+    try {
+      final cachePath = await _localFileService.getCacheDirectoryPath();
+      final directory = Directory(cachePath);
+
+      if (!await directory.exists()) return 0;
+
+      final files = await directory.list().where((entity) => entity is File).toList();
+      return files.length;
+    } catch (e) {
+      debugPrint('❌ Ошибка при подсчете локальных файлов: $e');
+      return 0;
     }
   }
 
