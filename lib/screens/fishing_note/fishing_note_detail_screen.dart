@@ -15,6 +15,7 @@ import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
 import 'edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
+import '../../widgets/fishing_photo_grid.dart'; // Добавляем импорт нашего нового виджета
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -514,7 +515,29 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         children: [
           // Фотогалерея
           if (_note!.photoUrls.isNotEmpty)
-            _buildPhotoGallery(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildSectionHeader('Фотографии'),
+                    TextButton.icon(
+                      icon: const Icon(Icons.fullscreen, size: 18),
+                      label: const Text('Просмотр'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppConstants.primaryColor,
+                      ),
+                      onPressed: () => _viewPhotoGallery(0),
+                    ),
+                  ],
+                ),
+                FishingPhotoGrid(
+                  photoUrls: _note!.photoUrls,
+                  onViewAllPressed: () => _viewPhotoGallery(0),
+                ),
+              ],
+            ),
 
           const SizedBox(height: 20),
 

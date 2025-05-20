@@ -78,6 +78,8 @@ class UniversalImage extends StatelessWidget {
             debugPrint('🚫 Ошибка при загрузке локального файла: $error');
             return _buildPlaceholderOrError(isError: true);
           },
+          cacheWidth: width?.toInt(),
+          cacheHeight: height?.toInt(),
         ),
       );
     } catch (e) {
@@ -95,6 +97,10 @@ class UniversalImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        memCacheWidth: width?.toInt(),
+        memCacheHeight: height?.toInt(),
+        maxWidthDiskCache: 800, // Ограничиваем размер кэша для экономии памяти
+        fadeInDuration: const Duration(milliseconds: 200),
         placeholder: (context, url) => placeholder ?? _buildPlaceholderOrError(),
         errorWidget: (context, url, error) {
           debugPrint('🚫 Ошибка при загрузке сетевого изображения: $error');
@@ -115,7 +121,7 @@ class UniversalImage extends StatelessWidget {
       ),
       child: Center(
         child: isError
-            ? Column(
+            ? errorWidget ?? Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -133,7 +139,7 @@ class UniversalImage extends StatelessWidget {
             ),
           ],
         )
-            : CircularProgressIndicator(
+            : placeholder ?? CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
           strokeWidth: 2.0,
         ),
