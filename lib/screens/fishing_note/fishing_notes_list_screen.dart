@@ -2,15 +2,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../../utils/navigation.dart';
+import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
+import '../../widgets/loading_overlay.dart'; // Добавляем импорт LoadingOverlay
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
-import '../settings/settings_screen.dart'; // Добавлен импорт экрана настроек
+import '../settings/settings_screen.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({Key? key}) : super(key: key);
@@ -149,53 +150,55 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadNotes,
-        color: AppConstants.primaryColor,
-        backgroundColor: AppConstants.surfaceColor,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-            ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        message: 'Загрузка...',
+        child: RefreshIndicator(
+          onRefresh: _loadNotes,
+          color: AppConstants.primaryColor,
+          backgroundColor: AppConstants.surfaceColor,
+          child: _errorMessage != null
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 48,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loadNotes,
-                child: const Text('Повторить'),
-              ),
-            ],
-          ),
-        )
-            : _notes.isEmpty
-            ? _buildEmptyState()
-            : FadeTransition(
-          opacity: _fadeAnimation,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _notes.length,
-            itemBuilder: (context, index) {
-              // Добавляем задержку для каскадной анимации
-              Future.delayed(Duration(milliseconds: 50 * index), () {
-                if (mounted) setState(() {});
-              });
-              return _buildNoteCard(_notes[index]);
-            },
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _loadNotes,
+                  child: const Text('Повторить'),
+                ),
+              ],
+            ),
+          )
+              : _notes.isEmpty
+              ? _buildEmptyState()
+              : FadeTransition(
+            opacity: _fadeAnimation,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _notes.length,
+              itemBuilder: (context, index) {
+                // Добавляем задержку для каскадной анимации
+                Future.delayed(Duration(milliseconds: 50 * index), () {
+                  if (mounted) setState(() {});
+                });
+                return _buildNoteCard(_notes[index]);
+              },
+            ),
           ),
         ),
       ),
@@ -618,16 +621,16 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
   Widget _buildCoverImage(String photoUrl, Map<String, dynamic>? cropSettings) {
     // Если нет настроек кадрирования, просто показываем изображение
     if (cropSettings == null) {
-      return CachedNetworkImage(
+      return UniversalImage(
         imageUrl: photoUrl,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Center(
+        placeholder: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
             strokeWidth: 2.0,
           ),
         ),
-        errorWidget: (context, url, error) => Container(
+        errorWidget: Container(
           color: AppConstants.backgroundColor.withOpacity(0.7),
           child: Center(
             child: Column(
@@ -663,16 +666,16 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         scale: scale,
         child: Transform.translate(
           offset: Offset(offsetX, offsetY),
-          child: CachedNetworkImage(
+          child: UniversalImage(
             imageUrl: photoUrl,
             fit: BoxFit.cover,
-            placeholder: (context, url) => Center(
+            placeholder: Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
                 strokeWidth: 2.0,
               ),
             ),
-            errorWidget: (context, url, error) => Container(
+            errorWidget: Container(
               color: AppConstants.backgroundColor.withOpacity(0.7),
               child: Center(
                 child: Column(

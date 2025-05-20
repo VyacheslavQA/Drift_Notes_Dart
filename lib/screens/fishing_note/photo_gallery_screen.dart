@@ -1,8 +1,8 @@
 // Путь: lib/screens/fishing_note/photo_gallery_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/app_constants.dart';
+import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
 
 class PhotoGalleryScreen extends StatefulWidget {
   final List<String> photos;
@@ -72,15 +72,15 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 3.0,
-                child: CachedNetworkImage(
+                child: UniversalImage(
                   imageUrl: widget.photos[index],
                   fit: BoxFit.contain,
-                  placeholder: (context, url) => Center(
+                  placeholder: Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Column(
+                  errorWidget: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(

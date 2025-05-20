@@ -58,10 +58,12 @@ class UniversalImage extends StatelessWidget {
   /// Построение виджета для локального изображения
   Widget _buildLocalImage() {
     try {
-      final localService = LocalFileService();
-      final file = localService.localUriToFile(imageUrl);
+      // Важно: получаем File напрямую из пути, не используя CachedNetworkImage
+      final filePath = imageUrl.substring(7); // Удаляем 'file://'
+      final file = File(filePath);
 
-      if (file == null || !file.existsSync()) {
+      if (!file.existsSync()) {
+        debugPrint('🚫 Локальный файл не существует: $filePath');
         return _buildPlaceholderOrError(isError: true);
       }
 
@@ -72,11 +74,14 @@ class UniversalImage extends StatelessWidget {
           width: width,
           height: height,
           fit: fit,
-          errorBuilder: (context, error, stackTrace) => _buildPlaceholderOrError(isError: true),
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('🚫 Ошибка при загрузке локального файла: $error');
+            return _buildPlaceholderOrError(isError: true);
+          },
         ),
       );
     } catch (e) {
-      debugPrint('Ошибка при отображении локального изображения: $e');
+      debugPrint('🚫 Ошибка при отображении локального изображения: $e');
       return _buildPlaceholderOrError(isError: true);
     }
   }
@@ -91,8 +96,10 @@ class UniversalImage extends StatelessWidget {
         height: height,
         fit: fit,
         placeholder: (context, url) => placeholder ?? _buildPlaceholderOrError(),
-        errorWidget: (context, url, error) =>
-        errorWidget ?? _buildPlaceholderOrError(isError: true),
+        errorWidget: (context, url, error) {
+          debugPrint('🚫 Ошибка при загрузке сетевого изображения: $error');
+          return errorWidget ?? _buildPlaceholderOrError(isError: true);
+        },
       ),
     );
   }

@@ -1,8 +1,8 @@
 // Путь: lib/screens/fishing_note/cover_photo_selection_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/app_constants.dart';
+import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
 
 class CoverPhotoSelectionScreen extends StatefulWidget {
   final List<String> photoUrls;
@@ -110,16 +110,16 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                       ? _buildCroppingView()
                       : ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
+                    child: UniversalImage(
                       imageUrl: _selectedPhotoUrl,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Center(
+                      placeholder: Center(
                         child: CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(
                               AppConstants.textColor),
                         ),
                       ),
-                      errorWidget: (context, url, error) => const Icon(
+                      errorWidget: const Icon(
                         Icons.error,
                         color: Colors.red,
                         size: 50,
@@ -217,10 +217,10 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(5),
-                              child: CachedNetworkImage(
+                              child: UniversalImage(
                                 imageUrl: photoUrl,
                                 fit: BoxFit.cover,
-                                placeholder: (context, url) => Center(
+                                placeholder: Center(
                                   child: SizedBox(
                                     width: 20,
                                     height: 20,
@@ -231,7 +231,7 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                                     ),
                                   ),
                                 ),
-                                errorWidget: (context, url, error) => const Icon(
+                                errorWidget: const Icon(
                                   Icons.error,
                                   color: Colors.red,
                                 ),
@@ -292,7 +292,7 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                 scale: _scale,
                 child: Transform.translate(
                   offset: Offset(_offsetX, _offsetY),
-                  child: CachedNetworkImage(
+                  child: UniversalImage(
                     imageUrl: _selectedPhotoUrl,
                     fit: BoxFit.contain,
                   ),
