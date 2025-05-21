@@ -7,6 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../models/user_model.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../utils/countries_data.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -22,9 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   late TextEditingController _displayNameController;
   late TextEditingController _emailController;
-  late TextEditingController _countryController;
-  late TextEditingController _cityController;
 
+  String? _selectedCountry;
+  String? _selectedCity;
+  List<String> _availableCities = [];
   String? _selectedExperience;
   List<String> _selectedFishingTypes = [];
   bool _isLoading = true;
@@ -36,8 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _displayNameController = TextEditingController();
     _emailController = TextEditingController();
-    _countryController = TextEditingController();
-    _cityController = TextEditingController();
 
     _loadUserData();
   }
@@ -46,8 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _displayNameController.dispose();
     _emailController.dispose();
-    _countryController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -63,10 +61,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _displayNameController.text = userData.displayName ?? '';
           _emailController.text = userData.email;
-          _countryController.text = userData.country ?? '';
-          _cityController.text = userData.city ?? '';
+          _selectedCountry = userData.country;
+          _selectedCity = userData.city;
           _selectedExperience = userData.experience;
           _selectedFishingTypes = List<String>.from(userData.fishingTypes);
+
+          // Если страна выбрана, загрузим доступные города
+          if (_selectedCountry != null && _selectedCountry!.isNotEmpty) {
+            _loadCitiesForCountry(_selectedCountry!);
+          }
         });
       } else {
         // Если нет данных в Firestore, используем данные из FirebaseAuth
@@ -86,6 +89,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  // Загрузка городов для выбранной страны
+  void _loadCitiesForCountry(String country) {
+    // Получаем города для выбранной страны
+    _availableCities = CountriesData.getCitiesForCountry(country);
+
+    // Если ранее выбранного города нет в списке, сбрасываем выбор
+    if (_selectedCity != null && !_availableCities.contains(_selectedCity)) {
+      _selectedCity = null;
     }
   }
 
@@ -132,8 +146,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Обновляем данные пользователя
       final userData = {
         'displayName': _displayNameController.text.trim(),
-        'country': _countryController.text.trim(),
-        'city': _cityController.text.trim(),
+        'country': _selectedCountry ?? '',
+        'city': _selectedCity ?? '',
         'experience': _selectedExperience,
         'fishingTypes': _selectedFishingTypes,
       };
@@ -282,24 +296,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 16),
 
-              // Страна
-              TextFormField(
-                controller: _countryController,
+              // Выпадающий список стран
+              DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Страна',
                   prefixIcon: Icon(Icons.public),
                 ),
+                isExpanded: true,
+                value: _selectedCountry,
+                hint: const Text('Выберите страну'),
+                items: CountriesData.countries.map((country) {
+                  return DropdownMenuItem<String>(
+                    value: country,
+                    child: Text(country),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCountry = value;
+                      _selectedCity = null; // Сбрасываем выбранный город
+                      _loadCitiesForCountry(value); // Загружаем города для выбранной страны
+                    });
+                  }
+                },
               ),
 
               const SizedBox(height: 16),
 
-              // Город
-              TextFormField(
-                controller: _cityController,
+              // Выпадающий список городов (активен только если выбрана страна)
+              DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Город',
                   prefixIcon: Icon(Icons.location_city),
                 ),
+                isExpanded: true,
+                value: _selectedCity,
+                hint: const Text('Выберите город'),
+                items: _availableCities.map((city) {
+                  return DropdownMenuItem<String>(
+                    value: city,
+                    child: Text(city),
+                  );
+                }).toList(),
+                onChanged: _selectedCountry != null
+                    ? (value) {
+                  setState(() {
+                    _selectedCity = value;
+                  });
+                }
+                    : null,
+                disabledHint: const Text('Сначала выберите страну'),
               ),
 
               const SizedBox(height: 24),
