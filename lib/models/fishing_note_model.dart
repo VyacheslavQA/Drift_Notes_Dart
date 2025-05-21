@@ -170,6 +170,19 @@ class FishingNoteModel {
     // Если нет рыбы с весом > 0, вернем null
     return biggest.weight > 0 ? biggest : null;
   }
+
+  // Получение общего веса пойманных рыб
+  double get totalFishWeight {
+    if (biteRecords.isEmpty) return 0.0;
+
+    double total = 0.0;
+    for (var record in biteRecords) {
+      if (record.weight > 0) {
+        total += record.weight;
+      }
+    }
+    return total;
+  }
 }
 
 class FishingWeather {
