@@ -7,8 +7,8 @@ import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../../utils/navigation.dart';
-import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
-import '../../widgets/loading_overlay.dart'; // Добавляем импорт LoadingOverlay
+import '../../widgets/universal_image.dart';
+import '../../widgets/loading_overlay.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
 import '../settings/settings_screen.dart';
@@ -482,7 +482,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
+                        '${note.biteRecords.length} ${_getBiteRecordsText(note.biteRecords.length)}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -615,6 +615,18 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         ),
       ),
     );
+  }
+
+  // Новая функция для получения правильного текста для поклевок
+  String _getBiteRecordsText(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'поклевка';
+    } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+        (count % 100 < 10 || count % 100 >= 20)) {
+      return 'поклевки';
+    } else {
+      return 'поклевок';
+    }
   }
 
   // Метод для построения изображения обложки с учётом настроек кадрирования
