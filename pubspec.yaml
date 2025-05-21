@@ -69,3 +69,4 @@ flutter:
     - assets/images/
     - assets/images/fishing_types/
     - assets/sounds/
+    - assets/localization/  # Добавлена эта строка!
