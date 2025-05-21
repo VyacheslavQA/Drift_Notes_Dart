@@ -21,6 +21,7 @@ import 'map/map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
+import 'settings/settings_screen.dart'; // Добавляем импорт экрана настроек
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -824,9 +825,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Настройки',
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Экран настроек будет доступен позже')),
+                    // Заменяем сообщение на переход к экрану настроек
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
                     );
                   },
                 ),

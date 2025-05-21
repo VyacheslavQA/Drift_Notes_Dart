@@ -11,7 +11,6 @@ import '../../widgets/universal_image.dart';
 import '../../widgets/loading_overlay.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
-import '../settings/settings_screen.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({Key? key}) : super(key: key);
@@ -112,16 +111,6 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
     });
   }
 
-  // Переход к экрану настроек
-  void _openSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -141,14 +130,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          // Добавляем кнопку настроек в AppBar
-          IconButton(
-            icon: Icon(Icons.settings, color: AppConstants.textColor),
-            tooltip: 'Настройки',
-            onPressed: _openSettings,
-          ),
-        ],
+        // Убрали кнопку настроек из списка действий
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
