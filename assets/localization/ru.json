@@ -1,0 +1,16 @@
+{
+  "app_name": "Drift Notes",
+  "settings": "Настройки",
+  "language": "Язык",
+  "select_language": "Выберите язык",
+  "system_language": "Системный язык",
+  "success_language_changed": "Язык успешно изменен",
+  "sync_settings": "Настройки синхронизации",
+  "fishing_notes": "Мои заметки",
+  "profile": "Личный кабинет",
+  "more": "Ещё",
+  "save": "Сохранить",
+  "cancel": "Отмена",
+  "error_loading": "Ошибка загрузки",
+  "try_again": "Повторить"
+}

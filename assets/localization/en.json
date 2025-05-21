@@ -1,0 +1,16 @@
+{
+  "app_name": "Drift Notes",
+  "settings": "Settings",
+  "language": "Language",
+  "select_language": "Select language",
+  "system_language": "System language",
+  "success_language_changed": "Language changed successfully",
+  "sync_settings": "Synchronization",
+  "fishing_notes": "My notes",
+  "profile": "Profile",
+  "more": "More",
+  "save": "Save",
+  "cancel": "Cancel",
+  "error_loading": "Loading error",
+  "try_again": "Try again"
+}

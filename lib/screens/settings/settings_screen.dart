@@ -8,7 +8,9 @@ import '../../services/offline/offline_storage_service.dart';
 import '../../services/offline/sync_service.dart';
 import '../../utils/network_utils.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../localization/app_localizations.dart';
 import 'storage_cleanup_screen.dart';
+import 'language_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -239,12 +241,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Синхронизация',
-          style: TextStyle(
+        title: Text(
+          localizations.translate('settings'),
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -261,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Синхронизация
-              _buildSectionHeader('Синхронизация данных'),
+              _buildSectionHeader(localizations.translate('sync_settings')),
               Card(
                 color: AppConstants.cardColor,
                 shape: RoundedRectangleBorder(
@@ -428,6 +432,31 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       ),
                     ],
                   ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Настройки языка
+              _buildSectionHeader(localizations.translate('language')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.language, color: Colors.blue),
+                  title: Text(localizations.translate('language')),
+                  subtitle: Text(localizations.translate('select_language')),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LanguageSettingsScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
 

@@ -6,7 +6,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Добавлен новый импорт
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -15,6 +16,8 @@ import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'providers/timer_provider.dart';
+import 'providers/language_provider.dart';
+import 'localization/app_localizations.dart';
 import 'firebase_options.dart';
 import 'providers/statistics_provider.dart';
 import 'services/offline/offline_storage_service.dart';
@@ -80,6 +83,8 @@ void main() async {
         ChangeNotifierProvider(create: (context) => TimerProvider()),
         // Добавляем провайдер статистики без внешних зависимостей
         ChangeNotifierProvider(create: (context) => StatisticsProvider()),
+        // Добавляем провайдер языка
+        ChangeNotifierProvider(create: (context) => LanguageProvider()),
       ],
       child: const DriftNotesApp(),
     ),
@@ -91,9 +96,23 @@ class DriftNotesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Получаем текущую локаль из провайдера
+    final languageProvider = Provider.of<LanguageProvider>(context);
+
     return MaterialApp(
       title: 'Drift Notes',
       debugShowCheckedModeBanner: false,
+
+      // Настройки локализации
+      locale: languageProvider.currentLocale,
+      supportedLocales: AppLocalizations.supportedLocales(),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
       theme: ThemeData(
         primaryColor: AppConstants.primaryColor,
         scaffoldBackgroundColor: AppConstants.backgroundColor,
