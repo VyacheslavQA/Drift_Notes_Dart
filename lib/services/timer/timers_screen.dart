@@ -7,6 +7,7 @@ import '../../providers/timer_provider.dart';
 import '../../models/timer_model.dart';
 import '../../utils/navigation.dart';
 import '../../screens/timer/timer_settings_screen.dart';
+import '../../localization/app_localizations.dart';
 
 class TimersScreen extends StatefulWidget {
   const TimersScreen({Key? key}) : super(key: key);
@@ -56,6 +57,7 @@ class _TimersScreenState extends State<TimersScreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final timers = _timerProvider.timers;
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -63,7 +65,7 @@ class _TimersScreenState extends State<TimersScreen> {
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         title: Text(
-          'Таймеры',
+          localizations.translate('timers'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 24,
@@ -82,7 +84,7 @@ class _TimersScreenState extends State<TimersScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Text(
-                'Таймеры для рыбалки',
+                localizations.translate('fishing_timers'),
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 28,
@@ -109,6 +111,8 @@ class _TimersScreenState extends State<TimersScreen> {
   }
 
   Widget _buildTimerCard(FishingTimerModel timer, Duration currentDuration) {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 8, right: 8),
       decoration: BoxDecoration(
@@ -181,7 +185,9 @@ class _TimersScreenState extends State<TimersScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: Text(
-                      timer.isRunning ? 'СТОП' : 'СТАРТ',
+                      timer.isRunning
+                          ? localizations.translate('stop')
+                          : localizations.translate('start'),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -203,9 +209,9 @@ class _TimersScreenState extends State<TimersScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'СБРОС',
-                      style: TextStyle(
+                    child: Text(
+                      localizations.translate('reset'),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),

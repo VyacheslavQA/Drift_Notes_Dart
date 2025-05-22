@@ -1,10 +1,15 @@
 // Путь: lib/utils/validators.dart
 
+import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
+
 class Validators {
   // Проверка Email
-  static String? validateEmail(String? value) {
+  static String? validateEmail(String? value, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
-      return 'Пожалуйста, введите email';
+      return context != null
+          ? AppLocalizations.of(context).translate('please_enter_email')
+          : 'Пожалуйста, введите email';
     }
 
     // Простая регулярка для проверки формата email
@@ -13,25 +18,33 @@ class Validators {
     );
 
     if (!emailRegex.hasMatch(value)) {
-      return 'Введите корректный email адрес';
+      return context != null
+          ? AppLocalizations.of(context).translate('enter_valid_email')
+          : 'Введите корректный email адрес';
     }
 
     return null; // Возвращаем null если проверка успешна
   }
 
   // Проверка пароля
-  static String? validatePassword(String? value) {
+  static String? validatePassword(String? value, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
-      return 'Пожалуйста, введите пароль';
+      return context != null
+          ? AppLocalizations.of(context).translate('please_enter_password')
+          : 'Пожалуйста, введите пароль';
     }
 
     if (value.length < 8) {
-      return 'Пароль должен содержать минимум 8 символов';
+      return context != null
+          ? AppLocalizations.of(context).translate('password_min_8_chars')
+          : 'Пароль должен содержать минимум 8 символов';
     }
 
     // Проверка на наличие хотя бы одной заглавной буквы
     if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Пароль должен содержать хотя бы одну заглавную букву';
+      return context != null
+          ? AppLocalizations.of(context).translate('password_needs_uppercase')
+          : 'Пароль должен содержать хотя бы одну заглавную букву';
     }
 
     // Проверка на отсутствие специфичных символов, кроме разрешенных
@@ -39,33 +52,43 @@ class Validators {
     final RegExp allowedCharsRegex = RegExp(r'^[a-zA-Z0-9@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
 
     if (!allowedCharsRegex.hasMatch(value)) {
-      return 'Пароль содержит недопустимые символы';
+      return context != null
+          ? AppLocalizations.of(context).translate('password_invalid_chars')
+          : 'Пароль содержит недопустимые символы';
     }
 
     return null; // Возвращаем null если проверка успешна
   }
 
   // Проверка имени пользователя
-  static String? validateName(String? value) {
+  static String? validateName(String? value, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
-      return 'Пожалуйста, введите ваше имя';
+      return context != null
+          ? AppLocalizations.of(context).translate('please_enter_name')
+          : 'Пожалуйста, введите ваше имя';
     }
 
     if (value.length < 2) {
-      return 'Имя должно содержать минимум 2 символа';
+      return context != null
+          ? AppLocalizations.of(context).translate('name_min_2_chars')
+          : 'Имя должно содержать минимум 2 символа';
     }
 
     return null; // Возвращаем null если проверка успешна
   }
 
   // Проверка подтверждения пароля
-  static String? validateConfirmPassword(String? value, String password) {
+  static String? validateConfirmPassword(String? value, String password, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
-      return 'Пожалуйста, подтвердите пароль';
+      return context != null
+          ? AppLocalizations.of(context).translate('please_confirm_password')
+          : 'Пожалуйста, подтвердите пароль';
     }
 
     if (value != password) {
-      return 'Пароли не совпадают';
+      return context != null
+          ? AppLocalizations.of(context).translate('passwords_dont_match')
+          : 'Пароли не совпадают';
     }
 
     return null; // Возвращаем null если проверка успешна

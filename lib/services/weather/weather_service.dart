@@ -2,15 +2,22 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
 import '../../models/fishing_note_model.dart';
 import 'package:intl/intl.dart';
+import '../../localization/app_localizations.dart';
 
 class WeatherService {
   final String _baseUrl = 'https://api.open-meteo.com/v1/forecast';
+  BuildContext? _context;
+
+  WeatherService([this._context]);
 
   // Получает данные о погоде для указанных координат
   Future<FishingWeather?> getWeatherForLocation(double latitude,
-      double longitude) async {
+      double longitude, [BuildContext? context]) async {
+    if (context != null) _context = context;
+
     try {
       final response = await http.get(Uri.parse(
           '$_baseUrl?latitude=$latitude&longitude=$longitude'
@@ -78,17 +85,77 @@ class WeatherService {
           : 0;
       final cloudCover = current['cloud_cover'] ?? 0;
 
+      // Формируем описание в зависимости от языка
+      if (_context != null && AppLocalizations.of(_context!).locale.languageCode == 'en') {
+        return '$weatherDesc, $temperature°C, feels like $feelsLike°C\n'
+            'Wind: $windDirection, $windSpeed m/s\n'
+            'Humidity: $humidity%, Pressure: $pressure mmHg\n'
+            'Cloud cover: $cloudCover%';
+      }
+
       return '$weatherDesc, $temperature°C, ощущается как $feelsLike°C\n'
           'Ветер: $windDirection, $windSpeed м/с\n'
           'Влажность: $humidity%, Давление: $pressure мм рт.ст.\n'
           'Облачность: $cloudCover%';
     } catch (e) {
-      return 'Ошибка при формировании описания погоды';
+      return _context != null && AppLocalizations.of(_context!).locale.languageCode == 'en'
+          ? 'Error generating weather description'
+          : 'Ошибка при формировании описания погоды';
     }
   }
 
   // Получает описание погоды по коду
   String _getWeatherDescription(int code) {
+    if (_context != null) {
+      final localizations = AppLocalizations.of(_context!);
+      switch (code) {
+        case 0:
+          return localizations.translate('clear');
+        case 1:
+        case 2:
+        case 3:
+          return localizations.translate('partly_cloudy');
+        case 45:
+        case 48:
+          return localizations.translate('fog');
+        case 51:
+        case 53:
+        case 55:
+          return localizations.translate('drizzle');
+        case 56:
+        case 57:
+          return localizations.translate('freezing_drizzle');
+        case 61:
+        case 63:
+        case 65:
+          return localizations.translate('rain');
+        case 66:
+        case 67:
+          return localizations.translate('freezing_rain');
+        case 71:
+        case 73:
+        case 75:
+          return localizations.translate('snow');
+        case 77:
+          return localizations.translate('snow_grains');
+        case 80:
+        case 81:
+        case 82:
+          return localizations.translate('rain_showers');
+        case 85:
+        case 86:
+          return localizations.translate('snow_showers');
+        case 95:
+          return localizations.translate('thunderstorm');
+        case 96:
+        case 99:
+          return localizations.translate('thunderstorm_with_hail');
+        default:
+          return localizations.translate('unknown_weather');
+      }
+    }
+
+    // Fallback для русского
     switch (code) {
       case 0:
         return 'Ясно';
@@ -138,6 +205,20 @@ class WeatherService {
 
   // Получает направление ветра по градусам
   String _getWindDirection(int degrees) {
+    if (_context != null) {
+      final localizations = AppLocalizations.of(_context!);
+      if (degrees >= 337.5 || degrees < 22.5) return localizations.translate('north');
+      if (degrees >= 22.5 && degrees < 67.5) return localizations.translate('northeast');
+      if (degrees >= 67.5 && degrees < 112.5) return localizations.translate('east');
+      if (degrees >= 112.5 && degrees < 157.5) return localizations.translate('southeast');
+      if (degrees >= 157.5 && degrees < 202.5) return localizations.translate('south');
+      if (degrees >= 202.5 && degrees < 247.5) return localizations.translate('southwest');
+      if (degrees >= 247.5 && degrees < 292.5) return localizations.translate('west');
+      if (degrees >= 292.5 && degrees < 337.5) return localizations.translate('northwest');
+      return localizations.translate('unknown_direction');
+    }
+
+    // Fallback для русского
     if (degrees >= 337.5 || degrees < 22.5) return 'С';
     if (degrees >= 22.5 && degrees < 67.5) return 'СВ';
     if (degrees >= 67.5 && degrees < 112.5) return 'В';

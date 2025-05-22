@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../models/fishing_note_model.dart';
 import '../widgets/universal_image.dart';
-import '../screens/fishing_note/photo_gallery_screen.dart'; // Исправленный импорт
+import '../screens/fishing_note/photo_gallery_screen.dart';
+import '../localization/app_localizations.dart';
 
 class FishingPhotoGrid extends StatefulWidget {
   final List<String> photoUrls;
   final Function()? onViewAllPressed;
   final bool showEmpty;
-  final String emptyText;
+  final String? emptyText;
   final int maxDisplayed;
 
   const FishingPhotoGrid({
@@ -18,7 +19,7 @@ class FishingPhotoGrid extends StatefulWidget {
     required this.photoUrls,
     this.onViewAllPressed,
     this.showEmpty = true,
-    this.emptyText = 'Нет фотографий',
+    this.emptyText,
     this.maxDisplayed = 4,
   }) : super(key: key);
 
@@ -77,7 +78,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Смотреть все (${widget.photoUrls.length})',
+                    '${AppLocalizations.of(context).translate('view_all')} (${widget.photoUrls.length})',
                     style: TextStyle(
                       color: AppConstants.primaryColor,
                       fontSize: 14,
@@ -138,9 +139,9 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                         size: 32,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Ошибка загрузки',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context).translate('error_loading_image'),
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
                         ),
@@ -194,6 +195,9 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
 
   // Отображение, когда нет фотографий
   Widget _buildEmptyState() {
+    final emptyText = widget.emptyText ??
+        AppLocalizations.of(context).translate('no_photos');
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
       width: double.infinity,
@@ -215,7 +219,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
           ),
           const SizedBox(height: 16),
           Text(
-            widget.emptyText,
+            emptyText,
             style: TextStyle(
               color: AppConstants.textColor.withOpacity(0.7),
               fontSize: 16,

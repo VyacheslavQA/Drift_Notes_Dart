@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../offline/offline_storage_service.dart';
 import '../../utils/network_utils.dart';
+import '../../localization/app_localizations.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -69,7 +70,7 @@ class FirebaseService {
 
   // Регистрация нового пользователя с email и паролем
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password) async {
+      String email, String password, [BuildContext? context]) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -82,13 +83,13 @@ class FirebaseService {
       return userCredential;
     } catch (e) {
       // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
-      throw _handleAuthException(e);
+      throw _handleAuthException(e, context);
     }
   }
 
   // Вход пользователя с email и паролем
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
+      String email, String password, [BuildContext? context]) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -101,7 +102,7 @@ class FirebaseService {
       return userCredential;
     } catch (e) {
       // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
-      throw _handleAuthException(e);
+      throw _handleAuthException(e, context);
     }
   }
 
@@ -132,40 +133,78 @@ class FirebaseService {
   }
 
   // Обработка ошибок аутентификации Firebase
-  String _handleAuthException(dynamic e) {
-    String errorMessage = 'Произошла неизвестная ошибка';
+  String _handleAuthException(dynamic e, [BuildContext? context]) {
+    String errorMessage = context != null
+        ? AppLocalizations.of(context).translate('unknown_error')
+        : 'Произошла неизвестная ошибка';
 
     if (e is FirebaseAuthException) {
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'Пользователь с таким email не найден';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Неверный пароль';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Неверный формат email';
-          break;
-        case 'user-disabled':
-          errorMessage = 'Учетная запись отключена';
-          break;
-        case 'email-already-in-use':
-          errorMessage = 'Email уже используется другим аккаунтом';
-          break;
-        case 'operation-not-allowed':
-          errorMessage = 'Операция не разрешена';
-          break;
-        case 'weak-password':
-          errorMessage = 'Слишком простой пароль';
-          break;
-        case 'network-request-failed':
-          errorMessage = 'Проверьте подключение к интернету';
-          break;
-        case 'too-many-requests':
-          errorMessage = 'Слишком много попыток входа. Попробуйте позже';
-          break;
-        default:
-          errorMessage = 'Ошибка: ${e.code}';
+      if (context != null) {
+        final localizations = AppLocalizations.of(context);
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = localizations.translate('user_not_found');
+            break;
+          case 'wrong-password':
+            errorMessage = localizations.translate('wrong_password');
+            break;
+          case 'invalid-email':
+            errorMessage = localizations.translate('invalid_email');
+            break;
+          case 'user-disabled':
+            errorMessage = localizations.translate('user_disabled');
+            break;
+          case 'email-already-in-use':
+            errorMessage = localizations.translate('email_already_in_use');
+            break;
+          case 'operation-not-allowed':
+            errorMessage = localizations.translate('operation_not_allowed');
+            break;
+          case 'weak-password':
+            errorMessage = localizations.translate('weak_password');
+            break;
+          case 'network-request-failed':
+            errorMessage = localizations.translate('network_request_failed');
+            break;
+          case 'too-many-requests':
+            errorMessage = localizations.translate('too_many_requests');
+            break;
+          default:
+            errorMessage = 'Ошибка: ${e.code}';
+        }
+      } else {
+        // Fallback для русского
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = 'Пользователь с таким email не найден';
+            break;
+          case 'wrong-password':
+            errorMessage = 'Неверный пароль';
+            break;
+          case 'invalid-email':
+            errorMessage = 'Неверный формат email';
+            break;
+          case 'user-disabled':
+            errorMessage = 'Учетная запись отключена';
+            break;
+          case 'email-already-in-use':
+            errorMessage = 'Email уже используется другим аккаунтом';
+            break;
+          case 'operation-not-allowed':
+            errorMessage = 'Операция не разрешена';
+            break;
+          case 'weak-password':
+            errorMessage = 'Слишком простой пароль';
+            break;
+          case 'network-request-failed':
+            errorMessage = 'Проверьте подключение к интернету';
+            break;
+          case 'too-many-requests':
+            errorMessage = 'Слишком много попыток входа. Попробуйте позже';
+            break;
+          default:
+            errorMessage = 'Ошибка: ${e.code}';
+        }
       }
     }
 
@@ -192,11 +231,11 @@ class FirebaseService {
   }
 
   // Отправка письма для сброса пароля
-  Future<void> sendPasswordResetEmail(String email) async {
+  Future<void> sendPasswordResetEmail(String email, [BuildContext? context]) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
-      throw _handleAuthException(e);
+      throw _handleAuthException(e, context);
     }
   }
 
