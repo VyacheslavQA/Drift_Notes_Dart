@@ -6,6 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../providers/timer_provider.dart';
 import '../../models/timer_model.dart';
 import 'timer_settings_screen.dart';
+import '../../localization/app_localizations.dart';
 
 class TimersScreen extends StatefulWidget {
   const TimersScreen({Key? key}) : super(key: key);
@@ -58,12 +59,14 @@ class _TimersScreenState extends State<TimersScreen> {
 
   // Показать диалог выбора времени таймера
   void _showTimePickerDialog(String timerId) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.surfaceColor,
         title: Text(
-          'Выберите время',
+          localizations.translate('select_time'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
@@ -72,12 +75,12 @@ class _TimersScreenState extends State<TimersScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTimeOption('30 минут', Duration(minutes: 30), timerId),
-            _buildTimeOption('1 час', Duration(hours: 1), timerId),
-            _buildTimeOption('1.5 часа', Duration(hours: 1, minutes: 30), timerId),
-            _buildTimeOption('2 часа', Duration(hours: 2), timerId),
-            _buildTimeOption('3 часа', Duration(hours: 3), timerId),
-            _buildTimeOption('Другое', null, timerId),
+            _buildTimeOption(localizations.translate('30_minutes'), Duration(minutes: 30), timerId),
+            _buildTimeOption(localizations.translate('1_hour'), Duration(hours: 1), timerId),
+            _buildTimeOption(localizations.translate('1_5_hours'), Duration(hours: 1, minutes: 30), timerId),
+            _buildTimeOption(localizations.translate('2_hours'), Duration(hours: 2), timerId),
+            _buildTimeOption(localizations.translate('3_hours'), Duration(hours: 3), timerId),
+            _buildTimeOption(localizations.translate('other'), null, timerId),
           ],
         ),
       ),
@@ -108,6 +111,8 @@ class _TimersScreenState extends State<TimersScreen> {
 
   // Показать диалог для выбора произвольного времени
   void _showCustomTimePicker(String timerId) {
+    final localizations = AppLocalizations.of(context);
+
     // Сбрасываем значения часов и минут при каждом открытии диалога
     _hours = 0;
     _minutes = 0;
@@ -119,7 +124,7 @@ class _TimersScreenState extends State<TimersScreen> {
           return AlertDialog(
             backgroundColor: AppConstants.surfaceColor,
             title: Text(
-              'Установите время',
+              localizations.translate('set_time'),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontWeight: FontWeight.bold,
@@ -166,7 +171,7 @@ class _TimersScreenState extends State<TimersScreen> {
                           },
                         ),
                         Text(
-                          'Часы',
+                          localizations.translate('hours'),
                           style: TextStyle(color: AppConstants.textColor),
                         ),
                       ],
@@ -214,7 +219,7 @@ class _TimersScreenState extends State<TimersScreen> {
                           },
                         ),
                         Text(
-                          'Минуты',
+                          localizations.translate('minutes'),
                           style: TextStyle(color: AppConstants.textColor),
                         ),
                       ],
@@ -227,7 +232,7 @@ class _TimersScreenState extends State<TimersScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  'Отмена',
+                  localizations.translate('cancel'),
                   style: TextStyle(color: Colors.redAccent),
                 ),
               ),
@@ -243,12 +248,12 @@ class _TimersScreenState extends State<TimersScreen> {
                   } else {
                     // Показываем сообщение, если время не выбрано
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Установите время больше 0')),
+                      SnackBar(content: Text(localizations.translate('set_time_greater_than_zero'))),
                     );
                   }
                 },
                 child: Text(
-                  'Установить',
+                  localizations.translate('set'),
                   style: TextStyle(color: AppConstants.textColor),
                 ),
               ),
@@ -263,6 +268,7 @@ class _TimersScreenState extends State<TimersScreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final timers = _timerProvider.timers;
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -270,7 +276,7 @@ class _TimersScreenState extends State<TimersScreen> {
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         title: Text(
-          'Таймеры',
+          localizations.translate('timers'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 24,
@@ -289,9 +295,9 @@ class _TimersScreenState extends State<TimersScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Text(
-                'Таймеры для рыбалки',
+                localizations.translate('fishing_timers'),
                 style: TextStyle(
-                  color: AppConstants.textColor, // Изменен цвет текста на цвет приложения
+                  color: AppConstants.textColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -316,6 +322,8 @@ class _TimersScreenState extends State<TimersScreen> {
   }
 
   Widget _buildTimerCard(FishingTimerModel timer, Duration currentDuration) {
+    final localizations = AppLocalizations.of(context);
+
     // Рассчитываем прогресс для обратного отсчета
     double progressValue = 0.0;
     if (timer.isCountdown && timer.duration.inSeconds > 0) {
@@ -340,118 +348,117 @@ class _TimersScreenState extends State<TimersScreen> {
         ],
       ),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-      Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        timer.name,
-        style: TextStyle(
-          color: AppConstants.textColor,
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ),
-    Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    child: Center(
-    child: Text(
-    _formatDuration(currentDuration),
-    style: TextStyle(
-    color: timer.timerColor,
-    fontSize: 60,
-    fontWeight: FontWeight.bold,
-    ),
-    ),
-    ),
-    ),
-    Padding(
-    padding: const EdgeInsets.all(4),
-    child: LinearProgressIndicator(
-    value: progressValue,
-    backgroundColor: Colors.white10,
-    valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
-    minHeight: 2,
-    ),
-    ),
-    Padding(
-    padding: const EdgeInsets.all(16),
-    child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: [
-    Expanded(
-    child: ElevatedButton(
-    onPressed: () {
-    if (timer.isRunning) {
-    _timerProvider.stopTimer(timer.id);
-    } else {
-    // Показываем диалог выбора времени при нажатии на Старт
-    _showTimePickerDialog(timer.id);
-    }
-    },
-    style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.green,
-    foregroundColor: Colors.white,
-    shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(24),
-    ),
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    ),
-    child: Text(
-    timer.isRunning ? 'СТОП' : 'СТАРТ',
-    style: const TextStyle(
-      // Путь: lib/screens/timer/timers_screen.dart (продолжение)
-      fontSize: 18,
-      fontWeight: FontWeight.bold,
-    ),
-    ),
-    ),
-    ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: ElevatedButton(
-          onPressed: () {
-            _timerProvider.resetTimer(timer.id);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-          child: const Text(
-            'СБРОС',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Container(
-        decoration: BoxDecoration(
-          color: AppConstants.primaryColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white),
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => TimerSettingsScreen(timerId: timer.id),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              timer.name,
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-            );
-          },
-        ),
-      ),
-    ],
-    ),
-    ),
-          ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Center(
+              child: Text(
+                _formatDuration(currentDuration),
+                style: TextStyle(
+                  color: timer.timerColor,
+                  fontSize: 60,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(4),
+            child: LinearProgressIndicator(
+              value: progressValue,
+              backgroundColor: Colors.white10,
+              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
+              minHeight: 2,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (timer.isRunning) {
+                        _timerProvider.stopTimer(timer.id);
+                      } else {
+                        // Показываем диалог выбора времени при нажатии на Старт
+                        _showTimePickerDialog(timer.id);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      timer.isRunning ? localizations.translate('stop') : localizations.translate('start'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _timerProvider.resetTimer(timer.id);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      localizations.translate('reset'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => TimerSettingsScreen(timerId: timer.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

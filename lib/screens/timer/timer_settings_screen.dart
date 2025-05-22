@@ -7,6 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../providers/timer_provider.dart';
 import '../../models/timer_model.dart';
 import '../../services/timer/timer_service.dart';
+import '../../localization/app_localizations.dart';
 
 class TimerSettingsScreen extends StatefulWidget {
   final String timerId;
@@ -115,13 +116,15 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         title: Text(
-          'Настройки таймера',
+          localizations.translate('timer_settings'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 24,
@@ -153,7 +156,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
             children: [
               // Название таймера
               Text(
-                'Название таймера',
+                localizations.translate('timer_name'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -182,7 +185,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
               // Выбор цвета
               Text(
-                'Цвет таймера',
+                localizations.translate('timer_color'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -196,7 +199,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
               // Выбор звука
               Text(
-                'Звук оповещения',
+                localizations.translate('notification_sound'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -223,9 +226,9 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
                       vertical: 16,
                     ),
                   ),
-                  child: const Text(
-                    'Сохранить',
-                    style: TextStyle(
+                  child: Text(
+                    localizations.translate('save'),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -241,27 +244,29 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   // Виджет выбора цвета
   Widget _buildColorSelection() {
+    final localizations = AppLocalizations.of(context);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _buildColorOption(
           TimerService.timerColors['green']!,
-          'Зеленый',
+          localizations.translate('green'),
           _selectedColor == TimerService.timerColors['green'],
         ),
         _buildColorOption(
           TimerService.timerColors['red']!,
-          'Красный',
+          localizations.translate('red'),
           _selectedColor == TimerService.timerColors['red'],
         ),
         _buildColorOption(
           TimerService.timerColors['orange']!,
-          'Оранжевый',
+          localizations.translate('orange'),
           _selectedColor == TimerService.timerColors['orange'],
         ),
         _buildColorOption(
           TimerService.timerColors['blue']!,
-          'Синий',
+          localizations.translate('blue'),
           _selectedColor == TimerService.timerColors['blue'],
         ),
       ],
@@ -305,11 +310,13 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   // Виджет выбора звука
   Widget _buildSoundSelection() {
+    final localizations = AppLocalizations.of(context);
+
     final sounds = [
-      {'name': 'По умолчанию', 'file': 'default_alert.mp3'},
-      {'name': 'Всплеск', 'file': 'fish_splash.mp3'},
-      {'name': 'Колокольчик', 'file': 'bell.mp3'},
-      {'name': 'Будильник', 'file': 'alarm.mp3'},
+      {'name': localizations.translate('default'), 'file': 'default_alert.mp3'},
+      {'name': localizations.translate('splash'), 'file': 'fish_splash.mp3'},
+      {'name': localizations.translate('bell'), 'file': 'bell.mp3'},
+      {'name': localizations.translate('alarm'), 'file': 'alarm.mp3'},
     ];
 
     return Column(
@@ -341,8 +348,8 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(isPlaying
-                      ? 'Остановка: ${sound['name']}'
-                      : 'Воспроизведение: ${sound['name']}'
+                      ? '${localizations.translate('stopping')}: ${sound['name']}'
+                      : '${localizations.translate('playing')}: ${sound['name']}'
                   ),
                   duration: Duration(seconds: 1),
                 ),
