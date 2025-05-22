@@ -50,12 +50,10 @@ class TimerService {
 
     // Создание таймеров по умолчанию, если их нет
     if (_timers.isEmpty) {
-      for (int i = 1; i <= 4; i++) {
-        _timers.add(FishingTimerModel(
-          id: i.toString(),
-          name: 'timer_$i', // Сохраняем ключ локализации
-        ));
-      }
+      await _createDefaultTimers();
+    } else {
+      // Проверяем и мигрируем существующие таймеры
+      await _migrateTimerNames();
     }
 
     // Восстановление работающих таймеров
@@ -63,6 +61,65 @@ class TimerService {
 
     _isInitialized = true;
     _notifyListeners();
+  }
+
+  // Создание таймеров по умолчанию с ключами локализации
+  Future<void> _createDefaultTimers() async {
+    for (int i = 1; i <= 4; i++) {
+      _timers.add(FishingTimerModel(
+        id: i.toString(),
+        name: 'timer_$i', // Сохраняем ключ локализации
+      ));
+    }
+    await _saveTimers();
+    debugPrint('Созданы таймеры по умолчанию с ключами локализации');
+  }
+
+  // Миграция существующих названий таймеров на ключи локализации
+  Future<void> _migrateTimerNames() async {
+    bool needsSave = false;
+
+    for (int i = 0; i < _timers.length; i++) {
+      final timer = _timers[i];
+
+      // Проверяем, нужно ли мигрировать название
+      if (_shouldMigrateTimerName(timer.name, timer.id)) {
+        _timers[i] = timer.copyWith(name: 'timer_${timer.id}');
+        needsSave = true;
+        debugPrint('Мигрировали таймер ${timer.id}: "${timer.name}" -> "timer_${timer.id}"');
+      }
+    }
+
+    if (needsSave) {
+      await _saveTimers();
+      debugPrint('Миграция названий таймеров завершена');
+    }
+  }
+
+  // Проверяем, нужно ли мигрировать название таймера
+  bool _shouldMigrateTimerName(String currentName, String timerId) {
+    // Список старых русских названий, которые нужно заменить
+    final oldRussianNames = [
+      'Таймер 1', 'Таймер 2', 'Таймер 3', 'Таймер 4',
+      'Timer 1', 'Timer 2', 'Timer 3', 'Timer 4',
+    ];
+
+    // Если название уже является ключом локализации, не мигрируем
+    if (currentName.startsWith('timer_')) {
+      return false;
+    }
+
+    // Если это одно из стандартных названий и ID соответствует
+    if (oldRussianNames.contains(currentName)) {
+      return true;
+    }
+
+    // Если название пустое или совпадает с ID
+    if (currentName.isEmpty || currentName == timerId) {
+      return true;
+    }
+
+    return false;
   }
 
   // Получение списка таймеров
@@ -147,15 +204,15 @@ class TimerService {
       // Проверяем, есть ли такой звук в ресурсах
       final soundResource = alertSoundResources[soundFile];
       if (soundResource != null) {
-        print('Воспроизведение звука: $soundResource');
+        debugPrint('Воспроизведение звука: $soundResource');
         await _alertPlayers[timerId]!.play(AssetSource(soundResource));
       } else {
         // Если звук не найден, воспроизводим звук по умолчанию
-        print('Звук не найден, воспроизведение звука по умолчанию');
+        debugPrint('Звук не найден, воспроизведение звука по умолчанию');
         await _alertPlayers[timerId]!.play(AssetSource(alertSoundResources['default_alert.mp3']!));
       }
     } catch (e) {
-      print('Ошибка при воспроизведении звука: $e');
+      debugPrint('Ошибка при воспроизведении звука: $e');
       _isPlayingAlert[timerId] = false;
     }
   }
@@ -179,7 +236,7 @@ class TimerService {
         await previewPlayer.play(AssetSource(soundResource));
       }
     } catch (e) {
-      print('Ошибка при предварительном воспроизведении: $e');
+      debugPrint('Ошибка при предварительном воспроизведении: $e');
     } finally {
       // Освобождаем ресурсы после воспроизведения
       Timer(Duration(milliseconds: _maxAlertDuration), () {
@@ -312,8 +369,12 @@ class TimerService {
     if (timersJson != null) {
       _timers.clear();
       for (var timerJson in timersJson) {
-        final Map<String, dynamic> timerMap = jsonDecode(timerJson);
-        _timers.add(FishingTimerModel.fromJson(timerMap));
+        try {
+          final Map<String, dynamic> timerMap = jsonDecode(timerJson);
+          _timers.add(FishingTimerModel.fromJson(timerMap));
+        } catch (e) {
+          debugPrint('Ошибка при загрузке таймера: $e');
+        }
       }
     }
   }

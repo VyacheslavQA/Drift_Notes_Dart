@@ -51,12 +51,23 @@ class _TimersScreenState extends State<TimersScreen> {
   String _getTimerDisplayName(String timerName) {
     final localizations = AppLocalizations.of(context);
 
-    // Если название соответствует ключу локализации, переводим его
-    if (timerName.startsWith('timer_')) {
+    // Если название является ключом локализации для стандартных таймеров, переводим его
+    if (timerName == 'timer_1' || timerName == 'timer_2' ||
+        timerName == 'timer_3' || timerName == 'timer_4') {
       return localizations.translate(timerName);
     }
 
-    // Иначе возвращаем название как есть (пользователь изменил)
+    // Для совместимости со старыми версиями - проверяем другие ключи
+    if (timerName.startsWith('timer_') && timerName.length <= 8) {
+      try {
+        return localizations.translate(timerName);
+      } catch (e) {
+        // Если перевод не найден, возвращаем как есть
+        return timerName;
+      }
+    }
+
+    // Иначе возвращаем название как есть (пользователь изменил название)
     return timerName;
   }
 

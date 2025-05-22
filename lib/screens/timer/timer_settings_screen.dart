@@ -116,6 +116,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Получаем локализацию в build методе
     final localizations = AppLocalizations.of(context);
 
     return Scaffold(
@@ -193,7 +194,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildColorSelection(),
+              _buildColorSelection(localizations),
 
               const SizedBox(height: 24),
 
@@ -207,7 +208,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildSoundSelection(),
+              _buildSoundSelection(localizations),
 
               const SizedBox(height: 32),
 
@@ -243,9 +244,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
   }
 
   // Виджет выбора цвета
-  Widget _buildColorSelection() {
-    final localizations = AppLocalizations.of(context);
-
+  Widget _buildColorSelection(AppLocalizations localizations) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -309,9 +308,7 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
   }
 
   // Виджет выбора звука
-  Widget _buildSoundSelection() {
-    final localizations = AppLocalizations.of(context);
-
+  Widget _buildSoundSelection(AppLocalizations localizations) {
     final sounds = [
       {'name': localizations.translate('default'), 'file': 'default_alert.mp3'},
       {'name': localizations.translate('splash'), 'file': 'fish_splash.mp3'},
