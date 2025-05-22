@@ -47,6 +47,19 @@ class _TimersScreenState extends State<TimersScreen> {
     super.dispose();
   }
 
+  // Получить отображаемое название таймера с учетом локализации
+  String _getTimerDisplayName(String timerName) {
+    final localizations = AppLocalizations.of(context);
+
+    // Если название соответствует ключу локализации, переводим его
+    if (timerName.startsWith('timer_')) {
+      return localizations.translate(timerName);
+    }
+
+    // Иначе возвращаем название как есть (пользователь изменил)
+    return timerName;
+  }
+
   // Форматирование времени таймера
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -353,7 +366,7 @@ class _TimersScreenState extends State<TimersScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              timer.name,
+              _getTimerDisplayName(timer.name),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 22,

@@ -53,7 +53,7 @@ class TimerService {
       for (int i = 1; i <= 4; i++) {
         _timers.add(FishingTimerModel(
           id: i.toString(),
-          name: 'Таймер $i',
+          name: 'timer_$i', // Сохраняем ключ локализации
         ));
       }
     }

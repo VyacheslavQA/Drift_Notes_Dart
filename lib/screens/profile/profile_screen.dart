@@ -8,6 +8,7 @@ import '../../models/user_model.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/countries_data.dart';
+import '../../localization/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -82,8 +83,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } catch (e) {
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при загрузке данных: $e')),
+        SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
       );
     } finally {
       setState(() {
@@ -165,9 +167,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Профиль успешно обновлен'),
+          SnackBar(
+            content: Text(localizations.translate('profile_updated_successfully')),
             backgroundColor: Colors.green,
           ),
         );
@@ -176,8 +179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при обновлении профиля: $e')),
+          SnackBar(content: Text('${localizations.translate('profile_update_error')}: $e')),
         );
       }
     } finally {
@@ -201,10 +205,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('Личный кабинет'),
+        title: Text(localizations.translate('profile_title')),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -270,13 +276,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Имя пользователя
               TextFormField(
                 controller: _displayNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Имя',
-                  prefixIcon: Icon(Icons.person),
+                decoration: InputDecoration(
+                  labelText: localizations.translate('name'),
+                  prefixIcon: const Icon(Icons.person),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Пожалуйста, введите ваше имя';
+                    return localizations.translate('please_enter_name');
                   }
                   return null;
                 },
@@ -288,9 +294,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _emailController,
                 enabled: false,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
+                decoration: InputDecoration(
+                  labelText: localizations.translate('email'),
+                  prefixIcon: const Icon(Icons.email),
                 ),
               ),
 
@@ -298,13 +304,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // Выпадающий список стран
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Страна',
-                  prefixIcon: Icon(Icons.public),
+                decoration: InputDecoration(
+                  labelText: localizations.translate('country'),
+                  prefixIcon: const Icon(Icons.public),
                 ),
                 isExpanded: true,
                 value: _selectedCountry,
-                hint: const Text('Выберите страну'),
+                hint: Text(localizations.translate('select_country')),
                 items: CountriesData.countries.map((country) {
                   return DropdownMenuItem<String>(
                     value: country,
@@ -326,13 +332,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // Выпадающий список городов (активен только если выбрана страна)
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Город',
-                  prefixIcon: Icon(Icons.location_city),
+                decoration: InputDecoration(
+                  labelText: localizations.translate('city'),
+                  prefixIcon: const Icon(Icons.location_city),
                 ),
                 isExpanded: true,
                 value: _selectedCity,
-                hint: const Text('Выберите город'),
+                hint: Text(localizations.translate('select_city')),
                 items: _availableCities.map((city) {
                   return DropdownMenuItem<String>(
                     value: city,
@@ -346,14 +352,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   });
                 }
                     : null,
-                disabledHint: const Text('Сначала выберите страну'),
+                disabledHint: Text(localizations.translate('first_select_country')),
               ),
 
               const SizedBox(height: 24),
 
               // Уровень опыта
               Text(
-                'Уровень опыта',
+                localizations.translate('experience_level'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -366,8 +372,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Wrap(
                 spacing: 8,
                 children: AppConstants.experienceLevels.map((level) {
+                  String translatedLevel;
+                  switch (level) {
+                    case 'Новичок':
+                      translatedLevel = localizations.translate('novice');
+                      break;
+                    case 'Любитель':
+                      translatedLevel = localizations.translate('amateur');
+                      break;
+                    case 'Продвинутый':
+                      translatedLevel = localizations.translate('advanced');
+                      break;
+                    case 'Профи':
+                      translatedLevel = localizations.translate('professional');
+                      break;
+                    case 'Эксперт':
+                      translatedLevel = localizations.translate('expert');
+                      break;
+                    default:
+                      translatedLevel = level;
+                  }
                   return ChoiceChip(
-                    label: Text(level),
+                    label: Text(translatedLevel),
                     selected: _selectedExperience == level,
                     onSelected: (selected) {
                       if (selected) {
@@ -391,7 +417,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // Типы рыбалки
               Text(
-                'Предпочитаемые типы рыбалки',
+                localizations.translate('preferred_fishing_types'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -404,8 +430,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Wrap(
                 spacing: 8,
                 children: AppConstants.fishingTypes.map((type) {
+                  String translatedType;
+                  switch (type) {
+                    case 'Карповая рыбалка':
+                      translatedType = localizations.translate('carp_fishing');
+                      break;
+                    case 'Спиннинг':
+                      translatedType = localizations.translate('spinning');
+                      break;
+                    case 'Фидер':
+                      translatedType = localizations.translate('feeder');
+                      break;
+                    case 'Поплавочная':
+                      translatedType = localizations.translate('float_fishing');
+                      break;
+                    case 'Зимняя рыбалка':
+                      translatedType = localizations.translate('ice_fishing');
+                      break;
+                    case 'Нахлыст':
+                      translatedType = localizations.translate('fly_fishing');
+                      break;
+                    case 'Троллинг':
+                      translatedType = localizations.translate('trolling');
+                      break;
+                    case 'Другое':
+                      translatedType = localizations.translate('other_fishing');
+                      break;
+                    default:
+                      translatedType = type;
+                  }
+
                   return FilterChip(
-                    label: Text(type),
+                    label: Text(translatedType),
                     selected: _selectedFishingTypes.contains(type),
                     onSelected: (_) => _toggleFishingType(type),
                     selectedColor: AppConstants.primaryColor,
@@ -418,8 +474,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 }).toList(),
               ),
-
-              const SizedBox(height: 32),
 
               // Кнопка сохранения
               SizedBox(
@@ -443,7 +497,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   )
                       : Text(
-                    'СОХРАНИТЬ',
+                    localizations.translate('save'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 18,
