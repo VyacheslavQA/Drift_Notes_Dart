@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 import '../services/firebase/firebase_service.dart';
+import '../localization/app_localizations.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -78,6 +79,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Получаем размеры экрана для адаптивности
     final screenSize = MediaQuery.of(context).size;
     final textScaleFactor = MediaQuery.of(context).textScaleFactor;
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -121,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 SizedBox(
                   width: screenSize.width * 0.8,
                   child: Text(
-                    'Твой личный журнал рыбалки',
+                    localizations.translate('your_personal_fishing_journal'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
@@ -135,7 +137,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 SizedBox(
                   width: screenSize.width * 0.8,
                   child: Text(
-                    'Запоминай клёвые выезды',
+                    localizations.translate('remember_great_trips'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
@@ -188,7 +190,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             ),
                             child: Center(
                               child: Text(
-                                'ВОЙТИ',
+                                localizations.translate('enter'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -210,9 +212,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 // Кнопка "Выход"
                 TextButton(
                   onPressed: _isLoading ? null : _handleExit,
-                  child: const Text(
-                    'Выход',
-                    style: TextStyle(
+                  child: Text(
+                    localizations.translate('exit'),
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 16,
                     ),

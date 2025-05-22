@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
+import '../../localization/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -49,6 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final userCredential = await _firebaseService.registerWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text,
+        context,
       );
 
       // Обновляем имя пользователя
@@ -62,10 +64,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
+
         // Показываем сообщение об успешной регистрации
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Регистрация успешна'),
+          SnackBar(
+            content: Text(localizations.translate('success_saved')),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -96,6 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final size = MediaQuery.of(context).size;
     final textScale = MediaQuery.of(context).textScaleFactor;
     final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -137,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   // Заголовок экрана (центрированный)
                   Text(
-                    'Регистрация',
+                    localizations.translate('registration'),
                     style: TextStyle(
                       fontSize: 32 * adaptiveTextScale,
                       fontWeight: FontWeight.bold,
@@ -150,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   // Подзаголовок (центрированный)
                   Text(
-                    'Создайте аккаунт для доступа к приложению',
+                    localizations.translate('create_account_access'),
                     style: TextStyle(
                       fontSize: 16 * adaptiveTextScale,
                       color: Colors.white70,
@@ -173,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Имя',
+                            hintText: localizations.translate('name'),
                             hintStyle: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.5),
                             ),
@@ -211,7 +216,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               vertical: 16,
                             ),
                           ),
-                          validator: (value) => Validators.validateName(value),
+                          validator: (value) => Validators.validateName(value, context),
                           textInputAction: TextInputAction.next,
                         ),
 
@@ -225,7 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Email',
+                            hintText: localizations.translate('email'),
                             hintStyle: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.5),
                             ),
@@ -264,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (value) => Validators.validateEmail(value),
+                          validator: (value) => Validators.validateEmail(value, context),
                           textInputAction: TextInputAction.next,
                         ),
 
@@ -278,7 +283,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Пароль',
+                            hintText: localizations.translate('password'),
                             hintStyle: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.5),
                             ),
@@ -328,7 +333,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           obscureText: _obscurePassword,
-                          validator: (value) => Validators.validatePassword(value),
+                          validator: (value) => Validators.validatePassword(value, context),
                           textInputAction: TextInputAction.next,
                         ),
 
@@ -342,7 +347,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 16,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Подтвердите пароль',
+                            hintText: localizations.translate('confirm_password'),
                             hintStyle: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.5),
                             ),
@@ -395,6 +400,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           validator: (value) => Validators.validateConfirmPassword(
                             value,
                             _passwordController.text,
+                            context,
                           ),
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _register(),
@@ -449,10 +455,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           strokeWidth: 2.5,
                         ),
                       )
-                          : const Center( // Явно центрируем текст
+                          : Center( // Явно центрируем текст
                         child: Text(
-                          'Зарегистрироваться',
-                          style: TextStyle(
+                          localizations.translate('register'),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             height: 1.0, // Фиксируем высоту строки
@@ -473,7 +479,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       foregroundColor: AppConstants.textColor,
                     ),
                     child: Text(
-                      'Уже есть аккаунт? Войти',
+                      localizations.translate('already_have_account'),
                       style: TextStyle(
                         fontSize: 16 * adaptiveTextScale,
                       ),
