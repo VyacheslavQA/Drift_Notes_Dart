@@ -12,6 +12,7 @@ import '../models/user_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
 import '../utils/navigation.dart';
+import '../localization/app_localizations.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
@@ -21,7 +22,7 @@ import 'map/map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
-import 'settings/settings_screen.dart'; // Добавляем импорт экрана настроек
+import 'settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -64,8 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: ${e.toString()}')),
+          SnackBar(content: Text('${localizations.translate('loading_error')}: ${e.toString()}')),
         );
       }
     } finally {
@@ -81,13 +83,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final Uri uri = Uri.parse(url);
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть ссылку')),
+          SnackBar(content: Text(localizations.translate('failed_to_open_link'))),
         );
       }
     } catch (e) {
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при открытии ссылки: ${e.toString()}')),
+        SnackBar(content: Text('${localizations.translate('link_open_error')}: ${e.toString()}')),
       );
     }
   }
@@ -96,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
     });
+
+    final localizations = AppLocalizations.of(context);
 
     switch (index) {
       case 0: // Таймер
@@ -106,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 1: // Погода
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Экран погоды в разработке')),
+          SnackBar(content: Text(localizations.translate('weather_screen_in_development'))),
         );
         break;
       case 2: // Центральная кнопка - создание заметки
@@ -291,6 +297,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Обновлённый метод _buildStatsGrid() с новым порядком статистики
   Widget _buildStatsGrid() {
+    final localizations = AppLocalizations.of(context);
+
     // Фильтруем только прошедшие и текущие заметки
     final now = DateTime.now();
     final validNotes = _fishingNotes.where((note) =>
@@ -306,8 +314,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (stats['biggestFish'] != null)
           _buildStatCard(
             icon: Icons.emoji_events,
-            title: 'Самая большая рыба',
-            value: '${stats['biggestFish'].weight} кг',
+            title: localizations.translate('biggest_fish'),
+            value: '${stats['biggestFish'].weight} ${localizations.translate('kg')}',
             subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
             valueColor: Colors.amber,
           ),
@@ -317,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // 2. Всего поймано рыб
         _buildStatCard(
           icon: Icons.set_meal,
-          title: 'Всего поймано рыб',
+          title: localizations.translate('total_fish_caught'),
           value: stats['totalFish'].toString(),
           subtitle: DateFormatter.getFishText(stats['totalFish']),
           valueColor: Colors.green,
@@ -328,9 +336,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // 3. Нереализованные поклевки
         _buildStatCard(
           icon: Icons.hourglass_empty,
-          title: 'Нереализованные поклевки',
+          title: localizations.translate('missed_bites'),
           value: stats['missedBites'].toString(),
-          subtitle: 'поклевок без поимки',
+          subtitle: localizations.translate('bites_without_catch'),
           valueColor: Colors.red,
         ),
 
@@ -340,9 +348,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (stats['totalFish'] > 0 || stats['missedBites'] > 0)
           _buildStatCard(
             icon: Icons.percent,
-            title: 'Реализация поклевок',
+            title: localizations.translate('bite_realization'),
             value: '${stats['realizationRate'].toStringAsFixed(1)}%',
-            subtitle: 'эффективность ловли',
+            subtitle: localizations.translate('fishing_efficiency'),
             valueColor: _getRealizationColor(stats['realizationRate']),
           ),
 
@@ -351,9 +359,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // 5. Общий вес пойманных рыб (НОВЫЙ БЛОК)
         _buildStatCard(
           icon: Icons.scale,
-          title: 'Общий вес улова',
-          value: '${stats['totalWeight'].toStringAsFixed(1)} кг',
-          subtitle: 'суммарный вес пойманных рыб',
+          title: localizations.translate('total_catch_weight'),
+          value: '${stats['totalWeight'].toStringAsFixed(1)} ${localizations.translate('kg')}',
+          subtitle: localizations.translate('total_weight_caught_fish'),
           valueColor: Colors.green,
         ),
 
@@ -362,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // 6. Всего рыбалок
         _buildStatCard(
           icon: Icons.format_list_bulleted,
-          title: 'Всего рыбалок',
+          title: localizations.translate('total_fishing_trips'),
           value: stats['totalTrips'].toString(),
           subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
         ),
@@ -372,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // 7. Самая долгая рыбалка
         _buildStatCard(
           icon: Icons.access_time,
-          title: 'Самая долгая',
+          title: localizations.translate('longest_trip'),
           value: stats['longestTrip'].toString(),
           subtitle: DateFormatter.getDaysText(stats['longestTrip']),
         ),
@@ -382,9 +390,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // 8. Всего дней на рыбалке
         _buildStatCard(
           icon: Icons.calendar_today,
-          title: 'Всего дней на рыбалке',
+          title: localizations.translate('total_fishing_days'),
           value: stats['totalDaysFishing'].toString(),
-          subtitle: 'дней на рыбалке',
+          subtitle: localizations.translate('days_fishing'),
         ),
 
         const SizedBox(height: 16),
@@ -393,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (stats['lastTrip'] != null)
           _buildStatCard(
             icon: Icons.directions_car,
-            title: 'Последний выезд',
+            title: localizations.translate('last_trip'),
             value: stats['lastTrip'].title.isNotEmpty
                 ? '«${stats['lastTrip'].title}»'
                 : stats['lastTrip'].location,
@@ -406,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (stats['bestMonth'].isNotEmpty)
           _buildStatCard(
             icon: Icons.star,
-            title: 'Лучший месяц',
+            title: localizations.translate('best_month'),
             value: stats['bestMonth'],
             subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
             valueColor: Colors.amber,
@@ -424,6 +432,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppConstants.backgroundColor,
@@ -492,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Заголовок "Моя статистика"
                 Text(
-                  'Моя статистика',
+                  localizations.translate('my_statistics'),
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -520,6 +530,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildYoutubePromoCard() {
+    final localizations = AppLocalizations.of(context);
+
     return GestureDetector(
       onTap: () =>
           _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
@@ -553,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 0,
               child: Center(
                 child: Text(
-                  'Посетите наш YouTube канал',
+                  localizations.translate('visit_youtube_channel'),
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 16,
@@ -637,8 +649,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer() {
+    final localizations = AppLocalizations.of(context);
     final user = _firebaseService.currentUser;
-    final userName = user?.displayName ?? 'Пользователь';
+    final userName = user?.displayName ?? localizations.translate('user');
     final userEmail = user?.email ?? '';
 
     return Drawer(
@@ -719,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.person,
-                  title: 'Личный кабинет',
+                  title: localizations.translate('profile'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -733,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.bar_chart,
-                  title: 'Статистика',
+                  title: localizations.translate('statistics'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -747,7 +760,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.edit_note,
-                  title: 'Мои заметки',
+                  title: localizations.translate('my_notes'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -764,7 +777,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.timer,
-                  title: 'Таймеры',
+                  title: localizations.translate('timers'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -776,7 +789,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.calendar_today,
-                  title: 'Календарь',
+                  title: localizations.translate('calendar'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -789,7 +802,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.map,
-                  title: 'Маркерные карты',
+                  title: localizations.translate('marker_maps'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -812,7 +825,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
-                    'Прочее',
+                    localizations.translate('other'),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
                       fontSize: 14,
@@ -822,10 +835,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.settings,
-                  title: 'Настройки',
+                  title: localizations.translate('settings'),
                   onTap: () {
                     Navigator.pop(context);
-                    // Заменяем сообщение на переход к экрану настроек
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -837,19 +849,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildDrawerItem(
                   icon: Icons.help_outline,
-                  title: 'Помощь/Связь',
+                  title: localizations.translate('help_contact'),
                   onTap: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Экран помощи будет доступен позже')),
+                      SnackBar(
+                          content: Text(localizations.translate('help_screen_coming_soon'))),
                     );
                   },
                 ),
 
                 _buildDrawerItem(
                   icon: Icons.exit_to_app,
-                  title: 'Выйти',
+                  title: localizations.translate('logout'),
                   onTap: () async {
                     Navigator.pop(context);
                     await _firebaseService.signOut();
@@ -890,6 +902,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       height: 90,
       child: Stack(
@@ -934,7 +948,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Таймер',
+                            localizations.translate('timer'),
                             style: TextStyle(
                               fontSize: 11,
                               color: _selectedIndex == 0
@@ -963,7 +977,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Погода',
+                            localizations.translate('weather'),
                             style: TextStyle(
                               fontSize: 11,
                               color: _selectedIndex == 1
@@ -995,7 +1009,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Календарь',
+                            localizations.translate('calendar'),
                             style: TextStyle(
                               fontSize: 11,
                               color: _selectedIndex == 3
@@ -1024,7 +1038,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Карта',
+                            localizations.translate('map'),
                             style: TextStyle(
                               fontSize: 11,
                               color: _selectedIndex == 4

@@ -114,9 +114,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // Проверяем подключение к интернету
       final isConnected = await NetworkUtils.isNetworkAvailable();
       if (!isConnected) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Нет подключения к интернету'),
+          SnackBar(
+            content: Text(localizations.translate('no_internet_connection')),
             backgroundColor: Colors.red,
           ),
         );
@@ -142,11 +143,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         _isSyncing = false;
       });
 
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result
-              ? 'Синхронизация выполнена успешно'
-              : 'Синхронизация выполнена с ошибками'),
+              ? localizations.translate('sync_success')
+              : localizations.translate('sync_with_errors')),
           backgroundColor: result ? Colors.green : Colors.orange,
         ),
       );
@@ -158,9 +160,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         _isSyncing = false;
       });
 
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ошибка при синхронизации: $e'),
+          content: Text('${localizations.translate('sync_error')}: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -168,19 +171,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _clearAllData() async {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
         title: Text(
-          'Очистить все данные?',
+          localizations.translate('clear_all_data_title'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Вы уверены, что хотите очистить все локальные данные? Это действие нельзя отменить.',
+          localizations.translate('clear_all_data_message'),
           style: TextStyle(
             color: AppConstants.textColor,
           ),
@@ -189,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Отмена',
+              localizations.translate('cancel'),
               style: TextStyle(
                 color: AppConstants.textColor,
               ),
@@ -210,8 +215,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   setState(() => _isLoading = false);
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Все данные успешно очищены'),
+                    SnackBar(
+                      content: Text(localizations.translate('data_cleared_success')),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -225,14 +230,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Ошибка при очистке данных: $e'),
+                      content: Text('${localizations.translate('data_clear_error')}: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
             },
-            child: const Text('Очистить'),
+            child: Text(localizations.translate('clear')),
           ),
         ],
       ),
@@ -258,7 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Пожалуйста, подождите...',
+        message: localizations.translate('please_wait'),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -314,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Принудительная синхронизация',
+                                      localizations.translate('force_sync'),
                                       style: TextStyle(
                                         color: AppConstants.textColor,
                                         fontSize: 16,
@@ -324,8 +329,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                     const SizedBox(height: 4),
                                     Text(
                                       _isSyncing
-                                          ? 'Синхронизация выполняется...'
-                                          : 'Синхронизировать все данные сейчас',
+                                          ? localizations.translate('syncing_in_progress')
+                                          : localizations.translate('sync_all_data_now'),
                                       style: TextStyle(
                                         color: AppConstants.textColor.withOpacity(0.7),
                                         fontSize: 14,
@@ -352,7 +357,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Последняя синхронизация',
+                                  localizations.translate('last_sync'),
                                   style: TextStyle(
                                     color: AppConstants.textColor.withOpacity(0.7),
                                     fontSize: 14,
@@ -375,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Ожидающие изменения',
+                                  localizations.translate('pending_changes'),
                                   style: TextStyle(
                                     color: AppConstants.textColor.withOpacity(0.7),
                                     fontSize: 14,
@@ -397,7 +402,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Статус сети',
+                                  localizations.translate('network_status'),
                                   style: TextStyle(
                                     color: AppConstants.textColor.withOpacity(0.7),
                                     fontSize: 14,
@@ -416,7 +421,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      _syncStatus['isOnline'] == true ? 'Онлайн' : 'Офлайн',
+                                      _syncStatus['isOnline'] == true
+                                          ? localizations.translate('online')
+                                          : localizations.translate('offline'),
                                       style: TextStyle(
                                         color: AppConstants.textColor,
                                         fontSize: 14,
@@ -463,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               const SizedBox(height: 20),
 
               // Очистка данных
-              _buildSectionHeader('Данные и хранилище'),
+              _buildSectionHeader(localizations.translate('data_and_storage')),
               Card(
                 color: AppConstants.cardColor,
                 shape: RoundedRectangleBorder(
@@ -473,8 +480,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   children: [
                     ListTile(
                       leading: const Icon(Icons.cleaning_services, color: Colors.orange),
-                      title: const Text('Очистка хранилища'),
-                      subtitle: const Text('Удаление проблемных заметок'),
+                      title: Text(localizations.translate('storage_cleanup')),
+                      subtitle: Text(localizations.translate('remove_problematic_notes')),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
@@ -488,9 +495,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     const Divider(height: 1, color: Colors.white10),
                     ListTile(
                       leading: const Icon(Icons.delete_forever, color: Colors.red),
-                      title: const Text('Очистить все данные'),
-                      subtitle: const Text(
-                          'Удалить все локальные данные'),
+                      title: Text(localizations.translate('clear_all_data')),
+                      subtitle: Text(localizations.translate('delete_all_local_data')),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: _clearAllData,
                     ),

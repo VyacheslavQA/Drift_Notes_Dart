@@ -24,18 +24,25 @@ class AppLocalizations {
 
   // Загрузка JSON файлов с переводами
   Future<bool> load() async {
-    // Загружаем JSON файл из папки assets
-    String jsonString = await rootBundle.loadString('assets/localization/${locale.languageCode}.json');
-    Map<String, dynamic> jsonMap = json.decode(jsonString);
+    try {
+      // Загружаем JSON файл из папки assets
+      String jsonString = await rootBundle.loadString('assets/localization/${locale.languageCode}.json');
+      Map<String, dynamic> jsonMap = json.decode(jsonString);
 
-    _localizedStrings = jsonMap.map((key, value) {
-      return MapEntry(key, value.toString());
-    });
+      _localizedStrings = jsonMap.map((key, value) {
+        return MapEntry(key, value.toString());
+      });
 
-    return true;
+      return true;
+    } catch (e) {
+      // Если файл не найден, возвращаем пустую карту
+      print('Ошибка загрузки локализации для ${locale.languageCode}: $e');
+      _localizedStrings = {};
+      return false;
+    }
   }
 
-  // Метод для получения перевода
+  // Метод для получения перевода с резервным значением
   String translate(String key) {
     return _localizedStrings[key] ?? key;
   }
@@ -51,7 +58,6 @@ class AppLocalizations {
     return [
       const Locale('ru', 'RU'), // Русский
       const Locale('en', 'US'), // Английский
-      // Можно добавить другие языки
     ];
   }
 
@@ -62,9 +68,11 @@ class AppLocalizations {
         return 'Русский';
       case 'en':
         return 'English';
-    // Другие языки...
       default:
         return 'Unknown';
     }
   }
+
+  // Проверка, загружены ли переводы
+  bool get isLoaded => _localizedStrings.isNotEmpty;
 }

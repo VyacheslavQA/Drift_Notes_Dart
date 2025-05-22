@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Добавляем этот импорт!
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../providers/language_provider.dart';
@@ -30,8 +30,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
     final currentLocale = languageProvider.currentLocale;
 
     // Проверяем, используется ли системный язык
-    final prefs = await SharedPreferences.getInstance();
-    _isSystemLanguage = prefs.getBool('use_system_language') ?? false;
+    _isSystemLanguage = await languageProvider.isUsingSystemLanguage();
 
     setState(() {
       _selectedLanguageCode = _isSystemLanguage ? 'system' : currentLocale.languageCode;
@@ -41,7 +40,6 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
 
   Future<void> _changeLanguage(String languageCode) async {
     final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-    final prefs = await SharedPreferences.getInstance();
 
     setState(() {
       _isLoading = true;
@@ -50,15 +48,10 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
 
     try {
       if (languageCode == 'system') {
-        // Получаем системный язык устройства
-        final systemLocale = await LanguageProvider.getDeviceLocale();
-        await languageProvider.changeLanguage(systemLocale);
-        await prefs.setBool('use_system_language', true);
+        await languageProvider.setSystemLanguage(); // Заменил useSystemLanguage() на setSystemLanguage()
         _isSystemLanguage = true;
       } else {
-        // Устанавливаем выбранный язык
         await languageProvider.changeLanguage(Locale(languageCode));
-        await prefs.setBool('use_system_language', false);
         _isSystemLanguage = false;
       }
 
@@ -123,21 +116,20 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
             subtitle: 'Использовать язык системы',
             icon: Icons.language,
           ),
-          const Divider(height: 1, color: Colors.white12),
+          const SizedBox(height: 8),
           _buildLanguageOption(
             title: 'Русский',
             languageCode: 'ru',
             subtitle: 'Russian',
             icon: Icons.language,
           ),
-          const Divider(height: 1, color: Colors.white12),
+          const SizedBox(height: 8),
           _buildLanguageOption(
             title: 'English',
             languageCode: 'en',
             subtitle: 'Английский',
             icon: Icons.language,
           ),
-          // Здесь можно добавить больше языков
         ],
       ),
     );
@@ -151,36 +143,38 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
   }) {
     final isSelected = _selectedLanguageCode == languageCode;
 
-    return ListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          color: AppConstants.textColor,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: AppConstants.textColor.withOpacity(0.7),
-        ),
-      ),
-      leading: Icon(
-        icon,
-        color: AppConstants.textColor,
-      ),
-      trailing: isSelected
-          ? Icon(
-        Icons.check_circle,
-        color: AppConstants.primaryColor,
-      )
-          : null,
-      onTap: () => _changeLanguage(languageCode),
-      tileColor: AppConstants.cardColor,
+    return Card(
+      color: AppConstants.cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        title: Text(
+          title,
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+          ),
+        ),
+        leading: Icon(
+          icon,
+          color: AppConstants.textColor,
+        ),
+        trailing: isSelected
+            ? Icon(
+          Icons.check_circle,
+          color: AppConstants.primaryColor,
+        )
+            : null,
+        onTap: () => _changeLanguage(languageCode),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
     );
   }
 }

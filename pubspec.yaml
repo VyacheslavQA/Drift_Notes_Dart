@@ -56,7 +56,6 @@ dependencies:
 
   package_info_plus: ^4.0.2  # Для получения информации о приложении
 
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -65,8 +64,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # Assets для приложения
   assets:
     - assets/images/
     - assets/images/fishing_types/
     - assets/sounds/
-    - assets/localization/  # Добавлена эта строка!
+    - assets/localization/  # Файлы локализации
