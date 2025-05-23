@@ -300,6 +300,64 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     return '${localizations.translate(monthKey)} ${_focusedDay.year}';
   }
 
+  // Метод для перевода дней недели
+  String _getDayOfWeekText(int weekday, {bool short = false}) {
+    final localizations = AppLocalizations.of(context);
+    final isEnglish = localizations.locale.languageCode == 'en';
+
+    if (short) {
+      // Короткие названия для маленьких экранов
+      if (isEnglish) {
+        switch (weekday) {
+          case DateTime.monday: return 'Mo';
+          case DateTime.tuesday: return 'Tu';
+          case DateTime.wednesday: return 'We';
+          case DateTime.thursday: return 'Th';
+          case DateTime.friday: return 'Fr';
+          case DateTime.saturday: return 'Sa';
+          case DateTime.sunday: return 'Su';
+          default: return '';
+        }
+      } else {
+        switch (weekday) {
+          case DateTime.monday: return 'Пн';
+          case DateTime.tuesday: return 'Вт';
+          case DateTime.wednesday: return 'Ср';
+          case DateTime.thursday: return 'Чт';
+          case DateTime.friday: return 'Пт';
+          case DateTime.saturday: return 'Сб';
+          case DateTime.sunday: return 'Вс';
+          default: return '';
+        }
+      }
+    } else {
+      // Полные названия
+      if (isEnglish) {
+        switch (weekday) {
+          case DateTime.monday: return 'Mon';
+          case DateTime.tuesday: return 'Tue';
+          case DateTime.wednesday: return 'Wed';
+          case DateTime.thursday: return 'Thu';
+          case DateTime.friday: return 'Fri';
+          case DateTime.saturday: return 'Sat';
+          case DateTime.sunday: return 'Sun';
+          default: return '';
+        }
+      } else {
+        switch (weekday) {
+          case DateTime.monday: return 'Пн';
+          case DateTime.tuesday: return 'Вт';
+          case DateTime.wednesday: return 'Ср';
+          case DateTime.thursday: return 'Чт';
+          case DateTime.friday: return 'Пт';
+          case DateTime.saturday: return 'Сб';
+          case DateTime.sunday: return 'Вс';
+          default: return '';
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -417,7 +475,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         eventLoader: _getEventsForDay,
         startingDayOfWeek: StartingDayOfWeek.monday,
-        locale: localizations.locale.languageCode,
+        // Убираем locale отсюда, так как будем переводить вручную
         rowHeight: 52,
         daysOfWeekHeight: 40,
         calendarStyle: CalendarStyle(
@@ -536,11 +594,12 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   Widget _buildDayOfWeekWidget(DateTime day) {
     final screenWidth = MediaQuery.of(context).size.width;
 
+    // Используем наш метод перевода
     String text;
     if (screenWidth < 320) {
-      text = _getTwoLetters(day.weekday);
+      text = _getDayOfWeekText(day.weekday, short: true);
     } else {
-      text = _getThreeLetters(day.weekday);
+      text = _getDayOfWeekText(day.weekday);
     }
 
     final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
@@ -560,48 +619,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         ),
       ),
     );
-  }
-
-  String _getTwoLetters(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'пн';
-      case DateTime.tuesday:
-        return 'вт';
-      case DateTime.wednesday:
-        return 'ср';
-      case DateTime.thursday:
-        return 'чт';
-      case DateTime.friday:
-        return 'пт';
-      case DateTime.saturday:
-        return 'сб';
-      case DateTime.sunday:
-        return 'вс';
-      default:
-        return '';
-    }
-  }
-
-  String _getThreeLetters(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Пн';
-      case DateTime.tuesday:
-        return 'Вт';
-      case DateTime.wednesday:
-        return 'Ср';
-      case DateTime.thursday:
-        return 'Чт';
-      case DateTime.friday:
-        return 'Пт';
-      case DateTime.saturday:
-        return 'Сб';
-      case DateTime.sunday:
-        return 'Вс';
-      default:
-        return '';
-    }
   }
 
   Widget _buildEventsList() {
