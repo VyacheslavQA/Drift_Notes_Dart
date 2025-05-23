@@ -48,32 +48,15 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
 
     try {
       if (languageCode == 'system') {
-        await languageProvider.setSystemLanguage(); // Заменил useSystemLanguage() на setSystemLanguage()
+        await languageProvider.setSystemLanguage();
         _isSystemLanguage = true;
       } else {
         await languageProvider.changeLanguage(Locale(languageCode));
         _isSystemLanguage = false;
       }
-
-      // Показываем сообщение об успешной смене языка
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).translate('success_language_changed')),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
     } catch (e) {
-      // Обработка ошибок
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка при смене языка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // В случае ошибки можно добавить логирование, но уведомление не показываем
+      debugPrint('Ошибка при смене языка: $e');
     } finally {
       if (mounted) {
         setState(() {
