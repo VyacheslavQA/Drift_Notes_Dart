@@ -18,6 +18,21 @@
   "help_contact": "Help/Contact",
   "logout": "Logout",
 
+  "notifications": "Notifications",
+  "mark_all_as_read": "Mark all as read",
+  "no_notifications": "You have no notifications",
+  "all_notifications_read": "All notifications marked as read",
+  "notification_deleted": "Notification deleted",
+  "new_features": "New Features",
+  "new_features_message": "New \"Fishing Calendar\" feature has been added to Drift Notes app",
+  "fishing_reminder": "Fishing Reminder",
+  "fishing_reminder_message": "Tomorrow's fishing trip at Lake Baikal is scheduled",
+  "bite_forecast": "Bite Forecast",
+  "bite_forecast_message": "Good bite forecast for today in your area",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "days_ago": "days ago",
+
   "sync_settings": "Sync Settings",
   "force_sync": "Force Synchronization",
   "force_sync_desc": "Synchronize all data now",
@@ -414,7 +429,6 @@
   "image_unavailable": "Image unavailable",
   "error_selecting_images": "Error selecting images",
   "error_taking_photo": "Error taking photo",
-
 
   "add": "Add"
 }

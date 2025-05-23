@@ -1145,7 +1145,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${localizations.translate('biggest_fish_caught')}:',
+                    localizations.translate('biggest_fish'),
                     style: TextStyle(
                       color: AppConstants.textColor.withOpacity(0.7),
                       fontSize: 14,

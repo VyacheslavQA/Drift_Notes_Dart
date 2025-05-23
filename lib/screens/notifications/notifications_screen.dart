@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
+import '../../localization/app_localizations.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -26,34 +27,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // Имитация загрузки данных
     await Future.delayed(const Duration(seconds: 1));
 
-    setState(() {
-      // Добавляем тестовые уведомления
-      _notifications.addAll([
-        NotificationItem(
-          title: 'Новые функции',
-          message: 'В приложении Drift Notes появилась новая функция "Календарь рыбалок"',
-          date: DateTime.now().subtract(const Duration(hours: 2)),
-          type: NotificationType.update,
-          isRead: false,
-        ),
-        NotificationItem(
-          title: 'Напоминание о рыбалке',
-          message: 'Завтра запланирована рыбалка на озере Байкал',
-          date: DateTime.now().subtract(const Duration(days: 1)),
-          type: NotificationType.reminder,
-          isRead: true,
-        ),
-        NotificationItem(
-          title: 'Прогноз клева',
-          message: 'По прогнозу сегодня хороший клев в Вашем районе',
-          date: DateTime.now().subtract(const Duration(days: 2)),
-          type: NotificationType.forecast,
-          isRead: true,
-        ),
-      ]);
+    if (mounted) {
+      final localizations = AppLocalizations.of(context);
 
-      _isLoading = false;
-    });
+      setState(() {
+        // Добавляем тестовые уведомления с локализацией
+        _notifications.addAll([
+          NotificationItem(
+            title: localizations.translate('new_features'),
+            message: localizations.translate('new_features_message'),
+            date: DateTime.now().subtract(const Duration(hours: 2)),
+            type: NotificationType.update,
+            isRead: false,
+          ),
+          NotificationItem(
+            title: localizations.translate('fishing_reminder'),
+            message: localizations.translate('fishing_reminder_message'),
+            date: DateTime.now().subtract(const Duration(days: 1)),
+            type: NotificationType.reminder,
+            isRead: true,
+          ),
+          NotificationItem(
+            title: localizations.translate('bite_forecast'),
+            message: localizations.translate('bite_forecast_message'),
+            date: DateTime.now().subtract(const Duration(days: 2)),
+            type: NotificationType.forecast,
+            isRead: true,
+          ),
+        ]);
+
+        _isLoading = false;
+      });
+    }
   }
 
   // Метод для отметки уведомления как прочитанного
@@ -64,14 +69,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // Метод для удаления уведомления
-  void _removeNotification(int index) {
+  void _removeNotification(int index) async {
+    final localizations = AppLocalizations.of(context);
+
     setState(() {
       _notifications.removeAt(index);
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(localizations.translate('notification_deleted')),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // Отметить все уведомления как прочитанные
   void _markAllAsRead() {
+    final localizations = AppLocalizations.of(context);
+
     setState(() {
       for (var notification in _notifications) {
         notification.isRead = true;
@@ -79,30 +95,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Все уведомления прочитаны'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(localizations.translate('all_notifications_read')),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('Уведомления'),
+        title: Text(localizations.translate('notifications')),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           if (_notifications.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.done_all),
-              tooltip: 'Отметить все как прочитанные',
+              tooltip: localizations.translate('mark_all_as_read'),
               onPressed: _markAllAsRead,
             ),
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
+          ? Center(
+          child: CircularProgressIndicator(
+              color: AppConstants.textColor
+          )
+      )
           : _notifications.isEmpty
           ? Center(
         child: Column(
@@ -115,7 +143,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'У вас нет уведомлений',
+              localizations.translate('no_notifications'),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 18,
@@ -143,12 +171,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             direction: DismissDirection.endToStart,
             onDismissed: (direction) {
               _removeNotification(index);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Уведомление удалено'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
             },
             child: Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -243,17 +265,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // Форматирование даты
+  // Форматирование даты с учетом локализации
   String _getFormattedDate(DateTime date) {
+    final localizations = AppLocalizations.of(context);
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      return 'Сегодня, ${DateFormat('HH:mm').format(date)}';
+      return '${localizations.translate('today')}, ${DateFormat('HH:mm').format(date)}';
     } else if (difference.inDays == 1) {
-      return 'Вчера, ${DateFormat('HH:mm').format(date)}';
+      return '${localizations.translate('yesterday')}, ${DateFormat('HH:mm').format(date)}';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} дней назад, ${DateFormat('HH:mm').format(date)}';
+      return '${difference.inDays} ${localizations.translate('days_ago')}, ${DateFormat('HH:mm').format(date)}';
     } else {
       return DateFormat('dd.MM.yyyy, HH:mm').format(date);
     }
