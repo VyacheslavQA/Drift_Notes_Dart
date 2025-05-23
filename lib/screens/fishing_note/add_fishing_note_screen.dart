@@ -278,7 +278,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BiteRecordScreen(),
+        builder: (context) => BiteRecordScreen(
+          fishingStartDate: _startDate,
+          fishingEndDate: _isMultiDay ? _endDate : null,
+          isMultiDay: _isMultiDay,
+        ),
       ),
     );
 

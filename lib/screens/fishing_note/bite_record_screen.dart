@@ -14,11 +14,17 @@ import '../../localization/app_localizations.dart';
 class BiteRecordScreen extends StatefulWidget {
   final BiteRecord? initialRecord; // Параметр для редактирования
   final int dayIndex; // Добавлен параметр для выбранного дня
+  final DateTime? fishingStartDate; // Дата начала рыбалки
+  final DateTime? fishingEndDate; // Дата окончания рыбалки (может быть null для однодневной)
+  final bool isMultiDay; // Флаг многодневной рыбалки
 
   const BiteRecordScreen({
     Key? key,
     this.initialRecord,
     this.dayIndex = 0,
+    this.fishingStartDate,
+    this.fishingEndDate,
+    this.isMultiDay = false,
   }) : super(key: key);
 
   @override
@@ -38,6 +44,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
   List<String> _existingPhotoUrls = []; // Для существующих фото
   bool _isLoading = false;
   bool _isEditing = false;
+
+  // Новые переменные для автоматического переключения дней
+  late int _selectedDayIndex;
+  List<DateTime> _fishingDays = [];
+  int _totalFishingDays = 1;
 
   @override
   void initState() {
@@ -66,6 +77,93 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       _selectedTime = widget.initialRecord!.time;
       _existingPhotoUrls = List.from(widget.initialRecord!.photoUrls);
     }
+
+    // Инициализация дней рыбалки и автоматический выбор дня
+    _initializeFishingDays();
+  }
+
+  // Новый метод для инициализации дней рыбалки
+  void _initializeFishingDays() {
+    if (widget.fishingStartDate != null) {
+      _fishingDays = [];
+      DateTime currentDay = DateTime(
+        widget.fishingStartDate!.year,
+        widget.fishingStartDate!.month,
+        widget.fishingStartDate!.day,
+      );
+
+      if (widget.isMultiDay && widget.fishingEndDate != null) {
+        // Многодневная рыбалка
+        DateTime endDay = DateTime(
+          widget.fishingEndDate!.year,
+          widget.fishingEndDate!.month,
+          widget.fishingEndDate!.day,
+        );
+
+        while (!currentDay.isAfter(endDay)) {
+          _fishingDays.add(currentDay);
+          currentDay = currentDay.add(const Duration(days: 1));
+        }
+        _totalFishingDays = _fishingDays.length;
+      } else {
+        // Однодневная рыбалка
+        _fishingDays.add(currentDay);
+        _totalFishingDays = 1;
+      }
+
+      // Автоматический выбор дня на основе текущей даты
+      _selectedDayIndex = _determineCurrentFishingDay();
+    } else {
+      // Если даты рыбалки не переданы, используем переданный dayIndex
+      _selectedDayIndex = widget.dayIndex;
+      _totalFishingDays = 1;
+    }
+  }
+
+  // Метод для определения текущего дня рыбалки
+  int _determineCurrentFishingDay() {
+    if (_isEditing) {
+      // При редактировании возвращаем день из существующей записи
+      return widget.initialRecord!.dayIndex;
+    }
+
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    // Ищем соответствующий день в списке дней рыбалки
+    for (int i = 0; i < _fishingDays.length; i++) {
+      if (_fishingDays[i].isAtSameMomentAs(todayDate)) {
+        debugPrint('🗓️ Автоматически выбран день ${i + 1} (${DateFormat('dd.MM.yyyy').format(_fishingDays[i])})');
+        return i;
+      }
+    }
+
+    // Если текущий день не найден среди дней рыбалки
+    if (_fishingDays.isNotEmpty) {
+      // Если сегодня до начала рыбалки - выбираем первый день
+      if (todayDate.isBefore(_fishingDays.first)) {
+        debugPrint('🗓️ Сегодня до начала рыбалки, выбран первый день');
+        return 0;
+      }
+      // Если сегодня после окончания рыбалки - выбираем последний день
+      else if (todayDate.isAfter(_fishingDays.last)) {
+        debugPrint('🗓️ Сегодня после окончания рыбалки, выбран последний день');
+        return _fishingDays.length - 1;
+      }
+    }
+
+    // По умолчанию возвращаем переданный dayIndex или 0
+    return widget.dayIndex.clamp(0, _totalFishingDays - 1);
+  }
+
+  // Метод для получения названия дня
+  String _getDayName(int index) {
+    final localizations = AppLocalizations.of(context);
+    if (_fishingDays.isNotEmpty && index < _fishingDays.length) {
+      final date = _fishingDays[index];
+      return '${localizations.translate('day_fishing')} ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
+    }
+    return '${localizations.translate('day_fishing')} ${index + 1}';
   }
 
   @override
@@ -247,7 +345,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
         weight: weight,
         length: length,
         notes: _notesController.text.trim(),
-        dayIndex: _isEditing ? widget.initialRecord!.dayIndex : widget.dayIndex,
+        dayIndex: _selectedDayIndex, // Используем выбранный день
         spotIndex: _isEditing ? widget.initialRecord!.spotIndex : 0,
         photoUrls: allPhotoUrls,
       );
@@ -351,18 +449,93 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                // Информация о выбранном дне (для многодневной рыбалки)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Text(
-                    '${localizations.translate('day_fishing')}: ${widget.dayIndex + 1}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      fontSize: 16,
-                      fontStyle: FontStyle.italic,
+                // Селектор дня рыбалки (только для многодневной рыбалки)
+                if (_totalFishingDays > 1) ...[
+                  _buildSectionHeader(localizations.translate('day_fishing')),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12332E),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: _selectedDayIndex,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF12332E),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          color: AppConstants.textColor,
+                        ),
+                        items: List.generate(_totalFishingDays, (index) {
+                          final isToday = _fishingDays.isNotEmpty &&
+                              index < _fishingDays.length &&
+                              _isToday(_fishingDays[index]);
+
+                          return DropdownMenuItem<int>(
+                            value: index,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _getDayName(index),
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                if (isToday)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      localizations.translate('today'),
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }),
+                        onChanged: (int? value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedDayIndex = value;
+                            });
+                          }
+                        },
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ] else ...[
+                  // Информация о дне (для однодневной рыбалки)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      _getDayName(_selectedDayIndex),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.7),
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
 
                 // Время поклевки
                 _buildSectionHeader('${localizations.translate('bite_time')}*'),
@@ -626,6 +799,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
         ),
       ),
     );
+  }
+
+  // Проверяет, является ли переданная дата сегодняшней
+  bool _isToday(DateTime date) {
+    final today = DateTime.now();
+    return date.year == today.year &&
+        date.month == today.month &&
+        date.day == today.day;
   }
 
   Widget _buildSectionHeader(String title) {

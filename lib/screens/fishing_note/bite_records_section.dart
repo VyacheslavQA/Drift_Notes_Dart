@@ -243,6 +243,9 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
       MaterialPageRoute(
         builder: (context) => BiteRecordScreen(
           dayIndex: _selectedDayIndex,
+          fishingStartDate: widget.note.date,
+          fishingEndDate: widget.note.endDate,
+          isMultiDay: widget.note.isMultiDay,
         ),
       ),
     );
@@ -260,6 +263,9 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
         builder: (context) => BiteRecordScreen(
           initialRecord: record,
           dayIndex: record.dayIndex,
+          fishingStartDate: widget.note.date,
+          fishingEndDate: widget.note.endDate,
+          isMultiDay: widget.note.isMultiDay,
         ),
       ),
     );
