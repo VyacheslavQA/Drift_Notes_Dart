@@ -439,17 +439,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 child: ListView.builder(
                   itemCount: AppConstants.fishingTypes.length,
                   itemBuilder: (context, index) {
-                    final type = AppConstants.fishingTypes[index];
+                    final typeKey = AppConstants.fishingTypes[index];
                     return ListTile(
                       title: Text(
-                        type,
+                        localizations.translate(typeKey),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
                         ),
                       ),
-                      leading: FishingTypeIcons.getIconWidget(type),
-                      trailing: _selectedFishingType == type
+                      leading: FishingTypeIcons.getIconWidget(typeKey),
+                      trailing: _selectedFishingType == typeKey
                           ? Icon(
                         Icons.check_circle,
                         color: AppConstants.primaryColor,
@@ -457,7 +457,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                           : null,
                       onTap: () {
                         setState(() {
-                          _selectedFishingType = type;
+                          _selectedFishingType = typeKey;
                         });
                         Navigator.pop(context);
                       },
@@ -636,7 +636,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            _selectedFishingType,
+                            localizations.translate(_selectedFishingType),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 16,

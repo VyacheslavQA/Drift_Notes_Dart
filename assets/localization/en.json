@@ -413,5 +413,8 @@
 
   "image_unavailable": "Image unavailable",
   "error_selecting_images": "Error selecting images",
-  "error_taking_photo": "Error taking photo"
+  "error_taking_photo": "Error taking photo",
+
+
+  "add": "Add"
 }

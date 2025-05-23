@@ -207,8 +207,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
-          source: ImageSource.camera,
-          imageQuality: 70,0
+        source: ImageSource.camera,
+        imageQuality: 70,
       );
 
       if (pickedFile != null) {
@@ -276,6 +276,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
       final weatherData = await _weatherService.getWeatherForLocation(
         _latitude,
         _longitude,
+        context,
       );
 
       setState(() {
@@ -348,7 +349,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
       final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${localizations.translate('saved')} ${_mapMarkers.length} ${localizations.translate('markers')}'),
+          content: Text('${localizations.translate('markers_count')}: ${_mapMarkers.length}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -490,17 +491,17 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                 child: ListView.builder(
                   itemCount: AppConstants.fishingTypes.length,
                   itemBuilder: (context, index) {
-                    final type = AppConstants.fishingTypes[index];
+                    final typeKey = AppConstants.fishingTypes[index];
                     return ListTile(
                       title: Text(
-                        type,
+                        localizations.translate(typeKey),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
                         ),
                       ),
-                      leading: FishingTypeIcons.getIconWidget(type, size: 24),
-                      trailing: _selectedFishingType == type
+                      leading: FishingTypeIcons.getIconWidget(typeKey),
+                      trailing: _selectedFishingType == typeKey
                           ? Icon(
                         Icons.check_circle,
                         color: AppConstants.primaryColor,
@@ -508,7 +509,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                           : null,
                       onTap: () {
                         setState(() {
-                          _selectedFishingType = type;
+                          _selectedFishingType = typeKey;
                         });
                         Navigator.pop(context);
                       },
@@ -668,7 +669,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                // Тип рыбалки
+                // Тип рыбалки (с иконкой)
                 _buildSectionHeader(localizations.translate('fishing_type')),
                 InkWell(
                   onTap: _showFishingTypeDialog,
@@ -681,11 +682,18 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     ),
                     child: Row(
                       children: [
-                        FishingTypeIcons.getIconWidget(_selectedFishingType, size: 32),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: FishingTypeIcons.getIconWidget(_selectedFishingType, size: 24),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            _selectedFishingType,
+                            localizations.translate(_selectedFishingType),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 16,
@@ -701,7 +709,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
 
                 // Место рыбалки
@@ -1269,7 +1276,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${localizations.translate('feels_like')} ${_weather!.feelsLike.toStringAsFixed(1)}°C',
+                      'Ощущается как ${_weather!.feelsLike.toStringAsFixed(1)}°C',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
@@ -1286,18 +1293,18 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
             children: [
               _buildWeatherInfoItem(
                 icon: Icons.air,
-                label: localizations.translate('wind'),
-                value: '${_weather!.windDirection}, ${_weather!.windSpeed} ${localizations.translate('m_s')}',
+                label: 'Ветер',
+                value: '${_weather!.windDirection}, ${_weather!.windSpeed} м/с',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.water_drop,
-                label: localizations.translate('humidity'),
+                label: 'Влажность',
                 value: '${_weather!.humidity}%',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.speed,
-                label: localizations.translate('pressure'),
-                value: '${(_weather!.pressure / 1.333).toInt()} ${localizations.translate('mm')}',
+                label: 'Давление',
+                value: '${(_weather!.pressure / 1.333).toInt()} мм',
               ),
             ],
           ),
@@ -1307,17 +1314,17 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
             children: [
               _buildWeatherInfoItem(
                 icon: Icons.cloud,
-                label: localizations.translate('clouds'),
+                label: 'Облачность',
                 value: '${_weather!.cloudCover}%',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.wb_twilight,
-                label: localizations.translate('sunrise'),
+                label: 'Восход',
                 value: _weather!.sunrise,
               ),
               _buildWeatherInfoItem(
                 icon: Icons.nights_stay,
-                label: localizations.translate('sunset'),
+                label: 'Закат',
                 value: _weather!.sunset,
               ),
             ],
@@ -1396,7 +1403,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${localizations.translate('time')}: ${DateFormat('HH:mm').format(record.time)}',
+                      'Время: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                       ),
@@ -1410,7 +1417,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                       ),
                     if (record.notes.isNotEmpty)
                       Text(
-                        '${localizations.translate('note')}: ${record.notes}',
+                        '${localizations.translate('notes')}: ${record.notes}',
                         style: TextStyle(
                           color: AppConstants.textColor.withOpacity(0.7),
                         ),
@@ -1477,7 +1484,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
           child: Column(
             children: [
               Expanded(
-                child: CustomPainter(
+                child: CustomPaint(
                   size: Size(MediaQuery.of(context).size.width - 50, 40),
                   painter: _BiteRecordsTimelinePainter(
                     biteRecords: _biteRecords,

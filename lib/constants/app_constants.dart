@@ -1,6 +1,7 @@
 // Путь: lib/constants/app_constants.dart
 
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 
 class AppConstants {
   // Цвета приложения
@@ -41,16 +42,16 @@ class AppConstants {
   static const double fontSizeLarge = 20.0;
   static const double fontSizeXLarge = 24.0;
 
-  // Типы рыбалки
+  // Типы рыбалки - теперь ключи локализации
   static const List<String> fishingTypes = [
-    'Карповая рыбалка',
-    'Спиннинг',
-    'Фидер',
-    'Поплавочная',
-    'Зимняя рыбалка',
-    'Нахлыст',
-    'Троллинг',
-    'Другое',
+    'carp_fishing',
+    'spinning',
+    'feeder',
+    'float_fishing',
+    'ice_fishing',
+    'fly_fishing',
+    'trolling',
+    'other_fishing',
   ];
 
   // Уровни опыта рыболова
@@ -154,4 +155,27 @@ class AppConstants {
   // Анимации
   static const Duration animationDuration = Duration(milliseconds: 300);
   static const Curve animationCurve = Curves.easeInOut;
+
+  // Вспомогательный метод для получения переведенного названия типа рыбалки
+  static String getLocalizedFishingType(String fishingTypeKey, BuildContext context) {
+    try {
+      final localizations = AppLocalizations.of(context);
+      return localizations.translate(fishingTypeKey);
+    } catch (e) {
+      // Если что-то пошло не так, возвращаем fallback
+    }
+
+    // Fallback на русский
+    switch (fishingTypeKey) {
+      case 'carp_fishing': return 'Карповая рыбалка';
+      case 'spinning': return 'Спиннинг';
+      case 'feeder': return 'Фидер';
+      case 'float_fishing': return 'Поплавочная';
+      case 'ice_fishing': return 'Зимняя рыбалка';
+      case 'fly_fishing': return 'Нахлыст';
+      case 'trolling': return 'Троллинг';
+      case 'other_fishing': return 'Другое';
+      default: return fishingTypeKey;
+    }
+  }
 }

@@ -3,43 +3,43 @@
 import 'package:flutter/material.dart';
 
 class FishingTypeIcons {
-  // Карта с путями к иконкам для разных типов рыбалки
+  // Карта с путями к иконкам для разных типов рыбалки (по ключам локализации)
   static Map<String, String> iconPaths = {
-    'Карповая рыбалка': 'assets/images/fishing_types/carp_fishing.png',
-    'Спиннинг': 'assets/images/fishing_types/spinning.png',
-    'Фидер': 'assets/images/fishing_types/feeder.png',
-    'Поплавочная': 'assets/images/fishing_types/float_fishing.png',
-    'Зимняя рыбалка': 'assets/images/fishing_types/ice_fishing.png',
-    'Нахлыст': 'assets/images/fishing_types/fly_fishing.png',
-    'Троллинг': 'assets/images/fishing_types/trolling.png',
-    'Другое': 'assets/images/fishing_types/other.png',
+    'carp_fishing': 'assets/images/fishing_types/carp_fishing.png',
+    'spinning': 'assets/images/fishing_types/spinning.png',
+    'feeder': 'assets/images/fishing_types/feeder.png',
+    'float_fishing': 'assets/images/fishing_types/float_fishing.png',
+    'ice_fishing': 'assets/images/fishing_types/ice_fishing.png',
+    'fly_fishing': 'assets/images/fishing_types/fly_fishing.png',
+    'trolling': 'assets/images/fishing_types/trolling.png',
+    'other_fishing': 'assets/images/fishing_types/other.png',
   };
 
   // Карта с иконками Material Design для разных типов рыбалки, на случай если изображения недоступны
   static Map<String, IconData> fallbackIcons = {
-    'Карповая рыбалка': Icons.waves,
-    'Спиннинг': Icons.sailing,
-    'Фидер': Icons.add_road,
-    'Поплавочная': Icons.crop_free,
-    'Зимняя рыбалка': Icons.ac_unit,
-    'Нахлыст': Icons.air,
-    'Троллинг': Icons.directions_boat,
-    'Другое': Icons.category,
+    'carp_fishing': Icons.waves,
+    'spinning': Icons.sailing,
+    'feeder': Icons.add_road,
+    'float_fishing': Icons.crop_free,
+    'ice_fishing': Icons.ac_unit,
+    'fly_fishing': Icons.air,
+    'trolling': Icons.directions_boat,
+    'other_fishing': Icons.category,
   };
 
   // Получить путь к иконке для данного типа рыбалки
-  static String getIconPath(String fishingType) {
-    return iconPaths[fishingType] ?? 'assets/images/fishing_types/other.png';
+  static String getIconPath(String fishingTypeKey) {
+    return iconPaths[fishingTypeKey] ?? 'assets/images/fishing_types/other.png';
   }
 
   // Получить IconData для данного типа рыбалки
-  static IconData getFallbackIcon(String fishingType) {
-    return fallbackIcons[fishingType] ?? Icons.category;
+  static IconData getFallbackIcon(String fishingTypeKey) {
+    return fallbackIcons[fishingTypeKey] ?? Icons.category;
   }
 
   // Получить виджет Image для данного типа рыбалки с запасным вариантом в виде иконки
-  static Widget getIconWidget(String fishingType, {double size = 24.0}) {
-    final iconPath = getIconPath(fishingType);
+  static Widget getIconWidget(String fishingTypeKey, {double size = 24.0}) {
+    final iconPath = getIconPath(fishingTypeKey);
     return Image.asset(
       iconPath,
       width: size,
@@ -47,7 +47,7 @@ class FishingTypeIcons {
       errorBuilder: (context, error, stackTrace) {
         // Если изображение не загружается, показываем запасную иконку
         return Icon(
-          getFallbackIcon(fishingType),
+          getFallbackIcon(fishingTypeKey),
           size: size,
           color: Colors.white,
         );

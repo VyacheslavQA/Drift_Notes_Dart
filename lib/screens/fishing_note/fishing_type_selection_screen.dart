@@ -103,15 +103,16 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                             color: AppConstants.textColor,
                             fontSize: 18,
                           ),
-                          items: AppConstants.fishingTypes.map((String type) {
+                          items: AppConstants.fishingTypes.map((String typeKey) {
                             return DropdownMenuItem<String>(
-                              value: type,
+                              value: typeKey,
                               child: Row(
                                 children: [
-                                  // Используем FishingTypeIcons.getIconWidget вместо Icon
-                                  FishingTypeIcons.getIconWidget(type, size: 36.0),
+                                  // Используем FishingTypeIcons.getIconWidget для ключа
+                                  FishingTypeIcons.getIconWidget(typeKey, size: 36.0),
                                   const SizedBox(width: 12),
-                                  Text(type),
+                                  // Переводим ключ в локализованный текст
+                                  Text(localizations.translate(typeKey)),
                                 ],
                               ),
                             );
