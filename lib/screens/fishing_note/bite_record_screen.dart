@@ -31,7 +31,7 @@ class BiteRecordScreen extends StatefulWidget {
   _BiteRecordScreenState createState() => _BiteRecordScreenState();
 }
 
-class _BiteRecordScreenState extends State<BiteRecordScreen> {
+class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fishTypeController;
   late TextEditingController _weightController;
@@ -50,10 +50,16 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
   List<DateTime> _fishingDays = [];
   int _totalFishingDays = 1;
 
+  // Переменная для отслеживания последней проверенной даты
+  DateTime? _lastCheckedDate;
+
   @override
   void initState() {
     super.initState();
     _isEditing = widget.initialRecord != null;
+
+    // Добавляем наблюдатель за жизненным циклом приложения
+    WidgetsBinding.instance.addObserver(this);
 
     // Инициализация контроллеров
     _fishTypeController = TextEditingController(
@@ -80,6 +86,59 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
 
     // Инициализация дней рыбалки и автоматический выбор дня
     _initializeFishingDays();
+
+    // Запоминаем текущую дату для отслеживания изменений
+    _lastCheckedDate = DateTime.now();
+  }
+
+  @override
+  void dispose() {
+    // Удаляем наблюдатель при уничтожении виджета
+    WidgetsBinding.instance.removeObserver(this);
+    _fishTypeController.dispose();
+    _weightController.dispose();
+    _lengthController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  // Переопределяем метод для отслеживания изменений жизненного цикла приложения
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Когда приложение возвращается в активное состояние
+    if (state == AppLifecycleState.resumed) {
+      _checkForDateChange();
+    }
+  }
+
+  // Метод для проверки смены календарного дня
+  void _checkForDateChange() {
+    if (_lastCheckedDate == null || _isEditing) return;
+
+    final now = DateTime.now();
+    final nowDate = DateTime(now.year, now.month, now.day);
+    final lastDate = DateTime(_lastCheckedDate!.year, _lastCheckedDate!.month, _lastCheckedDate!.day);
+
+    // Если календарный день изменился
+    if (!nowDate.isAtSameMomentAs(lastDate)) {
+      debugPrint('🗓️ Обнаружена смена календарного дня: ${DateFormat('dd.MM.yyyy').format(lastDate)} → ${DateFormat('dd.MM.yyyy').format(nowDate)}');
+
+      // Обновляем последнюю проверенную дату
+      _lastCheckedDate = now;
+
+      // Пересчитываем текущий день рыбалки
+      final newDayIndex = _determineCurrentFishingDay();
+
+      // Если день изменился, обновляем интерфейс
+      if (newDayIndex != _selectedDayIndex) {
+        setState(() {
+          _selectedDayIndex = newDayIndex;
+        });
+        debugPrint('🗓️ Автоматически переключились на день ${_selectedDayIndex + 1}');
+      }
+    }
   }
 
   // Новый метод для инициализации дней рыбалки
@@ -164,15 +223,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       return '${localizations.translate('day_fishing')} ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
     }
     return '${localizations.translate('day_fishing')} ${index + 1}';
-  }
-
-  @override
-  void dispose() {
-    _fishTypeController.dispose();
-    _weightController.dispose();
-    _lengthController.dispose();
-    _notesController.dispose();
-    super.dispose();
   }
 
   Future<void> _selectTime(BuildContext context) async {
