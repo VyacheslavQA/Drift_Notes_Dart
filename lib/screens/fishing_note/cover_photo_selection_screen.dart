@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
-import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
+import '../../widgets/universal_image.dart';
+import '../../localization/app_localizations.dart';
 
 class CoverPhotoSelectionScreen extends StatefulWidget {
   final List<String> photoUrls;
@@ -63,11 +64,13 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Выбор обложки',
+          localizations.translate('select_cover'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -135,7 +138,9 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _toggleCropping,
                   icon: Icon(_isCropping ? Icons.check : Icons.crop),
-                  label: Text(_isCropping ? 'Применить кадрирование' : 'Кадрировать'),
+                  label: Text(_isCropping
+                      ? localizations.translate('apply_cropping')
+                      : localizations.translate('crop')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isCropping
                         ? Colors.green
@@ -161,7 +166,7 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Text(
-                      'Выберите фото',
+                      localizations.translate('select_photo'),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 18,
@@ -174,7 +179,7 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                     child: widget.photoUrls.isEmpty
                         ? Center(
                       child: Text(
-                        'Нет доступных фотографий',
+                        localizations.translate('no_photos_available'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -269,6 +274,8 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
 
   // Виджет для кадрирования фото
   Widget _buildCroppingView() {
+    final localizations = AppLocalizations.of(context);
+
     return Column(
       children: [
         Expanded(
@@ -304,7 +311,7 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Text(
-            'Перемещайте и масштабируйте изображение',
+            localizations.translate('move_and_scale'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 14,

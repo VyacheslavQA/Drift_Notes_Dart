@@ -12,6 +12,7 @@ import '../../services/weather/weather_service.dart';
 import '../../utils/network_utils.dart';
 import '../../utils/date_formatter.dart';
 import '../../utils/fishing_type_icons.dart';
+import '../../localization/app_localizations.dart';
 import '../map/map_location_screen.dart';
 import '../map/marker_map_screen.dart';
 import 'bite_record_screen.dart';
@@ -118,6 +119,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final localizations = AppLocalizations.of(context);
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isStartDate ? _startDate : _endDate,
@@ -162,6 +165,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Future<void> _pickImages() async {
+    final localizations = AppLocalizations.of(context);
+
     try {
       final picker = ImagePicker();
       final pickedFiles = await picker.pickMultiImage(
@@ -178,12 +183,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при выборе изображений: $e')),
+        SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
       );
     }
   }
 
   Future<void> _takePhoto() async {
+    final localizations = AppLocalizations.of(context);
+
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -198,7 +205,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при получении фото: $e')),
+        SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
       );
     }
   }
@@ -230,10 +237,12 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Future<void> _fetchWeather() async {
+    final localizations = AppLocalizations.of(context);
+
     if (!_hasLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Сначала выберите место на карте'),
+        SnackBar(
+          content: Text(localizations.translate('select_map_point')),
           backgroundColor: Colors.red,
         ),
       );
@@ -248,6 +257,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       final weatherData = await _weatherService.getWeatherForLocation(
         _latitude,
         _longitude,
+        context,
       );
 
       setState(() {
@@ -255,7 +265,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при загрузке погоды: $e')),
+        SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
       );
     } finally {
       setState(() {
@@ -301,9 +311,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         _mapMarkers = List<Map<String, dynamic>>.from(result);
       });
 
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Сохранено ${_mapMarkers.length} маркеров'),
+          content: Text('${localizations.translate('markers_count')}: ${_mapMarkers.length}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -311,14 +322,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Future<void> _saveNote() async {
+    final localizations = AppLocalizations.of(context);
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_locationController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Укажите место рыбалки'),
+        SnackBar(
+          content: Text(localizations.translate('enter_location_name')),
           backgroundColor: Colors.red,
         ),
       );
@@ -358,8 +371,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Заметка успешно сохранена'),
+            SnackBar(
+              content: Text(localizations.translate('note_saved_successfully')),
               backgroundColor: Colors.green,
             ),
           );
@@ -371,8 +384,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         await _fishingNoteRepository.addFishingNote(note, _selectedPhotos);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Нет подключения к интернету. Заметка сохранена локально и будет отправлена при подключении.'),
+          SnackBar(
+            content: Text(localizations.translate('no_internet_saved_locally')),
             backgroundColor: Colors.orange,
           ),
         );
@@ -382,7 +395,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при сохранении: $e')),
+          SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
         );
       }
     } finally {
@@ -396,6 +409,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   // Диалог выбора типа рыбалки
   void _showFishingTypeDialog() {
+    final localizations = AppLocalizations.of(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.cardColor,
@@ -411,7 +426,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
                 child: Text(
-                  'Выберите тип рыбалки',
+                  localizations.translate('select_fishing_type'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 20,
@@ -460,7 +475,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                         Navigator.pop(context);
                       },
                       child: Text(
-                        'Отмена',
+                        localizations.translate('cancel'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -479,6 +494,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   // Создание кнопки "Отмена"
   Widget _buildCancelButton() {
+    final localizations = AppLocalizations.of(context);
+
     return ElevatedButton(
       onPressed: () {
         showDialog(
@@ -487,14 +504,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                'Отменить создание',
+                localizations.translate('cancel_creation'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               content: Text(
-                'Вы уверены, что хотите отменить создание заметки? Все введенные данные будут потеряны.',
+                localizations.translate('cancel_creation_confirmation'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
@@ -505,7 +522,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Navigator.of(context).pop(); // Закрыть диалог
                   },
                   child: Text(
-                    'Нет',
+                    localizations.translate('no'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                     ),
@@ -516,8 +533,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Navigator.of(context).pop(); // Закрыть диалог
                     Navigator.of(context).pop(); // Вернуться на предыдущий экран
                   },
-                  child: const Text(
-                    'Да, отменить',
+                  child: Text(
+                    localizations.translate('yes_cancel'),
                     style: TextStyle(
                       color: Colors.redAccent,
                     ),
@@ -536,9 +553,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
           borderRadius: BorderRadius.circular(24),
         ),
       ),
-      child: const Text(
-        'ОТМЕНА',
-        style: TextStyle(
+      child: Text(
+        localizations.translate('cancel'),
+        style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -548,11 +565,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Новая заметка',
+          localizations.translate('new_note'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -594,7 +613,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               padding: const EdgeInsets.all(16.0),
               children: [
                 // Тип рыбалки (с иконкой)
-                _buildSectionHeader('Тип рыбалки'),
+                _buildSectionHeader(localizations.translate('fishing_type')),
                 InkWell(
                   onTap: _showFishingTypeDialog,
                   borderRadius: BorderRadius.circular(12),
@@ -637,14 +656,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Место рыбалки
-                _buildSectionHeader('Место рыбалки*'),
+                _buildSectionHeader('${localizations.translate('fishing_location')}*'),
                 TextFormField(
                   controller: _locationController,
                   style: TextStyle(color: AppConstants.textColor),
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: 'Введите название места',
+                    hintText: localizations.translate('enter_location_name'),
                     hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -657,7 +676,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Обязательное поле';
+                      return localizations.translate('required_field');
                     }
                     return null;
                   },
@@ -666,12 +685,12 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Даты рыбалки с информацией о продолжительности
-                _buildSectionHeader('Даты рыбалки'),
+                _buildSectionHeader(localizations.translate('fishing_dates')),
                 Row(
                   children: [
                     Expanded(
                       child: _buildDateSelector(
-                        label: 'Начало',
+                        label: localizations.translate('start'),
                         date: _startDate,
                         onTap: () => _selectDate(context, true),
                       ),
@@ -679,7 +698,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildDateSelector(
-                        label: 'Окончание',
+                        label: localizations.translate('end'),
                         date: _endDate,
                         onTap: () => _selectDate(context, false),
                       ),
@@ -691,7 +710,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'Продолжительность: $_tripDays ${DateFormatter.getDaysText(_tripDays)}',
+                    '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
                     style: TextStyle(
                       color: AppConstants.textColor.withOpacity(0.8),
                       fontSize: 14,
@@ -703,14 +722,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Точка на карте
-                _buildSectionHeader('Точка на карте'),
+                _buildSectionHeader(localizations.translate('map_point')),
                 ElevatedButton.icon(
                   icon: Icon(
                     Icons.map,
                     color: AppConstants.textColor,
                   ),
                   label: Text(
-                    _hasLocation ? 'Изменить точку на карте' : 'Выбрать точку на карте',
+                    _hasLocation
+                        ? localizations.translate('change_map_point')
+                        : localizations.translate('select_map_point'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -729,7 +750,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 if (_hasLocation) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'Координаты: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
+                    '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
                     style: TextStyle(
                       color: AppConstants.textColor.withOpacity(0.7),
                       fontSize: 14,
@@ -740,14 +761,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Погода
-                _buildSectionHeader('Погода'),
+                _buildSectionHeader(localizations.translate('weather')),
                 ElevatedButton.icon(
                   icon: Icon(
                     Icons.cloud,
                     color: AppConstants.textColor,
                   ),
                   label: Text(
-                    _weather != null ? 'Обновить данные погоды' : 'Загрузить данные погоды',
+                    _weather != null
+                        ? localizations.translate('update_weather_data')
+                        : localizations.translate('load_weather_data'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -781,14 +804,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Снасти
-                _buildSectionHeader('Снасти'),
+                _buildSectionHeader(localizations.translate('tackle')),
                 TextFormField(
                   controller: _tackleController,
                   style: TextStyle(color: AppConstants.textColor),
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: 'Опишите используемые снасти',
+                    hintText: localizations.translate('tackle_desc'),
                     hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -801,14 +824,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Заметки
-                _buildSectionHeader('Заметки'),
+                _buildSectionHeader(localizations.translate('notes')),
                 TextFormField(
                   controller: _notesController,
                   style: TextStyle(color: AppConstants.textColor),
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: 'Заметки о рыбалке',
+                    hintText: localizations.translate('notes_desc'),
                     hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -821,13 +844,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 const SizedBox(height: 20),
 
                 // Фотографии
-                _buildSectionHeader('Фотографии'),
+                _buildSectionHeader(localizations.translate('photos')),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.photo_library),
-                        label: const Text('Из галереи'),
+                        label: Text(localizations.translate('gallery')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppConstants.primaryColor,
                           foregroundColor: AppConstants.textColor,
@@ -843,7 +866,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.camera_alt),
-                        label: const Text('Камера'),
+                        label: Text(localizations.translate('camera')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppConstants.primaryColor,
                           foregroundColor: AppConstants.textColor,
@@ -908,16 +931,15 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
                 const SizedBox(height: 20),
 
-
                 // Записи о поклевках
-                _buildSectionHeader('Записи о поклевках'),
+                _buildSectionHeader(localizations.translate('bite_records')),
                 ElevatedButton.icon(
                   icon: Icon(
                     Icons.add_circle_outline,
                     color: AppConstants.textColor,
                   ),
                   label: Text(
-                    'Добавить запись о поклевке',
+                    localizations.translate('add_bite_record'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -968,9 +990,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                             strokeWidth: 2.5,
                           ),
                         )
-                            : const Text(
-                          'СОХРАНИТЬ',
-                          style: TextStyle(
+                            : Text(
+                          localizations.translate('save'),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1052,6 +1074,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Widget _buildWeatherCard() {
+    final localizations = AppLocalizations.of(context);
+
     if (_weather == null) return const SizedBox();
 
     return Container(
@@ -1188,6 +1212,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Widget _buildBiteRecordsSection() {
+    final localizations = AppLocalizations.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1212,7 +1238,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               child: ListTile(
                 title: Text(
                   record.fishType.isEmpty
-                      ? 'Поклевка #${index + 1}'
+                      ? '${localizations.translate('bite_occurred')} #${index + 1}'
                       : record.fishType,
                   style: TextStyle(
                     color: AppConstants.textColor,
@@ -1230,14 +1256,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     ),
                     if (record.weight > 0)
                       Text(
-                        'Вес: ${record.weight} кг',
+                        '${localizations.translate('weight')}: ${record.weight} ${localizations.translate('kg')}',
                         style: TextStyle(
                           color: AppConstants.textColor.withOpacity(0.7),
                         ),
                       ),
                     if (record.notes.isNotEmpty)
                       Text(
-                        'Заметка: ${record.notes}',
+                        '${localizations.translate('notes')}: ${record.notes}',
                         style: TextStyle(
                           color: AppConstants.textColor.withOpacity(0.7),
                         ),
@@ -1263,6 +1289,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Widget _buildBiteRecordsTimeline() {
+    final localizations = AppLocalizations.of(context);
+
     // Если нет записей, не показываем график
     if (_biteRecords.isEmpty) return const SizedBox();
 
@@ -1273,11 +1301,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
-            'График поклевок',
-            style: TextStyle(
+            localizations.translate('bite_chart'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,

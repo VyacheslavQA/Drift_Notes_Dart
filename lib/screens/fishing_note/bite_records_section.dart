@@ -6,6 +6,7 @@ import 'dart:ui'; // Явный импорт для TextDirection
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../utils/date_formatter.dart';
+import '../../localization/app_localizations.dart';
 import 'bite_record_screen.dart';
 
 class BiteRecordsSection extends StatefulWidget {
@@ -32,6 +33,8 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     // Определяем количество дней рыбалки
     int totalDays = 1;
     List<DateTime> allDays = [];
@@ -81,7 +84,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Text(
-                'Записи о поклёвках',
+                localizations.translate('bite_records'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -91,7 +94,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
             ),
             ElevatedButton.icon(
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Добавить'),
+              label: Text(localizations.translate('add')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppConstants.primaryColor,
                 foregroundColor: AppConstants.textColor,
@@ -116,7 +119,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
         if (sortedRecords.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
-            'График поклёвок',
+            localizations.translate('bite_chart'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -136,8 +139,8 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 totalDays > 1
-                    ? 'Нет записей о поклёвках за ${_getDayName(_selectedDayIndex, allDays[_selectedDayIndex])}'
-                    : 'Нет записей о поклёвках',
+                    ? '${localizations.translate('no_bite_records_day')} ${_getDayName(_selectedDayIndex, allDays[_selectedDayIndex])}'
+                    : localizations.translate('no_bite_records'),
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontStyle: FontStyle.italic,
@@ -155,7 +158,8 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   // Метод для получения форматированного названия дня
   String _getDayName(int index, DateTime date) {
-    return 'День ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
+    final localizations = AppLocalizations.of(context);
+    return '${localizations.translate('day_fishing')} ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
   }
 
   // Строим список дней (выпадающее меню)
@@ -252,6 +256,8 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   // Построение карточки записи о поклёвке
   Widget _buildBiteRecordCard(BuildContext context, BiteRecord record) {
+    final localizations = AppLocalizations.of(context);
+
     // Определяем, является ли запись пойманной рыбой или просто поклевкой
     final bool isCaught = _isFishCaught(record);
 
@@ -299,7 +305,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Поймана',
+                              localizations.translate('fish_caught'),
                               style: TextStyle(
                                 color: Colors.green,
                                 fontSize: 12,
@@ -316,7 +322,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Поклевка',
+                              localizations.translate('bite_occurred'),
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 12,
@@ -361,7 +367,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${record.weight} кг',
+                              '${record.weight} ${localizations.translate('kg')}',
                               style: TextStyle(
                                 color: AppConstants.textColor.withOpacity(0.9),
                               ),
@@ -437,7 +443,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                       color: AppConstants.textColor.withOpacity(0.7),
                       size: 20,
                     ),
-                    tooltip: 'Редактировать',
+                    tooltip: localizations.translate('edit'),
                     onPressed: () => _editBiteRecord(context, record),
                   ),
                   IconButton(
@@ -446,7 +452,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                       color: Colors.redAccent,
                       size: 20,
                     ),
-                    tooltip: 'Удалить',
+                    tooltip: localizations.translate('delete'),
                     onPressed: () => _confirmDeleteRecord(context, record),
                   ),
                 ],
@@ -503,19 +509,21 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   // Диалог подтверждения удаления записи
   void _confirmDeleteRecord(BuildContext context, BiteRecord record) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (BuildContext context) => AlertDialog(
         backgroundColor: AppConstants.surfaceColor,
         title: Text(
-          'Удалить запись о поклёвке?',
+          localizations.translate('delete_bite_record'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Вы уверены, что хотите удалить эту запись о поклёвке? Это действие нельзя отменить.',
+          localizations.translate('delete_bite_confirmation'),
           style: TextStyle(
             color: AppConstants.textColor,
           ),
@@ -524,7 +532,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Отмена',
+              localizations.translate('cancel'),
               style: TextStyle(
                 color: AppConstants.textColor,
               ),
@@ -538,7 +546,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Удалить'),
+            child: Text(localizations.translate('delete')),
           ),
         ],
       ),

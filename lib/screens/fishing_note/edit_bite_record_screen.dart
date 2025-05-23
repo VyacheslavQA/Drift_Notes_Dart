@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
+import '../../localization/app_localizations.dart';
 
 class EditBiteRecordScreen extends StatefulWidget {
   final BiteRecord biteRecord;
@@ -117,11 +118,13 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Редактирование поклевки',
+          localizations.translate('edit_bite'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -148,7 +151,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
             padding: const EdgeInsets.all(16.0),
             children: [
               // Время поклевки
-              _buildSectionHeader('Время поклевки'),
+              _buildSectionHeader(localizations.translate('bite_time')),
               GestureDetector(
                 onTap: () => _selectTime(context),
                 child: Container(
@@ -185,14 +188,14 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
               const SizedBox(height: 20),
 
               // Тип рыбы
-              _buildSectionHeader('Тип рыбы'),
+              _buildSectionHeader(localizations.translate('fish_type')),
               TextFormField(
                 controller: _fishTypeController,
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
                   fillColor: const Color(0xFF12332E),
                   filled: true,
-                  hintText: 'Укажите тип рыбы (необязательно)',
+                  hintText: localizations.translate('fish_type_hint'),
                   hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -215,14 +218,14 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader('Вес (кг)'),
+                        _buildSectionHeader(localizations.translate('weight_kg')),
                         TextFormField(
                           controller: _weightController,
                           style: TextStyle(color: AppConstants.textColor),
                           decoration: InputDecoration(
                             fillColor: const Color(0xFF12332E),
                             filled: true,
-                            hintText: 'Вес',
+                            hintText: localizations.translate('weight'),
                             hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -239,7 +242,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                               // Проверяем, что введено корректное число
                               final weightText = value.replaceAll(',', '.');
                               if (double.tryParse(weightText) == null) {
-                                return 'Введите корректное число';
+                                return localizations.translate('enter_correct_number');
                               }
                             }
                             return null;
@@ -254,14 +257,14 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader('Длина (см)'),
+                        _buildSectionHeader(localizations.translate('length_cm')),
                         TextFormField(
                           controller: _lengthController,
                           style: TextStyle(color: AppConstants.textColor),
                           decoration: InputDecoration(
                             fillColor: const Color(0xFF12332E),
                             filled: true,
-                            hintText: 'Длина',
+                            hintText: localizations.translate('length'),
                             hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -278,7 +281,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                               // Проверяем, что введено корректное число
                               final lengthText = value.replaceAll(',', '.');
                               if (double.tryParse(lengthText) == null) {
-                                return 'Введите корректное число';
+                                return localizations.translate('enter_correct_number');
                               }
                             }
                             return null;
@@ -293,14 +296,14 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
               const SizedBox(height: 20),
 
               // Заметки
-              _buildSectionHeader('Заметки'),
+              _buildSectionHeader(localizations.translate('additional_notes')),
               TextFormField(
                 controller: _notesController,
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
                   fillColor: const Color(0xFF12332E),
                   filled: true,
-                  hintText: 'Дополнительные заметки (необязательно)',
+                  hintText: localizations.translate('additional_notes_hint'),
                   hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -322,9 +325,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                     borderRadius: BorderRadius.circular(24),
                   ),
                 ),
-                child: const Text(
-                  'СОХРАНИТЬ',
-                  style: TextStyle(
+                child: Text(
+                  localizations.translate('save').toUpperCase(),
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),

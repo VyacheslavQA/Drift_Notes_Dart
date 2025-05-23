@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
-import '../../utils/fishing_type_icons.dart'; // Добавьте этот импорт
+import '../../utils/fishing_type_icons.dart';
+import '../../localization/app_localizations.dart';
 import 'add_fishing_note_screen.dart';
 
 class FishingTypeSelectionScreen extends StatefulWidget {
@@ -36,6 +37,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
 
   // Метод для отображения выпадающего списка типов рыбалки как на скриншоте
   void _showFishingTypeDialog() {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false, // Запрещаем закрытие по нажатию вне диалога
@@ -71,7 +74,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
 
                 // Заголовок
                 Text(
-                  'Выберите тип\nрыбалки',
+                  localizations.translate('select_fishing_type'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 28,
@@ -143,7 +146,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                         Navigator.pop(context); // Возвращаемся на предыдущий экран
                       },
                       child: Text(
-                        'Отмена',
+                        localizations.translate('cancel'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -165,7 +168,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
-                            'Продолжить',
+                            localizations.translate('continue'),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -187,11 +190,13 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Новая заметка',
+          localizations.translate('new_note'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -214,7 +219,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
             children: [
               Center(
                 child: Text(
-                  'Выбор типа рыбалки...',
+                  localizations.translate('loading'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 20,

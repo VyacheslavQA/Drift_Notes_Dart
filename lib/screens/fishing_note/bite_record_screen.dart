@@ -9,6 +9,7 @@ import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../localization/app_localizations.dart';
 
 class BiteRecordScreen extends StatefulWidget {
   final BiteRecord? initialRecord; // Параметр для редактирования
@@ -77,6 +78,8 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
   }
 
   Future<void> _selectTime(BuildContext context) async {
+    final localizations = AppLocalizations.of(context);
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_selectedTime),
@@ -111,6 +114,8 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
 
   // Метод для выбора фото из галереи
   Future<void> _pickImages() async {
+    final localizations = AppLocalizations.of(context);
+
     try {
       final picker = ImagePicker();
       final pickedFiles = await picker.pickMultiImage(
@@ -127,13 +132,15 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при выборе изображений: $e')),
+        SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
       );
     }
   }
 
   // Сделать фото с камеры
   Future<void> _takePhoto() async {
+    final localizations = AppLocalizations.of(context);
+
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -148,7 +155,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при получении фото: $e')),
+        SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
       );
     }
   }
@@ -174,23 +181,27 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       setState(() => _isLoading = true);
 
       for (var photo in _selectedPhotos) {
-        final bytes = await photo.readAsBytes();
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_selectedPhotos.indexOf(photo)}.jpg';
-        final userId = _firebaseService.currentUserId;
+        try {
+          final bytes = await photo.readAsBytes();
+          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_selectedPhotos.indexOf(photo)}.jpg';
+          final userId = _firebaseService.currentUserId;
 
-        if (userId == null) {
-          throw Exception('Пользователь не авторизован');
+          if (userId == null) {
+            throw Exception(AppLocalizations.of(context).translate('user_not_found'));
+          }
+
+          final path = 'users/$userId/bite_photos/$fileName';
+          final url = await _firebaseService.uploadImage(path, bytes);
+          photoUrls.add(url);
+        } catch (e) {
+          debugPrint('${AppLocalizations.of(context).translate('error_loading_image')}: $e');
         }
-
-        final path = 'users/$userId/bite_photos/$fileName';
-        final url = await _firebaseService.uploadImage(path, bytes);
-        photoUrls.add(url);
       }
 
       return photoUrls;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при загрузке фото: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading_image')}: $e')),
       );
       return [];
     } finally {
@@ -200,6 +211,8 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
 
   // Сохранение записи о поклёвке
   Future<void> _saveBiteRecord() async {
+    final localizations = AppLocalizations.of(context);
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -242,7 +255,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       Navigator.pop(context, biteRecord);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -251,19 +264,21 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
 
   // Подтверждение удаления записи
   void _confirmDelete() {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (BuildContext context) => AlertDialog(
         backgroundColor: AppConstants.surfaceColor,
         title: Text(
-          'Удалить запись?',
+          localizations.translate('delete_bite_record'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Вы уверены, что хотите удалить эту поклёвку? Это действие нельзя отменить.',
+          localizations.translate('delete_bite_confirmation'),
           style: TextStyle(
             color: AppConstants.textColor,
           ),
@@ -272,7 +287,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Отмена',
+              localizations.translate('cancel'),
               style: TextStyle(
                 color: AppConstants.textColor,
               ),
@@ -286,7 +301,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Удалить'),
+            child: Text(localizations.translate('delete')),
           ),
         ],
       ),
@@ -295,11 +310,13 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          _isEditing ? 'Редактирование поклёвки' : 'Новая поклёвка',
+          _isEditing ? localizations.translate('edit_bite') : localizations.translate('new_bite'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -327,7 +344,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Сохранение...',
+        message: localizations.translate('saving'),
         child: SafeArea(
           child: Form(
             key: _formKey,
@@ -338,7 +355,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'День рыбалки: ${widget.dayIndex + 1}',
+                    '${localizations.translate('day_fishing')}: ${widget.dayIndex + 1}',
                     style: TextStyle(
                       color: AppConstants.textColor.withOpacity(0.7),
                       fontSize: 16,
@@ -348,7 +365,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 ),
 
                 // Время поклевки
-                _buildSectionHeader('Время поклёвки*'),
+                _buildSectionHeader('${localizations.translate('bite_time')}*'),
                 GestureDetector(
                   onTap: () => _selectTime(context),
                   child: Container(
@@ -385,14 +402,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 const SizedBox(height: 20),
 
                 // Вид рыбы
-                _buildSectionHeader('Вид рыбы'),
+                _buildSectionHeader(localizations.translate('fish_type')),
                 TextFormField(
                   controller: _fishTypeController,
                   style: TextStyle(color: AppConstants.textColor),
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: 'Укажите вид рыбы (например, "Карп")',
+                    hintText: localizations.translate('specify_fish_type'),
                     hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -415,14 +432,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('Вес (кг)'),
+                          _buildSectionHeader(localizations.translate('weight_kg')),
                           TextFormField(
                             controller: _weightController,
                             style: TextStyle(color: AppConstants.textColor),
                             decoration: InputDecoration(
                               fillColor: const Color(0xFF12332E),
                               filled: true,
-                              hintText: 'Вес',
+                              hintText: localizations.translate('weight'),
                               hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -439,7 +456,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                                 // Проверяем, что введено корректное число
                                 final weightText = value.replaceAll(',', '.');
                                 if (double.tryParse(weightText) == null) {
-                                  return 'Введите корректное число';
+                                  return localizations.translate('enter_correct_number');
                                 }
                               }
                               return null;
@@ -454,14 +471,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('Длина (см)'),
+                          _buildSectionHeader(localizations.translate('length_cm')),
                           TextFormField(
                             controller: _lengthController,
                             style: TextStyle(color: AppConstants.textColor),
                             decoration: InputDecoration(
                               fillColor: const Color(0xFF12332E),
                               filled: true,
-                              hintText: 'Длина',
+                              hintText: localizations.translate('length'),
                               hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -478,7 +495,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                                 // Проверяем, что введено корректное число
                                 final lengthText = value.replaceAll(',', '.');
                                 if (double.tryParse(lengthText) == null) {
-                                  return 'Введите корректное число';
+                                  return localizations.translate('enter_correct_number');
                                 }
                               }
                               return null;
@@ -493,14 +510,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 const SizedBox(height: 20),
 
                 // Заметки
-                _buildSectionHeader('Заметки'),
+                _buildSectionHeader(localizations.translate('notes')),
                 TextFormField(
                   controller: _notesController,
                   style: TextStyle(color: AppConstants.textColor),
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: 'Дополнительные заметки (например, используемый прикорм, поведение рыбы)',
+                    hintText: localizations.translate('additional_notes_fishing'),
                     hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -513,13 +530,13 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 const SizedBox(height: 20),
 
                 // Фотографии
-                _buildSectionHeader('Фотографии'),
+                _buildSectionHeader(localizations.translate('photos')),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.photo_library),
-                        label: const Text('Из галереи'),
+                        label: Text(localizations.translate('gallery')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppConstants.primaryColor,
                           foregroundColor: AppConstants.textColor,
@@ -535,7 +552,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.camera_alt),
-                        label: const Text('Камера'),
+                        label: Text(localizations.translate('camera')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppConstants.primaryColor,
                           foregroundColor: AppConstants.textColor,
@@ -553,7 +570,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 // Отображение существующих фото
                 if (_existingPhotoUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  _buildSectionHeader('Существующие фото'),
+                  _buildSectionHeader(localizations.translate('existing_photos')),
                   SizedBox(
                     height: 100,
                     child: ListView.builder(
@@ -569,7 +586,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                 // Отображение новых фото
                 if (_selectedPhotos.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  _buildSectionHeader('Новые фото'),
+                  _buildSectionHeader(localizations.translate('new_photos')),
                   SizedBox(
                     height: 100,
                     child: ListView.builder(
@@ -596,7 +613,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> {
                     ),
                   ),
                   child: Text(
-                    _isEditing ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'ДОБАВИТЬ ПОКЛЁВКУ',
+                    _isEditing ? localizations.translate('save_changes_btn') : localizations.translate('add_bite_btn'),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

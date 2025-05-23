@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
-import '../../widgets/universal_image.dart'; // Добавляем импорт UniversalImage
+import '../../widgets/universal_image.dart';
+import '../../localization/app_localizations.dart';
 
 class PhotoGalleryScreen extends StatefulWidget {
   final List<String> photos;
@@ -37,6 +38,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
@@ -48,7 +51,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Фото ${_currentIndex + 1}/${widget.photos.length}',
+          '${localizations.translate('photo_number')} ${_currentIndex + 1}/${widget.photos.length}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -90,7 +93,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Ошибка загрузки изображения',
+                        localizations.translate('error_loading_image'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,

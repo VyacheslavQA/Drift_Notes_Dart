@@ -9,6 +9,7 @@ import '../../utils/date_formatter.dart';
 import '../../utils/navigation.dart';
 import '../../widgets/universal_image.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../localization/app_localizations.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
 
@@ -77,7 +78,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
       _animationController.forward();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Ошибка загрузки заметок: $e';
+        _errorMessage = '${AppLocalizations.of(context).translate('error_loading')}: $e';
         _isLoading = false;
       });
     }
@@ -113,11 +114,13 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Мои заметки',
+          localizations.translate('my_notes'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 24,
@@ -130,11 +133,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        // Убрали кнопку настроек из списка действий
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Загрузка...',
+        message: localizations.translate('loading'),
         child: RefreshIndicator(
           onRefresh: _loadNotes,
           color: AppConstants.primaryColor,
@@ -161,7 +163,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _loadNotes,
-                  child: const Text('Повторить'),
+                  child: Text(localizations.translate('try_again')),
                 ),
               ],
             ),
@@ -215,6 +217,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
   }
 
   Widget _buildEmptyState() {
+    final localizations = AppLocalizations.of(context);
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Center(
@@ -228,7 +232,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             ),
             const SizedBox(height: 24),
             Text(
-              'Ещё нет заметок о рыбалке',
+              localizations.translate('no_notes'),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 22,
@@ -239,7 +243,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32.0),
               child: Text(
-                'Начните вести дневник ваших рыбалок, чтобы отслеживать самые удачные уловы',
+                localizations.translate('start_journal'),
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 16,
@@ -250,7 +254,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             const SizedBox(height: 32),
             ElevatedButton.icon(
               icon: const Icon(Icons.add),
-              label: const Text('Создать первую заметку'),
+              label: Text(localizations.translate('create_first_note')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppConstants.primaryColor,
                 foregroundColor: AppConstants.textColor,
@@ -269,6 +273,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
   }
 
   Widget _buildNoteCard(FishingNoteModel note) {
+    final localizations = AppLocalizations.of(context);
+
     // Информация о самой крупной рыбе
     final biggestFish = note.biggestFish;
 
@@ -364,8 +370,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                           ),
                           child: Text(
                             note.isMultiDay
-                                ? DateFormatter.formatDateRange(note.date, note.endDate!)
-                                : DateFormatter.formatDate(note.date),
+                                ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
+                                : DateFormatter.formatDate(note.date, context),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -420,8 +426,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                           ),
                           child: Text(
                             note.isMultiDay
-                                ? DateFormatter.formatDateRange(note.date, note.endDate!)
-                                : DateFormatter.formatDate(note.date),
+                                ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
+                                : DateFormatter.formatDate(note.date, context),
                             style: TextStyle(
                               color: AppConstants.textColor.withOpacity(0.9),
                               fontSize: 12,
@@ -487,7 +493,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '${note.photoUrls.length} фото',
+                          '${note.photoUrls.length} ${localizations.translate('photos')}',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 16,
@@ -523,7 +529,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Самая крупная рыба:',
+                                localizations.translate('biggest_fish_caught'),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
                                   fontSize: 14,
@@ -560,7 +566,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${biggestFish.weight} кг',
+                                '${biggestFish.weight} ${localizations.translate('kg')}',
                                 style: TextStyle(
                                   color: AppConstants.textColor,
                                   fontSize: 15,
@@ -637,7 +643,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Изображение недоступно',
+                  AppLocalizations.of(context).translate('image_unavailable'),
                   style: TextStyle(
                     color: Colors.grey[400],
                     fontSize: 12,
@@ -682,7 +688,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Изображение недоступно',
+                      AppLocalizations.of(context).translate('image_unavailable'),
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 12,
