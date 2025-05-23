@@ -7,6 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
+import '../../localization/app_localizations.dart';
 import '../fishing_note/fishing_type_selection_screen.dart';
 import '../fishing_note/fishing_note_detail_screen.dart';
 import '../fishing_note/add_fishing_note_screen.dart';
@@ -35,22 +36,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   // Цвета для разных состояний
   final Color _pastFishingColor = const Color(0xFF2E7D32); // Зеленый для прошедших
   final Color _futureFishingColor = const Color(0xFFFF8F00); // Оранжевый для запланированных
-
-  // Карта с русскими названиями месяцев (для заголовка календаря)
-  final Map<int, String> _ruMonths = {
-    1: 'Январь',
-    2: 'Февраль',
-    3: 'Март',
-    4: 'Апрель',
-    5: 'Май',
-    6: 'Июнь',
-    7: 'Июль',
-    8: 'Август',
-    9: 'Сентябрь',
-    10: 'Октябрь',
-    11: 'Ноябрь',
-    12: 'Декабрь',
-  };
 
   @override
   void initState() {
@@ -100,7 +85,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки заметок: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading')}: $e')),
         );
       }
     }
@@ -121,7 +106,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         DateTime endDate = note.endDate ?? note.date;
 
         // Исправленное условие цикла, чтобы включать последний день
-        // ВОТ ТУТ БЫЛА ПРОБЛЕМА: нужно включать и последний день в цикл
         while (!currentDate.isAfter(endDate)) {
           final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
           _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
@@ -206,6 +190,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
   // Добавляем метод для быстрого выбора месяца и года
   void _showMonthYearPicker() async {
+    final localizations = AppLocalizations.of(context);
     final selectedDate = await showDialog<DateTime>(
       context: context,
       builder: (BuildContext context) {
@@ -217,7 +202,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                'Выберите месяц и год',
+                localizations.translate('select_date_to_view'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -254,7 +239,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                     items: List.generate(12, (index) => index + 1)
                         .map((month) => DropdownMenuItem(
                       value: month,
-                      child: Text(_ruMonths[month] ?? ''),
+                      child: Text(localizations.translate(_getMonthKey(month))),
                     ))
                         .toList(),
                     onChanged: (value) {
@@ -271,7 +256,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'Отмена',
+                    localizations.translate('cancel'),
                     style: TextStyle(color: AppConstants.textColor),
                   ),
                 ),
@@ -285,7 +270,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                   ),
-                  child: const Text('Выбрать'),
+                  child: Text(localizations.translate('continue')),
                 ),
               ],
             );
@@ -301,17 +286,29 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     }
   }
 
+  String _getMonthKey(int month) {
+    const monthKeys = [
+      '', 'january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'
+    ];
+    return monthKeys[month];
+  }
+
   String _getTitleText() {
-    return '${_ruMonths[_focusedDay.month]} ${_focusedDay.year}';
+    final localizations = AppLocalizations.of(context);
+    final monthKey = _getMonthKey(_focusedDay.month);
+    return '${localizations.translate(monthKey)} ${_focusedDay.year}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Календарь рыбалок',
+          localizations.translate('fishing_calendar'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 24,
@@ -327,7 +324,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         actions: [
           IconButton(
             icon: Icon(Icons.add, color: AppConstants.textColor),
-            tooltip: 'Запланировать рыбалку',
+            tooltip: localizations.translate('plan_fishing'),
             onPressed: _planNewFishing,
           ),
         ],
@@ -353,6 +350,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildCalendarHeader() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -360,9 +359,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         children: [
           Row(
             children: [
-              _buildLegendItem('Прошедшие', _pastFishingColor),
+              _buildLegendItem(localizations.translate('past'), _pastFishingColor),
               const SizedBox(width: 16),
-              _buildLegendItem('Запланированные', _futureFishingColor),
+              _buildLegendItem(localizations.translate('planned'), _futureFishingColor),
             ],
           ),
         ],
@@ -394,6 +393,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildCalendar() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.only(bottom: 8),
@@ -416,7 +417,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         eventLoader: _getEventsForDay,
         startingDayOfWeek: StartingDayOfWeek.monday,
-        locale: 'ru_RU',
+        locale: localizations.locale.languageCode,
         rowHeight: 52,
         daysOfWeekHeight: 40,
         calendarStyle: CalendarStyle(
@@ -561,29 +562,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     );
   }
 
-// Функция для получения одной буквы дня недели
-  String _getOneLetter(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'П';
-      case DateTime.tuesday:
-        return 'В';
-      case DateTime.wednesday:
-        return 'С';
-      case DateTime.thursday:
-        return 'Ч';
-      case DateTime.friday:
-        return 'П';
-      case DateTime.saturday:
-        return 'С';
-      case DateTime.sunday:
-        return 'В';
-      default:
-        return '';
-    }
-  }
-
-// Функция для получения двух букв дня недели
   String _getTwoLetters(int weekday) {
     switch (weekday) {
       case DateTime.monday:
@@ -605,7 +583,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     }
   }
 
-// Функция для получения трех букв дня недели
   String _getThreeLetters(int weekday) {
     switch (weekday) {
       case DateTime.monday:
@@ -628,6 +605,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildEventsList() {
+    final localizations = AppLocalizations.of(context);
     final eventsForDay = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
 
     if (eventsForDay.isEmpty) {
@@ -644,8 +622,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               const SizedBox(height: 16),
               Text(
                 _selectedDay != null
-                    ? 'Нет рыбалок на эту дату'
-                    : 'Выберите дату для просмотра рыбалок',
+                    ? localizations.translate('no_fishing_on_date')
+                    : localizations.translate('select_date_to_view'),
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 16,
@@ -654,9 +632,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               if (_selectedDay != null && _selectedDay!.isAfter(DateTime.now())) ...[
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () => _planNewFishingForDate(_selectedDay!), // Передаем конкретную дату
+                  onPressed: () => _planNewFishingForDate(_selectedDay!),
                   icon: const Icon(Icons.add),
-                  label: const Text('Запланировать рыбалку'),
+                  label: Text(localizations.translate('plan_fishing_for_date')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: AppConstants.textColor,
@@ -685,9 +663,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildEventCard(FishingNoteModel note) {
+    final localizations = AppLocalizations.of(context);
     final isPast = _isPastFishing(note.date);
     final statusColor = isPast ? _pastFishingColor : _futureFishingColor;
-    final statusText = isPast ? 'Прошедшая' : 'Запланированная';
+    final statusText = isPast ? localizations.translate('past') : localizations.translate('planned');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -740,8 +719,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               const SizedBox(height: 8),
               Text(
                 note.isMultiDay
-                    ? DateFormatter.formatDateRange(note.date, note.endDate!)
-                    : DateFormatter.formatDate(note.date),
+                    ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
+                    : DateFormatter.formatDate(note.date, context),
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 14,
@@ -772,7 +751,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length)}',
+                      '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length, context)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
