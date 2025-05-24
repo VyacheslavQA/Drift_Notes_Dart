@@ -10,13 +10,13 @@ class MapLocationScreen extends StatefulWidget {
   final double? initialLongitude;
 
   const MapLocationScreen({
-    Key? key,
+    super.key,
     this.initialLatitude,
     this.initialLongitude,
-  }) : super(key: key);
+  });
 
   @override
-  _MapLocationScreenState createState() => _MapLocationScreenState();
+  State<MapLocationScreen> createState() => _MapLocationScreenState();
 }
 
 class _MapLocationScreenState extends State<MapLocationScreen> {
@@ -175,10 +175,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
               target: _selectedPosition,
               zoom: 14.0,
             ),
+            style: _mapStyle, // Используем style вместо deprecated setMapStyle
             onMapCreated: (controller) {
               _mapController = controller;
-              // Устанавливаем темную тему карты
-              _mapController!.setMapStyle(_mapStyle);
 
               setState(() {
                 _isLoading = false;
@@ -220,7 +219,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppConstants.backgroundColor.withOpacity(0.8),
+                color: AppConstants.backgroundColor.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -257,7 +256,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
           // Индикатор загрузки
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               child: Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
@@ -293,9 +292,10 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
     );
   }
 
-  // Стиль для темной темы Google Maps
+  // Стиль для темной темы Google Maps (исправлен JSON)
   static const _mapStyle = '''
-
+[
+  {
     "elementType": "geometry",
     "stylers": [
       {
@@ -304,181 +304,181 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
     ]
   },
   {
-  "elementType": "labels.icon",
-  "stylers": [
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
   {
-  "visibility": "off"
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#212121"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.country",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9e9e9e"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.land_parcel",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#bdbdbd"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#181818"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#1b1b1b"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#2c2c2c"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8a8a8a"
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#373737"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#3c3c3c"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#4e4e4e"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#000000"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#3d3d3d"
+      }
+    ]
   }
-  ]
-},
-{
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#757575"
-}
-]
-},
-{
-"elementType": "labels.text.stroke",
-"stylers": [
-{
-"color": "#212121"
-}
-]
-},
-{
-"featureType": "administrative",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#757575"
-}
-]
-},
-{
-"featureType": "administrative.country",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#9e9e9e"
-}
-]
-},
-{
-"featureType": "administrative.land_parcel",
-"stylers": [
-{
-"visibility": "off"
-}
-]
-},
-{
-"featureType": "administrative.locality",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#bdbdbd"
-}
-]
-},
-{
-"featureType": "poi",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#757575"
-}
-]
-},
-{
-"featureType": "poi.park",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#181818"
-}
-]
-},
-{
-"featureType": "poi.park",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#616161"
-}
-]
-},
-{
-"featureType": "poi.park",
-"elementType": "labels.text.stroke",
-"stylers": [
-{
-"color": "#1b1b1b"
-}
-]
-},
-{
-"featureType": "road",
-"elementType": "geometry.fill",
-"stylers": [
-{
-"color": "#2c2c2c"
-}
-]
-},
-{
-"featureType": "road",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#8a8a8a"
-}
-]
-},
-{
-"featureType": "road.arterial",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#373737"
-}
-]
-},
-{
-"featureType": "road.highway",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#3c3c3c"
-}
-]
-},
-{
-"featureType": "road.highway.controlled_access",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#4e4e4e"
-}
-]
-},
-{
-"featureType": "road.local",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#616161"
-}
-]
-},
-{
-"featureType": "transit",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#757575"
-}
-]
-},
-{
-"featureType": "water",
-"elementType": "geometry",
-"stylers": [
-{
-"color": "#000000"
-}
-]
-},
-{
-"featureType": "water",
-"elementType": "labels.text.fill",
-"stylers": [
-{
-"color": "#3d3d3d"
-}
-]
-}
 ]
 ''';
 }

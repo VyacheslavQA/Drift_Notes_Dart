@@ -1,7 +1,6 @@
 // Путь: lib/screens/fishing_note/fishing_note_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
@@ -17,7 +16,6 @@ import 'cover_photo_selection_screen.dart';
 import 'edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
-import '../../widgets/universal_image.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -70,8 +68,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() {
-          _errorMessage = '${AppLocalizations.of(context).translate('error_loading')}: $e';
+          _errorMessage = '${localizations.translate('error_loading')}: $e';
           _isLoading = false;
         });
       }
@@ -100,7 +99,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('${AppLocalizations.of(context).translate('error_loading')}: $e');
+      debugPrint('Ошибка при загрузке маркерных карт: $e');
       if (mounted) {
         setState(() {
           _isLoadingMarkerMaps = false;
@@ -129,6 +128,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
       // Обновляем локальное состояние
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() {
           _note = updatedNote;
           _isSaving = false;
@@ -136,17 +136,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('bite_record_saved')),
+            content: Text(localizations.translate('bite_record_saved')),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_adding_bite')}: $e'),
+            content: Text('${localizations.translate('error_adding_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -177,6 +178,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         // Обновляем локальное состояние
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           setState(() {
             _note = updatedNote;
             _isSaving = false;
@@ -184,17 +186,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(context).translate('bite_record_updated')),
+              content: Text(localizations.translate('bite_record_updated')),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           setState(() => _isSaving = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(context).translate('bite_not_found')),
+              content: Text(localizations.translate('bite_not_found')),
               backgroundColor: Colors.orange,
             ),
           );
@@ -202,10 +205,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_updating_bite')}: $e'),
+            content: Text('${localizations.translate('error_updating_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -233,6 +237,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
       // Обновляем локальное состояние
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() {
           _note = updatedNote;
           _isSaving = false;
@@ -240,17 +245,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('bite_record_deleted')),
+            content: Text(localizations.translate('bite_record_deleted')),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_deleting_bite')}: $e'),
+            content: Text('${localizations.translate('error_deleting_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -292,9 +298,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   Future<void> _selectCoverPhoto() async {
     if (_note == null || _note!.photoUrls.isEmpty) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('first_add_photos')),
+            content: Text(localizations.translate('first_add_photos')),
             backgroundColor: Colors.orange,
           ),
         );
@@ -330,6 +337,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         // Обновляем локальное состояние
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           setState(() {
             _note = updatedNote;
             _isSaving = false;
@@ -337,17 +345,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(context).translate('cover_updated_successfully')),
+              content: Text(localizations.translate('cover_updated_successfully')),
               backgroundColor: Colors.green,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           setState(() => _isSaving = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${AppLocalizations.of(context).translate('error_updating_cover')}: $e'),
+              content: Text('${localizations.translate('error_updating_cover')}: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -419,9 +428,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         await _fishingNoteRepository.deleteFishingNote(widget.noteId);
 
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(context).translate('note_deleted_successfully')),
+              content: Text(localizations.translate('note_deleted_successfully')),
               backgroundColor: Colors.green,
             ),
           );
@@ -430,11 +440,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         }
       } catch (e) {
         if (mounted) {
+          final localizations = AppLocalizations.of(context);
           setState(() => _isLoading = false);
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${AppLocalizations.of(context).translate('error_deleting_note')}: $e'),
+              content: Text('${localizations.translate('error_deleting_note')}: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -451,7 +462,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          _note?.title?.isNotEmpty == true
+          _note?.title.isNotEmpty == true
               ? _note!.title
               : _note?.location ?? localizations.translate('fishing_details'),
           style: TextStyle(

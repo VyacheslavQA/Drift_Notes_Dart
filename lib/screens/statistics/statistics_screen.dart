@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/statistics_provider.dart';
 import '../../models/statistics_models.dart';
@@ -8,13 +7,13 @@ import '../../utils/date_formatter.dart';
 import '../../localization/app_localizations.dart';
 
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({Key? key}) : super(key: key);
+  const StatisticsScreen({super.key});
 
   @override
-  _StatisticsScreenState createState() => _StatisticsScreenState();
+  StatisticsScreenState createState() => StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
+class StatisticsScreenState extends State<StatisticsScreen> {
   late StatisticsProvider _statisticsProvider;
 
   @override
@@ -68,14 +67,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               surface: AppConstants.backgroundColor,
               onSurface: AppConstants.textColor,
             ),
-            dialogBackgroundColor: AppConstants.backgroundColor,
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppConstants.backgroundColor,
+            ),
           ),
           child: child!,
         );
       },
     );
 
-    if (pickedDateRange != null) {
+    if (pickedDateRange != null && mounted) {
       _statisticsProvider.updateCustomDateRange(
         pickedDateRange.start,
         pickedDateRange.end,
@@ -110,7 +111,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       appBar: AppBar(
         title: Text(
           localizations.translate('statistics'),
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -129,7 +130,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             onRefresh: _loadStatistics,
             color: AppConstants.primaryColor,
             child: isLoading
-                ? Center(
+                ? const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
@@ -139,7 +140,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.error_outline,
                     color: Colors.red,
                     size: 48,
@@ -182,7 +183,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         children: [
           Icon(
             Icons.query_stats,
-            color: AppConstants.textColor.withOpacity(0.3),
+            color: AppConstants.textColor.withValues(alpha: 0.3),
             size: 80,
           ),
           const SizedBox(height: 16),
@@ -200,7 +201,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Text(
               localizations.translate('create_fishing_notes_for_stats'),
               style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
+                color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -212,7 +213,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildStatisticsContent() {
-    final localizations = AppLocalizations.of(context);
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -251,7 +251,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget _buildPeriodSelector() {
     final localizations = AppLocalizations.of(context);
 
-    return Container(
+    return SizedBox(
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -305,7 +305,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppConstants.primaryColor
-              : AppConstants.primaryColor.withOpacity(0.2),
+              : AppConstants.primaryColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
@@ -468,7 +468,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withOpacity(0.2),
+              color: AppConstants.primaryColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -485,7 +485,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -502,7 +502,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),

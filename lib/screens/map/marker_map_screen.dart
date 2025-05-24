@@ -11,17 +11,17 @@ class MarkerMapScreen extends StatefulWidget {
   final List<Map<String, dynamic>> existingMarkers;
 
   const MarkerMapScreen({
-    Key? key,
+    super.key,
     required this.latitude,
     required this.longitude,
     required this.existingMarkers,
-  }) : super(key: key);
+  });
 
   @override
-  _MarkerMapScreenState createState() => _MarkerMapScreenState();
+  MarkerMapScreenState createState() => MarkerMapScreenState();
 }
 
-class _MarkerMapScreenState extends State<MarkerMapScreen> {
+class MarkerMapScreenState extends State<MarkerMapScreen> {
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
   bool _isLoading = true;
@@ -86,9 +86,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       case 'weed':
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       case 'sandbar':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
+        return BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueYellow);
       case 'structure':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+        return BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange);
       default:
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     }
@@ -142,7 +144,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               ],
 
               // Описание
-              if (marker['description'] != null && marker['description'].isNotEmpty) ...[
+              if (marker['description'] != null &&
+                  marker['description'].isNotEmpty) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -298,7 +301,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
     if (isEditing) {
       _nameController.text = marker['name'] ?? '';
       _descriptionController.text = marker['description'] ?? '';
-      _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
+      _depthController.text =
+      marker['depth'] != null ? marker['depth'].toString() : '';
     } else {
       // Если создаем новый маркер, очищаем поля
       _nameController.clear();
@@ -333,12 +337,16 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: 'Название маркера',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
                         ),
                       ),
                     ),
@@ -350,15 +358,20 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: 'Глубина (м)',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
                         ),
                       ),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
                     ),
                     const SizedBox(height: 16),
 
@@ -368,12 +381,16 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: 'Описание',
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
                         ),
                       ),
                       maxLines: 3,
@@ -386,7 +403,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         Text(
                           'Тип маркера:',
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(
+                                alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -497,13 +515,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   }
 
   // Построение опции выбора типа маркера
-  Widget _buildMarkerTypeOption(
-      String type,
+  Widget _buildMarkerTypeOption(String type,
       String label,
       double hue,
       String selectedValue,
-      Function(String) onSelect
-      ) {
+      Function(String) onSelect) {
     final isSelected = selectedValue == type;
 
     return GestureDetector(
@@ -512,8 +528,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppConstants.primaryColor.withOpacity(0.2)
-              : AppConstants.backgroundColor.withOpacity(0.3),
+              ? AppConstants.primaryColor.withValues(alpha: 0.2)
+              : AppConstants.backgroundColor.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppConstants.primaryColor : Colors.transparent,
@@ -567,7 +583,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Добавление нового маркера
   void _addNewMarker(String type) {
-    final id = const Uuid().v4();
+    const uuid = Uuid();
+    final id = uuid.v4();
     setState(() {
       _markerData.add({
         'id': id,
@@ -577,7 +594,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         'longitude': _selectedMarker != null
             ? _selectedMarker!['longitude']
             : widget.longitude,
-        'name': _nameController.text.trim().isEmpty
+        'name': _nameController.text
+            .trim()
+            .isEmpty
             ? 'Маркер ${_markerData.length + 1}'
             : _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -629,8 +648,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             ),
             onMapCreated: (controller) {
               _mapController = controller;
-              // Устанавливаем темную тему карты
-              _mapController!.setMapStyle(_mapStyle);
 
               setState(() {
                 _isLoading = false;
@@ -639,6 +656,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               // Обновляем маркеры на карте
               _updateMapMarkers();
             },
+            style: _mapStyle,
             markers: _markers,
             onTap: (position) {
               setState(() {
@@ -659,10 +677,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           // Индикатор загрузки
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.textColor),
                 ),
               ),
             ),
@@ -675,7 +694,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppConstants.backgroundColor.withOpacity(0.8),
+                color: AppConstants.backgroundColor.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

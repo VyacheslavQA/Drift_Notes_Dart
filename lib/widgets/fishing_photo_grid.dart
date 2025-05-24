@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../models/fishing_note_model.dart';
 import '../widgets/universal_image.dart';
 import '../screens/fishing_note/photo_gallery_screen.dart';
 import '../localization/app_localizations.dart';
@@ -15,20 +14,20 @@ class FishingPhotoGrid extends StatefulWidget {
   final int maxDisplayed;
 
   const FishingPhotoGrid({
-    Key? key,
+    super.key,
     required this.photoUrls,
     this.onViewAllPressed,
     this.showEmpty = true,
     this.emptyText,
     this.maxDisplayed = 4,
-  }) : super(key: key);
+  });
 
   @override
   State<FishingPhotoGrid> createState() => _FishingPhotoGridState();
 }
 
 class _FishingPhotoGridState extends State<FishingPhotoGrid> {
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +107,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -135,7 +134,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                     children: [
                       Icon(
                         Icons.broken_image,
-                        color: Colors.red.withOpacity(0.7),
+                        color: Colors.red.withValues(alpha: 0.7),
                         size: 32,
                       ),
                       const SizedBox(height: 8),
@@ -160,7 +159,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.3),
+                      Colors.black.withValues(alpha: 0.3),
                     ],
                     stops: const [0.7, 1.0],
                   ),
@@ -173,7 +172,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: const SizedBox(
@@ -205,7 +204,7 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
         color: AppConstants.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -214,14 +213,14 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
         children: [
           Icon(
             Icons.photo_library_outlined,
-            color: AppConstants.textColor.withOpacity(0.5),
+            color: AppConstants.textColor.withValues(alpha: 0.5),
             size: 48,
           ),
           const SizedBox(height: 16),
           Text(
             emptyText,
             style: TextStyle(
-              color: AppConstants.textColor.withOpacity(0.7),
+              color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 16,
             ),
             textAlign: TextAlign.center,

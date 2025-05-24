@@ -4,14 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
-import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({Key? key}) : super(key: key);
+  const MapScreen({super.key});
 
   @override
-  _MapScreenState createState() => _MapScreenState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
@@ -42,10 +41,12 @@ class _MapScreenState extends State<MapScreen> {
       // Проверяем разрешения геолокации
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() {
-          _errorLoadingMap = true;
-          _errorMessage = 'Службы геолокации отключены. Пожалуйста, включите их.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorLoadingMap = true;
+            _errorMessage = 'Службы геолокации отключены. Пожалуйста, включите их.';
+          });
+        }
         return;
       }
 
@@ -53,54 +54,62 @@ class _MapScreenState extends State<MapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() {
-            _errorLoadingMap = true;
-            _errorMessage = 'Разрешение на использование геолокации отклонено.';
-          });
+          if (mounted) {
+            setState(() {
+              _errorLoadingMap = true;
+              _errorMessage = 'Разрешение на использование геолокации отклонено.';
+            });
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _errorLoadingMap = true;
-          _errorMessage = 'Разрешение на использование геолокации отклонено навсегда. Измените настройки в приложении.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorLoadingMap = true;
+            _errorMessage = 'Разрешение на использование геолокации отклонено навсегда. Измените настройки в приложении.';
+          });
+        }
         return;
       }
 
       // Получаем текущую позицию
       Position position = await Geolocator.getCurrentPosition();
 
-      setState(() {
-        _initialPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 11.0,
+      if (mounted) {
+        setState(() {
+          _initialPosition = CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: 11.0,
+          );
+
+          // Добавляем маркер текущей позиции
+          _markers.add(
+            Marker(
+              markerId: const MarkerId('currentLocation'),
+              position: LatLng(position.latitude, position.longitude),
+              infoWindow: const InfoWindow(title: 'Ваше местоположение'),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+            ),
+          );
+
+          _isLoading = false;
+        });
+
+        // Перемещаем камеру на текущую позицию
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(_initialPosition),
         );
-
-        // Добавляем маркер текущей позиции
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('currentLocation'),
-            position: LatLng(position.latitude, position.longitude),
-            infoWindow: const InfoWindow(title: 'Ваше местоположение'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          ),
-        );
-
-        _isLoading = false;
-      });
-
-      // Перемещаем камеру на текущую позицию
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(_initialPosition),
-      );
+      }
     } catch (e) {
-      setState(() {
-        _errorLoadingMap = true;
-        _errorMessage = 'Ошибка при определении местоположения: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorLoadingMap = true;
+          _errorMessage = 'Ошибка при определении местоположения: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -131,11 +140,15 @@ class _MapScreenState extends State<MapScreen> {
         );
       }
 
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при загрузке точек рыбалки: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка при загрузке точек рыбалки: $e')),
+        );
+      }
     }
   }
 
@@ -143,8 +156,78 @@ class _MapScreenState extends State<MapScreen> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
 
-    // Устанавливаем темную тему для карты
-    _mapController!.setMapStyle('''
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
+      appBar: AppBar(
+        title: const Text('Карта рыбалок'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
+          : _errorLoadingMap
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.location_off,
+                color: AppConstants.textColor,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadUserLocation,
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        ),
+      )
+          : GoogleMap(
+        onMapCreated: _onMapCreated,
+        initialCameraPosition: _initialPosition,
+        markers: _markers,
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
+        mapType: MapType.normal,
+        zoomControlsEnabled: true,
+        compassEnabled: true,
+        style: _mapStyle,
+      ),
+      floatingActionButton: !_isLoading && !_errorLoadingMap
+          ? FloatingActionButton(
+        backgroundColor: AppConstants.primaryColor,
+        foregroundColor: AppConstants.textColor,
+        onPressed: _loadUserLocation,
+        child: const Icon(Icons.my_location),
+      )
+          : null,
+    );
+  }
+
+  // Стиль для темной темы Google Maps
+  static const String _mapStyle = '''
       [
         {
           "elementType": "geometry",
@@ -323,68 +406,5 @@ class _MapScreenState extends State<MapScreen> {
           ]
         }
       ]
-    ''');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Карта рыбалок'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
-          : _errorLoadingMap
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.location_off,
-                color: AppConstants.textColor,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loadUserLocation,
-                child: const Text('Повторить'),
-              ),
-            ],
-          ),
-        ),
-      )
-          : GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: _initialPosition,
-        markers: _markers,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-        mapType: MapType.normal,
-        zoomControlsEnabled: true,
-        compassEnabled: true,
-      ),
-      floatingActionButton: !_isLoading && !_errorLoadingMap
-          ? FloatingActionButton(
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        onPressed: _loadUserLocation,
-        child: const Icon(Icons.my_location),
-      )
-          : null,
-    );
-  }
+    ''';
 }

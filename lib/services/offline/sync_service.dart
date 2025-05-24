@@ -3,12 +3,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase/firebase_service.dart';
 import 'offline_storage_service.dart';
 import '../../utils/network_utils.dart';
-import '../local/local_file_service.dart'; // Новый импорт
+import '../local/local_file_service.dart';
 
 /// Сервис для синхронизации данных между локальным хранилищем и облаком
 class SyncService {
@@ -23,8 +22,7 @@ class SyncService {
   final FirebaseService _firebaseService = FirebaseService();
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-  final LocalFileService _localFileService = LocalFileService(); // Новый сервис
+  final LocalFileService _localFileService = LocalFileService();
 
   bool _isSyncing = false;
   Timer? _syncTimer;

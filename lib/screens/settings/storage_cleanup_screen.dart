@@ -1,28 +1,25 @@
 // Путь: lib/screens/settings/storage_cleanup_screen.dart
 
-// Путь: lib/screens/settings/storage_cleanup_screen.dart
-
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:intl/intl.dart'; // Добавлен импорт для DateFormat
+import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../widgets/loading_overlay.dart';
 
 class StorageCleanupScreen extends StatefulWidget {
-  const StorageCleanupScreen({Key? key}) : super(key: key);
+  const StorageCleanupScreen({super.key});
 
   @override
-  _StorageCleanupScreenState createState() => _StorageCleanupScreenState();
+  StorageCleanupScreenState createState() => StorageCleanupScreenState();
 }
 
-class _StorageCleanupScreenState extends State<StorageCleanupScreen> {
+class StorageCleanupScreenState extends State<StorageCleanupScreen> {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
 
   List<Map<String, dynamic>> _offlineNotes = [];
   bool _isLoading = true;
   String? _errorMessage;
-  TextEditingController _noteIdController = TextEditingController();
+  final TextEditingController _noteIdController = TextEditingController();
 
   @override
   void initState() {
@@ -58,9 +55,11 @@ class _StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
   Future<void> _deleteNoteById(String noteId) async {
     if (noteId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите ID заметки')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Введите ID заметки')),
+        );
+      }
       return;
     }
 
@@ -69,35 +68,39 @@ class _StorageCleanupScreenState extends State<StorageCleanupScreen> {
     try {
       final result = await _offlineStorage.clearCorruptedNote(noteId);
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
 
-      if (result) {
-        // Перезагружаем список заметок
-        await _loadOfflineNotes();
+        if (result) {
+          // Перезагружаем список заметок
+          await _loadOfflineNotes();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Заметка $noteId успешно удалена'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Заметка $noteId не найдена'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Заметка $noteId успешно удалена'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Заметка $noteId не найдена'),
-            backgroundColor: Colors.orange,
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

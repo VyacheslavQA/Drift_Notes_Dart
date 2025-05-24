@@ -5,41 +5,27 @@ import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
 
 class DateFormatter {
-  static DateFormat? _fullDateFormat;
-  static DateFormat? _dayFormat;
-  static DateFormat? _monthYearFormat;
-  static DateFormat? _shortDateFormat;
-  static BuildContext? _context;
-
-  // Инициализация форматов с текущей локалью
-  static void _initializeFormats(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    final locale = localizations.locale.languageCode;
-
-    _fullDateFormat = DateFormat('dd MMMM yyyy', locale);
-    _dayFormat = DateFormat('dd', locale);
-    _monthYearFormat = DateFormat('MMMM yyyy', locale);
-    _shortDateFormat = DateFormat('dd.MM.yyyy', locale);
-    _context = context;
-  }
-
   // Форматирует дату в формате "31 декабря 2023"
   static String formatDate(DateTime date, [BuildContext? context]) {
-    if (context != null) _initializeFormats(context);
-    return _fullDateFormat?.format(date) ?? DateFormat('dd MMMM yyyy', 'ru').format(date);
+    final locale = context != null
+        ? AppLocalizations.of(context).locale.languageCode
+        : 'ru';
+    return DateFormat('dd MMMM yyyy', locale).format(date);
   }
 
   // Форматирует дату в формате "31.12.2023"
   static String formatShortDate(DateTime date, [BuildContext? context]) {
-    if (context != null) _initializeFormats(context);
-    return _shortDateFormat?.format(date) ?? DateFormat('dd.MM.yyyy', 'ru').format(date);
+    final locale = context != null
+        ? AppLocalizations.of(context).locale.languageCode
+        : 'ru';
+    return DateFormat('dd.MM.yyyy', locale).format(date);
   }
 
   // Форматирует диапазон дат
   static String formatDateRange(DateTime startDate, DateTime endDate, [BuildContext? context]) {
-    if (context != null) _initializeFormats(context);
-
-    final locale = context != null ? AppLocalizations.of(context).locale.languageCode : 'ru';
+    final locale = context != null
+        ? AppLocalizations.of(context).locale.languageCode
+        : 'ru';
 
     // Если год и месяц одинаковые
     if (startDate.year == endDate.year && startDate.month == endDate.month) {
@@ -143,5 +129,48 @@ class DateFormatter {
       9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь',
     };
     return monthsInNominative[monthIndex] ?? 'Неизвестный месяц';
+  }
+
+  // Форматирует время в формате "HH:mm"
+  static String formatTime(DateTime dateTime, [BuildContext? context]) {
+    final locale = context != null
+        ? AppLocalizations.of(context).locale.languageCode
+        : 'ru';
+    return DateFormat('HH:mm', locale).format(dateTime);
+  }
+
+  // Форматирует дату и время в формате "31 декабря 2023, 15:30"
+  static String formatDateTime(DateTime dateTime, [BuildContext? context]) {
+    final date = formatDate(dateTime, context);
+    final time = formatTime(dateTime, context);
+    return '$date, $time';
+  }
+
+  // Возвращает относительное время ("сегодня", "вчера", "2 дня назад")
+  static String getRelativeDate(DateTime date, [BuildContext? context]) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(targetDate).inDays;
+
+    if (context != null) {
+      final localizations = AppLocalizations.of(context);
+
+      if (difference == 0) {
+        return localizations.translate('today');
+      } else if (difference == 1) {
+        return localizations.translate('yesterday');
+      } else if (difference == -1) {
+        return localizations.translate('tomorrow');
+      } else if (difference > 1 && difference <= 7) {
+        return '${difference} ${getDaysText(difference, context)} назад';
+      } else if (difference < -1 && difference >= -7) {
+        final absDifference = difference.abs();
+        return 'через ${absDifference} ${getDaysText(absDifference, context)}';
+      }
+    }
+
+    // Fallback - возвращаем обычную дату
+    return formatDate(date, context);
   }
 }

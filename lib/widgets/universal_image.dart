@@ -19,7 +19,7 @@ class UniversalImage extends StatelessWidget {
   final bool isLoading;
 
   const UniversalImage({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.width,
     this.height,
@@ -28,7 +28,7 @@ class UniversalImage extends StatelessWidget {
     this.errorWidget,
     this.borderRadius,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +117,7 @@ class UniversalImage extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withOpacity(0.7),
+        color: AppConstants.backgroundColor.withValues(alpha: 0.7),
         borderRadius: borderRadius ?? BorderRadius.zero,
       ),
       child: Center(
@@ -159,7 +159,7 @@ class UniversalImage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
               shape: BoxShape.circle,
             ),
             child: const Icon(

@@ -9,7 +9,7 @@ import 'timer_settings_screen.dart';
 import '../../localization/app_localizations.dart';
 
 class TimersScreen extends StatefulWidget {
-  const TimersScreen({Key? key}) : super(key: key);
+  const TimersScreen({super.key});
 
   @override
   State<TimersScreen> createState() => _TimersScreenState();
@@ -290,7 +290,6 @@ class _TimersScreenState extends State<TimersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
     final timers = _timerProvider.timers;
     final localizations = AppLocalizations.of(context);
 
@@ -365,7 +364,7 @@ class _TimersScreenState extends State<TimersScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -402,8 +401,8 @@ class _TimersScreenState extends State<TimersScreen> {
             padding: const EdgeInsets.all(4),
             child: LinearProgressIndicator(
               value: progressValue,
-              backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withValues(alpha: 0.7)),
               minHeight: 2,
             ),
           ),

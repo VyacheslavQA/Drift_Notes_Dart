@@ -10,11 +10,11 @@ class LoadingOverlay extends StatelessWidget {
   final Widget child;
 
   const LoadingOverlay({
-    Key? key,
+    super.key,
     required this.isLoading,
     this.message,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class LoadingOverlay extends StatelessWidget {
         // Индикатор загрузки
         if (isLoading)
           Container(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             child: Center(
               child: Container(
                 padding: const EdgeInsets.all(24),
@@ -38,7 +38,7 @@ class LoadingOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),

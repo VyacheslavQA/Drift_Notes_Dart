@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/timer_provider.dart';
 import '../../models/timer_model.dart';
-import '../../utils/navigation.dart';
 import '../../screens/timer/timer_settings_screen.dart';
 import '../../localization/app_localizations.dart';
 
@@ -55,7 +54,6 @@ class _TimersScreenState extends State<TimersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
     final timers = _timerProvider.timers;
     final localizations = AppLocalizations.of(context);
 
