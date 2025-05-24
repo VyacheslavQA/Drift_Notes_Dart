@@ -504,6 +504,11 @@
   "marker_info": "Информация о маркерах",
   "map_name_required": "Введите название карты",
   "info_updated": "Информация обновлена",
-  "delete_map": "Удалить карту"
+
+
+  "map_deleted_successfully": "Карта успешно удалена",
+  "error_deleting_map": "Ошибка при удалении карты",
+  "error_saving_changes": "Ошибка при сохранении изменений",
+  "save_changes": "Сохранить изменения"
 
 }

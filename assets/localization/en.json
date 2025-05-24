@@ -503,5 +503,8 @@
   "marker_info": "Marker Information",
   "map_name_required": "Enter map name",
   "info_updated": "Information updated",
+  "map_deleted_successfully": "Map deleted successfully",
+  "error_deleting_map": "Error deleting map",
+  "error_saving_changes": "Error saving changes"
 
 }

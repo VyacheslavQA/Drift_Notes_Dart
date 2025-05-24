@@ -786,8 +786,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     // Обновляем UI чтобы кнопка сохранения стала активной
                     Future.microtask(() => this.setState(() {}));
                   },
-                  child: const Text(
-                    'Добавить',
+                  child: Text(
+                    localizations.translate('add'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1234,7 +1234,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 controller: nameController,
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
-                  labelText: 'Название карты*',
+                  labelText: localizations.translate('map_name'),
                   labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -1249,7 +1249,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 controller: sectorController,
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
-                  labelText: 'Номер сектора (необязательно)',
+                  labelText: localizations.translate('sector_number'),
                   labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -1281,7 +1281,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               onPressed: () {
                 if (nameController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Введите название карты')),
+                    SnackBar(content: Text(localizations.translate('map_name_required'))),
                   );
                   return;
                 }
@@ -1331,14 +1331,14 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
-            'Удалить карту',
+            localizations.translate('delete_map'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
-            'Вы уверены, что хотите удалить эту карту? Это действие нельзя отменить.',
+            localizations.translate('delete_map_confirmation'),
             style: TextStyle(
               color: AppConstants.textColor,
             ),
@@ -1360,8 +1360,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 Navigator.of(context).pop();
                 _deleteMap();
               },
-              child: const Text(
-                'Удалить',
+              child: Text(
+                localizations.translate('delete'),
                 style: TextStyle(
                   color: Colors.redAccent,
                 ),
@@ -1375,6 +1375,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Удаление карты
   Future<void> _deleteMap() async {
+    final localizations = AppLocalizations.of(context);
     try {
       setState(() {
         _isLoading = true;
@@ -1384,8 +1385,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Карта успешно удалена'),
+          SnackBar(
+            content: Text(localizations.translate('map_deleted_successfully')),
             backgroundColor: Colors.green,
           ),
         );
@@ -1400,7 +1401,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка при удалении карты: $e'),
+            content: Text('${localizations.translate('error_deleting_map')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1410,6 +1411,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   /// Сохранение изменений карты
   Future<void> _saveChanges() async {
+    final localizations = AppLocalizations.of(context);
     try {
       setState(() {
         _isLoading = true;
@@ -1437,8 +1439,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Изменения сохранены'),
+        SnackBar(
+          content: Text(localizations.translate('changes_saved')),
           backgroundColor: Colors.green,
         ),
       );
@@ -1449,7 +1451,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ошибка при сохранении изменений: $e'),
+          content: Text('${localizations.translate('error_saving_changes')}: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1479,7 +1481,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               Icons.info_outline,
               color: AppConstants.textColor,
             ),
-            tooltip: 'Информация о маркерах',
+            tooltip: localizations.translate('marker_info'),
             onPressed: _showMarkerInfo,
           ),
           // Кнопка сохранения - всегда активна если есть маркеры или изменения
@@ -1490,7 +1492,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   ? AppConstants.textColor
                   : AppConstants.textColor.withOpacity(0.3),
             ),
-            tooltip: 'Сохранить изменения',
+            tooltip: localizations.translate('save_changes'),
             onPressed: (_hasChanges || _markerMap.markers.isNotEmpty)
                 ? _saveChanges
                 : null,
@@ -1504,7 +1506,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Подождите...',
+        message: localizations.translate('please_wait'),
         child: Container(
           padding: const EdgeInsets.all(8),
           child: Column(
@@ -1551,7 +1553,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Дата: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
+                    '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 12,
@@ -1569,7 +1571,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Сектор: ${_markerMap.sector}',
+                      '${localizations.translate('sector')}: ${_markerMap.sector}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 12,
@@ -1763,7 +1765,7 @@ class RaysAndMarkersPainter extends CustomPainter {
       // Надпись с номером луча сверху
       final textPainter = TextPainter(
         text: TextSpan(
-          text: 'Луч ${i + 1}',
+          text: '${AppLocalizations.of(context).translate('ray')} ${i + 1}',
           style: TextStyle(
             color: Colors.white.withOpacity(0.7),
             fontSize: 14,
