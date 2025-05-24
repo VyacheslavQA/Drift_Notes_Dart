@@ -505,6 +505,6 @@
   "info_updated": "Information updated",
   "map_deleted_successfully": "Map deleted successfully",
   "error_deleting_map": "Error deleting map",
-  "error_saving_changes": "Error saving changes"
-
+  "error_saving_changes": "Error saving changes",
+  "add_marker_dialog_title": "Adding Marker"
 }

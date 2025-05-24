@@ -509,6 +509,6 @@
   "map_deleted_successfully": "Карта успешно удалена",
   "error_deleting_map": "Ошибка при удалении карты",
   "error_saving_changes": "Ошибка при сохранении изменений",
-  "save_changes": "Сохранить изменения"
-
+  "save_changes": "Сохранить изменения",
+  "add_marker_dialog_title": "Добавление маркера"
 }

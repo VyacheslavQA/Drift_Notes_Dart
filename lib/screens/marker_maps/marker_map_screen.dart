@@ -550,7 +550,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                'Добавление маркера',
+                localizations.translate('add_marker_dialog_title'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -1221,7 +1221,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
-            'Изменить информацию',
+            localizations.translate('change_map_info'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
@@ -1300,8 +1300,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                 // Показываем сообщение
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Информация обновлена'),
+                  SnackBar(
+                    content: Text(localizations.translate('info_updated')),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -1309,8 +1309,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 // Обновляем UI чтобы кнопка сохранения стала активной
                 Future.microtask(() => setState(() {}));
               },
-              child: const Text(
-                'Сохранить',
+              child: Text(
+                localizations.translate('save'),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
