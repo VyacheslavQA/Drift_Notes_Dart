@@ -25,8 +25,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   DateTime? _selectedDay;
   CalendarFormat _calendarFormat = CalendarFormat.month;
 
-  Map<DateTime, List<FishingNoteModel>> _fishingEvents = {};
-  List<FishingNoteModel> _allNotes = [];
+  // Изменено: сделал final, так как карта только инициализируется один раз
+  final Map<DateTime, List<FishingNoteModel>> _fishingEvents = {};
+  // Удалено: поле _allNotes не используется, удаляем его
   bool _isLoading = true;
 
   late AnimationController _animationController;
@@ -69,7 +70,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
     try {
       final notes = await _fishingNoteRepository.getUserFishingNotes();
-      _allNotes = notes;
+      // Убрано: _allNotes = notes; так как это поле не используется
       _processNotesForCalendar(notes);
 
       setState(() {
@@ -610,9 +611,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         text,
         style: TextStyle(
           color: isWeekend
-              ? AppConstants.textColor.withOpacity(0.9) // ignore: deprecated_member_use
-              : AppConstants.textColor.withOpacity(0.7), // <- тут должна быть запятая
-        fontSize: 14.0, // <- а тут уберите .toDouble(), просто 14.0
+              ? AppConstants.textColor.withValues(alpha: 0.9)
+              : AppConstants.textColor.withValues(alpha: 0.7),
+          fontSize: 14.0,
           fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
         ),
       ),

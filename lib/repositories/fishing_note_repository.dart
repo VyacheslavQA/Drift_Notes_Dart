@@ -22,7 +22,7 @@ class FishingNoteRepository {
   Future<List<FishingNoteModel>> getUserFishingNotes() async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         debugPrint('⚠️ getUserFishingNotes: Пользователь не авторизован');
         throw Exception('Пользователь не авторизован');
       }
@@ -50,7 +50,7 @@ class FishingNoteRepository {
           final onlineNotes = <FishingNoteModel>[];
           for (var doc in snapshot.docs) {
             final data = doc.data();
-            if (data != null) {
+            if (data.isNotEmpty) {
               onlineNotes.add(FishingNoteModel.fromJson(Map<String, dynamic>.from(data), id: doc.id));
             }
           }
@@ -146,7 +146,7 @@ class FishingNoteRepository {
   Future<String> addFishingNote(FishingNoteModel note, List<File>? photos) async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         debugPrint('⚠️ addFishingNote: Пользователь не авторизован');
         throw Exception('Пользователь не авторизован');
       }
@@ -321,7 +321,7 @@ class FishingNoteRepository {
   Future<FishingNoteModel> updateFishingNoteWithPhotos(FishingNoteModel note, List<File> newPhotos) async {
     try {
       final userId = _firebaseService.currentUserId;
-      if (userId == null) {
+      if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
 
@@ -688,8 +688,6 @@ class FishingNoteRepository {
       rethrow;
     }
   }
-
-
 
   // Получение заметки из офлайн хранилища по ID
   Future<FishingNoteModel> _getOfflineNoteById(String noteId) async {
