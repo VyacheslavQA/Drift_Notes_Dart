@@ -4,17 +4,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../constants/app_constants.dart';
-import '../../models/user_model.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/countries_data.dart';
 import '../../localization/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
@@ -83,10 +82,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } catch (e) {
-      final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
-      );
+      if (mounted) {
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -406,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     labelStyle: TextStyle(
                       color: _selectedExperience == level
                           ? AppConstants.textColor
-                          : AppConstants.textColor.withOpacity(0.7),
+                          : AppConstants.textColor.withValues(alpha: 0.7),
                     ),
                     backgroundColor: AppConstants.surfaceColor,
                   );
@@ -468,7 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     labelStyle: TextStyle(
                       color: _selectedFishingTypes.contains(type)
                           ? AppConstants.textColor
-                          : AppConstants.textColor.withOpacity(0.7),
+                          : AppConstants.textColor.withValues(alpha: 0.7),
                     ),
                     backgroundColor: AppConstants.surfaceColor,
                   );

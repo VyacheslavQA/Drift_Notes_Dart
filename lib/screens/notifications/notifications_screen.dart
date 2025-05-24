@@ -6,10 +6,10 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
-  _NotificationsScreenState createState() => _NotificationsScreenState();
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
@@ -138,7 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             Icon(
               Icons.notifications_off,
-              color: AppConstants.textColor.withOpacity(0.5),
+              color: AppConstants.textColor.withValues(alpha: 0.5),
               size: 64,
             ),
             const SizedBox(height: 16),
@@ -176,7 +176,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: notification.isRead
                   ? AppConstants.cardColor
-                  : AppConstants.cardColor.withOpacity(0.85),
+                  : AppConstants.cardColor.withValues(alpha: 0.85),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: notification.isRead
@@ -193,7 +193,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: _getNotificationColor(notification.type).withOpacity(0.2),
+                    color: _getNotificationColor(notification.type).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -235,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Text(
                       notification.message,
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
                         fontSize: 14,
                       ),
                     ),
@@ -243,7 +243,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Text(
                       _getFormattedDate(notification.date),
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.6),
+                        color: AppConstants.textColor.withValues(alpha: 0.6),
                         fontSize: 12,
                       ),
                     ),
@@ -291,8 +291,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.system_update;
       case NotificationType.forecast:
         return Icons.wb_sunny;
-      default:
-        return Icons.notifications;
     }
   }
 
@@ -305,8 +303,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Colors.blue;
       case NotificationType.forecast:
         return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 }
