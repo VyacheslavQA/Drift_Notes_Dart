@@ -1,9 +1,7 @@
 // Путь: lib/screens/home_screen.dart
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
 import '../repositories/user_repository.dart';
@@ -11,7 +9,6 @@ import '../models/fishing_note_model.dart';
 import '../models/user_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
-import '../utils/navigation.dart';
 import '../localization/app_localizations.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
@@ -24,13 +21,11 @@ import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
 import 'settings/settings_screen.dart';
 
-
-
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -39,14 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final _userRepository = UserRepository();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  bool _isLoading = false;
   List<FishingNoteModel> _fishingNotes = [];
   bool _hasNewNotifications = true; // Временно устанавливаем в true для демонстрации
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
-
-  // URL YouTube канала для перехода
-  final String _youtubeChannelUrl = 'https://www.youtube.com/channel/UCarpeDiem';
 
   @override
   void initState() {
@@ -56,27 +47,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadFishingNotes() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final notes = await _fishingNoteRepository.getUserFishingNotes();
-      setState(() {
-        _fishingNotes = notes;
-      });
+      if (mounted) {
+        setState(() {
+          _fishingNotes = notes;
+        });
+      }
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${localizations.translate('loading_error')}: ${e.toString()}')),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
@@ -85,16 +68,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final Uri uri = Uri.parse(url);
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        final localizations = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(localizations.translate('failed_to_open_link'))),
-        );
+        if (mounted) {
+          final localizations = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(localizations.translate('failed_to_open_link'))),
+          );
+        }
       }
     } catch (e) {
-      final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('link_open_error')}: ${e.toString()}')),
-      );
+      if (mounted) {
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('link_open_error')}: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -552,8 +539,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.2),
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.6),
                   ],
                 ),
               ),
@@ -566,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   localizations.translate('visit_youtube_channel'),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -597,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withOpacity(0.2),
+              color: AppConstants.primaryColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -614,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -633,7 +620,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                     maxLines: 2,
@@ -826,7 +813,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     localizations.translate('other'),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -864,7 +851,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () async {
                     Navigator.pop(context);
                     await _firebaseService.signOut();
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.of(context).pushReplacementNamed('/login');
                     }
                   },
@@ -903,7 +890,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
 
-    return Container(
+    return SizedBox(
       height: 90,
       child: Stack(
         children: [
@@ -917,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFF0B1F1D),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, -1),
@@ -1069,7 +1056,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         blurRadius: 5,
                         spreadRadius: 1,
                       ),
