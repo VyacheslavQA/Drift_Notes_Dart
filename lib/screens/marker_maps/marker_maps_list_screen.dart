@@ -8,16 +8,15 @@ import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/marker_map_repository.dart';
 import '../../repositories/fishing_note_repository.dart';
-import '../../utils/navigation.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
 import 'marker_map_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
-  const MarkerMapsListScreen({Key? key}) : super(key: key);
+  const MarkerMapsListScreen({super.key});
 
   @override
-  _MarkerMapsListScreenState createState() => _MarkerMapsListScreenState();
+  State<MarkerMapsListScreen> createState() => _MarkerMapsListScreenState();
 }
 
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
@@ -48,16 +47,20 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       // Загружаем список заметок для диалога создания новой карты
       final notes = await _fishingNoteRepository.getUserFishingNotes();
 
-      setState(() {
-        _maps = maps;
-        _notes = notes;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _maps = maps;
+          _notes = notes;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -108,23 +111,27 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
         await _markerMapRepository.clearAllMarkerMaps();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('data_cleared_success')),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('data_cleared_success')),
+              backgroundColor: Colors.green,
+            ),
+          );
 
-        // Перезагружаем данные
-        _loadData();
+          // Перезагружаем данные
+          _loadData();
+        }
       } catch (e) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.translate('error_loading')}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${localizations.translate('error_loading')}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -160,9 +167,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     style: TextStyle(color: AppConstants.textColor),
                     decoration: InputDecoration(
                       labelText: '${localizations.translate('timer_name')}*',
-                      labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                      labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                       enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                       ),
                       focusedBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -189,7 +196,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 surface: AppConstants.surfaceColor,
                                 onSurface: AppConstants.textColor,
                               ),
-                              dialogBackgroundColor: AppConstants.backgroundColor,
+                              dialogTheme: DialogThemeData(
+                                backgroundColor: AppConstants.backgroundColor,
+                              ),
                             ),
                             child: child!,
                           );
@@ -234,9 +243,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     style: TextStyle(color: AppConstants.textColor),
                     decoration: InputDecoration(
                       labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
-                      labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                      labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                       enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                        borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                       ),
                       focusedBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -254,7 +263,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         Text(
                           '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -264,10 +273,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppConstants.backgroundColor.withOpacity(0.3),
+                            color: AppConstants.backgroundColor.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: AppConstants.textColor.withOpacity(0.2),
+                              color: AppConstants.textColor.withValues(alpha: 0.2),
                               width: 1,
                             ),
                           ),
@@ -278,7 +287,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             hint: Text(
                               localizations.translate('my_notes'),
                               style: TextStyle(
-                                color: AppConstants.textColor.withOpacity(0.7),
+                                color: AppConstants.textColor.withValues(alpha: 0.7),
                                 fontSize: 14,
                               ),
                             ),
@@ -305,7 +314,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                             onChanged: (value) {
                               setState(() {
@@ -383,7 +392,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           final mapId = await _markerMapRepository.addMarkerMap(result);
 
           // Открываем экран редактирования карты
-          if (context.mounted) {
+          if (mounted) {
             setState(() => _isLoading = false);
             final map = result.copyWith(id: mapId);
             Navigator.push(
@@ -394,8 +403,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             ).then((_) => _loadData());
           }
         } catch (e) {
-          setState(() => _isLoading = false);
-          if (context.mounted) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            final localizations = AppLocalizations.of(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
             );
@@ -510,7 +520,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         children: [
           Icon(
             Icons.map_outlined,
-            color: AppConstants.textColor.withOpacity(0.5),
+            color: AppConstants.textColor.withValues(alpha: 0.5),
             size: 80,
           ),
           const SizedBox(height: 24),
@@ -526,7 +536,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           Text(
             localizations.translate('start_journal'),
             style: TextStyle(
-              color: AppConstants.textColor.withOpacity(0.7),
+              color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
@@ -551,8 +561,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Widget _buildMapsList() {
-    final localizations = AppLocalizations.of(context);
-
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppConstants.primaryColor,
@@ -597,7 +605,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -628,7 +636,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         Text(
                           DateFormat('dd.MM.yyyy').format(map.date),
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -640,10 +648,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withOpacity(0.1),
+                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppConstants.primaryColor.withOpacity(0.3),
+                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -669,7 +677,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     children: [
                       Icon(
                         Icons.grid_on,
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         size: 16,
                       ),
                       const SizedBox(width: 8),
@@ -690,7 +698,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   children: [
                     Icon(
                       Icons.note,
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 8),
