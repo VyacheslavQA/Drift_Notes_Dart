@@ -111,40 +111,41 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Получение названия типа дна
   String _getBottomTypeName(String? type) {
-    if (type == null) return 'Ил';
+    final localizations = AppLocalizations.of(context);
+    if (type == null) return localizations.translate('silt');
 
     switch (type) {
       case 'ил':
-        return 'Ил';
+        return localizations.translate('silt');
       case 'глубокий_ил':
-        return 'Глубокий ил';
+        return localizations.translate('deep_silt');
       case 'ракушка':
-        return 'Ракушка';
+        return localizations.translate('shell');
       case 'ровно_твердо':
-        return 'Ровно/Твердо';
+        return localizations.translate('firm_bottom');
       case 'камни':
-        return 'Камни';
+        return localizations.translate('stones');
       case 'трава_водоросли':
-        return 'Трава/Водоросли';
+        return localizations.translate('grass_algae');
       case 'зацеп':
-        return 'Зацеп';
+        return localizations.translate('snag');
       case 'бугор':
-        return 'Бугор';
+        return localizations.translate('hill');
       case 'точка_кормления':
-        return 'Точка кормления';
+        return localizations.translate('feeding_spot');
     // Для обратной совместимости со старыми типами
       case 'dropoff':
         return 'Свал';
       case 'weed':
-        return 'Растительность';
+        return localizations.translate('grass_algae');
       case 'sandbar':
-        return 'Песчаная отмель';
+        return localizations.translate('firm_bottom');
       case 'structure':
-        return 'Структура';
+        return localizations.translate('snag');
       case 'default':
-        return 'Обычный';
+        return localizations.translate('silt');
       default:
-        return 'Ил';
+        return localizations.translate('silt');
     }
   }
 
@@ -213,7 +214,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   Icon(Icons.straighten, color: AppConstants.textColor),
                   const SizedBox(width: 8),
                   Text(
-                    '${localizations.translate('beam')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('m')}',
+                    '${localizations.translate('ray')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('distance_m')}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -252,7 +253,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${localizations.translate('bottom_type')}: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
+                      '${localizations.translate('marker_type')}: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -345,6 +346,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ информации о маркерах и помощи
   void _showMarkerInfo() {
+    final localizations = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.cardColor,
@@ -360,7 +362,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Маркерная карта',
+                localizations.translate('marker_map'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 22,
@@ -370,7 +372,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               const SizedBox(height: 16),
 
               Text(
-                'Типы маркеров:',
+                localizations.translate('marker_types'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -419,7 +421,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               const SizedBox(height: 20),
 
               Text(
-                'Как использовать:',
+                localizations.translate('how_to_use'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -430,20 +432,20 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
               _buildInfoItem(
                 icon: Icons.add_location,
-                title: 'Добавление маркера',
-                description: 'Нажмите + для добавления нового маркера',
+                title: localizations.translate('adding_marker'),
+                description: localizations.translate('adding_marker_desc'),
               ),
 
               _buildInfoItem(
                 icon: Icons.touch_app,
-                title: 'Просмотр деталей',
-                description: 'Нажмите на маркер для просмотра деталей',
+                title: localizations.translate('view_details'),
+                description: localizations.translate('view_details_desc'),
               ),
 
               _buildInfoItem(
                 icon: Icons.edit,
-                title: 'Редактирование',
-                description: 'В режиме деталей вы можете редактировать или удалять маркеры',
+                title: localizations.translate('editing'),
+                description: localizations.translate('editing_desc'),
               ),
 
               const SizedBox(height: 16),
@@ -456,7 +458,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   style: TextButton.styleFrom(
                     foregroundColor: AppConstants.primaryColor,
                   ),
-                  child: const Text('Закрыть'),
+                  child: Text(localizations.translate('close')),
                 ),
               ),
             ],
@@ -562,7 +564,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          '${localizations.translate('beam')}:',
+                          '${localizations.translate('ray')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withOpacity(0.7),
                             fontSize: 14,
@@ -578,7 +580,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                               items: List.generate(_raysCount, (index) {
                                 return DropdownMenuItem<int>(
                                   value: index,
-                                  child: Text('Луч ${index + 1}'),
+                                  child: Text('${localizations.translate('ray')} ${index + 1}'),
                                 );
                               }),
                               onChanged: (value) {
@@ -635,7 +637,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Тип дна
                     Text(
-                      '${localizations.translate('bottom_type')}:',
+                      '${localizations.translate('marker_type')}:',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
@@ -714,8 +716,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Введите дистанцию'),
+                        SnackBar(
+                          content: Text(localizations.translate('enter_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -726,8 +728,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     double? distance = double.tryParse(_distanceController.text);
                     if (distance == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Введите корректное числовое значение для дистанции'),
+                        SnackBar(
+                          content: Text(localizations.translate('enter_valid_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -746,7 +748,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       'id': const Uuid().v4(),
                       'rayIndex': selectedRayIndex.toDouble(),
                       'distance': distance,
-                      'name': 'Маркер', // Установка дефолтного названия
+                      'name': localizations.translate('marker'), // Установка дефолтного названия
                       'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
@@ -775,8 +777,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Показываем сообщение
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Маркер добавлен'),
+                      SnackBar(
+                        content: Text(localizations.translate('marker_added')),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -820,7 +822,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                'Редактирование маркера',
+                localizations.translate('edit_marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -834,7 +836,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          '${localizations.translate('beam')}:',
+                          '${localizations.translate('ray')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withOpacity(0.7),
                             fontSize: 14,
@@ -850,7 +852,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                               items: List.generate(_raysCount, (index) {
                                 return DropdownMenuItem<int>(
                                   value: index,
-                                  child: Text('Луч ${index + 1}'),
+                                  child: Text('${localizations.translate('ray')} ${index + 1}'),
                                 );
                               }),
                               onChanged: (value) {
@@ -907,7 +909,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Тип дна маркера
                     Text(
-                      'Тип дна:',
+                      localizations.translate('marker_type'),
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
@@ -988,8 +990,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Введите дистанцию'),
+                        SnackBar(
+                          content: Text(localizations.translate('enter_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -1000,8 +1002,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     double? distance = double.tryParse(_distanceController.text);
                     if (distance == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Введите корректное числовое значение для дистанции'),
+                        SnackBar(
+                          content: Text(localizations.translate('enter_valid_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -1041,8 +1043,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Показываем сообщение
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Маркер обновлен'),
+                      SnackBar(
+                        content: Text(localizations.translate('marker_updated')),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -1050,8 +1052,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     // Обновляем UI чтобы кнопка сохранения стала активной
                     Future.microtask(() => this.setState(() {}));
                   },
-                  child: const Text(
-                    'Сохранить',
+                  child: Text(
+                    localizations.translate('save'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1119,8 +1121,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                 // Показываем сообщение
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Маркер удален'),
+                  SnackBar(
+                    content: Text(localizations.translate('marker_deleted')),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1154,6 +1156,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показать меню действий
   void _showActionMenu() {
+    final localizations = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.surfaceColor,
@@ -1172,7 +1175,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   color: AppConstants.textColor,
                 ),
                 title: Text(
-                  'Изменить название карты',
+                  localizations.translate('change_map_info'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -1188,11 +1191,10 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   Icons.delete,
                   color: Colors.red,
                 ),
-                title: const Text(
-                  'Удалить карту',
-                  style: TextStyle(
+                title: Text(
+                  localizations.translate('delete_map'),
+                  style: const TextStyle(
                     color: Colors.red,
-                    fontSize: 16,
                   ),
                 ),
                 onTap: () {

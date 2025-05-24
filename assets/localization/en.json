@@ -496,5 +496,12 @@
   "grass_algae": "Grass/Algae",
   "snag": "Snag",
   "hill": "Hill",
-  "feeding_spot": "Feeding Spot"
+  "feeding_spot": "Feeding Spot",
+
+  "bottom_type": "Bottom Type",
+  "beam": "Beam",
+  "marker_info": "Marker Information",
+  "map_name_required": "Enter map name",
+  "info_updated": "Information updated",
+
 }
