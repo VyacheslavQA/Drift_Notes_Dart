@@ -11,14 +11,14 @@ class CoverPhotoSelectionScreen extends StatefulWidget {
   final Map<String, dynamic>? currentCropSettings;
 
   const CoverPhotoSelectionScreen({
-    Key? key,
+    super.key,
     required this.photoUrls,
     this.currentCoverPhotoUrl,
     this.currentCropSettings,
-  }) : super(key: key);
+  });
 
   @override
-  _CoverPhotoSelectionScreenState createState() => _CoverPhotoSelectionScreenState();
+  State<CoverPhotoSelectionScreen> createState() => _CoverPhotoSelectionScreenState();
 }
 
 class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {

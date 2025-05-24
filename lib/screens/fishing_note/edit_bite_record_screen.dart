@@ -10,12 +10,12 @@ class EditBiteRecordScreen extends StatefulWidget {
   final BiteRecord biteRecord;
 
   const EditBiteRecordScreen({
-    Key? key,
+    super.key,
     required this.biteRecord,
-  }) : super(key: key);
+  });
 
   @override
-  _EditBiteRecordScreenState createState() => _EditBiteRecordScreenState();
+  State<EditBiteRecordScreen> createState() => _EditBiteRecordScreenState();
 }
 
 class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
@@ -66,7 +66,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
               surface: AppConstants.surfaceColor,
               onSurface: AppConstants.textColor,
             ),
-            dialogBackgroundColor: AppConstants.backgroundColor,
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppConstants.backgroundColor,
+            ),
           ),
           child: child!,
         );
@@ -196,7 +198,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                   fillColor: const Color(0xFF12332E),
                   filled: true,
                   hintText: localizations.translate('fish_type_hint'),
-                  hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                  hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -226,7 +228,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                             fillColor: const Color(0xFF12332E),
                             filled: true,
                             hintText: localizations.translate('weight'),
-                            hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -265,7 +267,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                             fillColor: const Color(0xFF12332E),
                             filled: true,
                             hintText: localizations.translate('length'),
-                            hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -304,7 +306,7 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                   fillColor: const Color(0xFF12332E),
                   filled: true,
                   hintText: localizations.translate('additional_notes_hint'),
-                  hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                  hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
