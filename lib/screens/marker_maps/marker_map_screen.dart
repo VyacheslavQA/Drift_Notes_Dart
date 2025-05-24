@@ -16,15 +16,15 @@ class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
 
   const MarkerMapScreen({
-    Key? key,
+    super.key,
     required this.markerMap,
-  }) : super(key: key);
+  });
 
   @override
-  _MarkerMapScreenState createState() => _MarkerMapScreenState();
+  MarkerMapScreenState createState() => MarkerMapScreenState();
 }
 
-class _MarkerMapScreenState extends State<MarkerMapScreen> {
+class MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
@@ -33,9 +33,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   late MarkerMapModel _markerMap;
   bool _isLoading = false;
   bool _hasChanges = false;
-
-  // Текущий выбранный маркер для просмотра
-  Map<String, dynamic>? _selectedMarker;
 
   // Сохранение последнего выбранного луча
   int _lastSelectedRayIndex = 0;
@@ -180,9 +177,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Показ диалога с деталями маркера
   void _showMarkerDetails(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
-    setState(() {
-      _selectedMarker = marker;
-    });
 
     showModalBottomSheet(
       context: context,
@@ -388,7 +382,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: _bottomTypeColors[type]?.withOpacity(0.2),
+                      color: _bottomTypeColors[type]?.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _bottomTypeColors[type] ?? Colors.grey,
@@ -481,7 +475,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withOpacity(0.2),
+              color: AppConstants.primaryColor.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -507,7 +501,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 Text(
                   description,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.8),
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
                     fontSize: 14,
                   ),
                 ),
@@ -565,7 +559,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         Text(
                           '${localizations.translate('ray')}:',
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -603,10 +597,10 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _distanceController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                       labelText: localizations.translate('distance_m'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelText: localizations.translate('distance_m'),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -622,9 +616,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('depth_m'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -638,7 +632,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Text(
                       '${localizations.translate('marker_type')}:',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -651,8 +645,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor: _bottomTypeColors[type]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
-                          selectedColor: _bottomTypeColors[type]?.withOpacity(0.5) ?? Colors.grey.withOpacity(0.5),
+                          backgroundColor: _bottomTypeColors[type]?.withValues(alpha: 0.2) ?? Colors.grey.withValues(alpha: 0.2),
+                          selectedColor: _bottomTypeColors[type]?.withValues(alpha: 0.5) ?? Colors.grey.withValues(alpha: 0.5),
                           labelStyle: TextStyle(
                             color: AppConstants.textColor,
                             fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
@@ -660,7 +654,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                           avatar: Icon(
                             _bottomTypeIcons[type],
                             color: selectedBottomType == type ?
-                            AppConstants.textColor : AppConstants.textColor.withOpacity(0.7),
+                            AppConstants.textColor : AppConstants.textColor.withValues(alpha: 0.7),
                             size: 18,
                           ),
                           onSelected: (bool selected) {
@@ -681,9 +675,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('notes'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -766,7 +760,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
                     updatedMarkers.add(newMarker);
 
-                    setState(() {
+                    this.setState(() {
                       // Вместо модификации списка создаем новую модель
                       _markerMap = _markerMap.copyWith(markers: updatedMarkers);
                       _hasChanges = true;
@@ -837,7 +831,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         Text(
                           '${localizations.translate('ray')}:',
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -876,9 +870,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('distance_m'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -894,9 +888,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('depth_m'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -910,7 +904,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Text(
                       localizations.translate('marker_type'),
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -923,8 +917,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor: _bottomTypeColors[type]?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2),
-                          selectedColor: _bottomTypeColors[type]?.withOpacity(0.5) ?? Colors.grey.withOpacity(0.5),
+                          backgroundColor: _bottomTypeColors[type]?.withValues(alpha: 0.2) ?? Colors.grey.withValues(alpha: 0.2),
+                          selectedColor: _bottomTypeColors[type]?.withValues(alpha: 0.5) ?? Colors.grey.withValues(alpha: 0.5),
                           labelStyle: TextStyle(
                             color: AppConstants.textColor,
                             fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
@@ -932,7 +926,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                           avatar: Icon(
                             _bottomTypeIcons[type],
                             color: selectedBottomType == type ?
-                            AppConstants.textColor : AppConstants.textColor.withOpacity(0.7),
+                            AppConstants.textColor : AppConstants.textColor.withValues(alpha: 0.7),
                             size: 18,
                           ),
                           onSelected: (bool selected) {
@@ -955,9 +949,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('notes'),
-                        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -1234,9 +1228,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
                   labelText: localizations.translate('map_name'),
-                  labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                  labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                    borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                   ),
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -1249,9 +1243,9 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 style: TextStyle(color: AppConstants.textColor),
                 decoration: InputDecoration(
                   labelText: localizations.translate('sector_number'),
-                  labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
+                  labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                    borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
                   ),
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppConstants.primaryColor),
@@ -1375,6 +1369,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   // Удаление карты
   Future<void> _deleteMap() async {
     final localizations = AppLocalizations.of(context);
+    if (!mounted) return;
+
     try {
       setState(() {
         _isLoading = true;
@@ -1393,11 +1389,11 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         Navigator.pop(context, true); // Возвращаемся к списку карт
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${localizations.translate('error_deleting_map')}: $e'),
@@ -1411,6 +1407,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
   /// Сохранение изменений карты
   Future<void> _saveChanges() async {
     final localizations = AppLocalizations.of(context);
+    if (!mounted) return;
+
     try {
       setState(() {
         _isLoading = true;
@@ -1432,28 +1430,32 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
       // Сохраняем очищенную модель
       await _markerMapRepository.updateMarkerMap(markerMapToSave);
 
-      setState(() {
-        _isLoading = false;
-        _hasChanges = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasChanges = false;
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('changes_saved')),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('changes_saved')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${localizations.translate('error_saving_changes')}: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_saving_changes')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1489,7 +1491,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
               Icons.save,
               color: (_hasChanges || _markerMap.markers.isNotEmpty)
                   ? AppConstants.textColor
-                  : AppConstants.textColor.withOpacity(0.3),
+                  : AppConstants.textColor.withValues(alpha: 0.3),
             ),
             tooltip: localizations.translate('save_changes'),
             onPressed: (_hasChanges || _markerMap.markers.isNotEmpty)
@@ -1534,7 +1536,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             color: AppConstants.backgroundColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, -2),
               ),
@@ -1547,7 +1549,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 children: [
                   Icon(
                     Icons.calendar_today,
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     size: 16,
                   ),
                   const SizedBox(width: 4),
@@ -1565,7 +1567,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   children: [
                     Icon(
                       Icons.grid_on,
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 4),
@@ -1592,7 +1594,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
         color: const Color(0xFF0B1F1D), // Темно-зеленый фон для глубины
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppConstants.textColor.withOpacity(0.2),
+          color: AppConstants.textColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -1601,9 +1603,6 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             // Определяем размеры карты
             final maxHeight = constraints.maxHeight;
             final width = constraints.maxWidth;
-            final centerX = width / 2;
-            // Нижняя точка лучей (точка 0)
-            final originY = maxHeight * 0.95;
 
             return Stack(
               children: [
@@ -1688,7 +1687,7 @@ class RaysAndMarkersPainter extends CustomPainter {
 
       // Создаем кисть для луча
       final rayPaint = Paint()
-        ..color = Colors.white.withOpacity(0.4)
+        ..color = Colors.white.withValues(alpha: 0.4)
         ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke;
 
@@ -1718,7 +1717,7 @@ class RaysAndMarkersPainter extends CustomPainter {
 
         // Рисуем точку
         final pointPaint = Paint()
-          ..color = Colors.white.withOpacity(0.4)
+          ..color = Colors.white.withValues(alpha: 0.4)
           ..style = PaintingStyle.fill;
 
         canvas.drawCircle(
@@ -1766,7 +1765,7 @@ class RaysAndMarkersPainter extends CustomPainter {
         text: TextSpan(
           text: '${AppLocalizations.of(context).translate('ray')} ${i + 1}',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 14,
           ),
         ),
@@ -1808,9 +1807,9 @@ class RaysAndMarkersPainter extends CustomPainter {
       if (bottomType == 'default' && marker['type'] != null) {
         // Для обратной совместимости
         switch (marker['type']) {
-        case 'dropoff': bottomType = 'свал'; break;
-        case 'weed': bottomType = 'трава_водоросли'; break;
-        case 'sandbar': bottomType = 'ровно_твердо'; break;
+          case 'dropoff': bottomType = 'свал'; break;
+          case 'weed': bottomType = 'трава_водоросли'; break;
+          case 'sandbar': bottomType = 'ровно_твердо'; break;
           case 'structure': bottomType = 'зацеп'; break;
           default: bottomType = 'ил';
         }
