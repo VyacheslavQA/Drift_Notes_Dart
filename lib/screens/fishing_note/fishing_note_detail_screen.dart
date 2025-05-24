@@ -23,12 +23,12 @@ class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
 
   const FishingNoteDetailScreen({
-    Key? key,
+    super.key,
     required this.noteId,
-  }) : super(key: key);
+  });
 
   @override
-  _FishingNoteDetailScreenState createState() => _FishingNoteDetailScreenState();
+  State<FishingNoteDetailScreen> createState() => _FishingNoteDetailScreenState();
 }
 
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
@@ -59,18 +59,22 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     try {
       final note = await _fishingNoteRepository.getFishingNoteById(widget.noteId);
 
-      setState(() {
-        _note = note;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _note = note;
+          _isLoading = false;
+        });
 
-      // После загрузки заметки загружаем связанные маркерные карты
-      _loadLinkedMarkerMaps();
+        // После загрузки заметки загружаем связанные маркерные карты
+        _loadLinkedMarkerMaps();
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = '${AppLocalizations.of(context).translate('error_loading')}: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = '${AppLocalizations.of(context).translate('error_loading')}: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -89,15 +93,19 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       // Фильтруем только те, которые привязаны к текущей заметке
       final linkedMaps = allMaps.where((map) => map.noteId == _note!.id).toList();
 
-      setState(() {
-        _linkedMarkerMaps = linkedMaps;
-        _isLoadingMarkerMaps = false;
-      });
+      if (mounted) {
+        setState(() {
+          _linkedMarkerMaps = linkedMaps;
+          _isLoadingMarkerMaps = false;
+        });
+      }
     } catch (e) {
-      print('${AppLocalizations.of(context).translate('error_loading')}: $e');
-      setState(() {
-        _isLoadingMarkerMaps = false;
-      });
+      debugPrint('${AppLocalizations.of(context).translate('error_loading')}: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingMarkerMaps = false;
+        });
+      }
     }
   }
 
@@ -120,25 +128,29 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       await _fishingNoteRepository.updateFishingNote(updatedNote);
 
       // Обновляем локальное состояние
-      setState(() {
-        _note = updatedNote;
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _note = updatedNote;
+          _isSaving = false;
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).translate('bite_record_saved')),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('bite_record_saved')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${AppLocalizations.of(context).translate('error_adding_bite')}: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context).translate('error_adding_bite')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -164,34 +176,40 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         await _fishingNoteRepository.updateFishingNote(updatedNote);
 
         // Обновляем локальное состояние
-        setState(() {
-          _note = updatedNote;
-          _isSaving = false;
-        });
+        if (mounted) {
+          setState(() {
+            _note = updatedNote;
+            _isSaving = false;
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).translate('bite_record_updated')),
-            backgroundColor: Colors.green,
-          ),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).translate('bite_record_updated')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).translate('bite_not_found')),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('bite_not_found')),
-            backgroundColor: Colors.orange,
+            content: Text('${AppLocalizations.of(context).translate('error_updating_bite')}: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${AppLocalizations.of(context).translate('error_updating_bite')}: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -214,25 +232,29 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       await _fishingNoteRepository.updateFishingNote(updatedNote);
 
       // Обновляем локальное состояние
-      setState(() {
-        _note = updatedNote;
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _note = updatedNote;
+          _isSaving = false;
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).translate('bite_record_deleted')),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('bite_record_deleted')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${AppLocalizations.of(context).translate('error_deleting_bite')}: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context).translate('error_deleting_bite')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -269,12 +291,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   // Выбор обложки
   Future<void> _selectCoverPhoto() async {
     if (_note == null || _note!.photoUrls.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).translate('first_add_photos')),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('first_add_photos')),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
 
@@ -291,7 +315,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
 
-    if (result != null && result is Map<String, dynamic>) {
+    if (result != null && result is Map<String, dynamic> && mounted) {
       setState(() => _isSaving = true);
 
       try {
@@ -305,25 +329,29 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         await _fishingNoteRepository.updateFishingNote(updatedNote);
 
         // Обновляем локальное состояние
-        setState(() {
-          _note = updatedNote;
-          _isSaving = false;
-        });
+        if (mounted) {
+          setState(() {
+            _note = updatedNote;
+            _isSaving = false;
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).translate('cover_updated_successfully')),
-            backgroundColor: Colors.green,
-          ),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).translate('cover_updated_successfully')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } catch (e) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_updating_cover')}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${AppLocalizations.of(context).translate('error_updating_cover')}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -343,6 +371,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   }
 
   Future<void> _deleteNote() async {
+    if (!mounted) return;
+
     final localizations = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -382,7 +412,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       try {
         setState(() => _isLoading = true);
 
@@ -399,9 +429,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           Navigator.pop(context, true); // true для обновления списка заметок
         }
       } catch (e) {
-        setState(() => _isLoading = false);
-
         if (mounted) {
+          setState(() => _isLoading = false);
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${AppLocalizations.of(context).translate('error_deleting_note')}: $e'),
@@ -500,93 +530,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           ),
         )
             : _buildNoteDetails(),
-      ),
-    );
-  }
-
-  // Метод для построения изображения обложки с учётом настроек кадрирования
-  Widget _buildCoverImage(String photoUrl, Map<String, dynamic>? cropSettings) {
-    // Если нет настроек кадрирования, просто показываем изображение
-    if (cropSettings == null) {
-      return UniversalImage(
-        imageUrl: photoUrl,
-        fit: BoxFit.cover,
-        placeholder: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-            strokeWidth: 2.0,
-          ),
-        ),
-        errorWidget: Container(
-          color: AppConstants.backgroundColor.withOpacity(0.7),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.broken_image_outlined,
-                  color: Colors.grey[400],
-                  size: 40,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  AppLocalizations.of(context).translate('image_unavailable'),
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Если есть настройки кадрирования, применяем их
-    final offsetX = cropSettings['offsetX'] as double? ?? 0.0;
-    final offsetY = cropSettings['offsetY'] as double? ?? 0.0;
-    final scale = cropSettings['scale'] as double? ?? 1.0;
-
-    return ClipRect(
-      child: Transform.scale(
-        scale: scale,
-        child: Transform.translate(
-          offset: Offset(offsetX, offsetY),
-          child: UniversalImage(
-            imageUrl: photoUrl,
-            fit: BoxFit.cover,
-            placeholder: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-                strokeWidth: 2.0,
-              ),
-            ),
-            errorWidget: Container(
-              color: AppConstants.backgroundColor.withOpacity(0.7),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.grey[400],
-                      size: 40,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppLocalizations.of(context).translate('image_unavailable'),
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -733,7 +676,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -764,7 +707,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                         Text(
                           DateFormat('dd.MM.yyyy').format(map.date),
                           style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -776,10 +719,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withOpacity(0.1),
+                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppConstants.primaryColor.withOpacity(0.3),
+                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -802,7 +745,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   children: [
                     Icon(
                       Icons.grid_on,
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -856,76 +799,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  Widget _buildPhotoGallery() {
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionHeader(localizations.translate('photos')),
-            TextButton.icon(
-              icon: const Icon(Icons.fullscreen, size: 18),
-              label: Text(localizations.translate('view')),
-              style: TextButton.styleFrom(
-                foregroundColor: AppConstants.primaryColor,
-              ),
-              onPressed: () => _viewPhotoGallery(0),
-            ),
-          ],
-        ),
-        SizedBox(
-          height: 200,
-          child: PageView.builder(
-            itemCount: _note!.photoUrls.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () => _viewPhotoGallery(index),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: CachedNetworkImage(
-                    imageUrl: _note!.photoUrls[index],
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => const Icon(
-                      Icons.error,
-                      color: Colors.red,
-                      size: 50,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        // Индикатор количества фотографий
-        if (_note!.photoUrls.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Center(
-              child: Text(
-                '${AppLocalizations.of(context).translate('photo_gallery')} (${_note!.photoUrls.length})',
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   Widget _buildInfoCard({required int caughtFishCount, required int missedBitesCount}) {
     final localizations = AppLocalizations.of(context);
 
@@ -954,7 +827,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('fishing_type')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -986,7 +859,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('location')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -1018,14 +891,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('dates')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _note!.isMultiDay
+                    _note!.isMultiDay && _note!.endDate != null
                         ? DateFormatter.formatDateRange(_note!.date, _note!.endDate!, context)
                         : DateFormatter.formatDate(_note!.date, context),
                     style: TextStyle(
@@ -1052,7 +925,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('caught')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -1084,7 +957,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('not_realized')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -1115,7 +988,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Text(
                   '${localizations.translate('total_catch_weight')}:',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -1147,7 +1020,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Text(
                     localizations.translate('biggest_fish'),
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -1192,7 +1065,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     Text(
                       '${localizations.translate('bite_time')}: ${DateFormat('dd.MM.yyyy HH:mm').format(biggestFish.time)}',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
                         fontSize: 14,
                       ),
                     ),
@@ -1215,7 +1088,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Text(
                     '${localizations.translate('coordinates')}:',
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -1282,7 +1155,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.2),
+                        color: AppConstants.primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -1312,7 +1185,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                           Text(
                             '${localizations.translate('clear')} ${weather.feelsLike.toStringAsFixed(1)}°C',
                             style: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.7),
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -1380,14 +1253,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       children: [
         Icon(
           icon,
-          color: AppConstants.textColor.withOpacity(0.8),
+          color: AppConstants.textColor.withValues(alpha: 0.8),
           size: 20,
         ),
         const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 12,
           ),
         ),

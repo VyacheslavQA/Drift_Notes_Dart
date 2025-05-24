@@ -1,12 +1,10 @@
 // Путь: lib/screens/fishing_note/fishing_notes_list_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
-import '../../utils/navigation.dart';
 import '../../widgets/universal_image.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
@@ -14,10 +12,10 @@ import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
-  const FishingNotesListScreen({Key? key}) : super(key: key);
+  const FishingNotesListScreen({super.key});
 
   @override
-  _FishingNotesListScreenState createState() => _FishingNotesListScreenState();
+  State<FishingNotesListScreen> createState() => _FishingNotesListScreenState();
 }
 
 class _FishingNotesListScreenState extends State<FishingNotesListScreen> with SingleTickerProviderStateMixin {
@@ -190,6 +188,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         onPressed: _addNewNote,
+        elevation: 4,
+        splashColor: Colors.white.withValues(alpha: 0.3),
         child: Container(
           width: 50,
           height: 50,
@@ -197,7 +197,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppConstants.textColor.withOpacity(0.6),
+                color: AppConstants.textColor.withValues(alpha: 0.6),
                 blurRadius: 8,
                 spreadRadius: 2,
               ),
@@ -209,9 +209,6 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             height: 50,
           ),
         ),
-        elevation: 4,
-        // Добавляем эффект нажатия
-        splashColor: Colors.white.withOpacity(0.3),
       ),
     );
   }
@@ -227,7 +224,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
           children: [
             Icon(
               Icons.set_meal,  // Используем иконку рыбы вместо несуществующей fishing
-              color: AppConstants.textColor.withOpacity(0.5),
+              color: AppConstants.textColor.withValues(alpha: 0.5),
               size: 80,
             ),
             const SizedBox(height: 24),
@@ -245,7 +242,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
               child: Text(
                 localizations.translate('start_journal'),
                 style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
                 textAlign: TextAlign.center,
@@ -297,10 +294,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
       ),
       clipBehavior: Clip.antiAlias,
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       child: InkWell(
         onTap: () => _viewNoteDetails(note),
-        splashColor: AppConstants.primaryColor.withOpacity(0.1),
+        splashColor: AppConstants.primaryColor.withValues(alpha: 0.1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -325,7 +322,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.8),
+                            Colors.black.withValues(alpha: 0.8),
                           ],
                         ),
                       ),
@@ -342,10 +339,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
+                            color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppConstants.textColor.withOpacity(0.3),
+                              color: AppConstants.textColor.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -361,10 +358,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
+                            color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppConstants.textColor.withOpacity(0.3),
+                              color: AppConstants.textColor.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -398,10 +395,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppConstants.primaryColor.withOpacity(0.3),
+                              color: AppConstants.primaryColor.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -417,10 +414,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.1),
+                            color: AppConstants.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppConstants.primaryColor.withOpacity(0.2),
+                              color: AppConstants.primaryColor.withValues(alpha: 0.2),
                               width: 1,
                             ),
                           ),
@@ -429,7 +426,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                                 ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
                                 : DateFormatter.formatDate(note.date, context),
                             style: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.9),
+                              color: AppConstants.textColor.withValues(alpha: 0.9),
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -459,7 +456,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withOpacity(0.2),
+                          color: AppConstants.primaryColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -482,7 +479,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -510,10 +507,10 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.15),
+                        color: AppConstants.primaryColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppConstants.primaryColor.withOpacity(0.3),
+                          color: AppConstants.primaryColor.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -561,7 +558,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                             children: [
                               Icon(
                                 Icons.scale,
-                                color: AppConstants.textColor.withOpacity(0.7),
+                                color: AppConstants.textColor.withValues(alpha: 0.7),
                                 size: 16,
                               ),
                               const SizedBox(width: 4),
@@ -577,7 +574,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                                 const SizedBox(width: 16),
                                 Icon(
                                   Icons.straighten,
-                                  color: AppConstants.textColor.withOpacity(0.7),
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
                                   size: 16,
                                 ),
                                 const SizedBox(width: 4),
@@ -631,7 +628,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
           ),
         ),
         errorWidget: Container(
-          color: AppConstants.backgroundColor.withOpacity(0.7),
+          color: AppConstants.backgroundColor.withValues(alpha: 0.7),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -676,7 +673,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
               ),
             ),
             errorWidget: Container(
-              color: AppConstants.backgroundColor.withOpacity(0.7),
+              color: AppConstants.backgroundColor.withValues(alpha: 0.7),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
