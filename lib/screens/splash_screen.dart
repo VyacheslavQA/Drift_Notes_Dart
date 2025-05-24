@@ -10,7 +10,7 @@ class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
@@ -78,7 +78,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     // Получаем размеры экрана для адаптивности
     final screenSize = MediaQuery.of(context).size;
-    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
+    final textScaler = MediaQuery.of(context).textScaler;
     final localizations = AppLocalizations.of(context);
 
     return Scaffold(
@@ -97,8 +97,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.6),
-                Colors.black.withOpacity(0.4),
+                Colors.black.withValues(alpha: 0.6),
+                Colors.black.withValues(alpha: 0.4),
               ],
             ),
           ),
@@ -112,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 Text(
                   'Drift Notes',
                   style: TextStyle(
-                    fontSize: 54 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                    fontSize: 54 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                     fontWeight: FontWeight.bold,
                     color: AppConstants.textColor,
                   ),
@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     localizations.translate('your_personal_fishing_journal'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                      fontSize: 20 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                       color: Colors.white,
                     ),
                   ),
@@ -140,7 +140,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     localizations.translate('remember_great_trips'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                      fontSize: 20 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                       color: Colors.white,
                     ),
                   ),
@@ -180,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           child: Container(
                             decoration: BoxDecoration(
                               color: _isPressed
-                                  ? AppConstants.textColor.withOpacity(0.15)
+                                  ? AppConstants.textColor.withValues(alpha: 0.15)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(25.0),
                               border: Border.all(
@@ -195,7 +195,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: _isLoading
-                                      ? AppConstants.textColor.withOpacity(0.7)
+                                      ? AppConstants.textColor.withValues(alpha: 0.7)
                                       : AppConstants.textColor,
                                 ),
                               ),

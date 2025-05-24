@@ -9,7 +9,6 @@ import '../../repositories/marker_map_repository.dart';
 import '../../widgets/loading_overlay.dart';
 // Необходимые импорты для функций
 import 'dart:math' as math;
-import 'dart:math' show sin, cos, atan2, sqrt;
 import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
 

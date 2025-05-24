@@ -11,7 +11,7 @@ class AuthSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Получаем размеры экрана для адаптивности
     final screenSize = MediaQuery.of(context).size;
-    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
+    final textScaler = MediaQuery.of(context).textScaler;
     final localizations = AppLocalizations.of(context);
 
     return Scaffold(
@@ -37,7 +37,7 @@ class AuthSelectionScreen extends StatelessWidget {
               Text(
                 'Drift Notes',
                 style: TextStyle(
-                  fontSize: 36 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                  fontSize: 36 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                   fontWeight: FontWeight.bold,
                   color: AppConstants.textColor,
                 ),
@@ -48,7 +48,7 @@ class AuthSelectionScreen extends StatelessWidget {
               Text(
                 localizations.translate('select_login_method'),
                 style: TextStyle(
-                  fontSize: 24 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                  fontSize: 24 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -60,7 +60,7 @@ class AuthSelectionScreen extends StatelessWidget {
                 localizations.translate('select_convenient_login_method'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                  fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                   color: Colors.white70,
                 ),
               ),
@@ -102,7 +102,7 @@ class AuthSelectionScreen extends StatelessWidget {
                   label: Text(
                     localizations.translate('login_with_google'),
                     style: TextStyle(
-                      fontSize: 16 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                      fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                       color: Colors.black87,
                       fontWeight: FontWeight.bold,
                     ),
@@ -134,7 +134,7 @@ class AuthSelectionScreen extends StatelessWidget {
                   localizations.translate('no_account_register'),
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 16 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+                    fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                   ),
                 ),
               ),
@@ -154,7 +154,7 @@ class AuthSelectionScreen extends StatelessWidget {
     required String text,
     required VoidCallback onPressed,
   }) {
-    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
+    final textScaler = MediaQuery.of(context).textScaler;
 
     return SizedBox(
       width: double.infinity, // Занимает всю доступную ширину
@@ -163,7 +163,7 @@ class AuthSelectionScreen extends StatelessWidget {
         label: Text(
           text,
           style: TextStyle(
-            fontSize: 16 * (textScaleFactor > 1.2 ? 1.2 / textScaleFactor : 1),
+            fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),

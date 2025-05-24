@@ -1,9 +1,8 @@
 // Путь: lib/repositories/marker_map_repository.dart
 
-import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/marker_map_model.dart';
 import '../services/firebase/firebase_service.dart';
@@ -126,7 +125,7 @@ class MarkerMapRepository {
         id: mapId,
         userId: userId,
         // Убедимся, что дата установлена
-        date: map.date ?? DateTime.now(),
+        date: map.date != null ? map.date! : DateTime.now(),
       );
 
       // Проверяем подключение к интернету

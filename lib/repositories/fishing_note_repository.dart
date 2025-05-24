@@ -3,8 +3,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../models/fishing_note_model.dart';
 import '../services/firebase/firebase_service.dart';
@@ -50,7 +48,7 @@ class FishingNoteRepository {
 
           // Преобразуем результаты в модели
           final onlineNotes = snapshot.docs
-              .map((doc) => FishingNoteModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id))
+              .map((doc) => FishingNoteModel.fromJson(doc.data()!, id: doc.id))
               .toList();
 
           debugPrint('☁️ Онлайн заметок: ${onlineNotes.length}');
@@ -191,7 +189,7 @@ class FishingNoteRepository {
 
         // Добавляем заметку в Firestore
         try {
-          final docRef = await _firestore
+          await _firestore
               .collection('fishing_notes')
               .doc(noteId)
               .set(noteWithPhotos.toJson());

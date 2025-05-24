@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/splash_screen.dart';
@@ -145,7 +144,7 @@ class DriftNotesApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
               ),
-              shadowColor: Colors.black.withOpacity(0.2),
+              shadowColor: Colors.black.withValues(alpha: 0.2),
             ),
             colorScheme: ColorScheme.dark(
               primary: AppConstants.primaryColor,
@@ -179,7 +178,7 @@ class DriftNotesApp extends StatelessWidget {
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: AppConstants.surfaceColor,
-              hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
                 borderSide: BorderSide.none,

@@ -36,7 +36,7 @@ class AppLocalizations {
       return true;
     } catch (e) {
       // Если файл не найден, возвращаем пустую карту
-      print('Ошибка загрузки локализации для ${locale.languageCode}: $e');
+      debugPrint('Ошибка загрузки локализации для ${locale.languageCode}: $e');
       _localizedStrings = {};
       return false;
     }

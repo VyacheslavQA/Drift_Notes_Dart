@@ -2,21 +2,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../../localization/app_localizations.dart';
-import '../fishing_note/fishing_type_selection_screen.dart';
 import '../fishing_note/fishing_note_detail_screen.dart';
 import '../fishing_note/add_fishing_note_screen.dart';
 
+
 class FishingCalendarScreen extends StatefulWidget {
-  const FishingCalendarScreen({Key? key}) : super(key: key);
+  const FishingCalendarScreen({super.key});
 
   @override
-  _FishingCalendarScreenState createState() => _FishingCalendarScreenState();
+  State<FishingCalendarScreen> createState() => _FishingCalendarScreenState();
 }
 
 class _FishingCalendarScreenState extends State<FishingCalendarScreen> with SingleTickerProviderStateMixin {
@@ -442,7 +441,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.8),
+            color: AppConstants.textColor.withValues(alpha: 0.8),
             fontSize: 12,
           ),
         ),
@@ -451,7 +450,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildCalendar() {
-    final localizations = AppLocalizations.of(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -461,7 +459,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -483,7 +481,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
           weekendTextStyle: TextStyle(color: AppConstants.textColor),
           selectedTextStyle: const TextStyle(color: Colors.white),
           todayTextStyle: const TextStyle(color: Colors.white),
-          outsideTextStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.3)),
+          outsideTextStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.3)),
           defaultDecoration: const BoxDecoration(shape: BoxShape.circle),
           weekendDecoration: const BoxDecoration(shape: BoxShape.circle),
           selectedDecoration: BoxDecoration(
@@ -491,7 +489,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
             shape: BoxShape.circle,
           ),
           todayDecoration: BoxDecoration(
-            color: AppConstants.primaryColor.withOpacity(0.5),
+            color: AppConstants.primaryColor.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           markerDecoration: BoxDecoration(
@@ -515,17 +513,17 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         ),
         daysOfWeekStyle: DaysOfWeekStyle(
           weekdayStyle: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 14,
           ),
           weekendStyle: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 14,
           ),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: AppConstants.textColor.withOpacity(0.1),
+                color: AppConstants.textColor.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -612,9 +610,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         text,
         style: TextStyle(
           color: isWeekend
-              ? AppConstants.textColor.withOpacity(0.9)
-              : AppConstants.textColor.withOpacity(0.7),
-          fontSize: 14,
+              ? AppConstants.textColor.withOpacity(0.9) // ignore: deprecated_member_use
+              : AppConstants.textColor.withOpacity(0.7), // <- тут должна быть запятая
+        fontSize: 14.0, // <- а тут уберите .toDouble(), просто 14.0
           fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
@@ -633,7 +631,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
             children: [
               Icon(
                 Icons.calendar_today,
-                color: AppConstants.textColor.withOpacity(0.3),
+                color: AppConstants.textColor.withValues(alpha: 0.3),
                 size: 48,
               ),
               const SizedBox(height: 16),
@@ -642,7 +640,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                     ? localizations.translate('no_fishing_on_date')
                     : localizations.translate('select_date_to_view'),
                 style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),
@@ -715,10 +713,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
+                      color: statusColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: statusColor.withOpacity(0.5),
+                        color: statusColor.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),
@@ -739,7 +737,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                     ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
                     : DateFormatter.formatDate(note.date, context),
                 style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontSize: 14,
                 ),
               ),
@@ -748,14 +746,14 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                 children: [
                   Icon(
                     Icons.water,
-                    color: AppConstants.textColor.withOpacity(0.7),
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                     size: 16,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     note.fishingType,
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -763,14 +761,14 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                     const SizedBox(width: 16),
                     Icon(
                       Icons.set_meal,
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${note.biteRecords.length} ${DateFormatter.getFishText(note.biteRecords.length, context)}',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -784,7 +782,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.6),
+                    color: AppConstants.textColor.withValues(alpha: 0.6),
                     fontSize: 14,
                     fontStyle: FontStyle.italic,
                   ),

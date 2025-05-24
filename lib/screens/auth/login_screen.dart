@@ -7,10 +7,10 @@ import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // Получаем размеры экрана для адаптивности
     final size = MediaQuery.of(context).size;
-    final textScale = MediaQuery.of(context).textScaleFactor;
+    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
     final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
     final localizations = AppLocalizations.of(context);
 
@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: localizations.translate('email'),
                 hintStyle: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.5),
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
                 ),
                 filled: true,
                 fillColor: const Color(0xFF12332E),
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: localizations.translate('password'),
                 hintStyle: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.5),
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
                 ),
                 filled: true,
                 fillColor: const Color(0xFF12332E),
@@ -323,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
+            color: Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(

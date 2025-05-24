@@ -7,10 +7,10 @@ import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({Key? key}) : super(key: key);
+  const ForgotPasswordScreen({super.key});
 
   @override
-  _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
@@ -64,7 +64,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final textScale = MediaQuery.of(context).textScaleFactor;
+    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
     final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
     final localizations = AppLocalizations.of(context);
 
@@ -118,7 +118,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -201,7 +201,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             decoration: InputDecoration(
                               hintText: localizations.translate('email'),
                               hintStyle: TextStyle(
-                                color: AppConstants.textColor.withOpacity(0.5),
+                                color: AppConstants.textColor.withValues(alpha: 0.5),
                               ),
                               filled: true,
                               fillColor: const Color(0xFF12332E),
@@ -250,7 +250,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -277,7 +277,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 borderRadius: BorderRadius.circular(28),
                               ),
                               padding: EdgeInsets.zero,
-                              disabledBackgroundColor: const Color(0xFF2E7D32).withOpacity(0.5),
+                              disabledBackgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.5),
                               elevation: 0,
                             ),
                             child: _isLoading

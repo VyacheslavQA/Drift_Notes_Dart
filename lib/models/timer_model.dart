@@ -60,7 +60,7 @@ class FishingTimerModel {
       'isRunning': isRunning,
       'startTime': startTime?.millisecondsSinceEpoch,
       'isCountdown': true, // Всегда true
-      'timerColor': timerColor.value,
+      'timerColor': timerColor.value.toRadixString(16),
       'alertSound': alertSound,
     };
   }

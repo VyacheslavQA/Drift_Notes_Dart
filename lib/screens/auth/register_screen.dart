@@ -10,7 +10,7 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -98,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final textScale = MediaQuery.of(context).textScaleFactor;
+    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
     final adaptiveTextScale = textScale > 1.2 ? 1.2 / textScale : 1.0;
     final localizations = AppLocalizations.of(context);
 
@@ -180,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: localizations.translate('name'),
                             hintStyle: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.5),
+                              color: AppConstants.textColor.withValues(alpha: 0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -232,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: localizations.translate('email'),
                             hintStyle: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.5),
+                              color: AppConstants.textColor.withValues(alpha: 0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -285,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: localizations.translate('password'),
                             hintStyle: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.5),
+                              color: AppConstants.textColor.withValues(alpha: 0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -349,7 +349,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: localizations.translate('confirm_password'),
                             hintStyle: TextStyle(
-                              color: AppConstants.textColor.withOpacity(0.5),
+                              color: AppConstants.textColor.withValues(alpha: 0.5),
                             ),
                             filled: true,
                             fillColor: const Color(0xFF12332E),
@@ -416,7 +416,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
