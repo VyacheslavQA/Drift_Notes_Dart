@@ -2,19 +2,18 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../providers/language_provider.dart';
 
 class LanguageSettingsScreen extends StatefulWidget {
-  const LanguageSettingsScreen({Key? key}) : super(key: key);
+  const LanguageSettingsScreen({super.key});
 
   @override
-  _LanguageSettingsScreenState createState() => _LanguageSettingsScreenState();
+  LanguageSettingsScreenState createState() => LanguageSettingsScreenState();
 }
 
-class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
+class LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
   String? _selectedLanguageCode;
   bool _isSystemLanguage = false;
   bool _isLoading = true;
@@ -142,7 +141,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         subtitle: Text(
           subtitle,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
           ),
         ),
         leading: Icon(

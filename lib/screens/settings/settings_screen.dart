@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../services/offline/sync_service.dart';
@@ -13,13 +12,13 @@ import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  SettingsScreenState createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
+class SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final SyncService _syncService = SyncService();
 
@@ -60,9 +59,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   Future<void> _loadSyncStatus() async {
     try {
       final status = await _syncService.getSyncStatus();
-      setState(() {
-        _syncStatus = status;
-      });
+      if (mounted) {
+        setState(() {
+          _syncStatus = status;
+        });
+      }
     } catch (e) {
       debugPrint('Ошибка при получении статуса синхронизации: $e');
     }
@@ -81,10 +82,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       } else if (_syncStatus['lastSyncTime'] is int) {
         dateTime = DateTime.fromMillisecondsSinceEpoch(_syncStatus['lastSyncTime'] as int);
       } else {
-        return 'Недавно';
-      }
-
-      if (dateTime == null) {
         return 'Недавно';
       }
 
@@ -115,12 +112,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       final isConnected = await NetworkUtils.isNetworkAvailable();
       if (!isConnected) {
         final localizations = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('no_internet_connection')),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('no_internet_connection')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
 
         // Останавливаем анимацию
         _syncAnimationController.stop();
@@ -139,41 +138,45 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // Останавливаем анимацию
       _syncAnimationController.stop();
 
-      setState(() {
-        _isSyncing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
 
-      final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result
-              ? localizations.translate('sync_success')
-              : localizations.translate('sync_with_errors')),
-          backgroundColor: result ? Colors.green : Colors.orange,
-        ),
-      );
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result
+                ? localizations.translate('sync_success')
+                : localizations.translate('sync_with_errors')),
+            backgroundColor: result ? Colors.green : Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       // Останавливаем анимацию
       _syncAnimationController.stop();
 
-      setState(() {
-        _isSyncing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
 
-      final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${localizations.translate('sync_error')}: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('sync_error')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _clearAllData() async {
     final localizations = AppLocalizations.of(context);
 
-    showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
@@ -192,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: Text(
               localizations.translate('cancel'),
               style: TextStyle(
@@ -204,44 +207,45 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            onPressed: () async {
-              Navigator.pop(context); // Закрыть диалог
-              setState(() => _isLoading = true);
-
-              try {
-                await _offlineStorage.clearAllOfflineData();
-
-                if (mounted) {
-                  setState(() => _isLoading = false);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(localizations.translate('data_cleared_success')),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-
-                  // Обновляем статус синхронизации
-                  await _loadSyncStatus();
-                }
-              } catch (e) {
-                if (mounted) {
-                  setState(() => _isLoading = false);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${localizations.translate('data_clear_error')}: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: Text(localizations.translate('clear')),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+
+      try {
+        await _offlineStorage.clearAllOfflineData();
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('data_cleared_success')),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Обновляем статус синхронизации
+          await _loadSyncStatus();
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${localizations.translate('data_clear_error')}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -287,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: AppConstants.primaryColor,
@@ -332,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                           ? localizations.translate('syncing_in_progress')
                                           : localizations.translate('sync_all_data_now'),
                                       style: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.7),
+                                        color: AppConstants.textColor.withValues(alpha: 0.7),
                                         fontSize: 14,
                                       ),
                                     ),
@@ -359,7 +363,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Text(
                                   localizations.translate('last_sync'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withOpacity(0.7),
+                                    color: AppConstants.textColor.withValues(alpha: 0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -382,7 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Text(
                                   localizations.translate('pending_changes'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withOpacity(0.7),
+                                    color: AppConstants.textColor.withValues(alpha: 0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -404,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Text(
                                   localizations.translate('network_status'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withOpacity(0.7),
+                                    color: AppConstants.textColor.withValues(alpha: 0.7),
                                     fontSize: 14,
                                   ),
                                 ),
