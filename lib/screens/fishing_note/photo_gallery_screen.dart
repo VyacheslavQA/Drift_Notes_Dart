@@ -10,13 +10,13 @@ class PhotoGalleryScreen extends StatefulWidget {
   final int initialIndex;
 
   const PhotoGalleryScreen({
-    Key? key,
+    super.key,
     required this.photos,
     this.initialIndex = 0,
-  }) : super(key: key);
+  });
 
   @override
-  _PhotoGalleryScreenState createState() => _PhotoGalleryScreenState();
+  State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
 
 class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
@@ -44,7 +44,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.black.withOpacity(0.5),
+        backgroundColor: Colors.black.withValues(alpha: 0.5),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),

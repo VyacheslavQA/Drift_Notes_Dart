@@ -7,10 +7,10 @@ import '../../localization/app_localizations.dart';
 import 'add_fishing_note_screen.dart';
 
 class FishingTypeSelectionScreen extends StatefulWidget {
-  const FishingTypeSelectionScreen({Key? key}) : super(key: key);
+  const FishingTypeSelectionScreen({super.key});
 
   @override
-  _FishingTypeSelectionScreenState createState() => _FishingTypeSelectionScreenState();
+  State<FishingTypeSelectionScreen> createState() => _FishingTypeSelectionScreenState();
 }
 
 class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen> {
@@ -46,7 +46,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
         return Dialog(
           backgroundColor: Colors.transparent, // Прозрачный фон
           elevation: 0,
-          insetPadding: EdgeInsets.symmetric(horizontal: 40), // Отступы по бокам
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40), // Отступы по бокам
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF0B1F1D), // Цвет как на скриншоте
@@ -61,8 +61,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                   width: 70,
                   height: 70,
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF12332E),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF12332E),
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(
@@ -170,7 +170,7 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
                             localizations.translate('continue'),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
