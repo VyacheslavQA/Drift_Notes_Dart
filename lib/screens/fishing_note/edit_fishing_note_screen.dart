@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
@@ -22,12 +21,12 @@ class EditFishingNoteScreen extends StatefulWidget {
   final FishingNoteModel note;
 
   const EditFishingNoteScreen({
-    Key? key,
+    super.key,
     required this.note,
-  }) : super(key: key);
+  });
 
   @override
-  _EditFishingNoteScreenState createState() => _EditFishingNoteScreenState();
+  State<EditFishingNoteScreen> createState() => _EditFishingNoteScreenState();
 }
 
 class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with SingleTickerProviderStateMixin {
@@ -44,9 +43,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
   late bool _isMultiDay;
   late int _tripDays;
 
-  List<File> _newPhotos = [];
+  final List<File> _newPhotos = [];
   List<String> _existingPhotoUrls = [];
-  bool _isLoading = false;
   bool _isSaving = false;
 
   late double _latitude;
@@ -133,8 +131,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    final localizations = AppLocalizations.of(context);
-
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isStartDate ? _startDate : _endDate,
@@ -149,14 +145,16 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
               surface: AppConstants.surfaceColor,
               onSurface: AppConstants.textColor,
             ),
-            dialogBackgroundColor: AppConstants.backgroundColor,
+            dialogTheme: DialogThemeData(
+              backgroundColor: AppConstants.backgroundColor,
+            ),
           ),
           child: child!,
         );
       },
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         if (isStartDate) {
           _startDate = picked;
@@ -186,7 +184,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         imageQuality: 70, // Компрессия для оптимизации размера
       );
 
-      if (pickedFiles.isNotEmpty) {
+      if (pickedFiles.isNotEmpty && mounted) {
         setState(() {
           // Добавляем новые фото к уже существующим
           _newPhotos.addAll(
@@ -195,9 +193,11 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
+        );
+      }
     }
   }
 
@@ -211,15 +211,17 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         imageQuality: 70,
       );
 
-      if (pickedFile != null) {
+      if (pickedFile != null && mounted) {
         setState(() {
           _newPhotos.add(File(pickedFile.path));
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
+        );
+      }
     }
   }
 
@@ -259,12 +261,14 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     final localizations = AppLocalizations.of(context);
 
     if (!_hasLocation) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('select_map_point')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('select_map_point')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 
@@ -279,17 +283,23 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         context,
       );
 
-      setState(() {
-        _weather = weatherData;
-      });
+      if (mounted) {
+        setState(() {
+          _weather = weatherData;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading')}: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoadingWeather = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+        });
+      }
     }
   }
 
@@ -351,12 +361,14 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
       });
 
       final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${localizations.translate('markers_count')}: ${_mapMarkers.length}'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('markers_count')}: ${_mapMarkers.length}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -368,12 +380,14 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     }
 
     if (_locationController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('enter_location_name')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('enter_location_name')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 
@@ -406,7 +420,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         // Если есть интернет, обновляем заметку и загружаем новые фото, если они есть
         if (_newPhotos.isNotEmpty) {
           // Загрузка новых фото и добавление их URL к заметке
-          final noteWithPhotos = await _fishingNoteRepository.updateFishingNoteWithPhotos(
+          await _fishingNoteRepository.updateFishingNoteWithPhotos(
               updatedNote,
               _newPhotos
           );
@@ -438,20 +452,24 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         }
       } else {
         // Если нет интернета
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('no_internet_changes_saved_locally')),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('no_internet_changes_saved_locally')),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
 
         await _fishingNoteRepository.saveOfflineNoteUpdate(updatedNote, _newPhotos);
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_saving')}: $e')),
         );
       }
     } finally {
@@ -689,7 +707,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.2),
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: FishingTypeIcons.getIconWidget(_selectedFishingType, size: 24),
@@ -724,7 +742,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('enter_location_name'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -772,7 +790,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   child: Text(
                     '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.8),
+                      color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
                     ),
@@ -810,7 +828,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   Text(
                     '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -868,7 +886,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('describe_tackle'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -888,7 +906,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('notes_desc'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -941,7 +959,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                 Text(
                   '${localizations.translate('existing_photos')} (${_existingPhotoUrls.length})',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.8),
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -977,7 +995,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
+                                    color: Colors.black.withValues(alpha: 0.7),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -1000,7 +1018,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   Text(
                     '${localizations.translate('new_photos')} (${_newPhotos.length})',
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.8),
+                      color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1034,7 +1052,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
+                                    color: Colors.black.withValues(alpha: 0.7),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -1084,7 +1102,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     Text(
                       '${localizations.translate('markers_count')}: ${_mapMarkers.length}',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -1141,7 +1159,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                           ),
-                          disabledBackgroundColor: AppConstants.primaryColor.withOpacity(0.5),
+                          disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
                         ),
                         child: _isSaving
                             ? SizedBox(
@@ -1206,7 +1224,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
             Text(
               label,
               style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
+                color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 14,
               ),
             ),
@@ -1252,7 +1270,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withOpacity(0.2),
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1282,7 +1300,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     Text(
                       'Ощущается как ${_weather!.feelsLike.toStringAsFixed(1)}°C',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -1347,14 +1365,14 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
       children: [
         Icon(
           icon,
-          color: AppConstants.textColor.withOpacity(0.8),
+          color: AppConstants.textColor.withValues(alpha: 0.8),
           size: 20,
         ),
         const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 12,
           ),
         ),
@@ -1409,21 +1427,21 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     Text(
                       'Время: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                       ),
                     ),
                     if (record.weight > 0)
                       Text(
                         '${localizations.translate('weight')}: ${record.weight} ${localizations.translate('kg')}',
                         style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
                         ),
                       ),
                     if (record.notes.isNotEmpty)
                       Text(
                         '${localizations.translate('notes')}: ${record.notes}',
                         style: TextStyle(
-                          color: AppConstants.textColor.withOpacity(0.7),
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1504,7 +1522,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                     Text(
                       '$i:00',
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.8),
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
                         fontSize: 10,
                       ),
                     ),
@@ -1531,7 +1549,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
     // Рисуем горизонтальную линию
