@@ -19,16 +19,16 @@ class BiteRecordScreen extends StatefulWidget {
   final bool isMultiDay; // Флаг многодневной рыбалки
 
   const BiteRecordScreen({
-    Key? key,
+    super.key,
     this.initialRecord,
     this.dayIndex = 0,
     this.fishingStartDate,
     this.fishingEndDate,
     this.isMultiDay = false,
-  }) : super(key: key);
+  });
 
   @override
-  _BiteRecordScreenState createState() => _BiteRecordScreenState();
+  State<BiteRecordScreen> createState() => _BiteRecordScreenState();
 }
 
 class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBindingObserver {
@@ -40,14 +40,14 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
   final _firebaseService = FirebaseService();
 
   DateTime _selectedTime = DateTime.now();
-  List<File> _selectedPhotos = []; // Для новых фото
-  List<String> _existingPhotoUrls = []; // Для существующих фото
+  final List<File> _selectedPhotos = []; // Для новых фото
+  final List<String> _existingPhotoUrls = []; // Для существующих фото
   bool _isLoading = false;
   bool _isEditing = false;
 
   // Новые переменные для автоматического переключения дней
   late int _selectedDayIndex;
-  List<DateTime> _fishingDays = [];
+  final List<DateTime> _fishingDays = [];
   int _totalFishingDays = 1;
 
   // Переменная для отслеживания последней проверенной даты
@@ -81,7 +81,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
     // Установка времени
     if (_isEditing) {
       _selectedTime = widget.initialRecord!.time;
-      _existingPhotoUrls = List.from(widget.initialRecord!.photoUrls);
+      _existingPhotoUrls.addAll(widget.initialRecord!.photoUrls);
     }
 
     // Инициализация дней рыбалки и автоматический выбор дня
@@ -144,7 +144,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
   // Новый метод для инициализации дней рыбалки
   void _initializeFishingDays() {
     if (widget.fishingStartDate != null) {
-      _fishingDays = [];
+      _fishingDays.clear();
       DateTime currentDay = DateTime(
         widget.fishingStartDate!.year,
         widget.fishingStartDate!.month,
@@ -226,8 +226,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
   }
 
   Future<void> _selectTime(BuildContext context) async {
-    final localizations = AppLocalizations.of(context);
-
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_selectedTime),
@@ -240,7 +238,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
               surface: AppConstants.surfaceColor,
               onSurface: AppConstants.textColor,
             ),
-            dialogBackgroundColor: AppConstants.backgroundColor,
           ),
           child: child!,
         );
@@ -279,9 +276,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
+        );
+      }
     }
   }
 
@@ -302,9 +301,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
+        );
+      }
     }
   }
 
@@ -335,25 +336,32 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
           final userId = _firebaseService.currentUserId;
 
           if (userId == null) {
-            throw Exception(AppLocalizations.of(context).translate('user_not_found'));
+            if (mounted) {
+              throw Exception(AppLocalizations.of(context).translate('user_not_found'));
+            }
+            return [];
           }
 
           final path = 'users/$userId/bite_photos/$fileName';
           final url = await _firebaseService.uploadImage(path, bytes);
           photoUrls.add(url);
         } catch (e) {
-          debugPrint('${AppLocalizations.of(context).translate('error_loading_image')}: $e');
+          debugPrint('Error uploading image: $e');
         }
       }
 
       return photoUrls;
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading_image')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading_image')}: $e')),
+        );
+      }
       return [];
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -400,13 +408,19 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
         photoUrls: allPhotoUrls,
       );
 
-      Navigator.pop(context, biteRecord);
+      if (mounted) {
+        Navigator.pop(context, biteRecord);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -545,12 +559,12 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.2),
+                                      color: Colors.green.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       localizations.translate('today'),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.green,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -579,7 +593,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                     child: Text(
                       _getDayName(_selectedDayIndex),
                       style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 16,
                         fontStyle: FontStyle.italic,
                       ),
@@ -633,7 +647,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('specify_fish_type'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -663,7 +677,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                               fillColor: const Color(0xFF12332E),
                               filled: true,
                               hintText: localizations.translate('weight'),
-                              hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -702,7 +716,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                               fillColor: const Color(0xFF12332E),
                               filled: true,
                               hintText: localizations.translate('length'),
-                              hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -715,7 +729,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                // Проверяем, что введено корректное число
+                                // Проверяем запятую в точку для корректного парсинга
                                 final lengthText = value.replaceAll(',', '.');
                                 if (double.tryParse(lengthText) == null) {
                                   return localizations.translate('enter_correct_number');
@@ -741,7 +755,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('additional_notes_fishing'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -899,7 +913,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

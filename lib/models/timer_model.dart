@@ -60,7 +60,8 @@ class FishingTimerModel {
       'isRunning': isRunning,
       'startTime': startTime?.millisecondsSinceEpoch,
       'isCountdown': true, // Всегда true
-      'timerColor': timerColor.value.toRadixString(16),
+      // ignore: deprecated_member_use
+      'timerColor': timerColor.value, // Используем .value до появления альтернативы
       'alertSound': alertSound,
     };
   }
@@ -77,6 +78,7 @@ class FishingTimerModel {
           ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
           : null,
       isCountdown: true, // Всегда true, независимо от значения в JSON
+      // ignore: deprecated_member_use
       timerColor: Color(json['timerColor'] ?? Colors.green.value),
       alertSound: json['alertSound'] ?? 'default_alert.mp3',
     );

@@ -150,11 +150,12 @@ class DriftNotesApp extends StatelessWidget {
               primary: AppConstants.primaryColor,
               secondary: AppConstants.accentColor,
               surface: AppConstants.surfaceColor,
-              background: AppConstants.backgroundColor,
+              // Удалены устаревшие background и onBackground
               onPrimary: AppConstants.textColor,
               onSecondary: Colors.black,
               onSurface: AppConstants.textColor,
-              onBackground: AppConstants.textColor,
+              // Используем современные альтернативы
+              surfaceContainerHighest: AppConstants.backgroundColor,
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(

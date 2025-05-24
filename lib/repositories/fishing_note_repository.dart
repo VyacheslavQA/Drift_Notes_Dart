@@ -47,9 +47,13 @@ class FishingNoteRepository {
               .get();
 
           // Преобразуем результаты в модели
-          final onlineNotes = snapshot.docs
-              .map((doc) => FishingNoteModel.fromJson(doc.data()!, id: doc.id))
-              .toList();
+          final onlineNotes = <FishingNoteModel>[];
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            if (data != null) {
+              onlineNotes.add(FishingNoteModel.fromJson(Map<String, dynamic>.from(data), id: doc.id));
+            }
+          }
 
           debugPrint('☁️ Онлайн заметок: ${onlineNotes.length}');
 
