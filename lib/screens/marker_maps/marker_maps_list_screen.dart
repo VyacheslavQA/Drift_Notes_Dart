@@ -10,6 +10,7 @@ import '../../repositories/marker_map_repository.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/navigation.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../localization/app_localizations.dart';
 import 'marker_map_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
@@ -61,19 +62,21 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Future<void> _clearAllMaps() async {
+    final localizations = AppLocalizations.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
         title: Text(
-          'Удалить все карты',
+          localizations.translate('clear_all_data_title'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Вы уверены, что хотите удалить ВСЕ маркерные карты? Это действие нельзя отменить.',
+          localizations.translate('clear_all_data_message'),
           style: TextStyle(
             color: AppConstants.textColor,
           ),
@@ -82,7 +85,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'Отмена',
+              localizations.translate('cancel'),
               style: TextStyle(
                 color: AppConstants.textColor,
               ),
@@ -93,7 +96,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Удалить все'),
+            child: Text(localizations.translate('delete')),
           ),
         ],
       ),
@@ -106,8 +109,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         await _markerMapRepository.clearAllMarkerMaps();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Все маркерные карты удалены'),
+          SnackBar(
+            content: Text(localizations.translate('data_cleared_success')),
             backgroundColor: Colors.green,
           ),
         );
@@ -118,7 +121,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: Text('${localizations.translate('error_loading')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -127,6 +130,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Future<void> _showCreateMapDialog() async {
+    final localizations = AppLocalizations.of(context);
     final nameController = TextEditingController();
     final sectorController = TextEditingController();
 
@@ -140,7 +144,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           return AlertDialog(
             backgroundColor: AppConstants.surfaceColor,
             title: Text(
-              'Создать маркерную карту',
+              localizations.translate('create_marker_map'),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontWeight: FontWeight.bold,
@@ -155,7 +159,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     controller: nameController,
                     style: TextStyle(color: AppConstants.textColor),
                     decoration: InputDecoration(
-                      labelText: 'Название карты*',
+                      labelText: '${localizations.translate('timer_name')}*',
                       labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -207,7 +211,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Дата: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
+                          '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 16,
@@ -229,7 +233,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     controller: sectorController,
                     style: TextStyle(color: AppConstants.textColor),
                     decoration: InputDecoration(
-                      labelText: 'Номер сектора (необязательно)',
+                      labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
                       labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -248,7 +252,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Привязать к заметке (необязательно):',
+                          '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                           style: TextStyle(
                             color: AppConstants.textColor.withOpacity(0.7),
                             fontSize: 14,
@@ -272,7 +276,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             dropdownColor: AppConstants.surfaceColor,
                             value: selectedNote,
                             hint: Text(
-                              'Выберите заметку',
+                              localizations.translate('my_notes'),
                               style: TextStyle(
                                 color: AppConstants.textColor.withOpacity(0.7),
                                 fontSize: 14,
@@ -288,9 +292,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               fontSize: 14,
                             ),
                             items: [
-                              const DropdownMenuItem<FishingNoteModel>(
+                              DropdownMenuItem<FishingNoteModel>(
                                 value: null,
-                                child: Text('Без привязки'),
+                                child: Text(localizations.translate('other')),
                               ),
                               ..._notes.map((note) {
                                 final title = note.title.isNotEmpty ? note.title : note.location;
@@ -321,7 +325,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   Navigator.pop(context);
                 },
                 child: Text(
-                  'Отмена',
+                  localizations.translate('cancel'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                   ),
@@ -331,7 +335,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                 onPressed: () {
                   if (nameController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Введите название карты')),
+                      SnackBar(content: Text(localizations.translate('required_field'))),
                     );
                     return;
                   }
@@ -360,7 +364,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   backgroundColor: AppConstants.primaryColor,
                 ),
                 child: Text(
-                  'Создать',
+                  localizations.translate('add'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                   ),
@@ -393,7 +397,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           setState(() => _isLoading = false);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ошибка создания карты: $e')),
+              SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
             );
           }
         }
@@ -403,12 +407,14 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Маркерные карты',
-          style: TextStyle(
+        title: Text(
+          localizations.translate('marker_maps'),
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -433,7 +439,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     const Icon(Icons.delete_sweep, color: Colors.red),
                     const SizedBox(width: 8),
                     Text(
-                      'Удалить все карты',
+                      localizations.translate('clear_all_data'),
                       style: TextStyle(color: AppConstants.textColor),
                     ),
                   ],
@@ -445,7 +451,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Загрузка...',
+        message: localizations.translate('loading'),
         child: _errorMessage != null
             ? _buildErrorState()
             : _maps.isEmpty
@@ -462,6 +468,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Widget _buildErrorState() {
+    final localizations = AppLocalizations.of(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -486,7 +494,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
             ),
-            child: const Text('Повторить'),
+            child: Text(localizations.translate('try_again')),
           ),
         ],
       ),
@@ -494,6 +502,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Widget _buildEmptyState() {
+    final localizations = AppLocalizations.of(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -505,7 +515,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'У вас пока нет маркерных карт',
+            localizations.translate('no_notes'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 20,
@@ -514,7 +524,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Нажмите на кнопку "+" внизу, чтобы создать новую карту',
+            localizations.translate('start_journal'),
             style: TextStyle(
               color: AppConstants.textColor.withOpacity(0.7),
               fontSize: 16,
@@ -525,7 +535,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           ElevatedButton.icon(
             onPressed: _showCreateMapDialog,
             icon: const Icon(Icons.add),
-            label: const Text('Создать маркерную карту'),
+            label: Text(localizations.translate('create_marker_map')),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
               foregroundColor: AppConstants.textColor,
@@ -541,6 +551,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Widget _buildMapsList() {
+    final localizations = AppLocalizations.of(context);
+
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppConstants.primaryColor,
@@ -556,6 +568,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   }
 
   Widget _buildMapCard(MarkerMapModel map) {
+    final localizations = AppLocalizations.of(context);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -634,7 +648,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       ),
                     ),
                     child: Text(
-                      '${map.markers.length} маркеров',
+                      '${map.markers.length} ${_getMarkersText(map.markers.length, localizations)}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 12,
@@ -660,7 +674,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Сектор: ${map.sector}',
+                        '${localizations.translate('sector')}: ${map.sector}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 14,
@@ -682,7 +696,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Заметка: ${map.noteName}',
+                        '${localizations.translate('notes')}: ${map.noteName}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 14,
@@ -698,5 +712,21 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         ),
       ),
     );
+  }
+
+  String _getMarkersText(int count, AppLocalizations localizations) {
+    if (localizations.locale.languageCode == 'en') {
+      return count == 1 ? localizations.translate('marker') : localizations.translate('markers');
+    }
+
+    // Русская логика склонений
+    if (count % 10 == 1 && count % 100 != 11) {
+      return localizations.translate('marker');
+    } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+        (count % 100 < 10 || count % 100 >= 20)) {
+      return localizations.translate('markers_2_4');
+    } else {
+      return localizations.translate('markers');
+    }
   }
 }

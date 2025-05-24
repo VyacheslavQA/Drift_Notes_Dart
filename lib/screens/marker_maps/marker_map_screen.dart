@@ -11,6 +11,7 @@ import '../../widgets/loading_overlay.dart';
 import 'dart:math' as math;
 import 'dart:math' show sin, cos, atan2, sqrt;
 import 'dart:ui' as ui;
+import '../../localization/app_localizations.dart';
 
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
@@ -178,6 +179,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ диалога с деталями маркера
   void _showMarkerDetails(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
     setState(() {
       _selectedMarker = marker;
     });
@@ -196,7 +198,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                marker['name'] ?? 'Маркер',
+                marker['name'] ?? localizations.translate('marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 22,
@@ -211,7 +213,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   Icon(Icons.straighten, color: AppConstants.textColor),
                   const SizedBox(width: 8),
                   Text(
-                    'Луч ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} м',
+                    '${localizations.translate('beam')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('m')}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -229,7 +231,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Icon(Icons.waves, color: AppConstants.textColor),
                     const SizedBox(width: 8),
                     Text(
-                      'Глубина: ${marker['depth']} м',
+                      '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('m')}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -250,7 +252,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Тип дна: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
+                      '${localizations.translate('bottom_type')}: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -309,8 +311,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 children: [
                   // Кнопка редактирования
                   TextButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Редактировать'),
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: Text(localizations.translate('edit')),
                     style: TextButton.styleFrom(
                       foregroundColor: AppConstants.primaryColor,
                     ),
@@ -322,8 +324,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   const SizedBox(width: 16),
                   // Кнопка удаления
                   TextButton.icon(
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Удалить'),
+                    icon: const Icon(Icons.delete, size: 18),
+                    label: Text(localizations.translate('delete')),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.red,
                     ),
@@ -528,6 +530,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Диалог добавления нового маркера
   void _showAddMarkerDialog() {
+    final localizations = AppLocalizations.of(context);
     // Сбрасываем поля формы
     _depthController.text = '';
     _notesController.text = '';
@@ -559,7 +562,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          'Луч:',
+                          '${localizations.translate('beam')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withOpacity(0.7),
                             fontSize: 14,
@@ -599,7 +602,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _distanceController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Дистанция (м)',
+                       labelText: localizations.translate('distance_m'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -617,7 +620,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _depthController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Глубина (м)',
+                        labelText: localizations.translate('depth_m'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -632,7 +635,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Тип дна
                     Text(
-                      'Тип дна:',
+                      '${localizations.translate('bottom_type')}:',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.7),
                         fontSize: 14,
@@ -676,7 +679,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Заметки',
+                        labelText: localizations.translate('notes'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -696,7 +699,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Navigator.pop(context);
                   },
                   child: Text(
-                    'Отмена',
+                    localizations.translate('cancel'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                     ),
@@ -798,6 +801,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Диалог редактирования маркера
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
     _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
     _notesController.text = marker['notes'] ?? marker['description'] ?? '';
     _distanceController.text = marker['distance'].toString();
@@ -830,7 +834,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          'Луч:',
+                          '${localizations.translate('beam')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withOpacity(0.7),
                             fontSize: 14,
@@ -870,7 +874,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _distanceController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Дистанция (м)',
+                        labelText: localizations.translate('distance_m'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -888,7 +892,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _depthController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Глубина (м)',
+                        labelText: localizations.translate('depth_m'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -949,7 +953,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Заметки',
+                        labelText: localizations.translate('notes'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
@@ -969,7 +973,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                     Navigator.pop(context);
                   },
                   child: Text(
-                    'Отмена',
+                    localizations.translate('cancel'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                     ),
@@ -1077,20 +1081,21 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Диалог подтверждения удаления маркера
   void _confirmDeleteMarker(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
-            'Удалить маркер',
+            localizations.translate('delete_marker'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
-            'Вы уверены, что хотите удалить этот маркер?',
+            localizations.translate('delete_marker_confirmation'),
             style: TextStyle(
               color: AppConstants.textColor,
             ),
@@ -1101,7 +1106,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 Navigator.of(context).pop();
               },
               child: Text(
-                'Отмена',
+                localizations.translate('cancel'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
@@ -1120,8 +1125,8 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                   ),
                 );
               },
-              child: const Text(
-                'Удалить',
+              child: Text(
+                localizations.translate('delete'),
                 style: TextStyle(
                   color: Colors.redAccent,
                 ),
@@ -1204,6 +1209,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показать диалог редактирования карты
   void _showEditMapDialog() {
+    final localizations = AppLocalizations.of(context);
     final nameController = TextEditingController(text: _markerMap.name);
     final sectorController = TextEditingController(text: _markerMap.sector ?? '');
 
@@ -1259,7 +1265,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 Navigator.pop(context);
               },
               child: Text(
-                'Отмена',
+                localizations.translate('cancel'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
@@ -1316,6 +1322,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Подтверждение удаления карты
   void _confirmDeleteMap() {
+    final localizations = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1340,7 +1347,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
                 Navigator.of(context).pop();
               },
               child: Text(
-                'Отмена',
+                localizations.translate('cancel'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
@@ -1449,6 +1456,7 @@ class _MarkerMapScreenState extends State<MarkerMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
