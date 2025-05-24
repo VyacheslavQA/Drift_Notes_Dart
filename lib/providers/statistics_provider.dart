@@ -5,7 +5,7 @@ import 'dart:collection';
 import '../models/statistics_models.dart';
 import '../models/fishing_note_model.dart';
 import '../repositories/fishing_note_repository.dart';
-import '../utils/date_formatter.dart'; // Добавляем импорт DateFormatter
+import '../utils/date_formatter.dart';
 
 class StatisticsProvider extends ChangeNotifier {
   late final FishingNoteRepository _fishingNoteRepository;

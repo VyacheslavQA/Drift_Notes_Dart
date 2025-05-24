@@ -245,8 +245,8 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var note in notes) {
       for (var record in note.biteRecords) {
         if (record.fishType.isNotEmpty && record.weight > 0) {
-          // Используем формат "MMMM yyyy" для отображения
-          String monthKey = DateFormat('MMMM yyyy', 'ru').format(record.time);
+          // Создаем ключ для группировки по месяцам
+          String monthKey = '${record.time.year}-${record.time.month}';
           fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
 
           // Сохраняем номер месяца и год для каждого ключа
@@ -260,30 +260,27 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    String bestMonth = '';
+    String bestMonthKey = '';
     int bestMonthFish = 0;
     int bestMonthNumber = 0;
     int bestYear = 0;
 
-    fishByMonth.forEach((month, count) {
+    fishByMonth.forEach((monthKey, count) {
       if (count > bestMonthFish) {
         bestMonthFish = count;
-        bestMonth = month;
+        bestMonthKey = monthKey;
 
         // Получаем номер месяца и год из сохраненных данных
-        if (monthDetails.containsKey(month)) {
-          bestMonthNumber = monthDetails[month]!['month']!;
-          bestYear = monthDetails[month]!['year']!;
+        if (monthDetails.containsKey(monthKey)) {
+          bestMonthNumber = monthDetails[monthKey]!['month']!;
+          bestYear = monthDetails[monthKey]!['year']!;
         }
       }
     });
 
-    // Используем именительный падеж для названия месяца
-    if (bestMonthNumber > 0) {
-      stats['bestMonth'] = '${DateFormatter.getMonthInNominative(bestMonthNumber)} $bestYear';
-    } else {
-      stats['bestMonth'] = bestMonth;
-    }
+    stats['bestMonth'] = bestMonthKey.isNotEmpty ? bestMonthKey : '';
+    stats['bestMonthNumber'] = bestMonthNumber;
+    stats['bestYear'] = bestYear;
     stats['bestMonthFish'] = bestMonthFish;
 
     // 8. Процент реализации поклевок
@@ -297,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return stats;
   }
 
-  // Обновлённый метод _buildStatsGrid() с новым порядком статистики
+  // Обновлённый метод _buildStatsGrid() с локализацией
   Widget _buildStatsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -318,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.emoji_events,
             title: localizations.translate('biggest_fish'),
             value: '${stats['biggestFish'].weight} ${localizations.translate('kg')}',
-            subtitle: '${stats['biggestFish'].fishType}, ${DateFormat('d MMMM yyyy', 'ru').format(stats['biggestFish'].time)}',
+            subtitle: '${stats['biggestFish'].fishType}, ${DateFormatter.formatDate(stats['biggestFish'].time, context)}',
             valueColor: Colors.amber,
           ),
 
@@ -329,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.set_meal,
           title: localizations.translate('total_fish_caught'),
           value: stats['totalFish'].toString(),
-          subtitle: DateFormatter.getFishText(stats['totalFish']),
+          subtitle: DateFormatter.getFishText(stats['totalFish'], context),
           valueColor: Colors.green,
         ),
 
@@ -358,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 16),
 
-        // 5. Общий вес пойманных рыб (НОВЫЙ БЛОК)
+        // 5. Общий вес пойманных рыб
         _buildStatCard(
           icon: Icons.scale,
           title: localizations.translate('total_catch_weight'),
@@ -374,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.format_list_bulleted,
           title: localizations.translate('total_fishing_trips'),
           value: stats['totalTrips'].toString(),
-          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips']),
+          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips'], context),
         ),
 
         const SizedBox(height: 16),
@@ -384,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.access_time,
           title: localizations.translate('longest_trip'),
           value: stats['longestTrip'].toString(),
-          subtitle: DateFormatter.getDaysText(stats['longestTrip']),
+          subtitle: DateFormatter.getDaysText(stats['longestTrip'], context),
         ),
 
         const SizedBox(height: 16),
@@ -407,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
             value: stats['lastTrip'].title.isNotEmpty
                 ? '«${stats['lastTrip'].title}»'
                 : stats['lastTrip'].location,
-            subtitle: DateFormat('d MMMM yyyy', 'ru').format(stats['lastTrip'].date),
+            subtitle: DateFormatter.formatDate(stats['lastTrip'].date, context),
           ),
 
         const SizedBox(height: 16),
@@ -417,8 +414,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildStatCard(
             icon: Icons.star,
             title: localizations.translate('best_month'),
-            value: stats['bestMonth'],
-            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'])}',
+            value: '${DateFormatter.getMonthInNominative(stats['bestMonthNumber'], context)} ${stats['bestYear']}',
+            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'], context)}',
             valueColor: Colors.amber,
           ),
       ],

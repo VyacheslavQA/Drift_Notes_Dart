@@ -1,7 +1,9 @@
 // Путь: lib/models/statistics_models.dart
 
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import '../utils/date_formatter.dart';
+import '../localization/app_localizations.dart';
 
 // Период для фильтрации статистики
 enum StatisticsPeriod {
@@ -138,7 +140,16 @@ class BiggestFishInfo {
     required this.catchDate,
   });
 
-  // Форматированный вывод
+  // Форматированный вывод с поддержкой локализации
+  String getFormattedText(BuildContext context) {
+    final weightText = weight.toStringAsFixed(1).replaceAll('.0', '');
+    final dateText = DateFormatter.formatDate(catchDate, context);
+
+    String fishName = fishType.isNotEmpty ? fishType : AppLocalizations.of(context).translate('fish');
+    return '$weightText ${AppLocalizations.of(context).translate('kg')} — $fishName, $dateText';
+  }
+
+  // Старый метод для обратной совместимости (без локализации)
   String get formattedText {
     final weightText = weight.toStringAsFixed(1).replaceAll('.0', '');
     final dateText = DateFormatter.formatDate(catchDate);
@@ -158,7 +169,13 @@ class LatestTripInfo {
     required this.tripDate,
   });
 
-  // Форматированный вывод
+  // Форматированный вывод с поддержкой локализации
+  String getFormattedText(BuildContext context) {
+    final dateText = DateFormatter.formatDate(tripDate, context);
+    return '«$tripName» — $dateText';
+  }
+
+  // Старый метод для обратной совместимости (без локализации)
   String get formattedText {
     final dateText = DateFormatter.formatDate(tripDate);
     return '«$tripName» — $dateText';
@@ -177,10 +194,15 @@ class BestMonthInfo {
     required this.fishCount,
   });
 
-  // Форматированный вывод
+  // Форматированный вывод с поддержкой локализации
+  String getFormattedText(BuildContext context) {
+    final monthName = DateFormatter.getMonthInNominative(month, context);
+    return '$monthName $year — $fishCount ${DateFormatter.getFishText(fishCount, context)}';
+  }
+
+  // Старый метод для обратной совместимости (без локализации)
   String get formattedText {
     final monthName = DateFormatter.getMonthInNominative(month);
-    return '$monthName $year — $fishCount ${DateFormatter.getFishText(
-        fishCount)}';
+    return '$monthName $year — $fishCount ${DateFormatter.getFishText(fishCount)}';
   }
 }

@@ -5,6 +5,7 @@ import '../../constants/app_constants.dart';
 import '../../providers/statistics_provider.dart';
 import '../../models/statistics_models.dart';
 import '../../utils/date_formatter.dart';
+import '../../localization/app_localizations.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
@@ -37,6 +38,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   // Показать диалог выбора пользовательского диапазона дат
   Future<void> _showDateRangePicker() async {
+    final localizations = AppLocalizations.of(context);
+
     final initialDateRange = DateTimeRange(
       start: _statisticsProvider.customDateRange.startDate,
       end: _statisticsProvider.customDateRange.endDate,
@@ -47,15 +50,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       initialDateRange: initialDateRange,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      saveText: 'Применить',
-      cancelText: 'Отмена',
-      confirmText: 'Выбрать',
-      helpText: 'Выберите диапазон дат',
-      errorFormatText: 'Введите дату в правильном формате',
-      errorInvalidText: 'Введите правильную дату',
-      errorInvalidRangeText: 'Выберите правильный диапазон',
-      fieldStartHintText: 'Начальная дата',
-      fieldEndHintText: 'Конечная дата',
+      saveText: localizations.translate('apply'),
+      cancelText: localizations.translate('cancel'),
+      confirmText: localizations.translate('select_custom'),
+      helpText: localizations.translate('select_date_range'),
+      errorFormatText: localizations.translate('enter_correct_date_format'),
+      errorInvalidText: localizations.translate('enter_correct_date'),
+      errorInvalidRangeText: localizations.translate('select_correct_range'),
+      fieldStartHintText: localizations.translate('start_date'),
+      fieldEndHintText: localizations.translate('end_date'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -82,15 +85,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   String _getPeriodTitle() {
+    final localizations = AppLocalizations.of(context);
+
     switch (_statisticsProvider.selectedPeriod) {
       case StatisticsPeriod.week:
-        return 'Последние 7 дней';
+        return localizations.translate('week');
       case StatisticsPeriod.month:
-        return 'Последние 30 дней';
+        return localizations.translate('month');
       case StatisticsPeriod.year:
-        return 'Текущий год';
+        return localizations.translate('year');
       case StatisticsPeriod.allTime:
-        return 'За всё время';
+        return localizations.translate('all_time');
       case StatisticsPeriod.custom:
         return _statisticsProvider.customDateRange.format();
     }
@@ -98,11 +103,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Статистика',
+        title: Text(
+          localizations.translate('statistics'),
           style: TextStyle(
             color: Colors.white,
             fontSize: 24,
@@ -122,7 +129,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             onRefresh: _loadStatistics,
             color: AppConstants.primaryColor,
             child: isLoading
-                ? const Center(
+                ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
@@ -152,7 +159,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppConstants.primaryColor,
                     ),
-                    child: const Text('Повторить'),
+                    child: Text(localizations.translate('try_again')),
                   ),
                 ],
               ),
@@ -167,6 +174,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final localizations = AppLocalizations.of(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -178,7 +187,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Нет данных для отображения',
+            localizations.translate('no_data_to_display'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 20,
@@ -189,7 +198,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              'Создайте заметки о рыбалке для отображения статистики',
+              localizations.translate('create_fishing_notes_for_stats'),
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: 16,
@@ -203,6 +212,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildStatisticsContent() {
+    final localizations = AppLocalizations.of(context);
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
@@ -238,37 +249,39 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   // Селектор периодов (недельный, месячный, годовой и т.д.)
   Widget _buildPeriodSelector() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
           _buildPeriodButton(
-            'Неделя',
+            localizations.translate('week'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.week,
                 () => _onPeriodSelected(StatisticsPeriod.week),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
-            'Месяц',
+            localizations.translate('month'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.month,
                 () => _onPeriodSelected(StatisticsPeriod.month),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
-            'Год',
+            localizations.translate('year'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.year,
                 () => _onPeriodSelected(StatisticsPeriod.year),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
-            'Всё время',
+            localizations.translate('all_time'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.allTime,
                 () => _onPeriodSelected(StatisticsPeriod.allTime),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
-            'Выбрать',
+            localizations.translate('select_custom'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.custom,
                 () => _onPeriodSelected(StatisticsPeriod.custom),
             Icons.date_range,
@@ -322,6 +335,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   // Основные статистические показатели в обновленном порядке
   Widget _buildMainStatistics() {
     final stats = _statisticsProvider.statistics;
+    final localizations = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,9 +344,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         if (stats.biggestFish != null)
           _buildStatCard(
             icon: Icons.emoji_events,
-            title: 'Самая большая рыба',
-            value: '${stats.biggestFish!.weight} кг',
-            subtitle: stats.biggestFish!.formattedText,
+            title: localizations.translate('biggest_fish'),
+            value: '${stats.biggestFish!.weight} ${localizations.translate('kg')}',
+            subtitle: stats.biggestFish!.getFormattedText(context),
             valueColor: Colors.amber,
           ),
 
@@ -341,9 +355,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 2. Всего поймано рыб
         _buildStatCard(
           icon: Icons.set_meal,
-          title: 'Всего поймано рыб',
+          title: localizations.translate('total_fish_caught'),
           value: stats.totalFish.toString(),
-          subtitle: DateFormatter.getFishText(stats.totalFish),
+          subtitle: DateFormatter.getFishText(stats.totalFish, context),
           valueColor: Colors.green,
         ),
 
@@ -352,9 +366,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 3. Нереализованные поклевки
         _buildStatCard(
           icon: Icons.hourglass_empty,
-          title: 'Нереализованные поклевки',
+          title: localizations.translate('missed_bites'),
           value: stats.missedBites.toString(),
-          subtitle: 'поклевок без поимки',
+          subtitle: localizations.translate('bites_without_catch'),
           valueColor: Colors.red,
         ),
 
@@ -363,9 +377,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 4. Реализация поклевок
         _buildStatCard(
           icon: Icons.percent,
-          title: 'Реализация поклевок',
+          title: localizations.translate('bite_realization'),
           value: '${stats.realizationRate.toStringAsFixed(1)}%',
-          subtitle: 'эффективность ловли',
+          subtitle: localizations.translate('fishing_efficiency'),
           valueColor: _getRealizationColor(stats.realizationRate),
         ),
 
@@ -374,9 +388,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 5. Общий вес пойманных рыб
         _buildStatCard(
           icon: Icons.scale,
-          title: 'Общий вес улова',
-          value: '${stats.totalWeight.toStringAsFixed(1)} кг',
-          subtitle: 'суммарный вес пойманных рыб',
+          title: localizations.translate('total_catch_weight'),
+          value: '${stats.totalWeight.toStringAsFixed(1)} ${localizations.translate('kg')}',
+          subtitle: localizations.translate('total_weight_caught_fish'),
           valueColor: Colors.green,
         ),
 
@@ -385,9 +399,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 6. Всего рыбалок
         _buildStatCard(
           icon: Icons.format_list_bulleted,
-          title: 'Всего рыбалок',
+          title: localizations.translate('total_fishing_trips'),
           value: stats.totalTrips.toString(),
-          subtitle: DateFormatter.getFishingTripsText(stats.totalTrips),
+          subtitle: DateFormatter.getFishingTripsText(stats.totalTrips, context),
         ),
 
         const SizedBox(height: 16),
@@ -395,9 +409,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 7. Самая долгая рыбалка
         _buildStatCard(
           icon: Icons.access_time,
-          title: 'Самая долгая рыбалка',
+          title: localizations.translate('longest_fishing_trip'),
           value: stats.longestTripDays.toString(),
-          subtitle: DateFormatter.getDaysText(stats.longestTripDays),
+          subtitle: DateFormatter.getDaysText(stats.longestTripDays, context),
         ),
 
         const SizedBox(height: 16),
@@ -405,9 +419,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         // 8. Всего дней на рыбалке
         _buildStatCard(
           icon: Icons.calendar_today,
-          title: 'Всего дней на рыбалке',
+          title: localizations.translate('total_fishing_days'),
           value: stats.totalDaysOnFishing.toString(),
-          subtitle: 'дней на рыбалке',
+          subtitle: localizations.translate('days_fishing'),
         ),
 
         const SizedBox(height: 16),
@@ -416,9 +430,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         if (stats.latestTrip != null)
           _buildStatCard(
             icon: Icons.directions_car,
-            title: 'Последний выезд',
+            title: localizations.translate('last_fishing_trip'),
             value: stats.latestTrip!.tripName,
-            subtitle: stats.latestTrip!.formattedText,
+            subtitle: stats.latestTrip!.getFormattedText(context),
           ),
 
         const SizedBox(height: 16),
@@ -427,9 +441,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         if (stats.bestMonth != null)
           _buildStatCard(
             icon: Icons.star,
-            title: 'Лучший месяц',
-            value: DateFormatter.getMonthInNominative(stats.bestMonth!.month),
-            subtitle: stats.bestMonth!.formattedText,
+            title: localizations.translate('best_month'),
+            value: DateFormatter.getMonthInNominative(stats.bestMonth!.month, context),
+            subtitle: stats.bestMonth!.getFormattedText(context),
             valueColor: Colors.amber,
           ),
       ],
