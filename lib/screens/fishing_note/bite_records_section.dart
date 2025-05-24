@@ -2,10 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui'; // Явный импорт для TextDirection
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
-import '../../utils/date_formatter.dart';
 import '../../localization/app_localizations.dart';
 import 'bite_record_screen.dart';
 
@@ -16,15 +14,15 @@ class BiteRecordsSection extends StatefulWidget {
   final Function(String) onDeleteRecord;
 
   const BiteRecordsSection({
-    Key? key,
+    super.key,
     required this.note,
     required this.onAddRecord,
     required this.onUpdateRecord,
     required this.onDeleteRecord,
-  }) : super(key: key);
+  });
 
   @override
-  _BiteRecordsSectionState createState() => _BiteRecordsSectionState();
+  State<BiteRecordsSection> createState() => _BiteRecordsSectionState();
 }
 
 class _BiteRecordsSectionState extends State<BiteRecordsSection> {
@@ -168,7 +166,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                     ? '${localizations.translate('no_bite_records_day')} ${_getDayName(_selectedDayIndex, allDays[_selectedDayIndex])}'
                     : localizations.translate('no_bite_records'),
                 style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -190,7 +188,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
   // Строим список дней (выпадающее меню)
   Widget _buildDaysList(int totalDays, List<DateTime> days) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: DropdownButtonHideUnderline(
         child: Container(
@@ -333,7 +331,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.2),
+                              color: Colors.green.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -350,7 +348,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.2),
+                              color: Colors.red.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -394,14 +392,14 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           children: [
                             Icon(
                               Icons.scale,
-                              color: AppConstants.textColor.withOpacity(0.7),
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
                               size: 16,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${record.weight} ${localizations.translate('kg')}',
                               style: TextStyle(
-                                color: AppConstants.textColor.withOpacity(0.9),
+                                color: AppConstants.textColor.withValues(alpha: 0.9),
                               ),
                             ),
                           ],
@@ -413,14 +411,14 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           children: [
                             Icon(
                               Icons.straighten,
-                              color: AppConstants.textColor.withOpacity(0.7),
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
                               size: 16,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${record.length} см',
                               style: TextStyle(
-                                color: AppConstants.textColor.withOpacity(0.9),
+                                color: AppConstants.textColor.withValues(alpha: 0.9),
                               ),
                             ),
                           ],
@@ -434,7 +432,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                 Text(
                   record.notes,
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.8),
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -472,7 +470,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                   IconButton(
                     icon: Icon(
                       Icons.edit,
-                      color: AppConstants.textColor.withOpacity(0.7),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 20,
                     ),
                     tooltip: localizations.translate('edit'),
@@ -500,7 +498,6 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
   Widget _buildBiteRecordsTimeline(BuildContext context, List<BiteRecord> records) {
     // Создаем временную шкалу от 00:00 до 23:59
     const hoursInDay = 24;
-    const divisions = 48; // 30-минутные интервалы
 
     return Container(
       height: 130,
@@ -528,7 +525,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                 Text(
                   '$i:00',
                   style: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.8),
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
                     fontSize: 10,
                   ),
                 ),
@@ -599,7 +596,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
     // Рисуем горизонтальную линию
@@ -610,7 +607,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     );
 
     // Рисуем деления
-    final divisions = 48; // 30-минутные интервалы
+    const divisions = 48; // 30-минутные интервалы
     final divisionWidth = size.width / divisions;
     for (int i = 0; i <= divisions; i++) {
       final x = i * divisionWidth;
