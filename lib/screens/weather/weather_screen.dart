@@ -7,6 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather/weather_api_service.dart';
 import '../../localization/app_localizations.dart';
+import 'weather_detail_screen.dart'; // Добавляем импорт для детальной страницы
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -105,6 +106,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
+  // Метод для перехода к детальной странице погоды
+  void _openWeatherDetails() {
+    if (_currentWeather != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WeatherDetailScreen(
+            weatherData: _currentWeather!,
+            locationName: _locationName,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -199,6 +215,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
           _buildDailyForecast(),
           const SizedBox(height: 20),
           _buildWeatherDetails(),
+          const SizedBox(height: 20),
+          // Кнопка для перехода к детальной информации
+          _buildDetailButton(),
         ],
       ),
     );
@@ -207,97 +226,123 @@ class _WeatherScreenState extends State<WeatherScreen> {
   Widget _buildCurrentWeather() {
     final current = _currentWeather!.current;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            current.isDay == 1 ? Colors.blue[400]! : Colors.indigo[800]!,
-            current.isDay == 1 ? Colors.blue[600]! : Colors.indigo[900]!,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          // Название локации с ограничением по ширине
-          SizedBox(
-            width: double.infinity,
-            child: Text(
-              _locationName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${current.tempC.round()}°C',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 72,
-              fontWeight: FontWeight.w300,
-            ),
-          ),
-          // Описание погоды с переводом
-          SizedBox(
-            width: double.infinity,
-            child: Text(
-              _translateWeatherDescription(current.condition.text),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Ощущается как ${current.feelslikeC.round()}°C',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Статистика погоды
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Expanded(
-                child: _buildWeatherStat(
-                  Icons.air,
-                  'Ветер',
-                  '${current.windKph.round()} км/ч',
-                ),
-              ),
-              Expanded(
-                child: _buildWeatherStat(
-                  Icons.water_drop,
-                  'Влажность',
-                  '${current.humidity}%',
-                ),
-              ),
-              Expanded(
-                child: _buildWeatherStat(
-                  Icons.visibility,
-                  'Видимость',
-                  '${current.visKm.round()} км',
-                ),
-              ),
+    return GestureDetector(
+      onTap: _openWeatherDetails, // При нажатии открываем детальную страницу
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              current.isDay == 1 ? Colors.blue[400]! : Colors.indigo[800]!,
+              current.isDay == 1 ? Colors.blue[600]! : Colors.indigo[900]!,
             ],
           ),
-        ],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            // Название локации с ограничением по ширине
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                _locationName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${current.tempC.round()}°C',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 72,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            // Описание погоды с переводом
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                _translateWeatherDescription(current.condition.text),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Ощущается как ${current.feelslikeC.round()}°C',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Статистика погоды
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Expanded(
+                  child: _buildWeatherStat(
+                    Icons.air,
+                    'Ветер',
+                    '${current.windKph.round()} км/ч',
+                  ),
+                ),
+                Expanded(
+                  child: _buildWeatherStat(
+                    Icons.water_drop,
+                    'Влажность',
+                    '${current.humidity}%',
+                  ),
+                ),
+                Expanded(
+                  child: _buildWeatherStat(
+                    Icons.visibility,
+                    'Видимость',
+                    '${current.visKm.round()} км',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Подсказка о детальной информации
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white70, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Нажмите для подробностей',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -608,6 +653,25 @@ class _WeatherScreenState extends State<WeatherScreen> {
     );
   }
 
+  Widget _buildDetailButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _openWeatherDetails,
+        icon: const Icon(Icons.info_outline),
+        label: const Text('Подробная информация о погоде'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppConstants.primaryColor,
+          foregroundColor: AppConstants.textColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
   IconData _getWeatherIcon(int code) {
     switch (code) {
       case 1000: // Clear
@@ -651,16 +715,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   /// Перевод описания погоды с английского на русский
   String _translateWeatherDescription(String englishDescription) {
-    // Сначала пробуем найти точное совпадение
     final translations = {
       // Ясная погода
       'Sunny': 'Солнечно',
       'Clear': 'Ясно',
 
       // Облачность (все варианты регистра)
-      'Partly cloudy ': 'Переменная облачность',
-      'Partly Cloudy ': 'Переменная облачность',
-      'PARTLY CLOUDY ': 'Переменная облачность',
+      'Partly cloudy': 'Переменная облачность',
+      'Partly Cloudy': 'Переменная облачность',
+      'PARTLY CLOUDY': 'Переменная облачность',
       'Cloudy': 'Облачно',
       'cloudy': 'Облачно',
       'CLOUDY': 'Облачно',
@@ -785,22 +848,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       'windy': 'ветрено',
     };
 
-    // Сначала пробуем точное совпадение
-    if (translations.containsKey(englishDescription)) {
-      return translations[englishDescription]!;
-    }
-
-    // Если точного совпадения нет, пробуем поиск по нижнему регистру
-    final lowerCase = englishDescription.toLowerCase();
-    for (final entry in translations.entries) {
-      if (entry.key.toLowerCase() == lowerCase) {
-        return entry.value;
-      }
-    }
-
-    // Если ничего не найдено, выводим исходное описание и логируем для отладки
-    debugPrint('⚠️ Не найден перевод для описания погоды: "$englishDescription"');
-    return englishDescription;
+    return translations[englishDescription] ?? englishDescription;
   }
 
   /// Перевод фазы луны с английского на русский
