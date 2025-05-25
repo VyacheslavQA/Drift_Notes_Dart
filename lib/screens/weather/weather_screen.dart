@@ -651,6 +651,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   /// Перевод описания погоды с английского на русский
   String _translateWeatherDescription(String englishDescription) {
+    // Сначала пробуем найти точное совпадение
     final translations = {
       // Ясная погода
       'Sunny': 'Солнечно',
@@ -784,7 +785,22 @@ class _WeatherScreenState extends State<WeatherScreen> {
       'windy': 'ветрено',
     };
 
-    return translations[englishDescription] ?? englishDescription;
+    // Сначала пробуем точное совпадение
+    if (translations.containsKey(englishDescription)) {
+      return translations[englishDescription]!;
+    }
+
+    // Если точного совпадения нет, пробуем поиск по нижнему регистру
+    final lowerCase = englishDescription.toLowerCase();
+    for (final entry in translations.entries) {
+      if (entry.key.toLowerCase() == lowerCase) {
+        return entry.value;
+      }
+    }
+
+    // Если ничего не найдено, выводим исходное описание и логируем для отладки
+    debugPrint('⚠️ Не найден перевод для описания погоды: "$englishDescription"');
+    return englishDescription;
   }
 
   /// Перевод фазы луны с английского на русский

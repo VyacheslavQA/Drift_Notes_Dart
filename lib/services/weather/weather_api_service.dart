@@ -163,6 +163,15 @@ class WeatherApiService {
 
   /// Перевод описания погоды с английского на русский
   static String _translateWeatherDescription(String englishDescription) {
+    // Добавляем детальную отладку
+    debugPrint('🌤️ Оригинальное описание: "${englishDescription}"');
+    debugPrint('🌤️ Длина строки: ${englishDescription.length}');
+    debugPrint('🌤️ Коды символов: ${englishDescription.codeUnits}');
+
+    // Обрезаем лишние пробелы и невидимые символы
+    final cleanDescription = englishDescription.trim().replaceAll(RegExp(r'\s+'), ' ');
+    debugPrint('🌤️ Очищенное описание: "$cleanDescription"');
+
     final translations = {
       // Ясная погода
       'Sunny': 'Солнечно',
@@ -296,7 +305,28 @@ class WeatherApiService {
       'windy': 'ветрено',
     };
 
-    return translations[englishDescription] ?? englishDescription;
+    // Сначала ищем точное совпадение
+    var translation = translations[cleanDescription];
+
+    if (translation != null) {
+      debugPrint('✅ Найден точный перевод: "$translation"');
+      return translation;
+    }
+
+    // Если точного совпадения нет, попробуем найти по частичному совпадению (без учета регистра)
+    final lowerDescription = cleanDescription.toLowerCase();
+    for (final entry in translations.entries) {
+      if (entry.key.toLowerCase() == lowerDescription) {
+        debugPrint('✅ Найден перевод без учета регистра: "${entry.value}"');
+        return entry.value;
+      }
+    }
+
+    // Если ничего не найдено, логируем и возвращаем оригинал
+    debugPrint('❌ Не найден перевод для описания погоды: "$cleanDescription"');
+    debugPrint('❌ Доступные ключи: ${translations.keys.take(5).join(", ")}...');
+
+    return cleanDescription; // Возвращаем очищенное оригинальное описание
   }
 
   /// Перевод направления ветра
