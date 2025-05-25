@@ -55,3 +55,14 @@ lib/firebase_options.dart
 lib/config/api_keys.dart
 
 Set-Content -Path .gitignore -Value $gitignore -Encoding UTF8
+
+# API ключи и секретные данные
+android/local.properties
+ios/Runner/GoogleMaps-Info.plist
+android/key.properties
+*.keystore
+*.jks
+
+# Конфигурационные файлы с секретами
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist

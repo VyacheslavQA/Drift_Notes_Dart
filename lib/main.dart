@@ -22,9 +22,17 @@ import 'providers/statistics_provider.dart';
 import 'services/offline/offline_storage_service.dart';
 import 'services/offline/sync_service.dart';
 import 'utils/network_utils.dart';
+import 'config/api_keys.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ ПРОВЕРКИ
+  debugPrint('=== ПРОВЕРКА API КЛЮЧЕЙ ===');
+  debugPrint('Google Maps ключ установлен: ${ApiKeys.hasGoogleMapsKey}');
+  debugPrint('Weather ключ установлен: ${ApiKeys.hasWeatherKey}');
+  debugPrint('==============================');
+
 
   // Инициализация локали для форматирования дат
   await initializeDateFormatting('ru_RU', null);

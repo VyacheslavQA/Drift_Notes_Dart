@@ -5,6 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
 import '../../repositories/fishing_note_repository.dart';
+import '../../config/api_keys.dart';
+import '../../localization/app_localizations.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -24,15 +26,26 @@ class _MapScreenState extends State<MapScreen> {
 
   // Начальная позиция для карты (будет заменена текущей геолокацией)
   CameraPosition _initialPosition = const CameraPosition(
-    target: LatLng(55.751244, 37.618423), // Москва
+    target: LatLng(52.2873, 77.2874), // Павлодар
     zoom: 11.0,
   );
 
   @override
   void initState() {
     super.initState();
-    _loadUserLocation();
-    _loadFishingSpots();
+
+    // Проверяем API ключ при инициализации
+    if (ApiKeys.hasGoogleMapsKey) {
+      _loadUserLocation();
+      _loadFishingSpots();
+    } else {
+      // Если ключа нет, сразу показываем ошибку
+      setState(() {
+        _isLoading = false;
+        _errorLoadingMap = true;
+        _errorMessage = 'Google Maps API ключ не настроен';
+      });
+    }
   }
 
   // Загрузка текущей геолокации пользователя
@@ -163,17 +176,126 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  // Повторная попытка загрузки (для случая с отсутствующим API ключом)
+  void _retryLoading() {
+    if (!ApiKeys.hasGoogleMapsKey) {
+      // Показываем информацию о настройке ключа
+      _showApiKeyInfo();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorLoadingMap = false;
+      _errorMessage = '';
+    });
+
+    _loadUserLocation();
+    _loadFishingSpots();
+  }
+
+  // Показ информации о настройке API ключа
+  void _showApiKeyInfo() {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.surfaceColor,
+          title: Text(
+            'Настройка Google Maps',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Для работы карты необходимо настроить Google Maps API ключ:',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '1. Получите ключ в Google Cloud Console\n'
+                    '2. Добавьте его в файл lib/config/api_keys.dart\n'
+                    '3. Перезапустите приложение',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.8),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Понятно',
+                style: TextStyle(
+                  color: AppConstants.primaryColor,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('Карта рыбалок'),
+        title: Text(
+          localizations.translate('map'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          // Кнопка информации о статусе API ключей (только в debug режиме)
+          if (ApiKeys.hasGoogleMapsKey)
+            IconButton(
+              icon: Icon(Icons.refresh, color: AppConstants.textColor),
+              onPressed: _retryLoading,
+              tooltip: 'Обновить карту',
+            ),
+        ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppConstants.textColor))
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppConstants.primaryColor),
+            const SizedBox(height: 16),
+            Text(
+              'Загрузка карты...',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      )
           : _errorLoadingMap
           ? Center(
         child: Padding(
@@ -182,23 +304,50 @@ class _MapScreenState extends State<MapScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.location_off,
-                color: AppConstants.textColor,
+                !ApiKeys.hasGoogleMapsKey
+                    ? Icons.warning_amber_rounded
+                    : Icons.location_off,
+                color: !ApiKeys.hasGoogleMapsKey
+                    ? Colors.orange
+                    : AppConstants.textColor,
                 size: 64,
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage,
+                !ApiKeys.hasGoogleMapsKey
+                    ? 'Google Maps API ключ не настроен'
+                    : _errorMessage,
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 16,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                !ApiKeys.hasGoogleMapsKey
+                    ? 'Для работы карты необходимо добавить API ключ в настройки приложения'
+                    : 'Проверьте подключение к интернету и разрешения геолокации',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loadUserLocation,
-                child: const Text('Повторить'),
+              ElevatedButton.icon(
+                onPressed: _retryLoading,
+                icon: Icon(!ApiKeys.hasGoogleMapsKey ? Icons.info : Icons.refresh),
+                label: Text(!ApiKeys.hasGoogleMapsKey ? 'Подробнее' : 'Повторить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppConstants.primaryColor,
+                  foregroundColor: AppConstants.textColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ],
           ),
@@ -215,11 +364,12 @@ class _MapScreenState extends State<MapScreen> {
         compassEnabled: true,
         style: _mapStyle,
       ),
-      floatingActionButton: !_isLoading && !_errorLoadingMap
+      floatingActionButton: !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
           ? FloatingActionButton(
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         onPressed: _loadUserLocation,
+        tooltip: 'Моё местоположение',
         child: const Icon(Icons.my_location),
       )
           : null,

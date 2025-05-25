@@ -22,6 +22,7 @@ import 'marker_maps/marker_maps_list_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -116,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) => const FishingCalendarScreen()),
         );
         break;
-      case 4: // Карта (вместо уведомлений)
+      case 4: // Карта
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const MapScreen()),
