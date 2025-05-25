@@ -326,6 +326,8 @@
   "save_changes": "Save Changes",
   "profile_updated": "Profile updated",
   "profile_update_error": "Profile update error",
+  "first_select_country": "First select a country",
+  "profile_updated_successfully": "Profile updated successfully",
   "novice": "Novice",
   "amateur": "Amateur",
   "advanced": "Advanced",
@@ -506,6 +508,7 @@
   "map_deleted_successfully": "Map deleted successfully",
   "error_deleting_map": "Error deleting map",
   "error_saving_changes": "Error saving changes",
+  "save_changes": "Save Changes",
   "add_marker_dialog_title": "Adding Marker",
   "remember_me": "Remember me",
 
@@ -526,5 +529,12 @@
   "password_reset_email_will_be_sent": "Password reset email will be sent to your email:",
   "check_spam_folder": "Don't forget to check your \"Spam\" folder",
   "password_reset_email_sent": "Password reset email sent",
-  "change_your_account_password": "Change your account password"
+  "change_your_account_password": "Change your account password",
+
+  "current_password_incorrect": "Current password is incorrect",
+  "requires_recent_login": "Recent login required. Please log in again",
+  "password_reset_error": "Error sending password reset email",
+  "changing_password": "Changing password...",
+  "please_enter_current_password": "Please enter current password",
+  "user_not_authorized": "User not authorized"
 }

@@ -327,6 +327,8 @@
   "save_changes": "Сохранить изменения",
   "profile_updated": "Профиль обновлен",
   "profile_update_error": "Ошибка обновления профиля",
+  "first_select_country": "Сначала выберите страну",
+  "profile_updated_successfully": "Профиль успешно обновлен",
   "novice": "Новичок",
   "amateur": "Любитель",
   "advanced": "Продвинутый",
@@ -504,8 +506,6 @@
   "marker_info": "Информация о маркерах",
   "map_name_required": "Введите название карты",
   "info_updated": "Информация обновлена",
-
-
   "map_deleted_successfully": "Карта успешно удалена",
   "error_deleting_map": "Ошибка при удалении карты",
   "error_saving_changes": "Ошибка при сохранении изменений",
@@ -530,5 +530,12 @@
   "password_reset_email_will_be_sent": "Письмо для сброса пароля будет отправлено на ваш email:",
   "check_spam_folder": "Не забудьте проверить папку \"Спам\"",
   "password_reset_email_sent": "Письмо для сброса пароля отправлено",
-  "change_your_account_password": "Изменить пароль вашего аккаунта"
+  "change_your_account_password": "Изменить пароль вашего аккаунта",
+
+  "current_password_incorrect": "Неверный текущий пароль",
+  "requires_recent_login": "Требуется повторная авторизация. Войдите в аккаунт заново",
+  "password_reset_error": "Ошибка при отправке письма для сброса пароля",
+  "changing_password": "Изменение пароля...",
+  "please_enter_current_password": "Пожалуйста, введите текущий пароль",
+  "user_not_authorized": "Пользователь не авторизован"
 }
