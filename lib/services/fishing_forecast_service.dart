@@ -1,1044 +1,263 @@
-// Путь: lib/screens/weather/weather_screen.dart
+// Путь: lib/services/fishing_forecast_service.dart
 
-import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
-import '../../constants/app_constants.dart';
-import '../../models/weather_api_model.dart';
-import '../../services/weather/weather_api_service.dart';
-import '../../localization/app_localizations.dart';
-import 'weather_detail_screen.dart';
-import '../../services/fishing_forecast_service.dart';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
+import '../models/weather_api_model.dart';
 
-class WeatherScreen extends StatefulWidget {
-  const WeatherScreen({super.key});
+class FishingForecastService {
+  // Singleton pattern
+  static final FishingForecastService _instance = FishingForecastService._internal();
+  factory FishingForecastService() => _instance;
+  FishingForecastService._internal();
 
-  @override
-  State<WeatherScreen> createState() => _WeatherScreenState();
-}
-
-class _WeatherScreenState extends State<WeatherScreen> {
-  final WeatherApiService _weatherService = WeatherApiService();
-  final FishingForecastService _fishingForecastService = FishingForecastService();
-
-  WeatherApiResponse? _currentWeather;
-  Map<String, dynamic>? _fishingForecast;
-  bool _isLoading = true;
-  String? _errorMessage;
-  String _locationName = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadWeather();
-  }
-
-  Future<void> _loadWeather() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+  /// Получить прогноз для рыбалки на основе данных о погоде
+  Future<Map<String, dynamic>> getFishingForecast({
+    required WeatherApiResponse weather,
+    required double latitude,
+    required double longitude,
+  }) async {
     try {
-      // Получаем текущее местоположение
-      final position = await _getCurrentPosition();
+      final current = weather.current;
+      final forecast = weather.forecast.isNotEmpty ? weather.forecast.first : null;
 
-      if (position != null) {
-        // Получаем прогноз погоды с часовыми данными
-        final weather = await _weatherService.getForecast(
-          latitude: position.latitude,
-          longitude: position.longitude,
-          days: 3,
-        );
+      // Анализируем различные факторы
+      final pressureFactor = _analyzePressure(current.pressureMb);
+      final windFactor = _analyzeWind(current.windKph);
+      final temperatureFactor = _analyzeTemperature(current.tempC);
+      final cloudFactor = _analyzeCloudCover(current.cloud);
+      final moonFactor = forecast != null ? _analyzeMoonPhase(forecast.astro.moonPhase) : 0.5;
+      final timeFactor = _analyzeTimeOfDay();
 
-        // Получаем прогноз для рыбалки
-        final fishingForecast = await _fishingForecastService.getFishingForecast(
-          weather: weather,
-          latitude: position.latitude,
-          longitude: position.longitude,
-        );
+      // Рассчитываем общую активность клёва
+      final overallActivity = _calculateOverallActivity([
+        pressureFactor,
+        windFactor,
+        temperatureFactor,
+        cloudFactor,
+        moonFactor,
+        timeFactor,
+      ]);
 
-        if (mounted) {
-          setState(() {
-            _currentWeather = weather;
-            _fishingForecast = fishingForecast;
-            _locationName = '${weather.location.name}, ${weather.location.region}';
-            _isLoading = false;
-          });
-        }
-      }
+      // Генерируем рекомендации
+      final recommendation = _generateRecommendation(
+        overallActivity,
+        current,
+        forecast?.astro,
+      );
+
+      return {
+        'overallActivity': overallActivity,
+        'pressureFactor': pressureFactor,
+        'windFactor': windFactor,
+        'temperatureFactor': temperatureFactor,
+        'cloudFactor': cloudFactor,
+        'moonFactor': moonFactor,
+        'timeFactor': timeFactor,
+        'recommendation': recommendation,
+        'bestTimeToFish': _getBestTimeToFish(forecast),
+        'weatherCondition': current.condition.text,
+      };
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Ошибка загрузки погоды: $e';
-          _isLoading = false;
-        });
-      }
+      debugPrint('Ошибка при создании прогноза рыбалки: $e');
+      return {
+        'overallActivity': 0.5,
+        'pressureFactor': 0.5,
+        'windFactor': 0.5,
+        'temperatureFactor': 0.5,
+        'cloudFactor': 0.5,
+        'moonFactor': 0.5,
+        'timeFactor': 0.5,
+        'recommendation': 'Недостаточно данных для точного прогноза',
+        'bestTimeToFish': 'Утренние и вечерние часы',
+        'weatherCondition': 'Неизвестно',
+      };
     }
   }
 
-  Future<Position?> _getCurrentPosition() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw Exception('Службы геолокации отключены');
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Разрешение на геолокацию отклонено');
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception('Разрешение на геолокацию отклонено навсегда');
-      }
-
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      // Если не удалось получить местоположение, используем координаты по умолчанию (Москва)
-      debugPrint('Ошибка получения местоположения: $e');
-      return Position(
-        longitude: 37.6176,
-        latitude: 55.7558,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-      );
-    }
-  }
-
-  // Метод для перехода к детальной странице погоды
-  void _openWeatherDetails() {
-    if (_currentWeather != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WeatherDetailScreen(
-            weatherData: _currentWeather!,
-            locationName: _locationName,
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          localizations.translate('weather'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppConstants.textColor),
-            onPressed: _loadWeather,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadWeather,
-        child: _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-        ),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadWeather,
-              child: const Text('Попробовать снова'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_currentWeather == null) {
-      return const Center(
-        child: Text('Нет данных о погоде'),
-      );
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCurrentWeather(),
-          const SizedBox(height: 20),
-          _buildFishingForecast(),
-          const SizedBox(height: 20),
-          _buildHourlyForecast(),
-          const SizedBox(height: 20),
-          _buildDailyForecast(),
-          const SizedBox(height: 20),
-          _buildWeatherDetails(),
-          const SizedBox(height: 20),
-          // Кнопка для перехода к детальной информации
-          _buildDetailButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentWeather() {
-    final current = _currentWeather!.current;
-
-    return GestureDetector(
-      onTap: _openWeatherDetails,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              current.isDay == 1 ? Colors.blue[400]! : Colors.indigo[800]!,
-              current.isDay == 1 ? Colors.blue[600]! : Colors.indigo[900]!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          children: [
-            // Температура
-            Text(
-              '${current.tempC.round()}°C',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 72,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-            // Название локации
-            Text(
-              _locationName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            // Описание погоды с переводом
-            Text(
-              _translateWeatherDescription(current.condition.text),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Ощущается как ${current.feelslikeC.round()}°C',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Статистика погоды
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.air,
-                    'Ветер',
-                    '${current.windKph.round()} км/ч',
-                  ),
-                ),
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.water_drop,
-                    'Влажность',
-                    '${current.humidity}%',
-                  ),
-                ),
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.visibility,
-                    'Видимость',
-                    '${current.visKm.round()} км',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Подсказка о детальной информации
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.info_outline, color: Colors.white70, size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Нажмите для подробностей',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFishingForecast() {
-    if (_fishingForecast == null) return const SizedBox();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Прогноз для рыбалки',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              // Общая активность клёва
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.set_meal,
-                    color: _getFishingActivityColor(_fishingForecast!['overallActivity']),
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Активность клёва',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        _getFishingActivityText(_fishingForecast!['overallActivity']),
-                        style: TextStyle(
-                          color: _getFishingActivityColor(_fishingForecast!['overallActivity']),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Детали прогноза
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildFishingFactorItem(
-                    'Давление',
-                    _fishingForecast!['pressureFactor'],
-                    Icons.speed,
-                  ),
-                  _buildFishingFactorItem(
-                    'Ветер',
-                    _fishingForecast!['windFactor'],
-                    Icons.air,
-                  ),
-                  _buildFishingFactorItem(
-                    'Луна',
-                    _fishingForecast!['moonFactor'],
-                    Icons.brightness_2,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Рекомендации
-              if (_fishingForecast!['recommendation'] != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _fishingForecast!['recommendation'],
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFishingFactorItem(String label, double factor, IconData icon) {
-    Color color = Colors.grey;
-    String text = 'Норма';
-
-    if (factor > 0.7) {
-      color = Colors.green;
-      text = 'Отлично';
-    } else if (factor > 0.4) {
-      color = Colors.orange;
-      text = 'Хорошо';
+  /// Анализ атмосферного давления
+  double _analyzePressure(double pressureMb) {
+    // Оптимальное давление для рыбалки: 1013-1023 мб
+    if (pressureMb >= 1013 && pressureMb <= 1023) {
+      return 1.0; // Отличные условия
+    } else if (pressureMb >= 1005 && pressureMb <= 1030) {
+      return 0.7; // Хорошие условия
+    } else if (pressureMb >= 995 && pressureMb <= 1035) {
+      return 0.4; // Средние условия
     } else {
-      color = Colors.red;
-      text = 'Плохо';
+      return 0.2; // Плохие условия
     }
-
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
   }
 
-  Color _getFishingActivityColor(double activity) {
-    if (activity > 0.7) return Colors.green;
-    if (activity > 0.4) return Colors.orange;
-    return Colors.red;
+  /// Анализ ветра
+  double _analyzeWind(double windKph) {
+    // Оптимальная скорость ветра: 5-15 км/ч
+    if (windKph >= 5 && windKph <= 15) {
+      return 1.0; // Отличные условия
+    } else if (windKph >= 0 && windKph <= 25) {
+      return 0.7; // Хорошие условия
+    } else if (windKph <= 35) {
+      return 0.4; // Средние условия
+    } else {
+      return 0.1; // Плохие условия (сильный ветер)
+    }
   }
 
-  String _getFishingActivityText(double activity) {
-    if (activity > 0.8) return 'Отличная';
-    if (activity > 0.6) return 'Хорошая';
-    if (activity > 0.4) return 'Средняя';
-    if (activity > 0.2) return 'Слабая';
-    return 'Очень слабая';
-  }
+  /// Анализ температуры
+  double _analyzeTemperature(double tempC) {
+    // Оптимальная температура зависит от сезона
+    final month = DateTime.now().month;
 
-  Widget _buildWeatherStat(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHourlyForecast() {
-    if (_currentWeather!.forecast.isEmpty) return const SizedBox();
-
-    final todayHours = _currentWeather!.forecast.first.hour;
-    final now = DateTime.now();
-
-    // Фильтруем только будущие часы
-    final upcomingHours = todayHours.where((hour) {
-      final hourTime = DateTime.parse(hour.time);
-      return hourTime.isAfter(now);
-    }).take(12).toList();
-
-    if (upcomingHours.isEmpty) return const SizedBox();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Почасовой прогноз',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: upcomingHours.length,
-            itemBuilder: (context, index) {
-              final hour = upcomingHours[index];
-              final time = DateTime.parse(hour.time);
-
-              return Container(
-                width: 80,
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppConstants.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text(
-                      DateFormat('HH:mm').format(time),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Icon(
-                      _getWeatherIcon(hour.condition.code),
-                      color: AppConstants.textColor,
-                      size: 24,
-                    ),
-                    Text(
-                      '${hour.tempC.round()}°',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      '${hour.chanceOfRain.round()}%',
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDailyForecast() {
-    if (_currentWeather!.forecast.length <= 1) return const SizedBox();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Прогноз на ${_currentWeather!.forecast.length} дня',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _currentWeather!.forecast.length,
-          itemBuilder: (context, index) {
-            final day = _currentWeather!.forecast[index];
-            final date = DateTime.parse(day.date);
-            final isToday = index == 0;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppConstants.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  // День недели
-                  SizedBox(
-                    width: 70,
-                    child: Text(
-                      isToday ? 'Сегодня' : _getDayOfWeek(date),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Иконка погоды
-                  Icon(
-                    _getWeatherIcon(day.day.condition.code),
-                    color: AppConstants.textColor,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 16),
-                  // Описание погоды
-                  Expanded(
-                    child: Text(
-                      _translateWeatherDescription(day.day.condition.text),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Температура
-                  Text(
-                    '${day.day.mintempC.round()}°/${day.day.maxtempC.round()}°',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  String _getDayOfWeek(DateTime date) {
-    final localizations = AppLocalizations.of(context);
-    final weekdays = [
-      'monday', 'tuesday', 'wednesday', 'thursday',
-      'friday', 'saturday', 'sunday'
-    ];
-
-    try {
-      final weekdayIndex = date.weekday - 1;
-      if (weekdayIndex >= 0 && weekdayIndex < weekdays.length) {
-        return localizations.translate(weekdays[weekdayIndex]);
+    if (month >= 4 && month <= 10) {
+      // Весна-лето-осень
+      if (tempC >= 15 && tempC <= 25) {
+        return 1.0; // Отличные условия
+      } else if (tempC >= 10 && tempC <= 30) {
+        return 0.7; // Хорошие условия
+      } else if (tempC >= 5 && tempC <= 35) {
+        return 0.4; // Средние условия
+      } else {
+        return 0.2; // Плохие условия
       }
-    } catch (e) {
-      debugPrint('Ошибка перевода дня недели: $e');
-    }
-
-    // Fallback на русский
-    const russianWeekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    final weekdayIndex = date.weekday - 1;
-    if (weekdayIndex >= 0 && weekdayIndex < russianWeekdays.length) {
-      return russianWeekdays[weekdayIndex];
-    }
-
-    return DateFormat('EEE', 'ru').format(date);
-  }
-
-  Widget _buildWeatherDetails() {
-    final current = _currentWeather!.current;
-    final astro = _currentWeather!.forecast.first.astro;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Подробности',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
-          children: [
-            _buildDetailCard('Давление', '${current.pressureMb.round()} мб', Icons.speed),
-            _buildDetailCard('Видимость', '${current.visKm.round()} км', Icons.visibility),
-            _buildDetailCard('УФ-индекс', current.uv.toString(), Icons.wb_sunny),
-            _buildDetailCard('Восход', astro.sunrise, Icons.wb_twilight),
-            _buildDetailCard('Закат', astro.sunset, Icons.nights_stay),
-            _buildDetailCard('Фаза луны', _translateMoonPhase(astro.moonPhase), Icons.brightness_2),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailCard(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppConstants.textColor.withValues(alpha: 0.7), size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _openWeatherDetails,
-        icon: const Icon(Icons.info_outline),
-        label: const Text('Подробная информация о погоде'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppConstants.primaryColor,
-          foregroundColor: AppConstants.textColor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _getWeatherIcon(int code) {
-    switch (code) {
-      case 1000: // Clear
-        return Icons.wb_sunny;
-      case 1003: // Partly cloudy
-      case 1006: // Cloudy
-      case 1009: // Overcast
-        return Icons.cloud;
-      case 1030: // Mist
-      case 1135: // Fog
-      case 1147: // Freezing fog
-        return Icons.cloud;
-      case 1063: // Patchy rain possible
-      case 1180: // Patchy light rain
-      case 1183: // Light rain
-      case 1186: // Moderate rain at times
-      case 1189: // Moderate rain
-      case 1192: // Heavy rain at times
-      case 1195: // Heavy rain
-      case 1198: // Light freezing rain
-      case 1201: // Moderate or heavy freezing rain
-        return Icons.grain;
-      case 1066: // Patchy snow possible
-      case 1210: // Patchy light snow
-      case 1213: // Light snow
-      case 1216: // Patchy moderate snow
-      case 1219: // Moderate snow
-      case 1222: // Patchy heavy snow
-      case 1225: // Heavy snow
-        return Icons.ac_unit;
-      case 1087: // Thundery outbreaks possible
-      case 1273: // Patchy light rain with thunder
-      case 1276: // Moderate or heavy rain with thunder
-      case 1279: // Patchy light snow with thunder
-      case 1282: // Moderate or heavy snow with thunder
-        return Icons.flash_on;
-      default:
-        return Icons.wb_sunny;
+    } else {
+      // Зима
+      if (tempC >= -5 && tempC <= 5) {
+        return 1.0; // Отличные условия для зимней рыбалки
+      } else if (tempC >= -10 && tempC <= 10) {
+        return 0.7; // Хорошие условия
+      } else if (tempC >= -20 && tempC <= 15) {
+        return 0.4; // Средние условия
+      } else {
+        return 0.2; // Плохие условия
+      }
     }
   }
 
-  /// Перевод описания погоды с английского на русский
-  String _translateWeatherDescription(String englishDescription) {
-    final translations = {
-      // Ясная погода
-      'Sunny': 'Солнечно',
-      'Clear': 'Ясно',
-
-      // Облачность (все варианты регистра)
-      'Partly cloudy': 'Переменная облачность',
-      'Partly Cloudy': 'Переменная облачность',
-      'PARTLY CLOUDY': 'Переменная облачность',
-      'Cloudy': 'Облачно',
-      'cloudy': 'Облачно',
-      'CLOUDY': 'Облачно',
-      'Overcast': 'Пасмурно',
-      'overcast': 'Пасмурно',
-      'OVERCAST': 'Пасмурно',
-
-      // Туман
-      'Mist': 'Дымка',
-      'mist': 'Дымка',
-      'Fog': 'Туман',
-      'fog': 'Туман',
-      'Freezing fog': 'Ледяной туман',
-      'freezing fog': 'Ледяной туман',
-
-      // Дождь - все варианты
-      'Patchy rain possible': 'Местами дождь',
-      'patchy rain possible': 'Местами дождь',
-      'Patchy rain nearby': 'Местами дождь поблизости',
-      'patchy rain nearby': 'Местами дождь поблизости',
-      'Patchy light drizzle': 'Местами легкая морось',
-      'patchy light drizzle': 'Местами легкая морось',
-      'Light drizzle': 'Легкая морось',
-      'light drizzle': 'Легкая морось',
-      'Freezing drizzle': 'Ледяная морось',
-      'freezing drizzle': 'Ледяная морось',
-      'Heavy freezing drizzle': 'Сильная ледяная морось',
-      'heavy freezing drizzle': 'Сильная ледяная морось',
-      'Patchy light rain': 'Местами легкий дождь',
-      'patchy light rain': 'Местами легкий дождь',
-      'Light rain': 'Легкий дождь',
-      'light rain': 'Легкий дождь',
-      'Moderate rain at times': 'Временами умеренный дождь',
-      'moderate rain at times': 'Временами умеренный дождь',
-      'Moderate rain': 'Умеренный дождь',
-      'moderate rain': 'Умеренный дождь',
-      'Heavy rain at times': 'Временами сильный дождь',
-      'heavy rain at times': 'Временами сильный дождь',
-      'Heavy rain': 'Сильный дождь',
-      'heavy rain': 'Сильный дождь',
-      'Light freezing rain': 'Легкий ледяной дождь',
-      'light freezing rain': 'Легкий ледяной дождь',
-      'Moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
-      'moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
-      'Light showers of ice pellets': 'Легкий ледяной дождь',
-      'light showers of ice pellets': 'Легкий ледяной дождь',
-      'Moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
-      'moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
-
-      // Снег - все варианты
-      'Patchy snow possible': 'Местами снег',
-      'patchy snow possible': 'Местами снег',
-      'Patchy snow nearby': 'Местами снег поблизости',
-      'patchy snow nearby': 'Местами снег поблизости',
-      'Patchy light snow': 'Местами легкий снег',
-      'patchy light snow': 'Местами легкий снег',
-      'Light snow': 'Легкий снег',
-      'light snow': 'Легкий снег',
-      'Patchy moderate snow': 'Местами умеренный снег',
-      'patchy moderate snow': 'Местами умеренный снег',
-      'Moderate snow': 'Умеренный снег',
-      'moderate snow': 'Умеренный снег',
-      'Patchy heavy snow': 'Местами сильный снег',
-      'patchy heavy snow': 'Местами сильный снег',
-      'Heavy snow': 'Сильный снег',
-      'heavy snow': 'Сильный снег',
-      'Ice pellets': 'Ледяная крупа',
-      'ice pellets': 'Ледяная крупа',
-      'Light snow showers': 'Легкие снежные ливни',
-      'light snow showers': 'Легкие снежные ливни',
-      'Moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
-      'moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
-      'Patchy light snow with thunder': 'Местами легкий снег с грозой',
-      'patchy light snow with thunder': 'Местами легкий снег с грозой',
-      'Moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
-      'moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
-
-      // Дождь с ливнями
-      'Light rain shower': 'Легкий ливень',
-      'light rain shower': 'Легкий ливень',
-      'Moderate or heavy rain shower': 'Умеренный или сильный ливень',
-      'moderate or heavy rain shower': 'Умеренный или сильный ливень',
-      'Torrential rain shower': 'Проливной ливень',
-      'torrential rain shower': 'Проливной ливень',
-
-      // Гроза
-      'Thundery outbreaks possible': 'Возможны грозы',
-      'thundery outbreaks possible': 'Возможны грозы',
-      'Patchy light rain with thunder': 'Местами легкий дождь с грозой',
-      'patchy light rain with thunder': 'Местами легкий дождь с грозой',
-      'Moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
-      'moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
-
-      // Град и мокрый снег
-      'Patchy sleet possible': 'Местами мокрый снег',
-      'patchy sleet possible': 'Местами мокрый снег',
-      'Patchy sleet nearby': 'Местами мокрый снег поблизости',
-      'patchy sleet nearby': 'Местами мокрый снег поблизости',
-      'Light sleet': 'Легкий мокрый снег',
-      'light sleet': 'Легкий мокрый снег',
-      'Moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
-      'moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
-      'Light sleet showers': 'Легкие ливни с мокрым снегом',
-      'light sleet showers': 'Легкие ливни с мокрым снегом',
-      'Moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
-      'moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
-
-      // Другие условия
-      'Blowing snow': 'Метель',
-      'blowing snow': 'Метель',
-      'Blizzard': 'Буран',
-      'blizzard': 'Буран',
-
-      // Дополнительные варианты
-      'Fair': 'Ясно',
-      'fair': 'ясно',
-      'Hot': 'Жарко',
-      'hot': 'жарко',
-      'Cold': 'Холодно',
-      'cold': 'холодно',
-      'Windy': 'Ветрено',
-      'windy': 'ветрено',
-    };
-
-    return translations[englishDescription] ?? englishDescription;
+  /// Анализ облачности
+  double _analyzeCloudCover(int cloudCover) {
+    // Легкая облачность часто лучше для рыбалки
+    if (cloudCover >= 20 && cloudCover <= 70) {
+      return 1.0; // Отличные условия
+    } else if (cloudCover >= 10 && cloudCover <= 80) {
+      return 0.7; // Хорошие условия
+    } else {
+      return 0.5; // Средние условия
+    }
   }
 
-  /// Перевод фазы луны с английского на русский
-  String _translateMoonPhase(String moonPhase) {
-    final translations = {
-      'New Moon': 'Новолуние',
-      'new moon': 'Новолуние',
-      'Waxing Crescent': 'Растущая луна',
-      'waxing crescent': 'Растущая луна',
-      'First Quarter': 'Первая четверть',
-      'first quarter': 'Первая четверть',
-      'Waxing Gibbous': 'Растущая луна',
-      'waxing gibbous': 'Растущая луна',
-      'Full Moon': 'Полнолуние',
-      'full moon': 'Полнолуние',
-      'Waning Gibbous': 'Убывающая луна',
-      'waning gibbous': 'Убывающая луна',
-      'Last Quarter': 'Последняя четверть',
-      'last quarter': 'Последняя четверть',
-      'Third Quarter': 'Третья четверть',
-      'third quarter': 'Третья четверть',
-      'Waning Crescent': 'Убывающая луна',
-      'waning crescent': 'Убывающая луна',
-    };
+  /// Анализ фазы луны
+  double _analyzeMoonPhase(String moonPhase) {
+    final phase = moonPhase.toLowerCase();
 
-    return translations[moonPhase] ?? moonPhase;
+    if (phase.contains('new') || phase.contains('full')) {
+      return 1.0; // Новолуние и полнолуние - лучшее время
+    } else if (phase.contains('quarter')) {
+      return 0.7; // Четверти луны - хорошее время
+    } else if (phase.contains('crescent') || phase.contains('gibbous')) {
+      return 0.6; // Промежуточные фазы
+    } else {
+      return 0.5; // Средние условия
+    }
+  }
+
+  /// Анализ времени суток
+  double _analyzeTimeOfDay() {
+    final hour = DateTime.now().hour;
+
+    if ((hour >= 5 && hour <= 9) || (hour >= 17 && hour <= 21)) {
+      return 1.0; // Утренние и вечерние часы - лучшее время
+    } else if ((hour >= 4 && hour <= 11) || (hour >= 16 && hour <= 22)) {
+      return 0.7; // Расширенные утренние и вечерние часы
+    } else if (hour >= 22 || hour <= 3) {
+      return 0.8; // Ночное время может быть хорошим
+    } else {
+      return 0.4; // Дневное время менее благоприятно
+    }
+  }
+
+  /// Расчёт общей активности клёва
+  double _calculateOverallActivity(List<double> factors) {
+    if (factors.isEmpty) return 0.5;
+
+    // Взвешенное среднее с учётом важности факторов
+    final weights = [0.25, 0.20, 0.15, 0.10, 0.15, 0.15]; // Сумма = 1.0
+
+    double weightedSum = 0.0;
+    double totalWeight = 0.0;
+
+    for (int i = 0; i < factors.length && i < weights.length; i++) {
+      weightedSum += factors[i] * weights[i];
+      totalWeight += weights[i];
+    }
+
+    return totalWeight > 0 ? weightedSum / totalWeight : 0.5;
+  }
+
+  /// Генерация рекомендаций
+  String _generateRecommendation(
+      double overallActivity,
+      Current current,
+      Astro? astro,
+      ) {
+    if (overallActivity > 0.8) {
+      return 'Отличные условия для рыбалки! Рыба должна быть очень активной.';
+    } else if (overallActivity > 0.6) {
+      return 'Хорошие условия для рыбалки. Стоит попробовать!';
+    } else if (overallActivity > 0.4) {
+      return 'Средние условия. Рыба может клевать, но не очень активно.';
+    } else if (overallActivity > 0.2) {
+      return 'Слабые условия для рыбалки. Лучше подождать более благоприятной погоды.';
+    } else {
+      return 'Неблагоприятные условия для рыбалки. Рекомендуется отложить выезд.';
+    }
+  }
+
+  /// Определение лучшего времени для рыбалки
+  String _getBestTimeToFish(ForecastDay? forecast) {
+    if (forecast == null) {
+      return 'Утренние часы (05:00-09:00) и вечерние часы (17:00-21:00)';
+    }
+
+    final astro = forecast.astro;
+    final sunrise = astro.sunrise;
+    final sunset = astro.sunset;
+
+    return 'Лучшее время: час до восхода ($sunrise) и час после заката ($sunset)';
+  }
+
+  /// Получить детальный анализ условий
+  Map<String, String> getDetailedAnalysis(Map<String, dynamic> forecast) {
+    final analysis = <String, String>{};
+
+    // Анализ давления
+    final pressureFactor = forecast['pressureFactor'] as double;
+    if (pressureFactor > 0.8) {
+      analysis['pressure'] = 'Давление стабильное - отлично для рыбалки';
+    } else if (pressureFactor > 0.5) {
+      analysis['pressure'] = 'Давление в норме - хорошо для рыбалки';
+    } else {
+      analysis['pressure'] = 'Давление нестабильное - может влиять на клёв';
+    }
+
+    // Анализ ветра
+    final windFactor = forecast['windFactor'] as double;
+    if (windFactor > 0.8) {
+      analysis['wind'] = 'Ветер слабый - идеально для рыбалки';
+    } else if (windFactor > 0.5) {
+      analysis['wind'] = 'Ветер умеренный - неплохо для рыбалки';
+    } else {
+      analysis['wind'] = 'Сильный ветер - может затруднить рыбалку';
+    }
+
+    // Анализ луны
+    final moonFactor = forecast['moonFactor'] as double;
+    if (moonFactor > 0.8) {
+      analysis['moon'] = 'Фаза луны благоприятна для активного клёва';
+    } else if (moonFactor > 0.5) {
+      analysis['moon'] = 'Фаза луны нейтральна';
+    } else {
+      analysis['moon'] = 'Фаза луны не очень благоприятна';
+    }
+
+    return analysis;
   }
 }

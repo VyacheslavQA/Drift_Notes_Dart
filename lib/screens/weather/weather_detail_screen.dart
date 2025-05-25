@@ -160,7 +160,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
+            childAspectRatio: 1.0, // Увеличено с 1.3 до 2.0
             children: [
               _buildWeatherCard(
                 'Влажность',
