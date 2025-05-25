@@ -23,18 +23,31 @@ class WeatherService {
     if (context != null) _context = context;
 
     try {
-      // Используем новый WeatherAPI сервис
-      final weatherData = await _weatherApiService.getCurrentWeather(
+      // Сначала попробуем получить прогноз с астрономическими данными
+      final weatherData = await _weatherApiService.getForecast(
         latitude: latitude,
         longitude: longitude,
+        days: 1, // Нужен только сегодняшний день для астрономии
       );
 
       // Конвертируем в FishingWeather для совместимости
       return WeatherApiService.convertToFishingWeather(weatherData);
     } catch (e) {
-      // Если новый API не работает, используем старый Open-Meteo как fallback
-      debugPrint('⚠️ WeatherAPI недоступен, используем Open-Meteo: $e');
-      return _getWeatherFromOpenMeteo(latitude, longitude);
+      debugPrint('⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e');
+
+      try {
+        // Если прогноз не работает, используем текущую погоду
+        final weatherData = await _weatherApiService.getCurrentWeather(
+          latitude: latitude,
+          longitude: longitude,
+        );
+
+        return WeatherApiService.convertToFishingWeather(weatherData);
+      } catch (e2) {
+        // Если новый API не работает совсем, используем старый Open-Meteo как fallback
+        debugPrint('⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2');
+        return _getWeatherFromOpenMeteo(latitude, longitude);
+      }
     }
   }
 

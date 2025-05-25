@@ -2,7 +2,7 @@
 
 class WeatherApiResponse {
   final Location location;
-  final CurrentWeather current;
+  final Current current;
   final List<ForecastDay> forecast;
 
   WeatherApiResponse({
@@ -13,13 +13,11 @@ class WeatherApiResponse {
 
   factory WeatherApiResponse.fromJson(Map<String, dynamic> json) {
     return WeatherApiResponse(
-      location: Location.fromJson(json['location']),
-      current: CurrentWeather.fromJson(json['current']),
-      forecast: json['forecast'] != null
-          ? List<ForecastDay>.from(
-          json['forecast']['forecastday']?.map((x) => ForecastDay.fromJson(x)) ?? []
-      )
-          : [],
+      location: Location.fromJson(json['location'] ?? {}),
+      current: Current.fromJson(json['current'] ?? {}),
+      forecast: (json['forecast']?['forecastday'] as List<dynamic>?)
+          ?.map((item) => ForecastDay.fromJson(item))
+          .toList() ?? [],
     );
   }
 }
@@ -30,7 +28,7 @@ class Location {
   final String country;
   final double lat;
   final double lon;
-  final String localtime;
+  final String tzId;
 
   Location({
     required this.name,
@@ -38,120 +36,90 @@ class Location {
     required this.country,
     required this.lat,
     required this.lon,
-    required this.localtime,
+    required this.tzId,
   });
 
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
-      name: json['name'] ?? '',
-      region: json['region'] ?? '',
-      country: json['country'] ?? '',
-      lat: (json['lat'] ?? 0.0).toDouble(),
-      lon: (json['lon'] ?? 0.0).toDouble(),
-      localtime: json['localtime'] ?? '',
+      name: json['name']?.toString() ?? '',
+      region: json['region']?.toString() ?? '',
+      country: json['country']?.toString() ?? '',
+      lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
+      lon: (json['lon'] as num?)?.toDouble() ?? 0.0,
+      tzId: json['tz_id']?.toString() ?? '',
     );
   }
 }
 
-class CurrentWeather {
+class Current {
   final double tempC;
-  final double tempF;
-  final int isDay;
-  final WeatherCondition condition;
-  final double windKph;
-  final double windMph;
-  final int windDegree;
-  final String windDir;
-  final double pressureMb;
-  final double pressureIn;
-  final double precipMm;
-  final double precipIn;
-  final int humidity;
-  final int cloud;
   final double feelslikeC;
-  final double feelslikeF;
+  final int humidity;
+  final double pressureMb;
+  final double windKph;
+  final String windDir;
+  final Condition condition;
+  final int cloud;
+  final int isDay;
   final double visKm;
-  final double visMiles;
   final double uv;
-  final double gustKph;
-  final double gustMph;
 
-  CurrentWeather({
+  Current({
     required this.tempC,
-    required this.tempF,
-    required this.isDay,
-    required this.condition,
-    required this.windKph,
-    required this.windMph,
-    required this.windDegree,
-    required this.windDir,
-    required this.pressureMb,
-    required this.pressureIn,
-    required this.precipMm,
-    required this.precipIn,
-    required this.humidity,
-    required this.cloud,
     required this.feelslikeC,
-    required this.feelslikeF,
+    required this.humidity,
+    required this.pressureMb,
+    required this.windKph,
+    required this.windDir,
+    required this.condition,
+    required this.cloud,
+    required this.isDay,
     required this.visKm,
-    required this.visMiles,
     required this.uv,
-    required this.gustKph,
-    required this.gustMph,
   });
 
-  factory CurrentWeather.fromJson(Map<String, dynamic> json) {
-    return CurrentWeather(
-      tempC: (json['temp_c'] ?? 0.0).toDouble(),
-      tempF: (json['temp_f'] ?? 0.0).toDouble(),
-      isDay: json['is_day'] ?? 1,
-      condition: WeatherCondition.fromJson(json['condition'] ?? {}),
-      windKph: (json['wind_kph'] ?? 0.0).toDouble(),
-      windMph: (json['wind_mph'] ?? 0.0).toDouble(),
-      windDegree: json['wind_degree'] ?? 0,
-      windDir: json['wind_dir'] ?? '',
-      pressureMb: (json['pressure_mb'] ?? 0.0).toDouble(),
-      pressureIn: (json['pressure_in'] ?? 0.0).toDouble(),
-      precipMm: (json['precip_mm'] ?? 0.0).toDouble(),
-      precipIn: (json['precip_in'] ?? 0.0).toDouble(),
-      humidity: json['humidity'] ?? 0,
-      cloud: json['cloud'] ?? 0,
-      feelslikeC: (json['feelslike_c'] ?? 0.0).toDouble(),
-      feelslikeF: (json['feelslike_f'] ?? 0.0).toDouble(),
-      visKm: (json['vis_km'] ?? 0.0).toDouble(),
-      visMiles: (json['vis_miles'] ?? 0.0).toDouble(),
-      uv: (json['uv'] ?? 0.0).toDouble(),
-      gustKph: (json['gust_kph'] ?? 0.0).toDouble(),
-      gustMph: (json['gust_mph'] ?? 0.0).toDouble(),
+  factory Current.fromJson(Map<String, dynamic> json) {
+    return Current(
+      tempC: (json['temp_c'] as num?)?.toDouble() ?? 0.0,
+      feelslikeC: (json['feelslike_c'] as num?)?.toDouble() ?? 0.0,
+      humidity: (json['humidity'] as num?)?.toInt() ?? 0,
+      pressureMb: (json['pressure_mb'] as num?)?.toDouble() ?? 0.0,
+      windKph: (json['wind_kph'] as num?)?.toDouble() ?? 0.0,
+      windDir: json['wind_dir']?.toString() ?? '',
+      condition: Condition.fromJson(json['condition'] ?? {}),
+      cloud: (json['cloud'] as num?)?.toInt() ?? 0,
+      isDay: (json['is_day'] as num?)?.toInt() ?? 0,
+      visKm: (json['vis_km'] as num?)?.toDouble() ?? 0.0,
+      uv: (json['uv'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
 
-class WeatherCondition {
+class Condition {
   final String text;
   final String icon;
   final int code;
 
-  WeatherCondition({
+  Condition({
     required this.text,
     required this.icon,
     required this.code,
   });
 
-  factory WeatherCondition.fromJson(Map<String, dynamic> json) {
-    return WeatherCondition(
-      text: json['text'] ?? '',
-      icon: json['icon'] ?? '',
-      code: json['code'] ?? 0,
+  factory Condition.fromJson(Map<String, dynamic> json) {
+    return Condition(
+      text: json['text']?.toString() ?? '',
+      icon: json['icon']?.toString() ?? '',
+      code: (json['code'] as num?)?.toInt() ?? 0,
     );
   }
 }
 
 class ForecastDay {
   final String date;
-  final DayWeather day;
+  final Day day;
   final Astro astro;
-  final List<HourWeather> hour;
+  final List<Hour> hour;
 
   ForecastDay({
     required this.date,
@@ -162,76 +130,64 @@ class ForecastDay {
 
   factory ForecastDay.fromJson(Map<String, dynamic> json) {
     return ForecastDay(
-      date: json['date'] ?? '',
-      day: DayWeather.fromJson(json['day'] ?? {}),
+      date: json['date']?.toString() ?? '',
+      day: Day.fromJson(json['day'] ?? {}),
       astro: Astro.fromJson(json['astro'] ?? {}),
-      hour: json['hour'] != null
-          ? List<HourWeather>.from(
-          json['hour'].map((x) => HourWeather.fromJson(x))
-      )
-          : [],
+      hour: (json['hour'] as List<dynamic>?)
+          ?.map((item) => Hour.fromJson(item))
+          .toList() ?? [],
     );
   }
 }
 
-class DayWeather {
+class Day {
   final double maxtempC;
-  final double maxtempF;
   final double mintempC;
-  final double mintempF;
-  final double avgtempC;
-  final double avgtempF;
-  final double maxwindKph;
-  final double maxwindMph;
-  final double totalprecipMm;
-  final double totalprecipIn;
-  final int avghumidity;
-  final int dailyWillItRain;
-  final int dailyChanceOfRain;
-  final int dailyWillItSnow;
-  final int dailyChanceOfSnow;
-  final WeatherCondition condition;
-  final double uv;
+  final Condition condition;
 
-  DayWeather({
+  Day({
     required this.maxtempC,
-    required this.maxtempF,
     required this.mintempC,
-    required this.mintempF,
-    required this.avgtempC,
-    required this.avgtempF,
-    required this.maxwindKph,
-    required this.maxwindMph,
-    required this.totalprecipMm,
-    required this.totalprecipIn,
-    required this.avghumidity,
-    required this.dailyWillItRain,
-    required this.dailyChanceOfRain,
-    required this.dailyWillItSnow,
-    required this.dailyChanceOfSnow,
     required this.condition,
-    required this.uv,
   });
 
-  factory DayWeather.fromJson(Map<String, dynamic> json) {
-    return DayWeather(
-      maxtempC: (json['maxtemp_c'] ?? 0.0).toDouble(),
-      maxtempF: (json['maxtemp_f'] ?? 0.0).toDouble(),
-      mintempC: (json['mintemp_c'] ?? 0.0).toDouble(),
-      mintempF: (json['mintemp_f'] ?? 0.0).toDouble(),
-      avgtempC: (json['avgtemp_c'] ?? 0.0).toDouble(),
-      avgtempF: (json['avgtemp_f'] ?? 0.0).toDouble(),
-      maxwindKph: (json['maxwind_kph'] ?? 0.0).toDouble(),
-      maxwindMph: (json['maxwind_mph'] ?? 0.0).toDouble(),
-      totalprecipMm: (json['totalprecip_mm'] ?? 0.0).toDouble(),
-      totalprecipIn: (json['totalprecip_in'] ?? 0.0).toDouble(),
-      avghumidity: json['avghumidity'] ?? 0,
-      dailyWillItRain: json['daily_will_it_rain'] ?? 0,
-      dailyChanceOfRain: json['daily_chance_of_rain'] ?? 0,
-      dailyWillItSnow: json['daily_will_it_snow'] ?? 0,
-      dailyChanceOfSnow: json['daily_chance_of_snow'] ?? 0,
-      condition: WeatherCondition.fromJson(json['condition'] ?? {}),
-      uv: (json['uv'] ?? 0.0).toDouble(),
+  factory Day.fromJson(Map<String, dynamic> json) {
+    return Day(
+      maxtempC: (json['maxtemp_c'] as num?)?.toDouble() ?? 0.0,
+      mintempC: (json['mintemp_c'] as num?)?.toDouble() ?? 0.0,
+      condition: Condition.fromJson(json['condition'] ?? {}),
+    );
+  }
+}
+
+class Hour {
+  final String time;
+  final double tempC;
+  final Condition condition;
+  final double windKph;
+  final String windDir;
+  final int humidity;
+  final double chanceOfRain;
+
+  Hour({
+    required this.time,
+    required this.tempC,
+    required this.condition,
+    required this.windKph,
+    required this.windDir,
+    required this.humidity,
+    required this.chanceOfRain,
+  });
+
+  factory Hour.fromJson(Map<String, dynamic> json) {
+    return Hour(
+      time: json['time']?.toString() ?? '',
+      tempC: (json['temp_c'] as num?)?.toDouble() ?? 0.0,
+      condition: Condition.fromJson(json['condition'] ?? {}),
+      windKph: (json['wind_kph'] as num?)?.toDouble() ?? 0.0,
+      windDir: json['wind_dir']?.toString() ?? '',
+      humidity: (json['humidity'] as num?)?.toInt() ?? 0,
+      chanceOfRain: (json['chance_of_rain'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -242,7 +198,6 @@ class Astro {
   final String moonrise;
   final String moonset;
   final String moonPhase;
-  final String moonIllumination;
 
   Astro({
     required this.sunrise,
@@ -250,124 +205,15 @@ class Astro {
     required this.moonrise,
     required this.moonset,
     required this.moonPhase,
-    required this.moonIllumination,
   });
 
   factory Astro.fromJson(Map<String, dynamic> json) {
     return Astro(
-      sunrise: json['sunrise'] ?? '',
-      sunset: json['sunset'] ?? '',
-      moonrise: json['moonrise'] ?? '',
-      moonset: json['moonset'] ?? '',
-      moonPhase: json['moon_phase'] ?? '',
-      moonIllumination: json['moon_illumination'] ?? '',
-    );
-  }
-}
-
-class HourWeather {
-  final String time;
-  final double tempC;
-  final double tempF;
-  final int isDay;
-  final WeatherCondition condition;
-  final double windKph;
-  final double windMph;
-  final int windDegree;
-  final String windDir;
-  final double pressureMb;
-  final double pressureIn;
-  final double precipMm;
-  final double precipIn;
-  final int humidity;
-  final int cloud;
-  final double feelslikeC;
-  final double feelslikeF;
-  final double windchillC;
-  final double windchillF;
-  final double heatindexC;
-  final double heatindexF;
-  final double dewpointC;
-  final double dewpointF;
-  final int willItRain;
-  final int chanceOfRain;
-  final int willItSnow;
-  final int chanceOfSnow;
-  final double visKm;
-  final double visMiles;
-  final double gustKph;
-  final double gustMph;
-  final double uv;
-
-  HourWeather({
-    required this.time,
-    required this.tempC,
-    required this.tempF,
-    required this.isDay,
-    required this.condition,
-    required this.windKph,
-    required this.windMph,
-    required this.windDegree,
-    required this.windDir,
-    required this.pressureMb,
-    required this.pressureIn,
-    required this.precipMm,
-    required this.precipIn,
-    required this.humidity,
-    required this.cloud,
-    required this.feelslikeC,
-    required this.feelslikeF,
-    required this.windchillC,
-    required this.windchillF,
-    required this.heatindexC,
-    required this.heatindexF,
-    required this.dewpointC,
-    required this.dewpointF,
-    required this.willItRain,
-    required this.chanceOfRain,
-    required this.willItSnow,
-    required this.chanceOfSnow,
-    required this.visKm,
-    required this.visMiles,
-    required this.gustKph,
-    required this.gustMph,
-    required this.uv,
-  });
-
-  factory HourWeather.fromJson(Map<String, dynamic> json) {
-    return HourWeather(
-      time: json['time'] ?? '',
-      tempC: (json['temp_c'] ?? 0.0).toDouble(),
-      tempF: (json['temp_f'] ?? 0.0).toDouble(),
-      isDay: json['is_day'] ?? 1,
-      condition: WeatherCondition.fromJson(json['condition'] ?? {}),
-      windKph: (json['wind_kph'] ?? 0.0).toDouble(),
-      windMph: (json['wind_mph'] ?? 0.0).toDouble(),
-      windDegree: json['wind_degree'] ?? 0,
-      windDir: json['wind_dir'] ?? '',
-      pressureMb: (json['pressure_mb'] ?? 0.0).toDouble(),
-      pressureIn: (json['pressure_in'] ?? 0.0).toDouble(),
-      precipMm: (json['precip_mm'] ?? 0.0).toDouble(),
-      precipIn: (json['precip_in'] ?? 0.0).toDouble(),
-      humidity: json['humidity'] ?? 0,
-      cloud: json['cloud'] ?? 0,
-      feelslikeC: (json['feelslike_c'] ?? 0.0).toDouble(),
-      feelslikeF: (json['feelslike_f'] ?? 0.0).toDouble(),
-      windchillC: (json['windchill_c'] ?? 0.0).toDouble(),
-      windchillF: (json['windchill_f'] ?? 0.0).toDouble(),
-      heatindexC: (json['heatindex_c'] ?? 0.0).toDouble(),
-      heatindexF: (json['heatindex_f'] ?? 0.0).toDouble(),
-      dewpointC: (json['dewpoint_c'] ?? 0.0).toDouble(),
-      dewpointF: (json['dewpoint_f'] ?? 0.0).toDouble(),
-      willItRain: json['will_it_rain'] ?? 0,
-      chanceOfRain: json['chance_of_rain'] ?? 0,
-      willItSnow: json['will_it_snow'] ?? 0,
-      chanceOfSnow: json['chance_of_snow'] ?? 0,
-      visKm: (json['vis_km'] ?? 0.0).toDouble(),
-      visMiles: (json['vis_miles'] ?? 0.0).toDouble(),
-      gustKph: (json['gust_kph'] ?? 0.0).toDouble(),
-      gustMph: (json['gust_mph'] ?? 0.0).toDouble(),
-      uv: (json['uv'] ?? 0.0).toDouble(),
+      sunrise: json['sunrise']?.toString() ?? '',
+      sunset: json['sunset']?.toString() ?? '',
+      moonrise: json['moonrise']?.toString() ?? '',
+      moonset: json['moonset']?.toString() ?? '',
+      moonPhase: json['moon_phase']?.toString() ?? '',
     );
   }
 }
