@@ -506,5 +506,25 @@
   "map_deleted_successfully": "Map deleted successfully",
   "error_deleting_map": "Error deleting map",
   "error_saving_changes": "Error saving changes",
-  "add_marker_dialog_title": "Adding Marker"
+  "add_marker_dialog_title": "Adding Marker",
+  "remember_me": "Remember me",
+
+  "security": "Security",
+  "change_password": "Change Password",
+  "current_password": "Current Password",
+  "new_password": "New Password",
+  "confirm_new_password": "Confirm New Password",
+  "forgot_password_question": "Forgot Password?",
+  "change_password_title": "Change Password",
+  "enter_current_password": "Enter current password",
+  "enter_new_password": "Enter new password",
+  "confirm_your_new_password": "Confirm your new password",
+  "password_changed_successfully": "Password changed successfully",
+  "password_change_error": "Password change error",
+  "send_reset_email": "Send Reset Email",
+  "password_reset_confirmation": "Password Reset Confirmation",
+  "password_reset_email_will_be_sent": "Password reset email will be sent to your email:",
+  "check_spam_folder": "Don't forget to check your \"Spam\" folder",
+  "password_reset_email_sent": "Password reset email sent",
+  "change_your_account_password": "Change your account password"
 }

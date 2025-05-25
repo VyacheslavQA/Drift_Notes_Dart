@@ -646,8 +646,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {
-            final userModel = snapshot.data;
-
             return ListView(
               padding: EdgeInsets.zero,
               children: [
@@ -659,34 +657,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ProfileScreen(),
+                          // Логотип приложения вместо аватара
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF12332E),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                              );
-                            },
-                            child: CircleAvatar(
-                              radius: 36,
-                              backgroundColor: const Color(0xFF12332E),
-                              backgroundImage: userModel?.avatarUrl != null
-                                  ? NetworkImage(userModel!.avatarUrl!)
-                                  : user?.photoURL != null
-                                  ? NetworkImage(user!.photoURL!)
-                                  : null,
-                              child: (userModel?.avatarUrl == null && user?.photoURL == null)
-                                  ? Icon(
-                                Icons.person,
-                                size: 40,
-                                color: AppConstants.textColor,
-                              )
-                                  : null,
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              'assets/images/drawer_logo.png',
+                              fit: BoxFit.contain,
                             ),
                           ),
                           const SizedBox(height: 16),

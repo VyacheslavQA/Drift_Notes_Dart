@@ -56,6 +56,8 @@ dependencies:
 
   package_info_plus: ^4.0.2  # Для получения информации о приложении
 
+  crypto: ^3.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -70,3 +72,4 @@ flutter:
     - assets/images/fishing_types/
     - assets/sounds/
     - assets/localization/  # Файлы локализации
+    - assets/images/drawer_logo.png

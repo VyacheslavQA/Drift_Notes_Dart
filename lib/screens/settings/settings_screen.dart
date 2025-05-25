@@ -10,6 +10,7 @@ import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
 import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
+import 'change_password_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -473,7 +474,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // Очистка данных
+              // Данные и хранилище
               _buildSectionHeader(localizations.translate('data_and_storage')),
               Card(
                 color: AppConstants.cardColor,
@@ -505,6 +506,31 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                       onTap: _clearAllData,
                     ),
                   ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Безопасность
+              _buildSectionHeader(localizations.translate('security')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.security, color: Colors.blue),
+                  title: Text(localizations.translate('change_password')),
+                  subtitle: Text(localizations.translate('change_your_account_password')),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChangePasswordScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
 

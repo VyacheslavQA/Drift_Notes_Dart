@@ -1,8 +1,6 @@
 // Путь: lib/screens/profile/profile_screen.dart
 
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../constants/app_constants.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
@@ -31,7 +29,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<String> _selectedFishingTypes = [];
   bool _isLoading = true;
   bool _isSaving = false;
-  File? _selectedAvatar;
 
   @override
   void initState() {
@@ -106,22 +103,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 800,
-      maxHeight: 800,
-    );
-
-    if (pickedFile != null) {
-      setState(() {
-        _selectedAvatar = File(pickedFile.path);
-      });
-    }
-  }
-
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -132,20 +113,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      String? avatarUrl;
-
-      // Если выбран новый аватар, загружаем его
-      if (_selectedAvatar != null) {
-        final userId = _userRepository.currentUserId;
-        if (userId != null) {
-          final bytes = await _selectedAvatar!.readAsBytes();
-          final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          final path = 'users/$userId/avatar/$fileName';
-
-          avatarUrl = await _firebaseService.uploadImage(path, bytes);
-        }
-      }
-
       // Обновляем данные пользователя
       final userData = {
         'displayName': _displayNameController.text.trim(),
@@ -154,10 +121,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'experience': _selectedExperience,
         'fishingTypes': _selectedFishingTypes,
       };
-
-      if (avatarUrl != null) {
-        userData['avatarUrl'] = avatarUrl;
-      }
 
       await _userRepository.updateUserData(userData);
 
@@ -231,47 +194,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Аватар пользователя
-              Center(
-                child: Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: CircleAvatar(
-                        radius: 60,
-                        backgroundColor: AppConstants.surfaceColor,
-                        backgroundImage: _selectedAvatar != null
-                            ? FileImage(_selectedAvatar!) as ImageProvider
-                            : const AssetImage('assets/images/default_avatar.png'),
-                        child: _selectedAvatar == null
-                            ? Icon(
-                          Icons.person,
-                          size: 60,
-                          color: AppConstants.textColor,
-                        )
-                            : null,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: AppConstants.textColor,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
               const SizedBox(height: 24),
 
               // Имя пользователя
@@ -475,6 +397,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 }).toList(),
               ),
+
+              const SizedBox(height: 32),
 
               // Кнопка сохранения
               SizedBox(

@@ -510,5 +510,25 @@
   "error_deleting_map": "Ошибка при удалении карты",
   "error_saving_changes": "Ошибка при сохранении изменений",
   "save_changes": "Сохранить изменения",
-  "add_marker_dialog_title": "Добавление маркера"
+  "add_marker_dialog_title": "Добавление маркера",
+  "remember_me": "Запомнить меня",
+
+  "security": "Безопасность",
+  "change_password": "Смена пароля",
+  "current_password": "Текущий пароль",
+  "new_password": "Новый пароль",
+  "confirm_new_password": "Подтвердите новый пароль",
+  "forgot_password_question": "Забыли пароль?",
+  "change_password_title": "Смена пароля",
+  "enter_current_password": "Введите текущий пароль",
+  "enter_new_password": "Введите новый пароль",
+  "confirm_your_new_password": "Подтвердите новый пароль",
+  "password_changed_successfully": "Пароль успешно изменен",
+  "password_change_error": "Ошибка при смене пароля",
+  "send_reset_email": "Отправить письмо для сброса",
+  "password_reset_confirmation": "Подтверждение сброса пароля",
+  "password_reset_email_will_be_sent": "Письмо для сброса пароля будет отправлено на ваш email:",
+  "check_spam_folder": "Не забудьте проверить папку \"Спам\"",
+  "password_reset_email_sent": "Письмо для сброса пароля отправлено",
+  "change_your_account_password": "Изменить пароль вашего аккаунта"
 }

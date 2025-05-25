@@ -239,6 +239,35 @@ class FirebaseService {
     }
   }
 
+  // Смена пароля пользователя
+  Future<void> changePassword(String currentPassword, String newPassword, [BuildContext? context]) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception(context != null
+            ? AppLocalizations.of(context).translate('user_not_authorized')
+            : 'Пользователь не авторизован');
+      }
+
+      // Создаем учетные данные для повторной аутентификации
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      // Повторно аутентифицируем пользователя
+      await user.reauthenticateWithCredential(credential);
+
+      // Меняем пароль
+      await user.updatePassword(newPassword);
+
+      debugPrint('Пароль успешно изменен');
+    } catch (e) {
+      debugPrint('Ошибка при смене пароля: $e');
+      throw _handleAuthException(e, context);
+    }
+  }
+
   // Обновление данных пользователя в Firestore
   Future<void> updateUserData(String userId, Map<String, dynamic> data) async {
     try {
