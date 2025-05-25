@@ -160,13 +160,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
               size: 48,
             ),
             const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 16,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -205,6 +208,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     final current = _currentWeather!.current;
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -219,12 +223,19 @@ class _WeatherScreenState extends State<WeatherScreen> {
       ),
       child: Column(
         children: [
-          Text(
-            _locationName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+          // Название локации с ограничением по ширине
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              _locationName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 8),
@@ -236,11 +247,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
               fontWeight: FontWeight.w300,
             ),
           ),
-          Text(
-            current.condition.text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+          // Описание погоды с переводом
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              _translateWeatherDescription(current.condition.text),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 4),
@@ -252,23 +270,30 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          // Статистика погоды
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildWeatherStat(
-                Icons.air,
-                'Ветер',
-                '${current.windKph.round()} км/ч',
+              Expanded(
+                child: _buildWeatherStat(
+                  Icons.air,
+                  'Ветер',
+                  '${current.windKph.round()} км/ч',
+                ),
               ),
-              _buildWeatherStat(
-                Icons.water_drop,
-                'Влажность',
-                '${current.humidity}%',
+              Expanded(
+                child: _buildWeatherStat(
+                  Icons.water_drop,
+                  'Влажность',
+                  '${current.humidity}%',
+                ),
               ),
-              _buildWeatherStat(
-                Icons.visibility,
-                'Видимость',
-                '${current.visKm.round()} км',
+              Expanded(
+                child: _buildWeatherStat(
+                  Icons.visibility,
+                  'Видимость',
+                  '${current.visKm.round()} км',
+                ),
               ),
             ],
           ),
@@ -288,7 +313,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
             color: Colors.white70,
             fontSize: 12,
           ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
+        const SizedBox(height: 2),
         Text(
           value,
           style: const TextStyle(
@@ -296,6 +325,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -345,6 +377,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Text(
                       DateFormat('HH:mm').format(time),
@@ -353,13 +386,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 8),
                     Icon(
                       _getWeatherIcon(hour.condition.code),
                       color: AppConstants.textColor,
                       size: 24,
                     ),
-                    const SizedBox(height: 8),
                     Text(
                       '${hour.tempC.round()}°',
                       style: TextStyle(
@@ -370,7 +401,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     ),
                     Text(
                       '${hour.chanceOfRain.round()}%',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.blue,
                         fontSize: 12,
                       ),
@@ -418,31 +449,42 @@ class _WeatherScreenState extends State<WeatherScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    flex: 2,
+                  // День недели
+                  SizedBox(
+                    width: 70,
                     child: Text(
-                      isToday ? 'Сегодня' : DateFormat('EEE', 'ru').format(date),
+                      isToday ? 'Сегодня' : _getDayOfWeek(date),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  // Иконка погоды
                   Icon(
                     _getWeatherIcon(day.day.condition.code),
                     color: AppConstants.textColor,
                     size: 24,
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    day.day.condition.text,
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
+                  // Описание погоды
+                  Expanded(
+                    child: Text(
+                      _translateWeatherDescription(day.day.condition.text),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  // Температура
                   Text(
                     '${day.day.mintempC.round()}°/${day.day.maxtempC.round()}°',
                     style: TextStyle(
@@ -458,6 +500,32 @@ class _WeatherScreenState extends State<WeatherScreen> {
         ),
       ],
     );
+  }
+
+  String _getDayOfWeek(DateTime date) {
+    final localizations = AppLocalizations.of(context);
+    final weekdays = [
+      'monday', 'tuesday', 'wednesday', 'thursday',
+      'friday', 'saturday', 'sunday'
+    ];
+
+    try {
+      final weekdayIndex = date.weekday - 1;
+      if (weekdayIndex >= 0 && weekdayIndex < weekdays.length) {
+        return localizations.translate(weekdays[weekdayIndex]);
+      }
+    } catch (e) {
+      debugPrint('Ошибка перевода дня недели: $e');
+    }
+
+    // Fallback на русский
+    const russianWeekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdayIndex = date.weekday - 1;
+    if (weekdayIndex >= 0 && weekdayIndex < russianWeekdays.length) {
+      return russianWeekdays[weekdayIndex];
+    }
+
+    return DateFormat('EEE', 'ru').format(date);
   }
 
   Widget _buildWeatherDetails() {
@@ -489,7 +557,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             _buildDetailCard('УФ-индекс', current.uv.toString(), Icons.wb_sunny),
             _buildDetailCard('Восход', astro.sunrise, Icons.wb_twilight),
             _buildDetailCard('Закат', astro.sunset, Icons.nights_stay),
-            _buildDetailCard('Фаза луны', astro.moonPhase, Icons.brightness_2),
+            _buildDetailCard('Фаза луны', _translateMoonPhase(astro.moonPhase), Icons.brightness_2),
           ],
         ),
       ],
@@ -505,16 +573,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Icon(icon, color: AppConstants.textColor.withValues(alpha: 0.7), size: 20),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -527,6 +600,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -572,5 +647,169 @@ class _WeatherScreenState extends State<WeatherScreen> {
       default:
         return Icons.wb_sunny;
     }
+  }
+
+  /// Перевод описания погоды с английского на русский
+  String _translateWeatherDescription(String englishDescription) {
+    final translations = {
+      // Ясная погода
+      'Sunny': 'Солнечно',
+      'Clear': 'Ясно',
+
+      // Облачность (все варианты регистра)
+      'Partly cloudy': 'Переменная облачность',
+      'Partly Cloudy': 'Переменная облачность',
+      'PARTLY CLOUDY': 'Переменная облачность',
+      'Cloudy': 'Облачно',
+      'cloudy': 'Облачно',
+      'CLOUDY': 'Облачно',
+      'Overcast': 'Пасмурно',
+      'overcast': 'Пасмурно',
+      'OVERCAST': 'Пасмурно',
+
+      // Туман
+      'Mist': 'Дымка',
+      'mist': 'Дымка',
+      'Fog': 'Туман',
+      'fog': 'Туман',
+      'Freezing fog': 'Ледяной туман',
+      'freezing fog': 'Ледяной туман',
+
+      // Дождь - все варианты
+      'Patchy rain possible': 'Местами дождь',
+      'patchy rain possible': 'Местами дождь',
+      'Patchy rain nearby': 'Местами дождь поблизости',
+      'patchy rain nearby': 'Местами дождь поблизости',
+      'Patchy light drizzle': 'Местами легкая морось',
+      'patchy light drizzle': 'Местами легкая морось',
+      'Light drizzle': 'Легкая морось',
+      'light drizzle': 'Легкая морось',
+      'Freezing drizzle': 'Ледяная морось',
+      'freezing drizzle': 'Ледяная морось',
+      'Heavy freezing drizzle': 'Сильная ледяная морось',
+      'heavy freezing drizzle': 'Сильная ледяная морось',
+      'Patchy light rain': 'Местами легкий дождь',
+      'patchy light rain': 'Местами легкий дождь',
+      'Light rain': 'Легкий дождь',
+      'light rain': 'Легкий дождь',
+      'Moderate rain at times': 'Временами умеренный дождь',
+      'moderate rain at times': 'Временами умеренный дождь',
+      'Moderate rain': 'Умеренный дождь',
+      'moderate rain': 'Умеренный дождь',
+      'Heavy rain at times': 'Временами сильный дождь',
+      'heavy rain at times': 'Временами сильный дождь',
+      'Heavy rain': 'Сильный дождь',
+      'heavy rain': 'Сильный дождь',
+      'Light freezing rain': 'Легкий ледяной дождь',
+      'light freezing rain': 'Легкий ледяной дождь',
+      'Moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
+      'moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
+      'Light showers of ice pellets': 'Легкий ледяной дождь',
+      'light showers of ice pellets': 'Легкий ледяной дождь',
+      'Moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
+      'moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
+
+      // Снег - все варианты
+      'Patchy snow possible': 'Местами снег',
+      'patchy snow possible': 'Местами снег',
+      'Patchy snow nearby': 'Местами снег поблизости',
+      'patchy snow nearby': 'Местами снег поблизости',
+      'Patchy light snow': 'Местами легкий снег',
+      'patchy light snow': 'Местами легкий снег',
+      'Light snow': 'Легкий снег',
+      'light snow': 'Легкий снег',
+      'Patchy moderate snow': 'Местами умеренный снег',
+      'patchy moderate snow': 'Местами умеренный снег',
+      'Moderate snow': 'Умеренный снег',
+      'moderate snow': 'Умеренный снег',
+      'Patchy heavy snow': 'Местами сильный снег',
+      'patchy heavy snow': 'Местами сильный снег',
+      'Heavy snow': 'Сильный снег',
+      'heavy snow': 'Сильный снег',
+      'Ice pellets': 'Ледяная крупа',
+      'ice pellets': 'Ледяная крупа',
+      'Light snow showers': 'Легкие снежные ливни',
+      'light snow showers': 'Легкие снежные ливни',
+      'Moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
+      'moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
+      'Patchy light snow with thunder': 'Местами легкий снег с грозой',
+      'patchy light snow with thunder': 'Местами легкий снег с грозой',
+      'Moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
+      'moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
+
+      // Дождь с ливнями
+      'Light rain shower': 'Легкий ливень',
+      'light rain shower': 'Легкий ливень',
+      'Moderate or heavy rain shower': 'Умеренный или сильный ливень',
+      'moderate or heavy rain shower': 'Умеренный или сильный ливень',
+      'Torrential rain shower': 'Проливной ливень',
+      'torrential rain shower': 'Проливной ливень',
+
+      // Гроза
+      'Thundery outbreaks possible': 'Возможны грозы',
+      'thundery outbreaks possible': 'Возможны грозы',
+      'Patchy light rain with thunder': 'Местами легкий дождь с грозой',
+      'patchy light rain with thunder': 'Местами легкий дождь с грозой',
+      'Moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
+      'moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
+
+      // Град и мокрый снег
+      'Patchy sleet possible': 'Местами мокрый снег',
+      'patchy sleet possible': 'Местами мокрый снег',
+      'Patchy sleet nearby': 'Местами мокрый снег поблизости',
+      'patchy sleet nearby': 'Местами мокрый снег поблизости',
+      'Light sleet': 'Легкий мокрый снег',
+      'light sleet': 'Легкий мокрый снег',
+      'Moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
+      'moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
+      'Light sleet showers': 'Легкие ливни с мокрым снегом',
+      'light sleet showers': 'Легкие ливни с мокрым снегом',
+      'Moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
+      'moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
+
+      // Другие условия
+      'Blowing snow': 'Метель',
+      'blowing snow': 'Метель',
+      'Blizzard': 'Буран',
+      'blizzard': 'Буран',
+
+      // Дополнительные варианты
+      'Fair': 'Ясно',
+      'fair': 'ясно',
+      'Hot': 'Жарко',
+      'hot': 'жарко',
+      'Cold': 'Холодно',
+      'cold': 'холодно',
+      'Windy': 'Ветрено',
+      'windy': 'ветрено',
+    };
+
+    return translations[englishDescription] ?? englishDescription;
+  }
+
+  /// Перевод фазы луны с английского на русский
+  String _translateMoonPhase(String moonPhase) {
+    final translations = {
+      'New Moon': 'Новолуние',
+      'new moon': 'Новолуние',
+      'Waxing Crescent': 'Растущая луна',
+      'waxing crescent': 'Растущая луна',
+      'First Quarter': 'Первая четверть',
+      'first quarter': 'Первая четверть',
+      'Waxing Gibbous': 'Растущая луна',
+      'waxing gibbous': 'Растущая луна',
+      'Full Moon': 'Полнолуние',
+      'full moon': 'Полнолуние',
+      'Waning Gibbous': 'Убывающая луна',
+      'waning gibbous': 'Убывающая луна',
+      'Last Quarter': 'Последняя четверть',
+      'last quarter': 'Последняя четверть',
+      'Third Quarter': 'Третья четверть',
+      'third quarter': 'Третья четверть',
+      'Waning Crescent': 'Убывающая луна',
+      'waning crescent': 'Убывающая луна',
+    };
+
+    return translations[moonPhase] ?? moonPhase;
   }
 }

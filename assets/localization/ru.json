@@ -537,5 +537,14 @@
   "password_reset_error": "Ошибка при отправке письма для сброса пароля",
   "changing_password": "Изменение пароля...",
   "please_enter_current_password": "Пожалуйста, введите текущий пароль",
-  "user_not_authorized": "Пользователь не авторизован"
+  "user_not_authorized": "Пользователь не авторизован",
+
+
+  "monday": "Пн",
+  "tuesday": "Вт",
+  "wednesday": "Ср",
+  "thursday": "Чт",
+  "friday": "Пт",
+  "saturday": "Сб",
+  "sunday": "Вс"
 }

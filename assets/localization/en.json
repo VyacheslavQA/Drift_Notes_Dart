@@ -536,5 +536,14 @@
   "password_reset_error": "Error sending password reset email",
   "changing_password": "Changing password...",
   "please_enter_current_password": "Please enter current password",
-  "user_not_authorized": "User not authorized"
+  "user_not_authorized": "User not authorized",
+
+
+  "monday": "Mon",
+  "tuesday": "Tue",
+  "wednesday": "Wed",
+  "thursday": "Thu",
+  "friday": "Fri",
+  "saturday": "Sat",
+  "sunday": "Sun"
 }
