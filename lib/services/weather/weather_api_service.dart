@@ -178,9 +178,9 @@ class WeatherApiService {
       'Clear': 'Ясно',
 
       // Облачность (все варианты регистра)
-      'Partly cloudy': 'Переменная облачность',
-      'Partly Cloudy': 'Переменная облачность',
-      'PARTLY CLOUDY': 'Переменная облачность',
+      'Partly cloudy ': 'Переменная облачность',
+      'Partly Cloudy ': 'Переменная облачность',
+      'PARTLY CLOUDY ': 'Переменная облачность',
       'Cloudy': 'Облачно',
       'cloudy': 'Облачно',
       'CLOUDY': 'Облачно',
