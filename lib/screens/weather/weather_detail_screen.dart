@@ -45,7 +45,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Детальная погода',
+          localizations.translate('detailed_weather'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 20,
@@ -63,10 +63,10 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           indicatorColor: AppConstants.primaryColor,
           labelColor: AppConstants.textColor,
           unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.6),
-          tabs: const [
-            Tab(text: 'Сейчас'),
-            Tab(text: 'Сегодня'),
-            Tab(text: 'Прогноз'),
+          tabs: [
+            Tab(text: localizations.translate('now')),
+            Tab(text: localizations.translate('today')),
+            Tab(text: localizations.translate('forecast')),
           ],
         ),
       ),
@@ -82,6 +82,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   }
 
   Widget _buildCurrentWeatherTab() {
+    final localizations = AppLocalizations.of(context);
     final current = widget.weatherData.current;
     final astro = widget.weatherData.forecast.first.astro;
 
@@ -139,7 +140,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Ощущается как ${current.feelslikeC.round()}°C',
+                  '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°C',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 16,
@@ -152,7 +153,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           const SizedBox(height: 20),
 
           // Основные показатели
-          _buildSectionTitle('Основные показатели'),
+          _buildSectionTitle(localizations.translate('main_indicators')),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -160,28 +161,28 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.0, // Увеличено с 1.3 до 2.0
+            childAspectRatio: 1.0,
             children: [
               _buildWeatherCard(
-                'Влажность',
+                localizations.translate('humidity'),
                 '${current.humidity}%',
                 Icons.water_drop,
                 _getHumidityDescription(current.humidity),
               ),
               _buildWeatherCard(
-                'Давление',
-                '${current.pressureMb.round()} мб',
+                localizations.translate('pressure'),
+                '${current.pressureMb.round()} ${localizations.translate('mb')}',
                 Icons.speed,
                 _getPressureDescription(current.pressureMb),
               ),
               _buildWeatherCard(
-                'Видимость',
-                '${current.visKm} км',
+                localizations.translate('visibility'),
+                '${current.visKm} ${localizations.translate('km')}',
                 Icons.visibility,
                 _getVisibilityDescription(current.visKm),
               ),
               _buildWeatherCard(
-                'УФ-индекс',
+                localizations.translate('uv_index'),
                 current.uv.toString(),
                 Icons.wb_sunny,
                 _getUVDescription(current.uv),
@@ -192,7 +193,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           const SizedBox(height: 20),
 
           // Ветер
-          _buildSectionTitle('Ветер'),
+          _buildSectionTitle(localizations.translate('wind')),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -211,14 +212,14 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                         Icon(Icons.air, color: AppConstants.textColor, size: 32),
                         const SizedBox(height: 8),
                         Text(
-                          'Скорость',
+                          localizations.translate('speed'),
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
                         Text(
-                          '${current.windKph.round()} км/ч',
+                          '${current.windKph.round()} ${localizations.translate('km_h')}',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 18,
@@ -232,7 +233,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                         Icon(Icons.explore, color: AppConstants.textColor, size: 32),
                         const SizedBox(height: 8),
                         Text(
-                          'Направление',
+                          localizations.translate('direction'),
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
@@ -266,13 +267,13 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           const SizedBox(height: 20),
 
           // Астрономия
-          _buildSectionTitle('Солнце и луна'),
+          _buildSectionTitle(localizations.translate('sun_and_moon')),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _buildAstroCard(
-                  'Восход',
+                  localizations.translate('sunrise'),
                   astro.sunrise,
                   Icons.wb_twilight,
                   Colors.orange,
@@ -281,7 +282,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildAstroCard(
-                  'Закат',
+                  localizations.translate('sunset'),
                   astro.sunset,
                   Icons.nights_stay,
                   Colors.deepPurple,
@@ -302,7 +303,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 Icon(Icons.brightness_2, color: AppConstants.textColor, size: 32),
                 const SizedBox(height: 8),
                 Text(
-                  'Фаза луны',
+                  localizations.translate('moon_phase'),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -324,7 +325,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           const SizedBox(height: 20),
 
           // Комфорт
-          _buildSectionTitle('Комфорт и ощущения'),
+          _buildSectionTitle(localizations.translate('comfort_and_sensations')),
           const SizedBox(height: 12),
           _buildComfortCard(current),
 
@@ -335,9 +336,17 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   }
 
   Widget _buildTodayTab() {
+    final localizations = AppLocalizations.of(context);
+
     if (widget.weatherData.forecast.isEmpty) {
-      return const Center(
-        child: Text('Нет данных о почасовом прогнозе'),
+      return Center(
+        child: Text(
+          localizations.translate('no_hourly_data'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 16,
+          ),
+        ),
       );
     }
 
@@ -353,7 +362,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               Icon(Icons.schedule, color: AppConstants.textColor),
               const SizedBox(width: 8),
               Text(
-                'Почасовой прогноз на сегодня',
+                localizations.translate('hourly_forecast_today'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -448,7 +457,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${hour.windKph.round()} км/ч',
+                          '${hour.windKph.round()} ${AppLocalizations.of(context).translate('km_h')}',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 12,
@@ -467,6 +476,8 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   }
 
   Widget _buildForecastTab() {
+    final localizations = AppLocalizations.of(context);
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: widget.weatherData.forecast.length,
@@ -489,7 +500,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isToday ? 'Сегодня' : DateFormat('EEEE, d MMMM', 'ru').format(date),
+                    isToday ? localizations.translate('today') : _formatDateForLocale(date),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 18,
@@ -542,11 +553,11 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildDayStatItem(Icons.wb_twilight, 'Восход', day.astro.sunrise),
-                  _buildDayStatItem(Icons.nights_stay, 'Закат', day.astro.sunset),
+                  _buildDayStatItem(Icons.wb_twilight, localizations.translate('sunrise'), day.astro.sunrise),
+                  _buildDayStatItem(Icons.nights_stay, localizations.translate('sunset'), day.astro.sunset),
                   _buildDayStatItem(
                     Icons.brightness_2,
-                    'Луна',
+                    localizations.translate('moon_phase'),
                     _translateMoonPhase(day.astro.moonPhase),
                   ),
                 ],
@@ -556,6 +567,23 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
         );
       },
     );
+  }
+
+  // Новый метод для форматирования даты с учетом локали
+  String _formatDateForLocale(DateTime date) {
+    final localizations = AppLocalizations.of(context);
+    final locale = localizations.locale.languageCode;
+
+    try {
+      return DateFormat('EEEE, d MMMM', locale).format(date);
+    } catch (e) {
+      // Fallback если локаль не поддерживается
+      if (locale == 'en') {
+        return DateFormat('EEEE, MMMM d').format(date);
+      } else {
+        return DateFormat('EEEE, d MMMM', 'ru').format(date);
+      }
+    }
   }
 
   Widget _buildSectionTitle(String title) {
@@ -646,6 +674,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   }
 
   Widget _buildComfortCard(Current current) {
+    final localizations = AppLocalizations.of(context);
     final heatIndex = _calculateHeatIndex(current.tempC, current.humidity);
     final dewPoint = _calculateDewPoint(current.tempC, current.humidity);
 
@@ -666,7 +695,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                   Icon(Icons.thermostat, color: AppConstants.textColor, size: 24),
                   const SizedBox(height: 8),
                   Text(
-                    'Индекс жары',
+                    localizations.translate('heat_index'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -687,7 +716,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                   Icon(Icons.opacity, color: AppConstants.textColor, size: 24),
                   const SizedBox(height: 8),
                   Text(
-                    'Точка росы',
+                    localizations.translate('dew_point'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -816,14 +845,14 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   String _translateWeatherDescription(String englishDescription) {
     final translations = {
       'Sunny': 'Солнечно',
-      'Clear': 'Ясно',
-      'Partly cloudy': 'Переменная облачность',
-      'Partly Cloudy': 'Переменная облачность',
+      'Clear ': 'Ясно',
+      'Partly cloudy ': 'Переменная облачность',
+      'Partly Cloudy ': 'Переменная облачность',
       'Cloudy': 'Облачно',
       'Overcast': 'Пасмурно',
       'Mist': 'Дымка',
       'Fog': 'Туман',
-      'Patchy rain possible': 'Местами дождь',
+      'Patchy rain possible ': 'Местами дождь',
       'Light rain': 'Легкий дождь',
       'Moderate rain': 'Умеренный дождь',
       'Heavy rain': 'Сильный дождь',
@@ -831,6 +860,8 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
       'Moderate snow': 'Умеренный снег',
       'Heavy snow': 'Сильный снег',
       'Thundery outbreaks possible': 'Возможны грозы',
+      'Patchy light drizzle': 'Местами легкая морось',
+      'Patchy rain nearby': 'Местами дождь поблизости',
     };
     return translations[englishDescription] ?? englishDescription;
   }
@@ -861,59 +892,71 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
   }
 
   String _getHumidityDescription(int humidity) {
-    if (humidity < 30) return 'Сухо';
-    if (humidity < 50) return 'Комфортно';
-    if (humidity < 70) return 'Умеренно';
-    if (humidity < 85) return 'Влажно';
-    return 'Очень влажно';
+    final localizations = AppLocalizations.of(context);
+
+    if (humidity < 30) return localizations.translate('dry');
+    if (humidity < 50) return localizations.translate('comfortable');
+    if (humidity < 70) return localizations.translate('moderate');
+    if (humidity < 85) return localizations.translate('humid');
+    return localizations.translate('very_humid');
   }
 
   String _getPressureDescription(double pressure) {
-    if (pressure < 1000) return 'Низкое';
-    if (pressure < 1020) return 'Нормальное';
-    return 'Высокое';
+    final localizations = AppLocalizations.of(context);
+
+    if (pressure < 1000) return localizations.translate('low_pressure');
+    if (pressure < 1020) return localizations.translate('normal_pressure');
+    return localizations.translate('high_pressure');
   }
 
   String _getVisibilityDescription(double visibility) {
-    if (visibility < 1) return 'Очень плохая';
-    if (visibility < 5) return 'Плохая';
-    if (visibility < 10) return 'Умеренная';
-    return 'Отличная';
+    final localizations = AppLocalizations.of(context);
+
+    if (visibility < 1) return localizations.translate('very_poor_visibility');
+    if (visibility < 5) return localizations.translate('poor_visibility');
+    if (visibility < 10) return localizations.translate('moderate_visibility');
+    return localizations.translate('excellent_visibility');
   }
 
   String _getUVDescription(double uv) {
-    if (uv < 3) return 'Низкий';
-    if (uv < 6) return 'Умеренный';
-    if (uv < 8) return 'Высокий';
-    if (uv < 11) return 'Очень высокий';
-    return 'Экстремальный';
+    final localizations = AppLocalizations.of(context);
+
+    if (uv < 3) return localizations.translate('low_uv');
+    if (uv < 6) return localizations.translate('moderate_uv');
+    if (uv < 8) return localizations.translate('high_uv');
+    if (uv < 11) return localizations.translate('very_high_uv');
+    return localizations.translate('extreme_uv');
   }
 
   String _getWindDescription(double windKph) {
-    if (windKph < 12) return 'Легкий ветерок';
-    if (windKph < 28) return 'Слабый ветер';
-    if (windKph < 50) return 'Умеренный ветер';
-    if (windKph < 75) return 'Сильный ветер';
-    return 'Очень сильный ветер';
+    final localizations = AppLocalizations.of(context);
+
+    if (windKph < 12) return localizations.translate('light_breeze');
+    if (windKph < 28) return localizations.translate('weak_wind');
+    if (windKph < 50) return localizations.translate('moderate_wind');
+    if (windKph < 75) return localizations.translate('strong_wind');
+    return localizations.translate('very_strong_wind');
   }
 
   String _getComfortDescription(double temp, int humidity, double windKph) {
+    final localizations = AppLocalizations.of(context);
+
     if (temp < 10) {
-      return 'Холодно. Рекомендуется теплая одежда.';
+      return localizations.translate('cold_weather');
     } else if (temp < 20) {
-      return 'Прохладно. Легкая куртка будет кстати.';
+      return localizations.translate('cool_weather');
     } else if (temp < 25) {
-      return 'Комфортная температура для прогулок.';
+      return localizations.translate('comfortable_weather');
     } else if (temp < 30) {
       if (humidity > 70) {
-        return 'Тепло и влажно. Может ощущаться жарко.';
+        return localizations.translate('warm_humid_weather');
       }
-      return 'Приятная теплая погода.';
+      return localizations.translate('pleasant_warm_weather');
     } else {
       if (humidity > 60) {
-        return 'Жарко и душно. Рекомендуется больше пить.';
+        return localizations.translate('hot_stuffy_weather');
       }
-      return 'Жарко, но терпимо.';
+      return localizations.translate('hot_tolerable_weather');
     }
   }
 }
