@@ -1,16 +1,17 @@
-// Путь: lib/screens/map/marker_map_screen.dart
+// Путь: lib/screens/map/geo_marker_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
+import '../../localization/app_localizations.dart';
 
-class MarkerMapScreen extends StatefulWidget {
+class GeoMarkerScreen extends StatefulWidget {
   final double latitude;
   final double longitude;
   final List<Map<String, dynamic>> existingMarkers;
 
-  const MarkerMapScreen({
+  const GeoMarkerScreen({
     super.key,
     required this.latitude,
     required this.longitude,
@@ -18,10 +19,10 @@ class MarkerMapScreen extends StatefulWidget {
   });
 
   @override
-  MarkerMapScreenState createState() => MarkerMapScreenState();
+  GeoMarkerScreenState createState() => GeoMarkerScreenState();
 }
 
-class MarkerMapScreenState extends State<MarkerMapScreen> {
+class GeoMarkerScreenState extends State<GeoMarkerScreen> {
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
   bool _isLoading = true;
@@ -98,6 +99,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ диалога с деталями маркера
   void _showMarkerDetails(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
+
     setState(() {
       _selectedMarker = marker;
     });
@@ -116,7 +119,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                marker['name'] ?? 'Маркер',
+                marker['name'] ?? localizations.translate('marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 22,
@@ -132,7 +135,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Icon(Icons.waves, color: AppConstants.textColor),
                     const SizedBox(width: 8),
                     Text(
-                      'Глубина: ${marker['depth']} м',
+                      '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('m')}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -172,7 +175,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Icon(Icons.category, color: AppConstants.textColor),
                     const SizedBox(width: 8),
                     Text(
-                      'Тип: ${_getMarkerTypeName(marker['type'])}',
+                      '${localizations.translate('type')}: ${_getMarkerTypeName(marker['type'], localizations)}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -189,7 +192,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 children: [
                   TextButton.icon(
                     icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Изменить'),
+                    label: Text(localizations.translate('edit')),
                     style: TextButton.styleFrom(
                       foregroundColor: AppConstants.textColor,
                     ),
@@ -201,7 +204,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                   const SizedBox(width: 16),
                   TextButton.icon(
                     icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Удалить'),
+                    label: Text(localizations.translate('delete')),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.redAccent,
                     ),
@@ -220,37 +223,39 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   }
 
   // Получение названия типа маркера
-  String _getMarkerTypeName(String? type) {
+  String _getMarkerTypeName(String? type, AppLocalizations localizations) {
     switch (type) {
       case 'dropoff':
-        return 'Свал';
+        return localizations.translate('dropoff') ?? 'Свал';
       case 'weed':
-        return 'Растительность';
+        return localizations.translate('weed') ?? 'Растительность';
       case 'sandbar':
-        return 'Песчаная отмель';
+        return localizations.translate('sandbar') ?? 'Песчаная отмель';
       case 'structure':
-        return 'Структура';
+        return localizations.translate('structure') ?? 'Структура';
       default:
-        return 'Обычный';
+        return localizations.translate('default') ?? 'Обычный';
     }
   }
 
   // Отображение диалога подтверждения удаления маркера
   void _confirmDeleteMarker(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppConstants.cardColor,
           title: Text(
-            'Удалить маркер',
+            localizations.translate('delete_marker'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
-            'Вы уверены, что хотите удалить этот маркер?',
+            localizations.translate('delete_marker_confirmation'),
             style: TextStyle(
               color: AppConstants.textColor,
             ),
@@ -261,7 +266,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 Navigator.of(context).pop();
               },
               child: Text(
-                'Отмена',
+                localizations.translate('cancel'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
@@ -272,8 +277,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 _deleteMarker(marker);
                 Navigator.of(context).pop();
               },
-              child: const Text(
-                'Удалить',
+              child: Text(
+                localizations.translate('delete'),
                 style: TextStyle(
                   color: Colors.redAccent,
                 ),
@@ -295,6 +300,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ диалога добавления/редактирования маркера
   void _showEditMarkerDialog(Map<String, dynamic>? marker) {
+    final localizations = AppLocalizations.of(context);
     final bool isEditing = marker != null;
 
     // Если редактируем существующий маркер, заполняем поля
@@ -321,7 +327,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                isEditing ? 'Редактировать маркер' : 'Новый маркер',
+                isEditing ? localizations.translate('edit_marker') : localizations.translate('new_marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -336,7 +342,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _nameController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Название маркера',
+                        labelText: localizations.translate('marker_name'),
                         labelStyle: TextStyle(color: AppConstants.textColor
                             .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
@@ -357,7 +363,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _depthController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Глубина (м)',
+                        labelText: localizations.translate('depth_m'),
                         labelStyle: TextStyle(color: AppConstants.textColor
                             .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
@@ -380,7 +386,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _descriptionController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: 'Описание',
+                        labelText: localizations.translate('description'),
                         labelStyle: TextStyle(color: AppConstants.textColor
                             .withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
@@ -401,7 +407,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          'Тип маркера:',
+                          '${localizations.translate('marker_type')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(
                                 alpha: 0.7),
@@ -418,7 +424,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       children: [
                         _buildMarkerTypeOption(
                             'default',
-                            'Обычный',
+                            localizations.translate('default') ?? 'Обычный',
                             BitmapDescriptor.hueAzure,
                             selectedType,
                                 (value) {
@@ -427,7 +433,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         _buildMarkerTypeOption(
                             'dropoff',
-                            'Свал',
+                            localizations.translate('dropoff') ?? 'Свал',
                             BitmapDescriptor.hueRed,
                             selectedType,
                                 (value) {
@@ -442,7 +448,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       children: [
                         _buildMarkerTypeOption(
                             'weed',
-                            'Растительность',
+                            localizations.translate('weed') ?? 'Растительность',
                             BitmapDescriptor.hueGreen,
                             selectedType,
                                 (value) {
@@ -451,7 +457,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         _buildMarkerTypeOption(
                             'sandbar',
-                            'Отмель',
+                            localizations.translate('sandbar') ?? 'Отмель',
                             BitmapDescriptor.hueYellow,
                             selectedType,
                                 (value) {
@@ -465,7 +471,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       children: [
                         _buildMarkerTypeOption(
                             'structure',
-                            'Структура',
+                            localizations.translate('structure') ?? 'Структура',
                             BitmapDescriptor.hueOrange,
                             selectedType,
                                 (value) {
@@ -483,7 +489,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Navigator.of(context).pop();
                   },
                   child: Text(
-                    'Отмена',
+                    localizations.translate('cancel'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                     ),
@@ -499,7 +505,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Navigator.of(context).pop();
                   },
                   child: Text(
-                    isEditing ? 'Сохранить' : 'Добавить',
+                    isEditing ? localizations.translate('save') : localizations.translate('add'),
                     style: TextStyle(
                       color: AppConstants.primaryColor,
                       fontWeight: FontWeight.bold,
@@ -583,6 +589,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Добавление нового маркера
   void _addNewMarker(String type) {
+    final localizations = AppLocalizations.of(context);
     const uuid = Uuid();
     final id = uuid.v4();
     setState(() {
@@ -597,7 +604,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         'name': _nameController.text
             .trim()
             .isEmpty
-            ? 'Маркер ${_markerData.length + 1}'
+            ? '${localizations.translate('marker')} ${_markerData.length + 1}'
             : _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'depth': _depthController.text.isEmpty
@@ -611,11 +618,13 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Маркерная карта',
+          localizations.translate('geo_marker_map'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -701,7 +710,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Маркеры: ${_markerData.length}',
+                    '${localizations.translate('markers')}: ${_markerData.length}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -710,7 +719,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Нажмите на карту, чтобы добавить новый маркер. Нажмите на существующий маркер для просмотра деталей.',
+                    localizations.translate('tap_to_add_marker'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 14,

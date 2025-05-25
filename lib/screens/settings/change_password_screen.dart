@@ -1,168 +1,619 @@
-// Путь: lib/screens/settings/change_password_screen.dart
+// Путь: lib/screens/map/geo_marker_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
-import '../../services/firebase/firebase_service.dart';
-import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
-import '../../widgets/loading_overlay.dart';
 
-class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+class GeoMarkerScreen extends StatefulWidget {
+  final double latitude;
+  final double longitude;
+  final List<Map<String, dynamic>> existingMarkers;
+
+  const GeoMarkerScreen({
+    super.key,
+    required this.latitude,
+    required this.longitude,
+    required this.existingMarkers,
+  });
 
   @override
-  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  GeoMarkerScreenState createState() => GeoMarkerScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _currentPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _firebaseService = FirebaseService();
+class GeoMarkerScreenState extends State<GeoMarkerScreen> {
+  GoogleMapController? _mapController;
+  Set<Marker> _markers = {};
+  bool _isLoading = true;
 
-  bool _isLoading = false;
-  bool _obscureCurrentPassword = true;
-  bool _obscureNewPassword = true;
-  bool _obscureConfirmPassword = true;
-  String _errorMessage = '';
-  String _successMessage = '';
+  // Список маркеров для хранения всех данных
+  List<Map<String, dynamic>> _markerData = [];
+
+  // Текущий выбранный маркер
+  Map<String, dynamic>? _selectedMarker;
+
+  // Контроллеры для текстовых полей при добавлении/редактировании маркера
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _depthController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Если есть существующие маркеры, добавляем их
+    if (widget.existingMarkers.isNotEmpty) {
+      _markerData = List.from(widget.existingMarkers);
+      _updateMapMarkers();
+    }
+  }
 
   @override
   void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _depthController.dispose();
     super.dispose();
   }
 
-  Future<void> _changePassword() async {
-    // Скрываем клавиатуру
-    FocusScope.of(context).unfocus();
-
-    if (!_formKey.currentState!.validate()) return;
-
+  // Метод для обновления маркеров на карте
+  void _updateMapMarkers() {
     setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _successMessage = '';
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('Пользователь не авторизован');
-      }
-
-      // Переавторизация пользователя с текущим паролем
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: _currentPasswordController.text,
-      );
-
-      await user.reauthenticateWithCredential(credential);
-
-      // Изменяем пароль
-      await user.updatePassword(_newPasswordController.text);
-
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        setState(() {
-          _successMessage = localizations.translate('password_changed_successfully');
-          _errorMessage = '';
-        });
-
-        // Очищаем поля
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
-
-        // Показываем уведомление
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('password_changed_successfully')),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+      _markers = _markerData.map((data) {
+        return Marker(
+          markerId: MarkerId(data['id'].toString()),
+          position: LatLng(data['latitude'], data['longitude']),
+          infoWindow: InfoWindow(
+            title: data['name'] ?? 'Маркер',
+            snippet: data['depth'] != null
+                ? 'Глубина: ${data['depth']} м'
+                : 'Нажмите для подробностей',
           ),
+          icon: _getMarkerIcon(data['type']),
+          onTap: () {
+            _showMarkerDetails(data);
+          },
         );
+      }).toSet();
+    });
+  }
 
-        // Возвращаемся на предыдущий экран через 2 секунды
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        String errorMessage;
-
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'wrong-password':
-              errorMessage = localizations.translate('current_password_incorrect');
-              break;
-            case 'weak-password':
-              errorMessage = localizations.translate('weak_password');
-              break;
-            case 'requires-recent-login':
-              errorMessage = localizations.translate('requires_recent_login');
-              break;
-            case 'too-many-requests':
-              errorMessage = localizations.translate('too_many_requests');
-              break;
-            default:
-              errorMessage = localizations.translate('password_change_error');
-          }
-        } else {
-          errorMessage = localizations.translate('password_change_error');
-        }
-
-        setState(() {
-          _errorMessage = errorMessage;
-          _successMessage = '';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  // Получение иконки маркера в зависимости от типа
+  BitmapDescriptor _getMarkerIcon(String? type) {
+    switch (type) {
+      case 'dropoff':
+        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+      case 'weed':
+        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+      case 'sandbar':
+        return BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueYellow);
+      case 'structure':
+        return BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange);
+      default:
+        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     }
   }
 
-  Future<void> _resetPassword() async {
+  // Показ диалога с деталями маркера
+  void _showMarkerDetails(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user?.email != null) {
-        await _firebaseService.sendPasswordResetEmail(user!.email!, context);
+    setState(() {
+      _selectedMarker = marker;
+    });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations.translate('password_reset_email_sent')),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('password_reset_error')),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                marker['name'] ?? localizations.translate('marker'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Глубина
+              if (marker['depth'] != null) ...[
+                Row(
+                  children: [
+                    Icon(Icons.waves, color: AppConstants.textColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('m')}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Описание
+              if (marker['description'] != null &&
+                  marker['description'].isNotEmpty) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.description, color: AppConstants.textColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        marker['description'],
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Тип
+              if (marker['type'] != null) ...[
+                Row(
+                  children: [
+                    Icon(Icons.category, color: AppConstants.textColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${localizations.translate('type')}: ${_getMarkerTypeName(marker['type'], localizations)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Кнопки
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: Text(localizations.translate('edit')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppConstants.textColor,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showEditMarkerDialog(marker);
+                    },
+                  ),
+                  const SizedBox(width: 16),
+                  TextButton.icon(
+                    icon: const Icon(Icons.delete, size: 18),
+                    label: Text(localizations.translate('delete')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmDeleteMarker(marker);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         );
-      }
+      },
+    );
+  }
+
+  // Получение названия типа маркера
+  String _getMarkerTypeName(String? type, AppLocalizations localizations) {
+    switch (type) {
+      case 'dropoff':
+        return localizations.translate('dropoff') ?? 'Свал';
+      case 'weed':
+        return localizations.translate('weed') ?? 'Растительность';
+      case 'sandbar':
+        return localizations.translate('sandbar') ?? 'Песчаная отмель';
+      case 'structure':
+        return localizations.translate('structure') ?? 'Структура';
+      default:
+        return localizations.translate('default') ?? 'Обычный';
     }
+  }
+
+  // Отображение диалога подтверждения удаления маркера
+  void _confirmDeleteMarker(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          title: Text(
+            localizations.translate('delete_marker'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            localizations.translate('delete_marker_confirmation'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                localizations.translate('cancel'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                _deleteMarker(marker);
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                localizations.translate('delete'),
+                style: TextStyle(
+                  color: Colors.redAccent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Удаление маркера
+  void _deleteMarker(Map<String, dynamic> marker) {
+    setState(() {
+      _markerData.removeWhere((item) => item['id'] == marker['id']);
+      _updateMapMarkers();
+    });
+  }
+
+  // Показ диалога добавления/редактирования маркера
+  void _showEditMarkerDialog(Map<String, dynamic>? marker) {
+    final localizations = AppLocalizations.of(context);
+    final bool isEditing = marker != null;
+
+    // Если редактируем существующий маркер, заполняем поля
+    if (isEditing) {
+      _nameController.text = marker['name'] ?? '';
+      _descriptionController.text = marker['description'] ?? '';
+      _depthController.text =
+      marker['depth'] != null ? marker['depth'].toString() : '';
+    } else {
+      // Если создаем новый маркер, очищаем поля
+      _nameController.clear();
+      _descriptionController.clear();
+      _depthController.clear();
+    }
+
+    // Выбранный тип маркера
+    String selectedType = isEditing ? (marker['type'] ?? 'default') : 'default';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.cardColor,
+              title: Text(
+                isEditing ? localizations.translate('edit_marker') : localizations.translate('new_marker'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Название маркера
+                    TextField(
+                      controller: _nameController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: localizations.translate('marker_name'),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Глубина
+                    TextField(
+                      controller: _depthController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: localizations.translate('depth_m'),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Описание
+                    TextField(
+                      controller: _descriptionController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: localizations.translate('description'),
+                        labelStyle: TextStyle(color: AppConstants.textColor
+                            .withValues(alpha: 0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.textColor.withValues(
+                                  alpha: 0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                              color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Выбор типа маркера
+                    Row(
+                      children: [
+                        Text(
+                          '${localizations.translate('marker_type')}:',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(
+                                alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Типы маркеров
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildMarkerTypeOption(
+                            'default',
+                            localizations.translate('default') ?? 'Обычный',
+                            BitmapDescriptor.hueAzure,
+                            selectedType,
+                                (value) {
+                              setState(() => selectedType = value);
+                            }
+                        ),
+                        _buildMarkerTypeOption(
+                            'dropoff',
+                            localizations.translate('dropoff') ?? 'Свал',
+                            BitmapDescriptor.hueRed,
+                            selectedType,
+                                (value) {
+                              setState(() => selectedType = value);
+                            }
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildMarkerTypeOption(
+                            'weed',
+                            localizations.translate('weed') ?? 'Растительность',
+                            BitmapDescriptor.hueGreen,
+                            selectedType,
+                                (value) {
+                              setState(() => selectedType = value);
+                            }
+                        ),
+                        _buildMarkerTypeOption(
+                            'sandbar',
+                            localizations.translate('sandbar') ?? 'Отмель',
+                            BitmapDescriptor.hueYellow,
+                            selectedType,
+                                (value) {
+                              setState(() => selectedType = value);
+                            }
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildMarkerTypeOption(
+                            'structure',
+                            localizations.translate('structure') ?? 'Структура',
+                            BitmapDescriptor.hueOrange,
+                            selectedType,
+                                (value) {
+                              setState(() => selectedType = value);
+                            }
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    localizations.translate('cancel'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (isEditing) {
+                      _updateMarker(marker, selectedType);
+                    } else {
+                      _addNewMarker(selectedType);
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    isEditing ? localizations.translate('save') : localizations.translate('add'),
+                    style: TextStyle(
+                      color: AppConstants.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Построение опции выбора типа маркера
+  Widget _buildMarkerTypeOption(String type,
+      String label,
+      double hue,
+      String selectedValue,
+      Function(String) onSelect) {
+    final isSelected = selectedValue == type;
+
+    return GestureDetector(
+      onTap: () => onSelect(type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppConstants.primaryColor.withValues(alpha: 0.2)
+              : AppConstants.backgroundColor.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor(),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Обновление существующего маркера
+  void _updateMarker(Map<String, dynamic> marker, String type) {
+    final index = _markerData.indexWhere((m) => m['id'] == marker['id']);
+    if (index != -1) {
+      setState(() {
+        _markerData[index] = {
+          'id': marker['id'],
+          'latitude': marker['latitude'],
+          'longitude': marker['longitude'],
+          'name': _nameController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'depth': _depthController.text.isEmpty
+              ? null
+              : double.tryParse(_depthController.text),
+          'type': type,
+        };
+        _updateMapMarkers();
+      });
+    }
+  }
+
+  // Добавление нового маркера
+  void _addNewMarker(String type) {
+    final localizations = AppLocalizations.of(context);
+    const uuid = Uuid();
+    final id = uuid.v4();
+    setState(() {
+      _markerData.add({
+        'id': id,
+        'latitude': _selectedMarker != null
+            ? _selectedMarker!['latitude']
+            : widget.latitude,
+        'longitude': _selectedMarker != null
+            ? _selectedMarker!['longitude']
+            : widget.longitude,
+        'name': _nameController.text
+            .trim()
+            .isEmpty
+            ? '${localizations.translate('marker')} ${_markerData.length + 1}'
+            : _nameController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'depth': _depthController.text.isEmpty
+            ? null
+            : double.tryParse(_depthController.text),
+        'type': type,
+      });
+      _updateMapMarkers();
+    });
   }
 
   @override
@@ -173,7 +624,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          localizations.translate('change_password_title'),
+          localizations.translate('geo_marker_map'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -186,348 +637,331 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Кнопка сохранения маркеров
+          IconButton(
+            icon: Icon(Icons.check, color: AppConstants.textColor),
+            onPressed: () {
+              Navigator.pop(context, _markerData);
+            },
+          ),
+        ],
       ),
-      body: LoadingOverlay(
-        isLoading: _isLoading,
-        message: localizations.translate('changing_password'),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 24),
+      body: Stack(
+        children: [
+          // Google Maps
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(widget.latitude, widget.longitude),
+              zoom: 15.0,
+            ),
+            onMapCreated: (controller) {
+              _mapController = controller;
 
-                // Текущий пароль
-                TextFormField(
-                  controller: _currentPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: localizations.translate('current_password'),
-                    labelStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                    ),
-                    prefixIcon: Icon(Icons.lock, color: AppConstants.textColor),
-                    filled: true,
-                    fillColor: AppConstants.surfaceColor,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppConstants.textColor,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorStyle: const TextStyle(color: Colors.redAccent),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
-                        color: AppConstants.textColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureCurrentPassword = !_obscureCurrentPassword;
-                        });
-                      },
-                    ),
-                  ),
-                  obscureText: _obscureCurrentPassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return localizations.translate('please_enter_current_password');
-                    }
-                    return null;
-                  },
-                  textInputAction: TextInputAction.next,
+              setState(() {
+                _isLoading = false;
+              });
+
+              // Обновляем маркеры на карте
+              _updateMapMarkers();
+            },
+            style: _mapStyle,
+            markers: _markers,
+            onTap: (position) {
+              setState(() {
+                _selectedMarker = {
+                  'latitude': position.latitude,
+                  'longitude': position.longitude,
+                };
+              });
+              _showEditMarkerDialog(null);
+            },
+            zoomControlsEnabled: false,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            compassEnabled: true,
+            mapType: MapType.hybrid,
+          ),
+
+          // Индикатор загрузки
+          if (_isLoading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.5),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.textColor),
                 ),
+              ),
+            ),
 
-                const SizedBox(height: 16),
-
-                // Ссылка "Забыли пароль?"
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _resetPassword,
-                    child: Text(
-                      localizations.translate('forgot_password_question'),
-                      style: TextStyle(
-                        color: AppConstants.primaryColor,
-                        fontSize: 14,
-                      ),
+          // Информационная панель
+          Positioned(
+            bottom: 100,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppConstants.backgroundColor.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${localizations.translate('markers')}: ${_markerData.length}',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Новый пароль
-                TextFormField(
-                  controller: _newPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: localizations.translate('new_password'),
-                    labelStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                    ),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
-                    filled: true,
-                    fillColor: AppConstants.surfaceColor,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppConstants.textColor,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorStyle: const TextStyle(color: Colors.redAccent),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
-                        color: AppConstants.textColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureNewPassword = !_obscureNewPassword;
-                        });
-                      },
+                  const SizedBox(height: 8),
+                  Text(
+                    localizations.translate('tap_to_add_marker'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 14,
                     ),
                   ),
-                  obscureText: _obscureNewPassword,
-                  validator: (value) => Validators.validatePassword(value, context),
-                  textInputAction: TextInputAction.next,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Подтверждение нового пароля
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: localizations.translate('confirm_new_password'),
-                    labelStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                    ),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
-                    filled: true,
-                    fillColor: AppConstants.surfaceColor,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppConstants.textColor,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.5,
-                      ),
-                    ),
-                    errorStyle: const TextStyle(color: Colors.redAccent),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                        color: AppConstants.textColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
-                    ),
-                  ),
-                  obscureText: _obscureConfirmPassword,
-                  validator: (value) => Validators.validateConfirmPassword(
-                    value,
-                    _newPasswordController.text,
-                    context,
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _changePassword(),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Сообщение об успехе
-                if (_successMessage.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _successMessage,
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Сообщение об ошибке
-                if (_errorMessage.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.red.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.error,
-                          color: Colors.red,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 32),
-
-                // Кнопка изменения пароля
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _changePassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      foregroundColor: AppConstants.textColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      padding: EdgeInsets.zero,
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: AppConstants.textColor,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                        : Text(
-                      localizations.translate('change_password'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+
+          // Кнопка моего местоположения
+          Positioned(
+            bottom: 30,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'location_button',
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              onPressed: () {
+                _mapController?.animateCamera(
+                  CameraUpdate.newLatLngZoom(
+                    LatLng(widget.latitude, widget.longitude),
+                    15.0,
+                  ),
+                );
+              },
+              child: const Icon(Icons.my_location),
+            ),
+          ),
+
+          // Кнопка добавления нового маркера
+          Positioned(
+            bottom: 30,
+            left: 16,
+            child: FloatingActionButton(
+              heroTag: 'add_button',
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              onPressed: () {
+                setState(() {
+                  _selectedMarker = {
+                    'latitude': widget.latitude,
+                    'longitude': widget.longitude,
+                  };
+                });
+                _showEditMarkerDialog(null);
+              },
+              child: const Icon(Icons.add_location_alt),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  // Стиль для темной темы Google Maps
+  static const _mapStyle = '''
+  [
+    {
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#212121"
+        }
+      ]
+    },
+    {
+      "elementType": "labels.icon",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#757575"
+        }
+      ]
+    },
+    {
+      "elementType": "labels.text.stroke",
+      "stylers": [
+        {
+          "color": "#212121"
+        }
+      ]
+    },
+    {
+      "featureType": "administrative",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#757575"
+        }
+      ]
+    },
+    {
+      "featureType": "administrative.country",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#9e9e9e"
+        }
+      ]
+    },
+    {
+      "featureType": "administrative.land_parcel",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "administrative.locality",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#bdbdbd"
+        }
+      ]
+    },
+    {
+      "featureType": "poi",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#757575"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#181818"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#616161"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "labels.text.stroke",
+      "stylers": [
+        {
+          "color": "#1b1b1b"
+        }
+      ]
+    },
+    {
+      "featureType": "road",
+      "elementType": "geometry.fill",
+      "stylers": [
+        {
+          "color": "#2c2c2c"
+        }
+      ]
+    },
+    {
+      "featureType": "road",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#8a8a8a"
+        }
+      ]
+    },
+    {
+      "featureType": "road.arterial",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#373737"
+        }
+      ]
+    },
+    {
+      "featureType": "road.highway",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#3c3c3c"
+        }
+      ]
+    },
+    {
+      "featureType": "road.highway.controlled_access",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#4e4e4e"
+        }
+      ]
+    },
+    {
+      "featureType": "road.local",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#616161"
+        }
+      ]
+    },
+    {
+      "featureType": "transit",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#757575"
+        }
+      ]
+    },
+    {
+      "featureType": "water",
+      "elementType": "geometry",
+      "stylers": [
+        {
+          "color": "#000000"
+        }
+      ]
+    },
+    {
+      "featureType": "water",
+      "elementType": "labels.text.fill",
+      "stylers": [
+        {
+          "color": "#3d3d3d"
+        }
+      ]
+    }
+  ]
+  ''';
 }

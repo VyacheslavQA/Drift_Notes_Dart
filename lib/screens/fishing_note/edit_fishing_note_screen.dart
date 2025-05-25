@@ -13,7 +13,7 @@ import '../../utils/date_formatter.dart';
 import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
 import '../map/map_location_screen.dart';
-import '../map/marker_map_screen.dart';
+import '../map/geo_marker_screen.dart';
 import 'bite_record_screen.dart';
 import 'edit_bite_record_screen.dart';
 
@@ -347,7 +347,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MarkerMapScreen(
+        builder: (context) => GeoMarkerScreen(
           latitude: lat,
           longitude: lng,
           existingMarkers: _mapMarkers,
