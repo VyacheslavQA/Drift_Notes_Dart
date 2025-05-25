@@ -474,7 +474,33 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // Данные и хранилище
+              // Безопасность
+              _buildSectionHeader(localizations.translate('security')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.security, color: Colors.blue),
+                  title: Text(localizations.translate('change_password')),
+                  subtitle: Text(localizations.translate('change_your_account_password')),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChangePasswordScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+
+              // Очистка данных
               _buildSectionHeader(localizations.translate('data_and_storage')),
               Card(
                 color: AppConstants.cardColor,
@@ -506,31 +532,6 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                       onTap: _clearAllData,
                     ),
                   ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Безопасность
-              _buildSectionHeader(localizations.translate('security')),
-              Card(
-                color: AppConstants.cardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.security, color: Colors.blue),
-                  title: Text(localizations.translate('change_password')),
-                  subtitle: Text(localizations.translate('change_your_account_password')),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChangePasswordScreen(),
-                      ),
-                    );
-                  },
                 ),
               ),
 
