@@ -51,4 +51,7 @@ app.*.map.json
 lib/firebase_options.dart
 "@
 
+# API Keys - НЕ коммитить в Git!
+lib/config/api_keys.dart
+
 Set-Content -Path .gitignore -Value $gitignore -Encoding UTF8

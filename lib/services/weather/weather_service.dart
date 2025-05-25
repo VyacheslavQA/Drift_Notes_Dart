@@ -6,18 +6,40 @@ import 'package:flutter/material.dart';
 import '../../models/fishing_note_model.dart';
 import 'package:intl/intl.dart';
 import '../../localization/app_localizations.dart';
+import '../../services/weather/weather_api_service.dart';
 
 class WeatherService {
   final String _baseUrl = 'https://api.open-meteo.com/v1/forecast';
   BuildContext? _context;
 
+  // Новый сервис WeatherAPI
+  final WeatherApiService _weatherApiService = WeatherApiService();
+
   WeatherService([this._context]);
 
-  // Получает данные о погоде для указанных координат
+  // Получает данные о погоде для указанных координат используя WeatherAPI
   Future<FishingWeather?> getWeatherForLocation(double latitude,
       double longitude, [BuildContext? context]) async {
     if (context != null) _context = context;
 
+    try {
+      // Используем новый WeatherAPI сервис
+      final weatherData = await _weatherApiService.getCurrentWeather(
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      // Конвертируем в FishingWeather для совместимости
+      return WeatherApiService.convertToFishingWeather(weatherData);
+    } catch (e) {
+      // Если новый API не работает, используем старый Open-Meteo как fallback
+      debugPrint('⚠️ WeatherAPI недоступен, используем Open-Meteo: $e');
+      return _getWeatherFromOpenMeteo(latitude, longitude);
+    }
+  }
+
+  // Fallback метод для Open-Meteo API (оригинальный код)
+  Future<FishingWeather?> _getWeatherFromOpenMeteo(double latitude, double longitude) async {
     try {
       final response = await http.get(Uri.parse(
           '$_baseUrl?latitude=$latitude&longitude=$longitude'
@@ -38,7 +60,7 @@ class WeatherService {
     }
   }
 
-  // Парсинг данных о погоде из ответа API
+  // Парсинг данных о погоде из ответа API (оригинальный код)
   FishingWeather? _parseWeatherData(Map<String, dynamic> data) {
     try {
       final current = data['current'];

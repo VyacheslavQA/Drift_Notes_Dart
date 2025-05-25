@@ -20,6 +20,7 @@ import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
 import 'settings/settings_screen.dart';
+import 'weather/weather_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -100,8 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 1: // Погода
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(localizations.translate('weather_screen_in_development'))),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const WeatherScreen()),
         );
         break;
       case 2: // Центральная кнопка - создание заметки
