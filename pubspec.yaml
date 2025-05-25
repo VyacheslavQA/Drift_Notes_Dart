@@ -58,6 +58,10 @@ dependencies:
 
   crypto: ^3.0.3
 
+  # Добавь эти, если их нет:
+  permission_handler: ^11.1.0
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
