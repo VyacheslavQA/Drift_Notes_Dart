@@ -601,5 +601,19 @@
   "pleasant_warm_weather": "Pleasant warm weather.",
   "hot_stuffy_weather": "Hot and stuffy. Recommended to drink more.",
   "hot_tolerable_weather": "Hot, but tolerable.",
-  "selected": "Selected"
+  "selected": "Selected",
+
+  "map_type": "Map Type",
+  "normal_map": "Normal Map",
+  "normal_map_desc": "Standard map with roads and labels",
+  "satellite_map": "Satellite Map",
+  "satellite_map_desc": "Satellite imagery of the area",
+  "hybrid_map": "Hybrid Map",
+  "hybrid_map_desc": "Satellite imagery with roads and labels",
+  "terrain_map": "Terrain Map",
+  "terrain_map_desc": "Map showing terrain features",
+  "layers": "Layers",
+  "latitude": "Latitude",
+  "longitude": "Longitude",
+  "select_this_point": "Select This Point"
 }

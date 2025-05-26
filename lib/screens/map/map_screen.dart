@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../config/api_keys.dart';
@@ -24,15 +25,19 @@ class _MapScreenState extends State<MapScreen> {
   bool _errorLoadingMap = false;
   String _errorMessage = '';
 
+  // Переменная для типа карты
+  MapType _currentMapType = MapType.normal;
+
   // Начальная позиция для карты (будет заменена текущей геолокацией)
   CameraPosition _initialPosition = const CameraPosition(
-    target: LatLng(52.2873, 77.2874), // Павлодар
+    target: LatLng(52.2788, 76.9419), // Павлодар
     zoom: 11.0,
   );
 
   @override
   void initState() {
     super.initState();
+    _loadSavedMapType();
 
     // Проверяем API ключ при инициализации
     if (ApiKeys.hasGoogleMapsKey) {
@@ -46,6 +51,228 @@ class _MapScreenState extends State<MapScreen> {
         _errorMessage = 'Google Maps API ключ не настроен';
       });
     }
+  }
+
+  // Загрузка сохраненного типа карты
+  Future<void> _loadSavedMapType() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedMapTypeIndex = prefs.getInt('map_type') ?? 0;
+
+      setState(() {
+        _currentMapType = MapType.values[savedMapTypeIndex];
+      });
+    } catch (e) {
+      debugPrint('Ошибка при загрузке типа карты: $e');
+    }
+  }
+
+  // Сохранение выбранного типа карты
+  Future<void> _saveMapType(MapType mapType) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('map_type', mapType.index);
+    } catch (e) {
+      debugPrint('Ошибка при сохранении типа карты: $e');
+    }
+  }
+
+  // Переключение типа карты
+  void _changeMapType(MapType newMapType) {
+    setState(() {
+      _currentMapType = newMapType;
+    });
+    _saveMapType(newMapType);
+    Navigator.pop(context); // Закрываем BottomSheet
+  }
+
+  // Показ селектора типов карты
+  void _showMapTypeSelector() {
+    final localizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildMapTypeSelectorSheet(),
+    );
+  }
+
+  // BottomSheet с выбором типов карты
+  Widget _buildMapTypeSelectorSheet() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Заголовок
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Тип карты',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(
+                    Icons.close,
+                    color: AppConstants.textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Разделитель
+          Divider(
+            color: AppConstants.textColor.withValues(alpha: 0.2),
+            height: 1,
+          ),
+
+          // Список типов карт
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildMapTypeOption(
+                  MapType.normal,
+                  'Схема',
+                  'Дороги, названия улиц и достопримечательности',
+                  Icons.map_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildMapTypeOption(
+                  MapType.satellite,
+                  'Спутник',
+                  'Спутниковые снимки без названий',
+                  Icons.satellite_alt,
+                ),
+                const SizedBox(height: 12),
+                _buildMapTypeOption(
+                  MapType.hybrid,
+                  'Гибрид',
+                  'Спутниковые снимки с названиями дорог и объектов',
+                  Icons.layers,
+                ),
+                const SizedBox(height: 12),
+                _buildMapTypeOption(
+                  MapType.terrain,
+                  'Рельеф',
+                  'Топографическая карта с высотами и рельефом',
+                  Icons.terrain,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Опция выбора типа карты
+  Widget _buildMapTypeOption(
+      MapType mapType,
+      String title,
+      String description,
+      IconData icon
+      ) {
+    final isSelected = _currentMapType == mapType;
+
+    return InkWell(
+      onTap: () => _changeMapType(mapType),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppConstants.primaryColor.withValues(alpha: 0.1)
+              : const Color(0xFF12332E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppConstants.primaryColor
+                : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Превью/иконка
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected
+                    ? AppConstants.textColor
+                    : AppConstants.textColor.withValues(alpha: 0.7),
+                size: 30,
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Текст
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Индикатор выбора
+            if (isSelected)
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: AppConstants.textColor,
+                  size: 20,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   // Загрузка текущей геолокации пользователя
@@ -145,7 +372,7 @@ class _MapScreenState extends State<MapScreen> {
             infoWindow: InfoWindow(
               title: note.location,
               snippet: note.isMultiDay
-                  ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.year}'
+                  ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
                   : 'Дата: ${note.date.day}.${note.date.month}.${note.date.year}',
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
@@ -279,91 +506,146 @@ class _MapScreenState extends State<MapScreen> {
             ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: AppConstants.primaryColor),
-            const SizedBox(height: 16),
-            Text(
-              'Загрузка карты...',
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 16,
+      body: Stack(
+        children: [
+          // Основное содержимое
+          _isLoading
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: AppConstants.primaryColor),
+                const SizedBox(height: 16),
+                Text(
+                  'Загрузка карты...',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          )
+              : _errorLoadingMap
+              ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? Icons.warning_amber_rounded
+                        : Icons.location_off,
+                    color: !ApiKeys.hasGoogleMapsKey
+                        ? Colors.orange
+                        : AppConstants.textColor,
+                    size: 64,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? 'Google Maps API ключ не настроен'
+                        : _errorMessage,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? 'Для работы карты необходимо добавить API ключ в настройки приложения'
+                        : 'Проверьте подключение к интернету и разрешения геолокации',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _retryLoading,
+                    icon: Icon(!ApiKeys.hasGoogleMapsKey ? Icons.info : Icons.refresh),
+                    label: Text(!ApiKeys.hasGoogleMapsKey ? 'Подробнее' : 'Повторить'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: AppConstants.textColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      )
-          : _errorLoadingMap
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                !ApiKeys.hasGoogleMapsKey
-                    ? Icons.warning_amber_rounded
-                    : Icons.location_off,
-                color: !ApiKeys.hasGoogleMapsKey
-                    ? Colors.orange
-                    : AppConstants.textColor,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                !ApiKeys.hasGoogleMapsKey
-                    ? 'Google Maps API ключ не настроен'
-                    : _errorMessage,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          )
+              : GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: _initialPosition,
+            markers: _markers,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false, // Отключаем стандартную кнопку
+            mapType: _currentMapType, // Используем выбранный тип карты
+            zoomControlsEnabled: true, // Включаем стандартные кнопки зума
+            compassEnabled: true,
+          ),
+
+          // Кнопка выбора типа карты (поверх карты, справа вверху)
+          if (!_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
+            Positioned(
+              top: 20,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppConstants.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                !ApiKeys.hasGoogleMapsKey
-                    ? 'Для работы карты необходимо добавить API ключ в настройки приложения'
-                    : 'Проверьте подключение к интернету и разрешения геолокации',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _retryLoading,
-                icon: Icon(!ApiKeys.hasGoogleMapsKey ? Icons.info : Icons.refresh),
-                label: Text(!ApiKeys.hasGoogleMapsKey ? 'Подробнее' : 'Повторить'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _showMapTypeSelector,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.layers,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Слои',
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      )
-          : GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: _initialPosition,
-        markers: _markers,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-        mapType: MapType.normal,
-        zoomControlsEnabled: true,
-        compassEnabled: true,
-        //style: _mapStyle,
+            ),
+        ],
       ),
+
+      // FAB для местоположения (слева внизу, чтобы не мешать кнопкам зума)
       floatingActionButton: !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
           ? FloatingActionButton(
         backgroundColor: AppConstants.primaryColor,
@@ -373,188 +655,7 @@ class _MapScreenState extends State<MapScreen> {
         child: const Icon(Icons.my_location),
       )
           : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat, // Слева внизу
     );
   }
-
-  // Стиль для темной темы Google Maps
-  static const String _mapStyle = '''
-      [
-        {
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#212121"
-            }
-          ]
-        },
-        {
-          "elementType": "labels.icon",
-          "stylers": [
-            {
-              "visibility": "off"
-            }
-          ]
-        },
-        {
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#757575"
-            }
-          ]
-        },
-        {
-          "elementType": "labels.text.stroke",
-          "stylers": [
-            {
-              "color": "#212121"
-            }
-          ]
-        },
-        {
-          "featureType": "administrative",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#757575"
-            }
-          ]
-        },
-        {
-          "featureType": "administrative.country",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#9e9e9e"
-            }
-          ]
-        },
-        {
-          "featureType": "administrative.locality",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#bdbdbd"
-            }
-          ]
-        },
-        {
-          "featureType": "poi",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#757575"
-            }
-          ]
-        },
-        {
-          "featureType": "poi.park",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#181818"
-            }
-          ]
-        },
-        {
-          "featureType": "poi.park",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#616161"
-            }
-          ]
-        },
-        {
-          "featureType": "poi.park",
-          "elementType": "labels.text.stroke",
-          "stylers": [
-            {
-              "color": "#1b1b1b"
-            }
-          ]
-        },
-        {
-          "featureType": "road",
-          "elementType": "geometry.fill",
-          "stylers": [
-            {
-              "color": "#2c2c2c"
-            }
-          ]
-        },
-        {
-          "featureType": "road",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#8a8a8a"
-            }
-          ]
-        },
-        {
-          "featureType": "road.arterial",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#373737"
-            }
-          ]
-        },
-        {
-          "featureType": "road.highway",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#3c3c3c"
-            }
-          ]
-        },
-        {
-          "featureType": "road.highway.controlled_access",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#4e4e4e"
-            }
-          ]
-        },
-        {
-          "featureType": "road.local",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#616161"
-            }
-          ]
-        },
-        {
-          "featureType": "transit",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#757575"
-            }
-          ]
-        },
-        {
-          "featureType": "water",
-          "elementType": "geometry",
-          "stylers": [
-            {
-              "color": "#000814"
-            }
-          ]
-        },
-        {
-          "featureType": "water",
-          "elementType": "labels.text.fill",
-          "stylers": [
-            {
-              "color": "#3d3d3d"
-            }
-          ]
-        }
-      ]
-    ''';
 }

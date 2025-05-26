@@ -602,5 +602,19 @@
   "pleasant_warm_weather": "Приятная теплая погода.",
   "hot_stuffy_weather": "Жарко и душно. Рекомендуется больше пить.",
   "hot_tolerable_weather": "Жарко, но терпимо.",
-  "selected": "Выбрано"
+  "selected": "Выбрано",
+
+  "map_type": "Тип карты",
+  "normal_map": "Обычная карта",
+  "normal_map_desc": "Стандартная карта с дорогами и названиями",
+  "satellite_map": "Спутниковая карта",
+  "satellite_map_desc": "Спутниковые снимки местности",
+  "hybrid_map": "Гибридная карта",
+  "hybrid_map_desc": "Спутниковые снимки с дорогами и названиями",
+  "terrain_map": "Рельеф местности",
+  "terrain_map_desc": "Карта с отображением рельефа",
+  "layers": "Слои",
+  "latitude": "Широта",
+  "longitude": "Долгота",
+  "select_this_point": "Выбрать эту точку"
 }
