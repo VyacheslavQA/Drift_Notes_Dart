@@ -301,85 +301,12 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Фотография, если есть
+            // Фотография без наложенных блоков
             if (photoUrl.isNotEmpty)
-              Stack(
-                children: [
-                  SizedBox(
-                    height: 170,  // Увеличили размер для лучшего отображения
-                    width: double.infinity,
-                    child: _buildCoverImage(photoUrl, cropSettings),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 60,  // Увеличили градиент для лучшего перехода
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.8),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Показываем тип рыбалки и дату внизу фотографии
-                  Positioned(
-                    bottom: 8,
-                    left: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppConstants.textColor.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            localizations.translate(note.fishingType), // ИСПРАВЛЕНО: добавлен перевод
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppConstants.textColor.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            note.isMultiDay
-                                ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
-                                : DateFormatter.formatDate(note.date, context),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              SizedBox(
+                height: 170,
+                width: double.infinity,
+                child: _buildCoverImage(photoUrl, cropSettings),
               ),
 
             Padding(
@@ -387,56 +314,54 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Если фото не было, показываем тип рыбалки и дату в основном блоке
-                  if (photoUrl.isEmpty)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
+                  // Тип рыбалки и дата - теперь под фото
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          localizations.translate(note.fishingType),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
                             color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            localizations.translate(note.fishingType), // ИСПРАВЛЕНО: добавлен перевод
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            width: 1,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            note.isMultiDay
-                                ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
-                                : DateFormatter.formatDate(note.date, context),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.9),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        child: Text(
+                          note.isMultiDay
+                              ? DateFormatter.formatDateRange(note.date, note.endDate!, context)
+                              : DateFormatter.formatDate(note.date, context),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
 
-                  if (photoUrl.isEmpty)
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
                   // Место рыбалки / название
                   Text(
