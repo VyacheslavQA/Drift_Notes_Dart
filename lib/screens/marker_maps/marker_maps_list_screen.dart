@@ -144,292 +144,361 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     DateTime selectedDate = DateTime.now();
     List<FishingNoteModel> selectedNotes = [];
 
-    await showDialog(
+    final result = await showDialog<MarkerMapModel>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            backgroundColor: AppConstants.surfaceColor,
-            title: Text(
-              localizations.translate('create_marker_map'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return Dialog(
+              backgroundColor: AppConstants.surfaceColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Название карты
-                  TextField(
-                    controller: nameController,
-                    style: TextStyle(color: AppConstants.textColor),
-                    decoration: InputDecoration(
-                      labelText: '${localizations.translate('timer_name')}*',
-                      labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Заголовок
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
                       ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.primaryColor),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Выбор даты
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.dark(
-                                primary: AppConstants.primaryColor,
-                                onPrimary: AppConstants.textColor,
-                                surface: AppConstants.surfaceColor,
-                                onSurface: AppConstants.textColor,
-                              ),
-                              dialogTheme: DialogThemeData(
-                                backgroundColor: AppConstants.backgroundColor,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.map,
+                            color: AppConstants.primaryColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              localizations.translate('create_marker_map'),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            child: child!,
-                          );
-                        },
-                      );
-
-                      if (picked != null) {
-                        setState(() {
-                          selectedDate = picked;
-                        });
-                      }
-                    },
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          color: AppConstants.textColor,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
                           ),
-                        ),
-                        const Spacer(),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          color: AppConstants.textColor,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Номер сектора (опционально)
-                  TextField(
-                    controller: sectorController,
-                    style: TextStyle(color: AppConstants.textColor),
-                    decoration: InputDecoration(
-                      labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
-                      labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ],
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
-
-                  // Привязка к заметкам (множественный выбор)
-                  if (_notes.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
-                            fontSize: 14,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Показываем список заметок с чекбоксами
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 150),
-                          decoration: BoxDecoration(
-                            color: AppConstants.backgroundColor.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppConstants.textColor.withValues(alpha: 0.2),
-                              width: 1,
+                    // Содержимое
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Название карты
+                            TextField(
+                              controller: nameController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                labelText: '${localizations.translate('map_name')}*',
+                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                ),
+                              ),
                             ),
-                          ),
-                          child: _notes.isEmpty
-                              ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                localizations.translate('no_notes'),
+
+                            const SizedBox(height: 20),
+
+                            // Выбор даты
+                            InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.dark(
+                                          primary: AppConstants.primaryColor,
+                                          onPrimary: AppConstants.textColor,
+                                          surface: AppConstants.surfaceColor,
+                                          onSurface: AppConstants.textColor,
+                                        ),
+                                        dialogTheme: DialogThemeData(
+                                          backgroundColor: AppConstants.backgroundColor,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+
+                                if (picked != null) {
+                                  dialogSetState(() {
+                                    selectedDate = picked;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today,
+                                      color: AppConstants.textColor,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
+                                      style: TextStyle(
+                                        color: AppConstants.textColor,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Icon(
+                                      Icons.arrow_drop_down,
+                                      color: AppConstants.textColor,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Номер сектора (опционально)
+                            TextField(
+                              controller: sectorController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Привязка к заметкам (множественный выбор)
+                            if (_notes.isNotEmpty) ...[
+                              Text(
+                                '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                                 style: TextStyle(
                                   color: AppConstants.textColor.withValues(alpha: 0.7),
                                   fontSize: 14,
                                 ),
                               ),
-                            ),
-                          )
-                              : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _notes.length,
-                            itemBuilder: (context, index) {
-                              final note = _notes[index];
-                              final title = note.title.isNotEmpty ? note.title : note.location;
-                              final isSelected = selectedNotes.contains(note);
 
-                              return CheckboxListTile(
-                                title: Text(
-                                  title,
-                                  style: TextStyle(
-                                    color: AppConstants.textColor,
-                                    fontSize: 14,
+                              const SizedBox(height: 12),
+
+                              // Показываем список заметок с чекбоксами
+                              Container(
+                                constraints: const BoxConstraints(maxHeight: 200),
+                                decoration: BoxDecoration(
+                                  color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppConstants.textColor.withValues(alpha: 0.2),
+                                    width: 1,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                value: isSelected,
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    if (value == true) {
-                                      selectedNotes.add(note);
-                                    } else {
-                                      selectedNotes.remove(note);
-                                    }
-                                  });
-                                },
-                                activeColor: AppConstants.primaryColor,
-                                checkColor: AppConstants.textColor,
-                                dense: true,
-                                controlAffinity: ListTileControlAffinity.leading,
-                              );
-                            },
+                                child: _notes.isEmpty
+                                    ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Text(
+                                      localizations.translate('no_notes'),
+                                      style: TextStyle(
+                                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                    : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _notes.length,
+                                  itemBuilder: (context, index) {
+                                    final note = _notes[index];
+                                    final title = note.title.isNotEmpty ? note.title : note.location;
+                                    final isSelected = selectedNotes.contains(note);
+
+                                    return CheckboxListTile(
+                                      title: Text(
+                                        title,
+                                        style: TextStyle(
+                                          color: AppConstants.textColor,
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      value: isSelected,
+                                      onChanged: (bool? value) {
+                                        dialogSetState(() {
+                                          if (value == true) {
+                                            selectedNotes.add(note);
+                                          } else {
+                                            selectedNotes.remove(note);
+                                          }
+                                        });
+                                      },
+                                      activeColor: AppConstants.primaryColor,
+                                      checkColor: AppConstants.textColor,
+                                      dense: true,
+                                      controlAffinity: ListTileControlAffinity.leading,
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              if (selectedNotes.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  '${localizations.translate('selected')}: ${selectedNotes.length}',
+                                  style: TextStyle(
+                                    color: AppConstants.primaryColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Кнопки
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: AppConstants.textColor.withValues(alpha: 0.1),
+                            width: 1,
                           ),
                         ),
-
-                        if (selectedNotes.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
                             child: Text(
-                              '${localizations.translate('selected')}: ${selectedNotes.length}',
+                              localizations.translate('cancel'),
                               style: TextStyle(
-                                color: AppConstants.primaryColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                color: AppConstants.textColor,
                               ),
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (nameController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(localizations.translate('required_field'))),
+                                );
+                                return;
+                              }
+
+                              // Создаем новую карту с множественными привязками
+                              final newMap = MarkerMapModel(
+                                id: const Uuid().v4(),
+                                userId: '',
+                                name: nameController.text.trim(),
+                                date: selectedDate,
+                                sector: sectorController.text.trim().isEmpty
+                                    ? null
+                                    : sectorController.text.trim(),
+                                noteIds: selectedNotes.map((note) => note.id).toList(),
+                                noteNames: selectedNotes.map((note) =>
+                                note.title.isNotEmpty ? note.title : note.location).toList(),
+                                markers: [],
+                              );
+
+                              Navigator.pop(context, newMap);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppConstants.primaryColor,
+                            ),
+                            child: Text(
+                              localizations.translate('add'),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                  ),
+                  ],
                 ),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(localizations.translate('required_field'))),
-                    );
-                    return;
-                  }
-
-                  // Создаем новую карту с множественными привязками
-                  final newMap = MarkerMapModel(
-                    id: const Uuid().v4(),
-                    userId: '',
-                    name: nameController.text.trim(),
-                    date: selectedDate,
-                    sector: sectorController.text.trim().isEmpty
-                        ? null
-                        : sectorController.text.trim(),
-                    noteIds: selectedNotes.map((note) => note.id).toList(),
-                    noteNames: selectedNotes.map((note) =>
-                    note.title.isNotEmpty ? note.title : note.location).toList(),
-                    markers: [],
-                  );
-
-                  Navigator.pop(context, newMap);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                ),
-                child: Text(
-                  localizations.translate('add'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    ).then((result) async {
-      if (result != null && result is MarkerMapModel) {
-        try {
-          setState(() => _isLoading = true);
-
-          // Сохраняем новую карту
-          final mapId = await _markerMapRepository.addMarkerMap(result);
-
-          // Открываем экран редактирования карты
-          if (mounted) {
-            setState(() => _isLoading = false);
-            final map = result.copyWith(id: mapId);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MarkerMapScreen(markerMap: map),
-              ),
-            ).then((_) => _loadData());
-          }
-        } catch (e) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-            final localizations = AppLocalizations.of(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
             );
-          }
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        setState(() => _isLoading = true);
+
+        // Сохраняем новую карту
+        final mapId = await _markerMapRepository.addMarkerMap(result);
+
+        // Открываем экран редактирования карты
+        if (mounted) {
+          setState(() => _isLoading = false);
+          final map = result.copyWith(id: mapId);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MarkerMapScreen(markerMap: map),
+            ),
+          ).then((_) => _loadData());
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          final localizations = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
+          );
         }
       }
-    });
+    }
   }
 
   @override
