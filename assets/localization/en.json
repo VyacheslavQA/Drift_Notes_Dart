@@ -615,5 +615,6 @@
   "layers": "Layers",
   "latitude": "Latitude",
   "longitude": "Longitude",
-  "select_this_point": "Select This Point"
+  "select_this_point": "Select This Point",
+  "biting": "Biting..."
 }

@@ -129,7 +129,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _handleLogin() {
     if (_isLoading) return;
 
-    // Системная вибрация (работает на всех устройствах)
+    // Системная вибрация
     HapticFeedback.mediumImpact();
 
     setState(() {
@@ -257,7 +257,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          localizations.translate('loading'),
+                          localizations.translate('biting'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

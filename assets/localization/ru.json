@@ -616,5 +616,6 @@
   "layers": "Слои",
   "latitude": "Широта",
   "longitude": "Долгота",
-  "select_this_point": "Выбрать эту точку"
+  "select_this_point": "Выбрать эту точку",
+  "biting": "Клюёт..."
 }
