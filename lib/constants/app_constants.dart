@@ -42,7 +42,7 @@ class AppConstants {
   static const double fontSizeLarge = 20.0;
   static const double fontSizeXLarge = 24.0;
 
-  // Типы рыбалки - теперь ключи локализации
+  // Типы рыбалки - ключи локализации
   static const List<String> fishingTypes = [
     'carp_fishing',
     'spinning',
@@ -54,13 +54,13 @@ class AppConstants {
     'other_fishing',
   ];
 
-  // Уровни опыта рыболова
+  // Уровни опыта рыболова - ИСПРАВЛЕНО: теперь ключи локализации
   static const List<String> experienceLevels = [
-    'Новичок',
-    'Любитель',
-    'Продвинутый',
-    'Профи',
-    'Эксперт',
+    'novice',
+    'amateur',
+    'advanced',
+    'professional',
+    'expert',
   ];
 
   // Страны
@@ -176,6 +176,26 @@ class AppConstants {
       case 'trolling': return 'Троллинг';
       case 'other_fishing': return 'Другое';
       default: return fishingTypeKey;
+    }
+  }
+
+  // ДОБАВЛЕНО: Вспомогательный метод для получения переведенного уровня опыта
+  static String getLocalizedExperienceLevel(String experienceLevelKey, BuildContext context) {
+    try {
+      final localizations = AppLocalizations.of(context);
+      return localizations.translate(experienceLevelKey);
+    } catch (e) {
+      // Если что-то пошло не так, возвращаем fallback
+    }
+
+    // Fallback на русский
+    switch (experienceLevelKey) {
+      case 'novice': return 'Новичок';
+      case 'amateur': return 'Любитель';
+      case 'advanced': return 'Продвинутый';
+      case 'professional': return 'Профи';
+      case 'expert': return 'Эксперт';
+      default: return experienceLevelKey;
     }
   }
 }

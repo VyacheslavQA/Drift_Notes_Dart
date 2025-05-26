@@ -294,40 +294,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               Wrap(
                 spacing: 8,
-                children: AppConstants.experienceLevels.map((level) {
-                  String translatedLevel;
-                  switch (level) {
-                    case 'Новичок':
-                      translatedLevel = localizations.translate('novice');
-                      break;
-                    case 'Любитель':
-                      translatedLevel = localizations.translate('amateur');
-                      break;
-                    case 'Продвинутый':
-                      translatedLevel = localizations.translate('advanced');
-                      break;
-                    case 'Профи':
-                      translatedLevel = localizations.translate('professional');
-                      break;
-                    case 'Эксперт':
-                      translatedLevel = localizations.translate('expert');
-                      break;
-                    default:
-                      translatedLevel = level;
-                  }
+                children: AppConstants.experienceLevels.map((levelKey) {
+                  // ИСПРАВЛЕНО: используем ключи локализации напрямую
+                  String translatedLevel = localizations.translate(levelKey);
+
                   return ChoiceChip(
                     label: Text(translatedLevel),
-                    selected: _selectedExperience == level,
+                    selected: _selectedExperience == levelKey,
                     onSelected: (selected) {
                       if (selected) {
                         setState(() {
-                          _selectedExperience = level;
+                          _selectedExperience = levelKey;
                         });
                       }
                     },
                     selectedColor: AppConstants.primaryColor,
                     labelStyle: TextStyle(
-                      color: _selectedExperience == level
+                      color: _selectedExperience == levelKey
                           ? AppConstants.textColor
                           : AppConstants.textColor.withValues(alpha: 0.7),
                     ),
@@ -352,44 +335,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               Wrap(
                 spacing: 8,
-                children: AppConstants.fishingTypes.map((type) {
-                  String translatedType;
-                  switch (type) {
-                    case 'Карповая рыбалка':
-                      translatedType = localizations.translate('carp_fishing');
-                      break;
-                    case 'Спиннинг':
-                      translatedType = localizations.translate('spinning');
-                      break;
-                    case 'Фидер':
-                      translatedType = localizations.translate('feeder');
-                      break;
-                    case 'Поплавочная':
-                      translatedType = localizations.translate('float_fishing');
-                      break;
-                    case 'Зимняя рыбалка':
-                      translatedType = localizations.translate('ice_fishing');
-                      break;
-                    case 'Нахлыст':
-                      translatedType = localizations.translate('fly_fishing');
-                      break;
-                    case 'Троллинг':
-                      translatedType = localizations.translate('trolling');
-                      break;
-                    case 'Другое':
-                      translatedType = localizations.translate('other_fishing');
-                      break;
-                    default:
-                      translatedType = type;
-                  }
+                children: AppConstants.fishingTypes.map((typeKey) {
+                  // ИСПРАВЛЕНО: используем ключи локализации напрямую
+                  String translatedType = localizations.translate(typeKey);
 
                   return FilterChip(
                     label: Text(translatedType),
-                    selected: _selectedFishingTypes.contains(type),
-                    onSelected: (_) => _toggleFishingType(type),
+                    selected: _selectedFishingTypes.contains(typeKey),
+                    onSelected: (_) => _toggleFishingType(typeKey),
                     selectedColor: AppConstants.primaryColor,
                     labelStyle: TextStyle(
-                      color: _selectedFishingTypes.contains(type)
+                      color: _selectedFishingTypes.contains(typeKey)
                           ? AppConstants.textColor
                           : AppConstants.textColor.withValues(alpha: 0.7),
                     ),
