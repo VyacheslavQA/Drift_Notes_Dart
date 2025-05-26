@@ -101,17 +101,24 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
         _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
         _fishingEvents[dateKey]!.add(note);
       } else {
-        // Если рыбалка многодневная
-        DateTime currentDate = note.date;
-        DateTime endDate = note.endDate ?? note.date;
+        // Если рыбалка многодневная - ИСПРАВЛЕНО
+        DateTime startDate = DateTime(note.date.year, note.date.month, note.date.day);
+        DateTime endDate = note.endDate != null
+            ? DateTime(note.endDate!.year, note.endDate!.month, note.endDate!.day)
+            : startDate;
 
-        // Исправленное условие цикла, чтобы включать последний день
-        while (!currentDate.isAfter(endDate)) {
+        // ИСПРАВЛЕННАЯ ЛОГИКА: используем количество дней между датами
+        int totalDays = endDate.difference(startDate).inDays + 1; // +1 чтобы включить последний день
+
+        for (int i = 0; i < totalDays; i++) {
+          final currentDate = startDate.add(Duration(days: i));
           final dateKey = DateTime(currentDate.year, currentDate.month, currentDate.day);
+
           _fishingEvents[dateKey] = _fishingEvents[dateKey] ?? [];
           _fishingEvents[dateKey]!.add(note);
 
-          currentDate = currentDate.add(const Duration(days: 1));
+          // Отладочная информация
+          debugPrint('Добавлена дата в календарь: ${dateKey.day}.${dateKey.month}.${dateKey.year} для заметки: ${note.title.isNotEmpty ? note.title : note.location}');
         }
       }
     }
