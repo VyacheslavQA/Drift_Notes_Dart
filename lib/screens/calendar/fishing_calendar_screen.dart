@@ -759,7 +759,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    note.fishingType,
+                    localizations.translate(note.fishingType), // ИСПРАВЛЕНО: добавлен перевод
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,

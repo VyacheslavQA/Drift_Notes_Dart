@@ -347,7 +347,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                             ),
                           ),
                           child: Text(
-                            note.fishingType,
+                            localizations.translate(note.fishingType), // ИСПРАВЛЕНО: добавлен перевод
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -403,7 +403,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
                             ),
                           ),
                           child: Text(
-                            note.fishingType,
+                            localizations.translate(note.fishingType), // ИСПРАВЛЕНО: добавлен перевод
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,

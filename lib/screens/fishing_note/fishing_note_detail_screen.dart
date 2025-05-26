@@ -90,7 +90,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       final allMaps = await _markerMapRepository.getUserMarkerMaps();
 
       // Фильтруем только те, которые привязаны к текущей заметке
-      final linkedMaps = allMaps.where((map) => map.noteId == _note!.id).toList();
+      final linkedMaps = allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
 
       if (mounted) {
         setState(() {
@@ -845,7 +845,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _note!.fishingType,
+                    localizations.translate(_note!.fishingType), // ИСПРАВЛЕНО: добавлен перевод
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
