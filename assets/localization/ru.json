@@ -601,5 +601,6 @@
   "warm_humid_weather": "Тепло и влажно. Может ощущаться жарко.",
   "pleasant_warm_weather": "Приятная теплая погода.",
   "hot_stuffy_weather": "Жарко и душно. Рекомендуется больше пить.",
-  "hot_tolerable_weather": "Жарко, но терпимо."
+  "hot_tolerable_weather": "Жарко, но терпимо.",
+  "selected": "Выбрано"
 }

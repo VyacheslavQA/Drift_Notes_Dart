@@ -142,7 +142,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     final sectorController = TextEditingController();
 
     DateTime selectedDate = DateTime.now();
-    FishingNoteModel? selectedNote;
+    List<FishingNoteModel> selectedNotes = [];
 
     await showDialog(
       context: context,
@@ -255,7 +255,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Привязка к заметке (опционально)
+                  // Привязка к заметкам (множественный выбор)
                   if (_notes.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,8 +270,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                         const SizedBox(height: 8),
 
+                        // Показываем список заметок с чекбоксами
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          constraints: const BoxConstraints(maxHeight: 150),
                           decoration: BoxDecoration(
                             color: AppConstants.backgroundColor.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(8),
@@ -280,49 +281,68 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               width: 1,
                             ),
                           ),
-                          child: DropdownButton<FishingNoteModel>(
-                            isExpanded: true,
-                            dropdownColor: AppConstants.surfaceColor,
-                            value: selectedNote,
-                            hint: Text(
-                              localizations.translate('my_notes'),
-                              style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
-                                fontSize: 14,
+                          child: _notes.isEmpty
+                              ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                localizations.translate('no_notes'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
-                            icon: Icon(
-                              Icons.arrow_drop_down,
-                              color: AppConstants.textColor,
-                            ),
-                            underline: const SizedBox(),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 14,
-                            ),
-                            items: [
-                              DropdownMenuItem<FishingNoteModel>(
-                                value: null,
-                                child: Text(localizations.translate('other')),
-                              ),
-                              ..._notes.map((note) {
-                                final title = note.title.isNotEmpty ? note.title : note.location;
-                                return DropdownMenuItem<FishingNoteModel>(
-                                  value: note,
-                                  child: Text(
-                                    title,
-                                    overflow: TextOverflow.ellipsis,
+                          )
+                              : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _notes.length,
+                            itemBuilder: (context, index) {
+                              final note = _notes[index];
+                              final title = note.title.isNotEmpty ? note.title : note.location;
+                              final isSelected = selectedNotes.contains(note);
+
+                              return CheckboxListTile(
+                                title: Text(
+                                  title,
+                                  style: TextStyle(
+                                    color: AppConstants.textColor,
+                                    fontSize: 14,
                                   ),
-                                );
-                              }),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                selectedNote = value;
-                              });
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                value: isSelected,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      selectedNotes.add(note);
+                                    } else {
+                                      selectedNotes.remove(note);
+                                    }
+                                  });
+                                },
+                                activeColor: AppConstants.primaryColor,
+                                checkColor: AppConstants.textColor,
+                                dense: true,
+                                controlAffinity: ListTileControlAffinity.leading,
+                              );
                             },
                           ),
                         ),
+
+                        if (selectedNotes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              '${localizations.translate('selected')}: ${selectedNotes.length}',
+                              style: TextStyle(
+                                color: AppConstants.primaryColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                 ],
@@ -349,7 +369,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     return;
                   }
 
-                  // Создаем новую карту и закрываем диалог
+                  // Создаем новую карту с множественными привязками
                   final newMap = MarkerMapModel(
                     id: const Uuid().v4(),
                     userId: '',
@@ -358,12 +378,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     sector: sectorController.text.trim().isEmpty
                         ? null
                         : sectorController.text.trim(),
-                    noteId: selectedNote?.id,
-                    noteName: selectedNote != null
-                        ? (selectedNote!.title.isNotEmpty
-                        ? selectedNote!.title
-                        : selectedNote!.location)
-                        : null,
+                    noteIds: selectedNotes.map((note) => note.id).toList(),
+                    noteNames: selectedNotes.map((note) =>
+                    note.title.isNotEmpty ? note.title : note.location).toList(),
                     markers: [],
                   );
 
@@ -692,8 +709,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   ),
                 ),
 
-              // Привязанная заметка (если есть)
-              if (map.noteName != null && map.noteName!.isNotEmpty)
+              // Привязанные заметки (обновлено для множественных привязок)
+              if (map.noteNames.isNotEmpty)
                 Row(
                   children: [
                     Icon(
@@ -704,7 +721,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '${localizations.translate('notes')}: ${map.noteName}',
+                        '${localizations.translate('notes')}: ${map.attachedNotesText}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 14,

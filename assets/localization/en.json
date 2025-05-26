@@ -600,5 +600,6 @@
   "warm_humid_weather": "Warm and humid. May feel hot.",
   "pleasant_warm_weather": "Pleasant warm weather.",
   "hot_stuffy_weather": "Hot and stuffy. Recommended to drink more.",
-  "hot_tolerable_weather": "Hot, but tolerable."
+  "hot_tolerable_weather": "Hot, but tolerable.",
+  "selected": "Selected"
 }
