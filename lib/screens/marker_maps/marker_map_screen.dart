@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
+import '../../models/fishing_note_model.dart';
 import '../../repositories/marker_map_repository.dart';
+import '../../repositories/fishing_note_repository.dart';
 import '../../widgets/loading_overlay.dart';
 // Необходимые импорты для функций
 import 'dart:math' as math;
@@ -26,11 +28,13 @@ class MarkerMapScreen extends StatefulWidget {
 
 class MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
+  final _fishingNoteRepository = FishingNoteRepository();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
   final _distanceController = TextEditingController();
 
   late MarkerMapModel _markerMap;
+  List<FishingNoteModel> _availableNotes = [];
   bool _isLoading = false;
   bool _hasChanges = false;
 
@@ -95,6 +99,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
+    _loadAvailableNotes();
   }
 
   @override
@@ -103,6 +108,20 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     _notesController.dispose();
     _distanceController.dispose();
     super.dispose();
+  }
+
+  // Загрузка доступных заметок для привязки
+  Future<void> _loadAvailableNotes() async {
+    try {
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      if (mounted) {
+        setState(() {
+          _availableNotes = notes;
+        });
+      }
+    } catch (e) {
+      debugPrint('Ошибка при загрузке заметок: $e');
+    }
   }
 
   // Получение названия типа дна
@@ -1208,108 +1227,378 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     final nameController = TextEditingController(text: _markerMap.name);
     final sectorController = TextEditingController(text: _markerMap.sector ?? '');
 
+    // Получаем текущие привязанные заметки
+    List<String> selectedNoteIds = List<String>.from(_markerMap.noteIds);
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppConstants.cardColor,
-          title: Text(
-            localizations.translate('change_map_info'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: TextStyle(color: AppConstants.textColor),
-                decoration: InputDecoration(
-                  labelText: localizations.translate('map_name'),
-                  labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.primaryColor),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: sectorController,
-                style: TextStyle(color: AppConstants.textColor),
-                decoration: InputDecoration(
-                  labelText: localizations.translate('sector_number'),
-                  labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppConstants.primaryColor),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text(
-                localizations.translate('cancel'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.cardColor,
+              title: Text(
+                localizations.translate('change_map_info'),
                 style: TextStyle(
                   color: AppConstants.textColor,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-              ),
-              onPressed: () {
-                if (nameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(localizations.translate('map_name_required'))),
-                  );
-                  return;
-                }
-
-                setState(() {
-                  _markerMap = _markerMap.copyWith(
-                    name: nameController.text.trim(),
-                    sector: sectorController.text.trim().isEmpty
-                        ? null
-                        : sectorController.text.trim(),
-                  );
-                  _hasChanges = true;
-                });
-
-                Navigator.pop(context);
-
-                // Показываем сообщение
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(localizations.translate('info_updated')),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-
-                // Обновляем UI чтобы кнопка сохранения стала активной
-                Future.microtask(() => setState(() {}));
-              },
-              child: Text(
-                localizations.translate('save'),
-                style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Название карты
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: localizations.translate('map_name'),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Сектор
+                    TextField(
+                      controller: sectorController,
+                      style: TextStyle(color: AppConstants.textColor),
+                      decoration: InputDecoration(
+                        labelText: localizations.translate('sector_number'),
+                        labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Привязка к заметкам
+                    if (_availableNotes.isNotEmpty) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${localizations.translate('link_to_note')}:',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Отображение текущих привязанных заметок
+                      if (selectedNoteIds.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppConstants.textColor.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('link_to_note'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: selectedNoteIds.map((noteId) {
+                                  final note = _availableNotes.firstWhere(
+                                        (n) => n.id == noteId,
+                                    orElse: () => FishingNoteModel(
+                                      id: noteId,
+                                      userId: '',
+                                      title: localizations.translate('delete_note'),
+                                      location: '',
+                                      date: DateTime.now(),
+                                      fishingType: '',
+                                      biteRecords: [],
+                                    ),
+                                  );
+
+                                  final title = note.title.isNotEmpty ? note.title : note.location;
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            title,
+                                            style: TextStyle(
+                                              color: AppConstants.textColor,
+                                              fontSize: 14,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              selectedNoteIds.remove(noteId);
+                                            });
+                                          },
+                                          child: Icon(
+                                            Icons.close,
+                                            size: 16,
+                                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Кнопка добавления новой привязки
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _showNotesSelectionDialog(selectedNoteIds, (updatedIds) {
+                            setState(() {
+                              selectedNoteIds = updatedIds;
+                            });
+                          });
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: Text(
+                          selectedNoteIds.isEmpty
+                              ? localizations.translate('link_to_note')
+                              : localizations.translate('add'),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.2),
+                          foregroundColor: AppConstants.textColor,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    localizations.translate('cancel'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                  ),
+                  onPressed: () {
+                    if (nameController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(localizations.translate('map_name_required'))),
+                      );
+                      return;
+                    }
+
+                    // Получаем названия заметок
+                    List<String> noteNames = selectedNoteIds.map((noteId) {
+                      final note = _availableNotes.firstWhere(
+                            (n) => n.id == noteId,
+                        orElse: () => FishingNoteModel(
+                          id: noteId,
+                          userId: '',
+                          title: localizations.translate('delete_note'),
+                          location: '',
+                          date: DateTime.now(),
+                          fishingType: '',
+                          biteRecords: [],
+                        ),
+                      );
+                      return note.title.isNotEmpty ? note.title : note.location;
+                    }).toList();
+
+                    setState(() {
+                      _markerMap = _markerMap.copyWith(
+                        name: nameController.text.trim(),
+                        sector: sectorController.text.trim().isEmpty
+                            ? null
+                            : sectorController.text.trim(),
+                        noteIds: selectedNoteIds,
+                        noteNames: noteNames,
+                      );
+                      _hasChanges = true;
+                    });
+
+                    Navigator.pop(context);
+
+                    // Показываем сообщение
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(localizations.translate('info_updated')),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+
+                    // Обновляем UI чтобы кнопка сохранения стала активной
+                    Future.microtask(() => setState(() {}));
+                  },
+                  child: Text(
+                    localizations.translate('save'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Диалог выбора заметок для привязки
+  void _showNotesSelectionDialog(List<String> currentlySelected, Function(List<String>) onSelectionChanged) {
+    final localizations = AppLocalizations.of(context);
+    List<String> tempSelectedIds = List<String>.from(currentlySelected);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.cardColor,
+              title: Text(
+                localizations.translate('select_note'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: _availableNotes.isEmpty
+                    ? Center(
+                  child: Text(
+                    localizations.translate('no_notes'),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 16,
+                    ),
+                  ),
+                )
+                    : ListView.builder(
+                  itemCount: _availableNotes.length,
+                  itemBuilder: (context, index) {
+                    final note = _availableNotes[index];
+                    final title = note.title.isNotEmpty ? note.title : note.location;
+                    final isSelected = tempSelectedIds.contains(note.id);
+
+                    return CheckboxListTile(
+                      title: Text(
+                        title,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        DateFormat('dd.MM.yyyy').format(note.date),
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: isSelected,
+                      activeColor: AppConstants.primaryColor,
+                      checkColor: AppConstants.textColor,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            if (!tempSelectedIds.contains(note.id)) {
+                              tempSelectedIds.add(note.id);
+                            }
+                          } else {
+                            tempSelectedIds.remove(note.id);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    localizations.translate('cancel'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                  ),
+                  onPressed: () {
+                    onSelectionChanged(tempSelectedIds);
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    localizations.translate('save'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1528,51 +1817,35 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         child: const Icon(Icons.add_location),
       ),
       // Отображаем информацию о карте внизу экрана
-      bottomNavigationBar: SizedBox(
-        height: 40,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppConstants.backgroundColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              if (_markerMap.sector != null && _markerMap.sector!.isNotEmpty)
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppConstants.backgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Информация о дате и секторе
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Row(
                   children: [
                     Icon(
-                      Icons.grid_on,
+                      Icons.calendar_today,
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${localizations.translate('sector')}: ${_markerMap.sector}',
+                      '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(_markerMap.date)}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 12,
@@ -1580,8 +1853,90 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                   ],
                 ),
+                if (_markerMap.sector != null && _markerMap.sector!.isNotEmpty)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.grid_on,
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${localizations.translate('sector')}: ${_markerMap.sector}',
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+
+            // Привязанные заметки (если есть)
+            if (_markerMap.noteNames.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.link,
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${localizations.translate('link_to_note')}:',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: _markerMap.noteNames.map((noteName) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            noteName,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
