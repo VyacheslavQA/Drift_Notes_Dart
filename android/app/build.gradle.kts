@@ -1,5 +1,3 @@
-// Путь: android/app/build.gradle.kts
-
 plugins {
     id("com.android.application")
     id("kotlin-android")

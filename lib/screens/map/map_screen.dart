@@ -362,7 +362,7 @@ class _MapScreenState extends State<MapScreen> {
         mapType: MapType.normal,
         zoomControlsEnabled: true,
         compassEnabled: true,
-        style: _mapStyle,
+        //style: _mapStyle,
       ),
       floatingActionButton: !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
           ? FloatingActionButton(
