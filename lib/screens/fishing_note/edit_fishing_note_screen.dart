@@ -13,7 +13,6 @@ import '../../utils/date_formatter.dart';
 import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
 import '../map/map_location_screen.dart';
-import '../map/geo_marker_screen.dart';
 import 'bite_record_screen.dart';
 import 'edit_bite_record_screen.dart';
 
@@ -57,9 +56,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
   late List<BiteRecord> _biteRecords;
   late String _selectedFishingType;
 
-  // Для хранения маркеров на карте
-  late List<Map<String, dynamic>> _mapMarkers;
-
   // Для анимаций
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -89,8 +85,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
 
     _biteRecords = List.from(widget.note.biteRecords);
     _selectedFishingType = widget.note.fishingType;
-
-    _mapMarkers = List.from(widget.note.mapMarkers);
 
     // Настраиваем анимацию для плавного появления элементов
     _animationController = AnimationController(
@@ -338,40 +332,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     }
   }
 
-  // Метод для перехода к экрану маркерной карты
-  Future<void> _openMarkerMap() async {
-    // Используем текущие координаты если они есть, иначе дефолтные
-    double lat = _hasLocation ? _latitude : 55.751244; // Москва по умолчанию
-    double lng = _hasLocation ? _longitude : 37.618423;
-
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GeoMarkerScreen(
-          latitude: lat,
-          longitude: lng,
-          existingMarkers: _mapMarkers,
-        ),
-      ),
-    );
-
-    if (result != null && result is List) {
-      setState(() {
-        _mapMarkers = List<Map<String, dynamic>>.from(result);
-      });
-
-      final localizations = AppLocalizations.of(context);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.translate('markers_count')}: ${_mapMarkers.length}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -410,7 +370,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
         fishingType: _selectedFishingType,
         weather: _weather,
         biteRecords: _biteRecords,
-        mapMarkers: _mapMarkers,
+        mapMarkers: [], // Убираем маркеры
       );
 
       // Проверяем подключение к интернету
@@ -1071,45 +1031,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                 ],
 
                 const SizedBox(height: 20),
-
-                // Маркерная карта
-                if (_selectedFishingType == 'Карповая рыбалка') ...[
-                  _buildSectionHeader(localizations.translate('marker_maps')),
-                  ElevatedButton.icon(
-                    icon: Icon(
-                      Icons.location_searching,
-                      color: AppConstants.textColor,
-                    ),
-                    label: Text(
-                      _mapMarkers.isNotEmpty ? localizations.translate('edit_marker_map') : localizations.translate('create_marker_map'),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _openMarkerMap,
-                  ),
-
-                  if (_mapMarkers.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '${localizations.translate('markers_count')}: ${_mapMarkers.length}',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-                ],
 
                 // Записи о поклевках
                 _buildSectionHeader(localizations.translate('bite_records')),

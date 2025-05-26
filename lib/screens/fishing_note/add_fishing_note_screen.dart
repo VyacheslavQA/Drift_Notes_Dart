@@ -21,7 +21,7 @@ class AddFishingNoteScreen extends StatefulWidget {
   final DateTime? initialDate;
 
   const AddFishingNoteScreen({
-    super.key, // Исправлено: используем super.key
+    super.key,
     this.fishingType,
     this.initialDate,
   });
@@ -42,10 +42,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   late DateTime _startDate;
   late DateTime _endDate;
   bool _isMultiDay = false;
-  int _tripDays = 1; // Для отображения количества дней рыбалки
+  int _tripDays = 1;
 
-  final List<File> _selectedPhotos = []; // Исправлено: сделали final
-  bool _isSaving = false; // Исправлено: удалили _isLoading, оставили только _isSaving
+  final List<File> _selectedPhotos = [];
+  bool _isSaving = false;
 
   double _latitude = 0.0;
   double _longitude = 0.0;
@@ -54,11 +54,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   FishingWeather? _weather;
   bool _isLoadingWeather = false;
 
-  final List<BiteRecord> _biteRecords = []; // Исправлено: сделали final
+  final List<BiteRecord> _biteRecords = [];
   String _selectedFishingType = '';
-
-  // Для хранения маркеров на карте
-  final List<Map<String, dynamic>> _mapMarkers = []; // Исправлено: сделали final
 
   // Для анимаций
   late AnimationController _animationController;
@@ -67,15 +64,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   @override
   void initState() {
     super.initState();
-    // Если тип рыбалки передан через конструктор, используем его
-    // иначе устанавливаем первый тип из списка по умолчанию
     _selectedFishingType = widget.fishingType ?? AppConstants.fishingTypes.first;
 
-    // Используем переданную дату или текущую
     _startDate = widget.initialDate ?? DateTime.now();
     _endDate = widget.initialDate ?? DateTime.now();
 
-    // Настраиваем анимацию для плавного появления элементов
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -89,8 +82,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     );
 
     _animationController.forward();
-
-    // Устанавливаем счетчик дней рыбалки на 1 день по умолчанию
     _tripDays = 1;
   }
 
@@ -103,7 +94,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     super.dispose();
   }
 
-  // Обновление количества дней рыбалки
   void _updateTripDays() {
     if (_isMultiDay) {
       setState(() {
@@ -121,7 +111,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       context: context,
       initialDate: isStartDate ? _startDate : _endDate,
       firstDate: DateTime(2020),
-      // Разрешаем выбор дат в будущем (на 1 год вперёд)
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
@@ -132,7 +121,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               surface: AppConstants.surfaceColor,
               onSurface: AppConstants.textColor,
             ),
-            // Исправлено: используем dialogTheme вместо deprecated dialogBackgroundColor
             dialogTheme: DialogTheme(
               backgroundColor: AppConstants.backgroundColor,
             ),
@@ -142,11 +130,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       },
     );
 
-    if (picked != null && mounted) { // Исправлено: добавили проверку mounted
+    if (picked != null && mounted) {
       setState(() {
         if (isStartDate) {
           _startDate = picked;
-          // Если выбранная дата старта позже даты окончания, обновляем дату окончания
           if (_startDate.isAfter(_endDate)) {
             _endDate = _startDate;
           }
@@ -154,10 +141,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
           _endDate = picked;
         }
 
-        // Устанавливаем флаг многодневной рыбалки
         _isMultiDay = !DateUtils.isSameDay(_startDate, _endDate);
-
-        // Обновляем счетчик дней
         _updateTripDays();
       });
     }
@@ -169,19 +153,18 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     try {
       final picker = ImagePicker();
       final pickedFiles = await picker.pickMultiImage(
-        imageQuality: 70, // Компрессия для оптимизации размера
+        imageQuality: 70,
       );
 
-      if (pickedFiles.isNotEmpty && mounted) { // Исправлено: добавили проверку mounted
+      if (pickedFiles.isNotEmpty && mounted) {
         setState(() {
-          // Добавляем новые фото к уже существующим
           _selectedPhotos.addAll(
               pickedFiles.map((xFile) => File(xFile.path)).toList()
           );
         });
       }
     } catch (e) {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
         );
@@ -199,13 +182,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         imageQuality: 70,
       );
 
-      if (pickedFile != null && mounted) { // Исправлено: добавили проверку mounted
+      if (pickedFile != null && mounted) {
         setState(() {
           _selectedPhotos.add(File(pickedFile.path));
         });
       }
     } catch (e) {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
         );
@@ -243,7 +226,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     final localizations = AppLocalizations.of(context);
 
     if (!_hasLocation) {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(localizations.translate('select_map_point')),
@@ -265,19 +248,19 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         context,
       );
 
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         setState(() {
           _weather = weatherData;
         });
       }
     } catch (e) {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
         );
       }
     } finally {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         setState(() {
           _isLoadingWeather = false;
         });
@@ -304,8 +287,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     }
   }
 
-  // Удалено: метод _openMarkerMap так как он не используется
-
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -314,7 +295,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     }
 
     if (_locationController.text.trim().isEmpty) {
-      if (mounted) { // Исправлено: добавили проверку mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(localizations.translate('enter_location_name')),
@@ -330,10 +311,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     });
 
     try {
-      // Создаем модель заметки
       final note = FishingNoteModel(
         id: const Uuid().v4(),
-        userId: '', // Будет установлен в репозитории
+        userId: '',
         location: _locationController.text.trim(),
         latitude: _latitude,
         longitude: _longitude,
@@ -342,18 +322,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         isMultiDay: _isMultiDay,
         tackle: _tackleController.text.trim(),
         notes: _notesController.text.trim(),
-        photoUrls: [], // Пустой список, фото будут загружены и URL добавлены в репозитории
+        photoUrls: [],
         fishingType: _selectedFishingType,
         weather: _weather,
         biteRecords: _biteRecords,
-        mapMarkers: _mapMarkers, // Добавляем маркеры в модель
+        mapMarkers: [], // Пустой список маркеров
       );
 
-      // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // Если есть интернет, сохраняем заметку и загружаем фото
         await _fishingNoteRepository.addFishingNote(note, _selectedPhotos);
 
         if (mounted) {
@@ -364,13 +342,12 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             ),
           );
 
-          Navigator.pop(context, true); // Возвращаем true для обновления списка заметок
+          Navigator.pop(context, true);
         }
       } else {
-        // Если нет интернета, сохраняем в локальное хранилище
         await _fishingNoteRepository.addFishingNote(note, _selectedPhotos);
 
-        if (mounted) { // Исправлено: добавили проверку mounted
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(localizations.translate('no_internet_saved_locally')),
@@ -396,7 +373,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     }
   }
 
-  // Диалог выбора типа рыбалки
   void _showFishingTypeDialog() {
     final localizations = AppLocalizations.of(context);
 
@@ -481,7 +457,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     );
   }
 
-  // Создание кнопки "Отмена"
   Widget _buildCancelButton() {
     final localizations = AppLocalizations.of(context);
 
@@ -508,7 +483,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop(); // Закрыть диалог
+                    Navigator.of(context).pop();
                   },
                   child: Text(
                     localizations.translate('no'),
@@ -519,8 +494,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop(); // Закрыть диалог
-                    Navigator.of(context).pop(); // Вернуться на предыдущий экран
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
                   },
                   child: Text(
                     localizations.translate('yes_cancel'),
@@ -601,7 +576,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                // Тип рыбалки (с иконкой)
+                // Тип рыбалки
                 _buildSectionHeader(localizations.translate('fishing_type')),
                 InkWell(
                   onTap: _showFishingTypeDialog,
@@ -617,7 +592,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.2), // Исправлено: withValues
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: FishingTypeIcons.getIconWidget(_selectedFishingType, size: 24),
@@ -653,7 +628,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('enter_location_name'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)), // Исправлено: withValues
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -673,7 +648,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
                 const SizedBox(height: 20),
 
-                // Даты рыбалки с информацией о продолжительности
+                // Даты рыбалки
                 _buildSectionHeader(localizations.translate('fishing_dates')),
                 Row(
                   children: [
@@ -695,13 +670,12 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   ],
                 ),
 
-                // Информация о продолжительности - теперь всегда показывается
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
                     style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8), // Исправлено: withValues
+                      color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
                     ),
@@ -741,7 +715,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   Text(
                     '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
                     style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -801,7 +775,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('tackle_desc'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)), // Исправлено: withValues
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -821,7 +795,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('notes_desc'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)), // Исправлено: withValues
+                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -900,7 +874,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.7), // Исправлено: withValues
+                                    color: Colors.black.withValues(alpha: 0.7),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -968,7 +942,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                           ),
-                          disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5), // Исправлено: withValues
+                          disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
                         ),
                         child: _isSaving
                             ? SizedBox(
@@ -1033,7 +1007,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             Text(
               label,
               style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 14,
               ),
             ),
@@ -1079,7 +1053,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2), // Исправлено: withValues
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1109,7 +1083,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Text(
                       'Ощущается как ${_weather!.feelsLike.toStringAsFixed(1)}°C',
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -1174,14 +1148,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       children: [
         Icon(
           icon,
-          color: AppConstants.textColor.withValues(alpha: 0.8), // Исправлено: withValues
+          color: AppConstants.textColor.withValues(alpha: 0.8),
           size: 20,
         ),
         const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 12,
           ),
         ),
@@ -1204,12 +1178,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // График поклевок
         _buildBiteRecordsTimeline(),
-
         const SizedBox(height: 12),
-
-        // Список поклевок
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1238,21 +1208,21 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Text(
                       'Время: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                       ),
                     ),
                     if (record.weight > 0)
                       Text(
                         '${localizations.translate('weight')}: ${record.weight} ${localizations.translate('kg')}',
                         style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
                         ),
                       ),
                     if (record.notes.isNotEmpty)
                       Text(
                         '${localizations.translate('notes')}: ${record.notes}',
                         style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7), // Исправлено: withValues
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1278,12 +1248,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   Widget _buildBiteRecordsTimeline() {
     final localizations = AppLocalizations.of(context);
 
-    // Если нет записей, не показываем график
     if (_biteRecords.isEmpty) return const SizedBox();
 
-    // Создаем временную шкалу от 00:00 до 23:59
     const hoursInDay = 24;
-    const divisions = 48; // 30-минутные интервалы
+    const divisions = 48;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1325,7 +1293,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     Text(
                       '$i:00',
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.8), // Исправлено: withValues
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
                         fontSize: 10,
                       ),
                     ),
@@ -1339,7 +1307,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 }
 
-// Внутренний класс для рисования графика поклевок
 class _BiteRecordsTimelinePainter extends CustomPainter {
   final List<BiteRecord> biteRecords;
   final int divisions;
@@ -1352,17 +1319,15 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3) // Исправлено: withValues
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
-    // Рисуем горизонтальную линию
     canvas.drawLine(
       Offset(0, size.height / 2),
       Offset(size.width, size.height / 2),
       paint,
     );
 
-    // Рисуем деления
     final divisionWidth = size.width / divisions;
     for (int i = 0; i <= divisions; i++) {
       final x = i * divisionWidth;
@@ -1375,7 +1340,6 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       );
     }
 
-    // Рисуем точки поклевок
     final bitePaint = Paint()
       ..color = Colors.green
       ..style = PaintingStyle.fill;
@@ -1385,23 +1349,19 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       final totalMinutes = 24 * 60;
       final position = timeInMinutes / totalMinutes * size.width;
 
-      // Рисуем кружок для поклевки
       canvas.drawCircle(
         Offset(position, size.height / 2),
         7,
         bitePaint,
       );
 
-      // Если есть вес, рисуем размер круга в зависимости от веса
       if (record.weight > 0) {
         final weightPaint = Paint()
           ..color = Colors.orange
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0;
 
-        // Максимальный вес для отображения (15 кг)
         const maxWeight = 15.0;
-        // Минимальный и максимальный радиус
         const minRadius = 8.0;
         const maxRadius = 18.0;
 
