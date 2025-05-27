@@ -650,5 +650,10 @@
   "api_key_needed_for_map": "API key is needed in app settings for the map to work",
   "check_internet_and_location_permissions": "Check internet connection and location permissions",
   "more_details": "More details",
-  "my_location": "My location"
+  "my_location": "My location",
+
+  "news": "News",
+  "articles": "Articles",
+  "shops": "Shops",
+  "tournaments": "Tournaments"
 }

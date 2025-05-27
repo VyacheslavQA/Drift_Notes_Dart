@@ -149,6 +149,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Показ сообщения о том, что раздел в разработке
+  void _showComingSoonMessage(String sectionName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$sectionName скоро будет доступен'),
+        backgroundColor: AppConstants.primaryColor,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   // Изменения в методе _calculateStatistics
   Map<String, dynamic> _calculateStatistics(List<FishingNoteModel> notes) {
     final stats = <String, dynamic>{};
@@ -282,6 +293,128 @@ class _HomeScreenState extends State<HomeScreen> {
     stats['realizationRate'] = realizationRate;
 
     return stats;
+  }
+
+  // Новый метод для создания блока быстрых действий
+  Widget _buildQuickActionsGrid() {
+    final localizations = AppLocalizations.of(context);
+
+    return Column(
+      children: [
+        // Первая строка
+        Row(
+          children: [
+            // Новости
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1.0, // Квадратные кнопки
+                child: _buildQuickActionItem(
+                  icon: Icons.newspaper_outlined, // Более интересная иконка газеты
+                  label: localizations.translate('news'),
+                  onTap: () => _showComingSoonMessage(localizations.translate('news')),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Статьи
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1.0, // Квадратные кнопки
+                child: _buildQuickActionItem(
+                  icon: Icons.menu_book_outlined, // Красивая книга с закладкой
+                  label: localizations.translate('articles'),
+                  onTap: () => _showComingSoonMessage(localizations.translate('articles')),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12), // Отступ между строками
+
+        // Вторая строка
+        Row(
+          children: [
+            // Магазины
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1.0, // Квадратные кнопки
+                child: _buildQuickActionItem(
+                  icon: Icons.local_mall_outlined, // Современная иконка торгового центра
+                  label: localizations.translate('shops'),
+                  onTap: () => _showComingSoonMessage(localizations.translate('shops')),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Турниры
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1.0, // Квадратные кнопки
+                child: _buildQuickActionItem(
+                  icon: Icons.emoji_events_outlined, // Красивый кубок с контуром
+                  label: localizations.translate('tournaments'),
+                  onTap: () => _showComingSoonMessage(localizations.translate('tournaments')),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Элемент быстрого действия
+  Widget _buildQuickActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 3, // Больше места для иконки
+              child: Icon(
+                icon,
+                color: AppConstants.textColor,
+                size: 80, // Увеличил иконку в 2 раза - с 40px до 80px
+              ),
+            ),
+            Expanded(
+              flex: 1, // Меньше места для текста (опускаем вниз)
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // Обновлённый метод _buildStatsGrid() с локализацией
@@ -478,7 +611,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 8), // Уменьшил отступы по краям с 12 до 8
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -486,6 +619,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Блок с рекламой канала YouTube
                 _buildYoutubePromoCard(),
+
+                const SizedBox(height: 16),
+
+                // Новый блок быстрых действий
+                _buildQuickActionsGrid(),
 
                 const SizedBox(height: 24),
 

@@ -651,6 +651,11 @@
   "api_key_needed_for_map": "Для работы карты необходимо добавить API ключ в настройки приложения",
   "check_internet_and_location_permissions": "Проверьте подключение к интернету и разрешения геолокации",
   "more_details": "Подробнее",
-  "my_location": "Моё местоположение"
+  "my_location": "Моё местоположение",
+
+  "news": "Новости",
+  "articles": "Статьи",
+  "shops": "Магазины",
+  "tournaments": "Турниры"
 
 }
