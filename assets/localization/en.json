@@ -656,5 +656,13 @@
   "articles": "Articles",
   "shops": "Shops",
   "tournaments": "Tournaments",
-  "user_guide": "User Guide"
+  "user_guide": "User Guide",
+
+  "privacy_policy_required": "You must read and accept the privacy policy",
+  "i_have_read_and_agree": "I have read and agree to the",
+  "password_requirements": "Password requirements:",
+  "min_8_characters": "At least 8 characters",
+  "one_uppercase_letter": "At least 1 uppercase letter",
+  "one_number": "At least 1 number",
+  "privacy_policy_agreement": "privacy policy"
 }

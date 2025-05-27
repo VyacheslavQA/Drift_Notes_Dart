@@ -1,10 +1,12 @@
 // Путь: lib/screens/auth/register_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
+import '../help/privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,7 +26,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptedPrivacyPolicy = false;
   String _errorMessage = '';
+
+  // Состояние требований к паролю
+  bool _hasMinLength = false;
+  bool _hasUppercase = false;
+  bool _hasNumber = false;
+  bool _passwordFieldFocused = false;
+  bool _confirmPasswordFieldFocused = false;
+
+  // Состояние совпадения паролей
+  bool _passwordsMatch = true;
+  bool _showPasswordMatchError = false;
+
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _confirmPasswordFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_checkPasswordRequirements);
+    _confirmPasswordController.addListener(_checkPasswordsMatch);
+
+    _passwordFocusNode.addListener(() {
+      setState(() {
+        _passwordFieldFocused = _passwordFocusNode.hasFocus;
+      });
+    });
+
+    _confirmPasswordFocusNode.addListener(() {
+      setState(() {
+        _confirmPasswordFieldFocused = _confirmPasswordFocusNode.hasFocus;
+        if (!_confirmPasswordFieldFocused && _confirmPasswordController.text.isNotEmpty) {
+          _showPasswordMatchError = true;
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -32,7 +71,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     super.dispose();
+  }
+
+  void _checkPasswordRequirements() {
+    final password = _passwordController.text;
+    setState(() {
+      _hasMinLength = password.length >= 8;
+      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
+      _hasNumber = password.contains(RegExp(r'[0-9]'));
+    });
+
+    // Также проверяем совпадение паролей
+    _checkPasswordsMatch();
+  }
+
+  void _checkPasswordsMatch() {
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    setState(() {
+      _passwordsMatch = password == confirmPassword;
+      // Показываем ошибку только если поле подтверждения не пустое
+      if (confirmPassword.isNotEmpty) {
+        _showPasswordMatchError = !_passwordsMatch;
+      } else {
+        _showPasswordMatchError = false;
+      }
+    });
   }
 
   Future<void> _register() async {
@@ -40,6 +108,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
+
+    // Проверяем согласие с политикой конфиденциальности
+    if (!_acceptedPrivacyPolicy) {
+      final localizations = AppLocalizations.of(context);
+      setState(() {
+        _errorMessage = localizations.translate('privacy_policy_required');
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -56,11 +133,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Обновляем имя пользователя
       await userCredential.user?.updateDisplayName(_nameController.text.trim());
 
-      // Создаем запись о пользователе в Firestore
+      // Создаем запись о пользователе в Firestore с информацией о согласии
       await _firebaseService.updateUserData(userCredential.user!.uid, {
         'displayName': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': DateTime.now().millisecondsSinceEpoch,
+        'privacyPolicyAccepted': true,
+        'privacyPolicyAcceptedAt': DateTime.now().millisecondsSinceEpoch,
       });
 
       if (mounted) {
@@ -93,6 +172,180 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
       }
     }
+  }
+
+  void _showPrivacyPolicy() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PrivacyPolicyScreen(),
+      ),
+    );
+  }
+
+  Widget _buildPasswordRequirements() {
+    final localizations = AppLocalizations.of(context);
+
+    if (!_passwordFieldFocused && _passwordController.text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12332E).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('password_requirements'),
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.8),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildRequirementItem(
+            localizations.translate('min_8_characters'),
+            _hasMinLength,
+          ),
+          const SizedBox(height: 4),
+          _buildRequirementItem(
+            localizations.translate('one_uppercase_letter'),
+            _hasUppercase,
+          ),
+          const SizedBox(height: 4),
+          _buildRequirementItem(
+            localizations.translate('one_number'),
+            _hasNumber,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementItem(String text, bool isValid) {
+    return Row(
+      children: [
+        Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red.withValues(alpha: 0.7),
+          size: 16,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: isValid
+                ? Colors.green
+                : AppConstants.textColor.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordMatchIndicator() {
+    final localizations = AppLocalizations.of(context);
+
+    if (!_showPasswordMatchError || _confirmPasswordController.text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.redAccent.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cancel,
+            color: Colors.redAccent,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            localizations.translate('passwords_dont_match'),
+            style: TextStyle(
+              color: Colors.redAccent,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivacyPolicyCheckbox() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Checkbox(
+              value: _acceptedPrivacyPolicy,
+              onChanged: (value) {
+                setState(() {
+                  _acceptedPrivacyPolicy = value ?? false;
+                });
+              },
+              activeColor: AppConstants.primaryColor,
+              checkColor: AppConstants.textColor,
+              side: BorderSide(
+                color: AppConstants.textColor.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+                children: [
+                  TextSpan(text: localizations.translate('i_have_read_and_agree')),
+                  TextSpan(text: ' '),
+                  TextSpan(
+                    text: localizations.translate('privacy_policy_agreement'),
+                    style: TextStyle(
+                      color: AppConstants.primaryColor,
+                      decoration: TextDecoration.underline,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    recognizer: TapGestureRecognizer()..onTap = _showPrivacyPolicy,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -278,6 +531,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Поле для пароля
                         TextFormField(
                           controller: _passwordController,
+                          focusNode: _passwordFocusNode,
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 16,
@@ -337,11 +591,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           textInputAction: TextInputAction.next,
                         ),
 
+                        // Требования к паролю
+                        _buildPasswordRequirements(),
+
                         SizedBox(height: size.height * 0.02),
 
                         // Поле для подтверждения пароля
                         TextFormField(
                           controller: _confirmPasswordController,
+                          focusNode: _confirmPasswordFocusNode,
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 16,
@@ -405,11 +663,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _register(),
                         ),
+
+                        // Индикатор совпадения паролей
+                        _buildPasswordMatchIndicator(),
                       ],
                     ),
                   ),
 
-                  SizedBox(height: size.height * 0.03),
+                  // Чекбокс с политикой конфиденциальности
+                  _buildPrivacyPolicyCheckbox(),
+
+                  SizedBox(height: size.height * 0.02),
 
                   // Сообщение об ошибке
                   if (_errorMessage.isNotEmpty)
@@ -436,15 +700,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _register,
+                      onPressed: (_isLoading || !_acceptedPrivacyPolicy || !_passwordsMatch) ? null : _register,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppConstants.primaryColor,
                         foregroundColor: AppConstants.textColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
                         ),
-                        padding: EdgeInsets.zero, // Убираем отступы
+                        padding: EdgeInsets.zero,
                         elevation: 0,
+                        disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
                       ),
                       child: _isLoading
                           ? SizedBox(
@@ -455,13 +720,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           strokeWidth: 2.5,
                         ),
                       )
-                          : Center( // Явно центрируем текст
+                          : Center(
                         child: Text(
                           localizations.translate('register'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            height: 1.0, // Фиксируем высоту строки
+                            height: 1.0,
                           ),
                         ),
                       ),
