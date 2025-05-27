@@ -665,5 +665,18 @@
   "one_uppercase_letter": "Минимум 1 заглавная буква",
   "one_number": "Минимум 1 цифра",
   "privacy_policy": "Политика конфиденциальности",
-  "privacy_policy_agreement": "Политикой конфиденциальности"
+  "privacy_policy_agreement": "Политикой конфиденциальности",
+
+  "tournaments": "Турниры",
+  "all_tournaments": "Все турниры",
+  "upcoming": "Предстоящие",
+  "active": "Активные",
+  "past": "Прошедшие",
+  "search_tournaments": "Поиск турниров...",
+  "no_tournaments": "Турниров не найдено",
+  "tournament_details": "Детали турнира",
+  "total": "Всего",
+
+  "login_successful": "Успешный вход в систему",
+  "registration_successful": "Регистрация прошла успешно"
 }

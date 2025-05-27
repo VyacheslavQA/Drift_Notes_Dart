@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Показываем сообщение об успешном входе
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('success_saved')),
+            content: Text(localizations.translate('login_successful')),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),

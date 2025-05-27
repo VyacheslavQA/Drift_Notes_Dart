@@ -21,6 +21,7 @@ import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
+import 'tournaments/tournaments_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -358,7 +359,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildQuickActionItem(
                   icon: Icons.emoji_events_outlined, // Красивый кубок с контуром
                   label: localizations.translate('tournaments'),
-                  onTap: () => _showComingSoonMessage(localizations.translate('tournaments')),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TournamentsScreen()),
+                    );
+                  },
                 ),
               ),
             ),

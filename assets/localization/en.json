@@ -664,5 +664,18 @@
   "min_8_characters": "At least 8 characters",
   "one_uppercase_letter": "At least 1 uppercase letter",
   "one_number": "At least 1 number",
-  "privacy_policy_agreement": "privacy policy"
+  "privacy_policy_agreement": "privacy policy",
+
+  "tournaments": "Tournaments",
+  "all_tournaments": "All tournaments",
+  "upcoming": "Upcoming",
+  "active": "Active",
+  "past": "Past",
+  "search_tournaments": "Search tournaments...",
+  "no_tournaments": "No tournaments found",
+  "tournament_details": "Tournament details",
+  "total": "Total",
+
+  "login_successful": "Login successful",
+  "registration_successful": "Registration successful"
 }
