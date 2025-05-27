@@ -15,11 +15,17 @@ class PrivacyPolicyScreen extends StatefulWidget {
 class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   String _policyText = '';
   bool _isLoading = true;
+  bool _hasLoadedOnce = false; // Флаг для предотвращения повторной загрузки
 
   @override
-  void initState() {
-    super.initState();
-    _loadPrivacyPolicy();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Загружаем только один раз
+    if (!_hasLoadedOnce) {
+      _hasLoadedOnce = true;
+      _loadPrivacyPolicy();
+    }
   }
 
   Future<void> _loadPrivacyPolicy() async {
@@ -27,26 +33,44 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
 
-      // Загружаем политику в зависимости от языка
+      // Отладочные сообщения
+      print('🔍 Language code: $languageCode');
+      print('🔍 Full locale: ${localizations.locale}');
+
+      // Пробуем загрузить файл для текущего языка
       final fileName = 'assets/privacy_policy/privacy_policy_$languageCode.txt';
+      print('🔍 Trying to load file: $fileName');
 
       String policyText;
       try {
         policyText = await rootBundle.loadString(fileName);
+        print('✅ Successfully loaded $fileName');
       } catch (e) {
+        print('❌ Failed to load $fileName: $e');
         // Если файл для текущего языка не найден, загружаем английскую версию
-        policyText = await rootBundle.loadString('assets/privacy_policy/privacy_policy_en.txt');
+        try {
+          policyText = await rootBundle.loadString('assets/privacy_policy/privacy_policy_en.txt');
+          print('✅ Successfully loaded fallback English version');
+        } catch (e2) {
+          print('❌ Failed to load English version: $e2');
+          throw Exception('Cannot load any privacy policy file');
+        }
       }
 
-      setState(() {
-        _policyText = policyText;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _policyText = policyText;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _policyText = 'Ошибка загрузки политики конфиденциальности / Privacy Policy loading error';
-        _isLoading = false;
-      });
+      print('💥 Critical error in _loadPrivacyPolicy: $e');
+      if (mounted) {
+        setState(() {
+          _policyText = 'Ошибка загрузки политики конфиденциальности\n\nОшибка: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
