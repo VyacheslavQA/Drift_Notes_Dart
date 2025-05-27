@@ -632,5 +632,23 @@
   "contact_us_button": "Contact Us",
   "email_subject": "Feedback - Drift Notes",
   "email_body": "Hello!\n\nI'm writing about the Drift Notes app:\n\n",
-  "email_error": "Could not open email client"
+  "email_error": "Could not open email client",
+
+  "location_services_disabled": "Location services are disabled. Please enable them.",
+  "location_permission_denied": "Location permission denied.",
+  "location_permission_denied_forever": "Location permission denied forever. Change settings in the app.",
+  "your_location": "Your location",
+  "location_error": "Error determining location",
+  "error_loading_fishing_spots": "Error loading fishing spots",
+  "google_maps_setup": "Google Maps Setup",
+  "google_maps_api_key_required": "Google Maps API key is required for the map to work:",
+  "api_key_setup_instructions": "1. Get a key in Google Cloud Console\n2. Add it to lib/config/api_keys.dart file\n3. Restart the application",
+  "understood": "Understood",
+  "refresh_map": "Refresh map",
+  "loading_map": "Loading map...",
+  "google_maps_not_configured": "Google Maps API key not configured",
+  "api_key_needed_for_map": "API key is needed in app settings for the map to work",
+  "check_internet_and_location_permissions": "Check internet connection and location permissions",
+  "more_details": "More details",
+  "my_location": "My location"
 }

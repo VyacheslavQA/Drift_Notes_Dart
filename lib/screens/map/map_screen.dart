@@ -41,14 +41,27 @@ class _MapScreenState extends State<MapScreen> {
 
     // Проверяем API ключ при инициализации
     if (ApiKeys.hasGoogleMapsKey) {
-      _loadUserLocation();
-      _loadFishingSpots();
+      // Не вызываем методы с локализацией здесь
+      _loadUserLocationWithoutLocalization();
+      _loadFishingSpotsWithoutLocalization();
     } else {
       // Если ключа нет, сразу показываем ошибку
       setState(() {
         _isLoading = false;
         _errorLoadingMap = true;
         _errorMessage = 'Google Maps API ключ не настроен';
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Здесь уже можно безопасно использовать локализацию
+    if (_errorLoadingMap && _errorMessage == 'Google Maps API ключ не настроен') {
+      final localizations = AppLocalizations.of(context);
+      setState(() {
+        _errorMessage = localizations.translate('google_maps_not_configured');
       });
     }
   }
@@ -88,8 +101,6 @@ class _MapScreenState extends State<MapScreen> {
 
   // Показ селектора типов карты
   void _showMapTypeSelector() {
-    final localizations = AppLocalizations.of(context);
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -117,7 +128,7 @@ class _MapScreenState extends State<MapScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Тип карты',
+                  localizations.translate('map_type'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 22,
@@ -148,29 +159,29 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 _buildMapTypeOption(
                   MapType.normal,
-                  'Схема',
-                  'Дороги, названия улиц и достопримечательности',
+                  localizations.translate('normal_map'),
+                  localizations.translate('normal_map_desc'),
                   Icons.map_outlined,
                 ),
                 const SizedBox(height: 12),
                 _buildMapTypeOption(
                   MapType.satellite,
-                  'Спутник',
-                  'Спутниковые снимки без названий',
+                  localizations.translate('satellite_map'),
+                  localizations.translate('satellite_map_desc'),
                   Icons.satellite_alt,
                 ),
                 const SizedBox(height: 12),
                 _buildMapTypeOption(
                   MapType.hybrid,
-                  'Гибрид',
-                  'Спутниковые снимки с названиями дорог и объектов',
+                  localizations.translate('hybrid_map'),
+                  localizations.translate('hybrid_map_desc'),
                   Icons.layers,
                 ),
                 const SizedBox(height: 12),
                 _buildMapTypeOption(
                   MapType.terrain,
-                  'Рельеф',
-                  'Топографическая карта с высотами и рельефом',
+                  localizations.translate('terrain_map'),
+                  localizations.translate('terrain_map_desc'),
                   Icons.terrain,
                 ),
               ],
@@ -275,8 +286,8 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // Загрузка текущей геолокации пользователя
-  Future<void> _loadUserLocation() async {
+  // Загрузка текущей геолокации пользователя БЕЗ локализации (для initState)
+  Future<void> _loadUserLocationWithoutLocalization() async {
     try {
       // Проверяем разрешения геолокации
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -284,7 +295,7 @@ class _MapScreenState extends State<MapScreen> {
         if (mounted) {
           setState(() {
             _errorLoadingMap = true;
-            _errorMessage = 'Службы геолокации отключены. Пожалуйста, включите их.';
+            _errorMessage = 'Службы геолокации отключены';
           });
         }
         return;
@@ -297,7 +308,7 @@ class _MapScreenState extends State<MapScreen> {
           if (mounted) {
             setState(() {
               _errorLoadingMap = true;
-              _errorMessage = 'Разрешение на использование геолокации отклонено.';
+              _errorMessage = 'Разрешение на геолокацию отклонено';
             });
           }
           return;
@@ -308,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
         if (mounted) {
           setState(() {
             _errorLoadingMap = true;
-            _errorMessage = 'Разрешение на использование геолокации отклонено навсегда. Измените настройки в приложении.';
+            _errorMessage = 'Разрешение на геолокацию отклонено навсегда';
           });
         }
         return;
@@ -346,15 +357,98 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) {
         setState(() {
           _errorLoadingMap = true;
-          _errorMessage = 'Ошибка при определении местоположения: $e';
+          _errorMessage = 'Ошибка определения местоположения: $e';
           _isLoading = false;
         });
       }
     }
   }
 
-  // Загрузка точек рыбалки пользователя
-  Future<void> _loadFishingSpots() async {
+  // Загрузка текущей геолокации пользователя С локализацией (для кнопок)
+  Future<void> _loadUserLocation() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      // Проверяем разрешения геолокации
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _errorLoadingMap = true;
+            _errorMessage = localizations.translate('location_services_disabled');
+          });
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _errorLoadingMap = true;
+              _errorMessage = localizations.translate('location_permission_denied');
+            });
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _errorLoadingMap = true;
+            _errorMessage = localizations.translate('location_permission_denied_forever');
+          });
+        }
+        return;
+      }
+
+      // Получаем текущую позицию
+      Position position = await Geolocator.getCurrentPosition();
+
+      if (mounted) {
+        setState(() {
+          _initialPosition = CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: 11.0,
+          );
+
+          // Обновляем маркер текущей позиции
+          _markers.removeWhere((marker) => marker.markerId.value == 'currentLocation');
+          _markers.add(
+            Marker(
+              markerId: const MarkerId('currentLocation'),
+              position: LatLng(position.latitude, position.longitude),
+              infoWindow: InfoWindow(title: localizations.translate('your_location')),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+            ),
+          );
+
+          _isLoading = false;
+          _errorLoadingMap = false;
+          _errorMessage = '';
+        });
+
+        // Перемещаем камеру на текущую позицию
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(_initialPosition),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorLoadingMap = true;
+          _errorMessage = '${localizations.translate('location_error')}: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Загрузка точек рыбалки пользователя БЕЗ локализации (для initState)
+  Future<void> _loadFishingSpotsWithoutLocalization() async {
     try {
       final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
 
@@ -384,9 +478,49 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {});
       }
     } catch (e) {
+      debugPrint('Ошибка при загрузке точек рыбалки: $e');
+    }
+  }
+
+  // Загрузка точек рыбалки пользователя С локализацией
+  Future<void> _loadFishingSpots() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
+
+      // Фильтруем заметки, у которых есть координаты
+      final notesWithCoordinates = fishingNotes.where(
+            (note) => note.latitude != 0 && note.longitude != 0,
+      ).toList();
+
+      // Очищаем старые маркеры рыбалки
+      _markers.removeWhere((marker) => marker.markerId.value != 'currentLocation');
+
+      // Создаем маркеры для каждой точки рыбалки
+      for (var note in notesWithCoordinates) {
+        _markers.add(
+          Marker(
+            markerId: MarkerId(note.id),
+            position: LatLng(note.latitude, note.longitude),
+            infoWindow: InfoWindow(
+              title: note.location,
+              snippet: note.isMultiDay
+                  ? '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
+                  : '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year}',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка при загрузке точек рыбалки: $e')),
+          SnackBar(content: Text('${localizations.translate('error_loading_fishing_spots')}: $e')),
         );
       }
     }
@@ -405,6 +539,8 @@ class _MapScreenState extends State<MapScreen> {
 
   // Повторная попытка загрузки (для случая с отсутствующим API ключом)
   void _retryLoading() {
+    final localizations = AppLocalizations.of(context);
+
     if (!ApiKeys.hasGoogleMapsKey) {
       // Показываем информацию о настройке ключа
       _showApiKeyInfo();
@@ -431,7 +567,7 @@ class _MapScreenState extends State<MapScreen> {
         return AlertDialog(
           backgroundColor: AppConstants.surfaceColor,
           title: Text(
-            'Настройка Google Maps',
+            localizations.translate('google_maps_setup'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
@@ -442,16 +578,14 @@ class _MapScreenState extends State<MapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Для работы карты необходимо настроить Google Maps API ключ:',
+                localizations.translate('google_maps_api_key_required'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                '1. Получите ключ в Google Cloud Console\n'
-                    '2. Добавьте его в файл lib/config/api_keys.dart\n'
-                    '3. Перезапустите приложение',
+                localizations.translate('api_key_setup_instructions'),
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.8),
                   fontSize: 14,
@@ -463,7 +597,7 @@ class _MapScreenState extends State<MapScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
-                'Понятно',
+                localizations.translate('understood'),
                 style: TextStyle(
                   color: AppConstants.primaryColor,
                 ),
@@ -502,7 +636,7 @@ class _MapScreenState extends State<MapScreen> {
             IconButton(
               icon: Icon(Icons.refresh, color: AppConstants.textColor),
               onPressed: _retryLoading,
-              tooltip: 'Обновить карту',
+              tooltip: localizations.translate('refresh_map'),
             ),
         ],
       ),
@@ -517,7 +651,7 @@ class _MapScreenState extends State<MapScreen> {
                 CircularProgressIndicator(color: AppConstants.primaryColor),
                 const SizedBox(height: 16),
                 Text(
-                  'Загрузка карты...',
+                  localizations.translate('loading_map'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -545,7 +679,7 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 16),
                   Text(
                     !ApiKeys.hasGoogleMapsKey
-                        ? 'Google Maps API ключ не настроен'
+                        ? localizations.translate('google_maps_not_configured')
                         : _errorMessage,
                     style: TextStyle(
                       color: AppConstants.textColor,
@@ -557,8 +691,8 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 8),
                   Text(
                     !ApiKeys.hasGoogleMapsKey
-                        ? 'Для работы карты необходимо добавить API ключ в настройки приложения'
-                        : 'Проверьте подключение к интернету и разрешения геолокации',
+                        ? localizations.translate('api_key_needed_for_map')
+                        : localizations.translate('check_internet_and_location_permissions'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -569,7 +703,9 @@ class _MapScreenState extends State<MapScreen> {
                   ElevatedButton.icon(
                     onPressed: _retryLoading,
                     icon: Icon(!ApiKeys.hasGoogleMapsKey ? Icons.info : Icons.refresh),
-                    label: Text(!ApiKeys.hasGoogleMapsKey ? 'Подробнее' : 'Повторить'),
+                    label: Text(!ApiKeys.hasGoogleMapsKey
+                        ? localizations.translate('more_details')
+                        : localizations.translate('try_again')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppConstants.primaryColor,
                       foregroundColor: AppConstants.textColor,
@@ -628,7 +764,7 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Слои',
+                            localizations.translate('layers'),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 14,
@@ -651,7 +787,7 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
         onPressed: _loadUserLocation,
-        tooltip: 'Моё местоположение',
+        tooltip: localizations.translate('my_location'),
         child: const Icon(Icons.my_location),
       )
           : null,
