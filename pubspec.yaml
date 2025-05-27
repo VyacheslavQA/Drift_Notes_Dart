@@ -61,13 +61,11 @@ dependencies:
   # Добавь эти, если их нет:
   permission_handler: ^11.1.0
 
-
-
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -82,4 +80,24 @@ flutter:
     - assets/privacy_policy/
     - assets/privacy_policy/privacy_policy_ru.txt
     - assets/privacy_policy/privacy_policy_en.txt
-    - assets/user_guide/  # Добавьте эту строку
+    - assets/user_guide/
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#0A2E29"
+    theme_color: "#0A2E29"
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/app_icon.png"

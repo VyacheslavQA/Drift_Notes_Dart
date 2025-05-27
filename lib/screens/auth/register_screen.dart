@@ -148,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Показываем сообщение об успешной регистрации
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('success_saved')),
+            content: Text(localizations.translate('registration_completed')),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
