@@ -14,6 +14,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
+import 'screens/help/help_contact_screen.dart'; // Добавлен импорт
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'localization/app_localizations.dart';
@@ -221,6 +222,7 @@ class DriftNotesApp extends StatelessWidget {
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
+            '/help_contact': (context) => const HelpContactScreen(), // Добавлен маршрут
           },
         );
       },

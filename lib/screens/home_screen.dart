@@ -833,10 +833,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: localizations.translate('help_contact'),
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(localizations.translate('help_screen_coming_soon'))),
-                    );
+                    Navigator.pushNamed(context, '/help_contact');
                   },
                 ),
 

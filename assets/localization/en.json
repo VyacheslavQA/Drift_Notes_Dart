@@ -622,5 +622,15 @@
   "session_expired": "Session expired. Please log in again",
   "auth_error_general": "Login error. Please check your credentials and try again",
 
-  "invalid_credentials": "Invalid email or password"
+  "invalid_credentials": "Invalid email or password",
+
+  "version": "Version",
+  "size": "Size",
+  "privacy_policy": "Privacy Policy",
+  "contact_us_title": "Contact Us",
+  "contact_us_text": "For all questions, suggestions for improvement, constructive criticism, you can always write to us at",
+  "contact_us_button": "Contact Us",
+  "email_subject": "Feedback - Drift Notes",
+  "email_body": "Hello!\n\nI'm writing about the Drift Notes app:\n\n",
+  "email_error": "Could not open email client"
 }

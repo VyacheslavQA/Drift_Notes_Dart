@@ -1,0 +1,32 @@
+PRIVACY POLICY
+
+Last updated: May 27, 2025
+
+1. GENERAL PROVISIONS
+
+This Privacy Policy describes how we collect, use and protect your personal information when using the Drift Notes mobile application.
+
+2. INFORMATION COLLECTION
+
+We may collect the following information:
+- Email address during registration
+- Information about your fishing notes
+- Photos you add to notes
+- Location data (with your consent)
+
+3. USE OF INFORMATION
+
+The collected information is used for:
+- Providing application services
+- Synchronizing data between devices
+- Improving application functionality
+
+4. DATA PROTECTION
+
+We take all necessary measures to protect your personal data from unauthorized access, modification, disclosure or destruction.
+
+5. CONTACT INFORMATION
+
+For all questions regarding this privacy policy, you can contact us at: support@driftnotes.com
+
+This policy may be changed. The current version is always available in the application.

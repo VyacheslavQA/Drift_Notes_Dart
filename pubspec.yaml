@@ -63,6 +63,7 @@ dependencies:
 
 
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -78,3 +79,6 @@ flutter:
     - assets/sounds/
     - assets/localization/  # Файлы локализации
     - assets/images/drawer_logo.png
+    - assets/privacy_policy/
+    - assets/privacy_policy/privacy_policy_ru.txt
+    - assets/privacy_policy/privacy_policy_en.txt
