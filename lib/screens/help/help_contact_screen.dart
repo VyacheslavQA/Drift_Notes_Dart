@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import 'privacy_policy_screen.dart';
+import 'user_guide_screen.dart';
 
 class HelpContactScreen extends StatelessWidget {
   const HelpContactScreen({super.key});
@@ -53,10 +54,15 @@ class HelpContactScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Информация о приложении
-                _buildAppInfoSection(localizations),
+                // Информация о приложении - компактное расположение
+                _buildCompactAppInfoSection(localizations),
 
                 const SizedBox(height: 24),
+
+                // Кнопка руководства пользователя
+                _buildUserGuideButton(context, localizations),
+
+                const SizedBox(height: 16),
 
                 // Кнопка политики конфиденциальности
                 _buildPrivacyPolicyButton(context, localizations),
@@ -80,7 +86,7 @@ class HelpContactScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAppInfoSection(AppLocalizations localizations) {
+  Widget _buildCompactAppInfoSection(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -91,89 +97,149 @@ class HelpContactScreen extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Иконка приложения
-          Container(
-            width: 80,
-            height: 80,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Image.asset(
-              'assets/images/app_logo.png',
-              fit: BoxFit.contain,
-            ),
+          // Только логотип без контейнера
+          Image.asset(
+            'assets/images/app_logo.png',
+            width: 120,
+            height: 120,
+            fit: BoxFit.contain,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(width: 20),
 
-          // Название приложения
-          Text(
-            'Drift Notes',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // Информация справа
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Название приложения
+                Text(
+                  'Drift Notes',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
 
-          const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
-          // Версия и размер
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Версия и размер в строку
+                Row(
                   children: [
-                    Text(
-                      localizations.translate('version'),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 16,
+                    // Версия
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            localizations.translate('version'),
+                            style: TextStyle(
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            appVersion,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      appVersion,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                    // Размер
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            localizations.translate('size'),
+                            style: TextStyle(
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            appSize,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localizations.translate('size'),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      appSize,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserGuideButton(BuildContext context, AppLocalizations localizations) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openUserGuide(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.help_outline,
+                    color: AppConstants.textColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    localizations.translate('user_guide'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16, // Уменьшил размер шрифта
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppConstants.textColor.withValues(alpha: 0.6),
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -217,7 +283,7 @@ class HelpContactScreen extends StatelessWidget {
                     localizations.translate('privacy_policy'),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 18,
+                      fontSize: 16, // Уменьшил размер шрифта
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -307,6 +373,15 @@ class HelpContactScreen extends StatelessWidget {
           ),
           elevation: 0,
         ),
+      ),
+    );
+  }
+
+  void _openUserGuide(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const UserGuideScreen(),
       ),
     );
   }

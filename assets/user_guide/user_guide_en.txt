@@ -1,0 +1,48 @@
+USER GUIDE
+
+Welcome to Drift Notes!
+
+GETTING STARTED
+
+Drift Notes is your personal fishing journal. The app will help you:
+- Keep fishing records
+- Save catch photos
+- Track statistics
+- Plan future trips
+
+CREATING NOTES
+
+1. On the main screen, tap the central button with the fish logo
+2. Select fishing type
+3. Fill in the information:
+   - Fishing location
+   - Date and time
+   - Tackle used
+   - Add photos
+4. Save the note
+
+USING THE MAP
+
+- View all your fishing spots on the map
+- Select new places for future trips
+- Save coordinates of interesting places
+
+WEATHER FEATURES
+
+- Track current weather
+- View weather forecast
+- Weather data is automatically saved in notes
+
+USING TIMERS
+
+- Set up reminders for changing bait
+- Set timers for feeding
+- Create any other reminders
+
+SYNCHRONIZATION
+
+All your data is automatically synchronized between devices when internet connection is available.
+
+SUPPORT
+
+If you have questions, contact us at: support@driftnotes.com

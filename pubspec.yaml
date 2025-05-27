@@ -82,3 +82,4 @@ flutter:
     - assets/privacy_policy/
     - assets/privacy_policy/privacy_policy_ru.txt
     - assets/privacy_policy/privacy_policy_en.txt
+    - assets/user_guide/  # Добавьте эту строку

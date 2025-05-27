@@ -801,26 +801,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Логотип приложения вместо аватара
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF12332E),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(12),
-                            child: Image.asset(
-                              'assets/images/drawer_logo.png',
-                              fit: BoxFit.contain,
-                            ),
+                          // Только логотип без контейнера
+                          Image.asset(
+                            'assets/images/drawer_logo.png',
+                            width: 110,
+                            height: 110,
+                            fit: BoxFit.contain,
                           ),
                           const SizedBox(height: 16),
                           Text(
