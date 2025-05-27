@@ -68,6 +68,11 @@ class FirebaseService {
     return await SharedPreferences.getInstance();
   }
 
+  // Проверка валидности email перед отправкой
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+  }
+
   // Регистрация нового пользователя с email и паролем
   Future<UserCredential> registerWithEmailAndPassword(
       String email, String password, [BuildContext? context]) async {
@@ -91,6 +96,13 @@ class FirebaseService {
   Future<UserCredential> signInWithEmailAndPassword(
       String email, String password, [BuildContext? context]) async {
     try {
+      // Проверяем формат email перед отправкой
+      if (!_isValidEmail(email)) {
+        throw Exception(context != null
+            ? AppLocalizations.of(context).translate('invalid_email')
+            : 'Неверный формат email');
+      }
+
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -169,8 +181,18 @@ class FirebaseService {
           case 'too-many-requests':
             errorMessage = localizations.translate('too_many_requests');
             break;
+          case 'invalid-credential':
+          // Для invalid-credential показываем универсальное сообщение
+            errorMessage = localizations.translate('invalid_credentials');
+            break;
+          case 'user-token-expired':
+            errorMessage = localizations.translate('session_expired');
+            break;
+          case 'requires-recent-login':
+            errorMessage = localizations.translate('requires_recent_login');
+            break;
           default:
-            errorMessage = 'Ошибка: ${e.code}';
+            errorMessage = localizations.translate('auth_error_general');
         }
       } else {
         // Fallback для русского
@@ -202,8 +224,17 @@ class FirebaseService {
           case 'too-many-requests':
             errorMessage = 'Слишком много попыток входа. Попробуйте позже';
             break;
+          case 'invalid-credential':
+            errorMessage = 'Неверный email или пароль';
+            break;
+          case 'user-token-expired':
+            errorMessage = 'Сессия истекла. Войдите заново';
+            break;
+          case 'requires-recent-login':
+            errorMessage = 'Требуется повторная авторизация';
+            break;
           default:
-            errorMessage = 'Ошибка: ${e.code}';
+            errorMessage = 'Ошибка входа. Проверьте данные и попробуйте снова';
         }
       }
     }

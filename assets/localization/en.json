@@ -616,5 +616,11 @@
   "latitude": "Latitude",
   "longitude": "Longitude",
   "select_this_point": "Select This Point",
-  "biting": "Biting..."
+  "biting": "Biting...",
+
+  "invalid_login_credentials": "Invalid login credentials",
+  "session_expired": "Session expired. Please log in again",
+  "auth_error_general": "Login error. Please check your credentials and try again",
+
+  "invalid_credentials": "Invalid email or password"
 }

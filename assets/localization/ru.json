@@ -617,5 +617,12 @@
   "latitude": "Широта",
   "longitude": "Долгота",
   "select_this_point": "Выбрать эту точку",
-  "biting": "Клюёт..."
+  "biting": "Клюёт...",
+
+  "invalid_login_credentials": "Неверные данные для входа",
+  "session_expired": "Сессия истекла. Войдите заново",
+  "auth_error_general": "Ошибка входа. Проверьте данные и попробуйте снова",
+
+  "invalid_credentials": "Неверный email или пароль"
+
 }
