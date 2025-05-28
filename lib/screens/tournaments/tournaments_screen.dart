@@ -17,38 +17,64 @@ class TournamentsScreen extends StatefulWidget {
 class _TournamentsScreenState extends State<TournamentsScreen>
     with TickerProviderStateMixin {
   final TournamentService _tournamentService = TournamentService();
-  late TabController _tabController;
+  late TabController _mainTabController;
+  late TabController _officialTabController;
+  late TabController _commercialTabController;
 
-  List<TournamentModel> _tournaments = [];
+  List<TournamentModel> _allTournaments = [];
+  List<TournamentModel> _officialTournaments = [];
+  List<TournamentModel> _commercialTournaments = [];
   List<TournamentModel> _filteredTournaments = [];
+
   String _searchQuery = '';
   TournamentFilter _currentFilter = TournamentFilter.all;
+  int _currentMainTab = 0; // 0 - официальные, 1 - коммерческие
 
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _mainTabController = TabController(length: 2, vsync: this);
+    _officialTabController = TabController(length: 4, vsync: this);
+    _commercialTabController = TabController(length: 4, vsync: this);
+
+    _mainTabController.addListener(() {
+      if (_mainTabController.indexIsChanging) {
+        setState(() {
+          _currentMainTab = _mainTabController.index;
+        });
+        _applyFilters();
+      }
+    });
+
     _loadTournaments();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _mainTabController.dispose();
+    _officialTabController.dispose();
+    _commercialTabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _loadTournaments() {
     setState(() {
-      _tournaments = _tournamentService.getAllTournaments();
+      _allTournaments = _tournamentService.getAllTournaments();
+      _officialTournaments = _tournamentService.getOfficialTournaments();
+      _commercialTournaments = _tournamentService.getCommercialTournaments();
       _applyFilters();
     });
   }
 
   void _applyFilters() {
-    List<TournamentModel> filtered = _tournaments;
+    List<TournamentModel> baseList = _currentMainTab == 0
+        ? _officialTournaments
+        : _commercialTournaments;
+
+    List<TournamentModel> filtered = baseList;
 
     // Применяем фильтр по времени
     switch (_currentFilter) {
@@ -71,7 +97,8 @@ class _TournamentsScreenState extends State<TournamentsScreen>
       filtered = filtered.where((t) =>
       t.name.toLowerCase().contains(query) ||
           t.location.toLowerCase().contains(query) ||
-          t.organizer.toLowerCase().contains(query)
+          t.organizer.toLowerCase().contains(query) ||
+          t.discipline.displayName.toLowerCase().contains(query)
       ).toList();
     }
 
@@ -108,7 +135,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           localizations.translate('tournaments'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -119,32 +146,16 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           onPressed: () => Navigator.pop(context),
         ),
         bottom: TabBar(
-          controller: _tabController,
+          controller: _mainTabController,
           indicatorColor: AppConstants.primaryColor,
           labelColor: AppConstants.textColor,
           unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.6),
-          tabs: [
-            Tab(text: localizations.translate('all_tournaments')),
-            Tab(text: localizations.translate('upcoming')),
-            Tab(text: localizations.translate('active')),
-            Tab(text: localizations.translate('past')),
+          labelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 14),
+          tabs: const [
+            Tab(text: 'Официальные'),
+            Tab(text: 'Коммерческие'),
           ],
-          onTap: (index) {
-            switch (index) {
-              case 0:
-                _onFilterChanged(TournamentFilter.all);
-                break;
-              case 1:
-                _onFilterChanged(TournamentFilter.upcoming);
-                break;
-              case 2:
-                _onFilterChanged(TournamentFilter.active);
-                break;
-              case 3:
-                _onFilterChanged(TournamentFilter.past);
-                break;
-            }
-          },
         ),
       ),
       body: Column(
@@ -195,48 +206,50 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           ),
 
           // Статистика
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppConstants.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  localizations.translate('total'),
-                  _tournaments.length.toString(),
-                  Icons.emoji_events,
-                ),
-                _buildStatItem(
-                  localizations.translate('upcoming'),
-                  _tournaments.where((t) => t.isFuture).length.toString(),
-                  Icons.schedule,
-                ),
-                _buildStatItem(
-                  localizations.translate('active'),
-                  _tournaments.where((t) => t.isActive).length.toString(),
-                  Icons.play_arrow,
-                ),
-              ],
-            ),
-          ),
+          _buildStatisticsCard(),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // Вторичные вкладки (по времени)
+          _buildSecondaryTabs(),
 
           // Список турниров
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTournamentsList(_filteredTournaments),
-                _buildTournamentsList(_tournaments.where((t) => t.isFuture).toList()),
-                _buildTournamentsList(_tournaments.where((t) => t.isActive).toList()),
-                _buildTournamentsList(_tournaments.where((t) => t.isPast).toList()),
-              ],
-            ),
+            child: _buildTournamentsList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCard() {
+    final localizations = AppLocalizations.of(context);
+    final currentList = _currentMainTab == 0 ? _officialTournaments : _commercialTournaments;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(
+            localizations.translate('total'),
+            currentList.length.toString(),
+            Icons.emoji_events,
+          ),
+          _buildStatItem(
+            localizations.translate('upcoming'),
+            currentList.where((t) => t.isFuture).length.toString(),
+            Icons.schedule,
+          ),
+          _buildStatItem(
+            localizations.translate('active'),
+            currentList.where((t) => t.isActive).length.toString(),
+            Icons.play_arrow,
           ),
         ],
       ),
@@ -246,13 +259,13 @@ class _TournamentsScreenState extends State<TournamentsScreen>
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: AppConstants.primaryColor, size: 24),
+        Icon(icon, color: AppConstants.primaryColor, size: 20),
         const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -260,15 +273,58 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           label,
           style: TextStyle(
             color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTournamentsList(List<TournamentModel> tournaments) {
-    if (tournaments.isEmpty) {
+  Widget _buildSecondaryTabs() {
+    final localizations = AppLocalizations.of(context);
+    final tabController = _currentMainTab == 0 ? _officialTabController : _commercialTabController;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TabBar(
+        controller: tabController,
+        indicatorColor: AppConstants.primaryColor,
+        labelColor: AppConstants.textColor,
+        unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.6),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 12),
+        tabs: [
+          Tab(text: localizations.translate('all_tournaments')),
+          Tab(text: localizations.translate('upcoming')),
+          Tab(text: localizations.translate('active')),
+          Tab(text: localizations.translate('past')),
+        ],
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              _onFilterChanged(TournamentFilter.all);
+              break;
+            case 1:
+              _onFilterChanged(TournamentFilter.upcoming);
+              break;
+            case 2:
+              _onFilterChanged(TournamentFilter.active);
+              break;
+            case 3:
+              _onFilterChanged(TournamentFilter.past);
+              break;
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildTournamentsList() {
+    if (_filteredTournaments.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -293,7 +349,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
 
     // Группируем турниры по месяцам
     final Map<String, List<TournamentModel>> groupedTournaments = {};
-    for (final tournament in tournaments) {
+    for (final tournament in _filteredTournaments) {
       final month = tournament.month;
       if (!groupedTournaments.containsKey(month)) {
         groupedTournaments[month] = [];
@@ -302,7 +358,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       itemCount: groupedTournaments.length,
       itemBuilder: (context, index) {
         final month = groupedTournaments.keys.elementAt(index);
@@ -314,7 +370,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             // Заголовок месяца
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
                 color: AppConstants.primaryColor.withValues(alpha: 0.2),
@@ -324,7 +380,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                 month,
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -372,7 +428,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     // Иконка типа турнира
                     Text(
                       tournament.type.icon,
-                      style: const TextStyle(fontSize: 24),
+                      style: const TextStyle(fontSize: 20),
                     ),
                     const SizedBox(width: 12),
 
@@ -385,7 +441,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                             tournament.name,
                             style: TextStyle(
                               color: AppConstants.textColor,
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 2,
@@ -394,16 +450,47 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              Text(
-                                tournament.type.displayName,
-                                style: TextStyle(
-                                  color: AppConstants.primaryColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tournament.isOfficial
+                                      ? Colors.blue.withValues(alpha: 0.2)
+                                      : Colors.orange.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  tournament.isOfficial ? 'Официальный' : 'Коммерческий',
+                                  style: TextStyle(
+                                    color: tournament.isOfficial ? Colors.blue : Colors.orange,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  tournament.discipline.displayName,
+                                  style: TextStyle(
+                                    color: AppConstants.primaryColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               if (tournament.isActive) ...[
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
@@ -417,7 +504,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                                     'АКТИВЕН',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
-                                      fontSize: 10,
+                                      fontSize: 9,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -437,7 +524,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                           tournament.formattedDate,
                           style: TextStyle(
                             color: AppConstants.textColor,
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -445,7 +532,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                           '${tournament.duration}ч',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -461,7 +548,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     Icon(
                       Icons.location_on,
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -469,7 +556,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         tournament.location,
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -485,7 +572,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     Icon(
                       Icons.group,
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -493,7 +580,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         tournament.organizer,
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -503,7 +590,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     // Сектор
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 6,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
@@ -514,7 +601,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         tournament.sector,
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

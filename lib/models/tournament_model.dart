@@ -11,6 +11,9 @@ class TournamentModel {
   final String organizer;
   final String month; // для группировки
   final TournamentType type;
+  final bool isOfficial; // Официальный или коммерческий
+  final TournamentCategory category; // Городской, республиканский, международный
+  final FishingDiscipline discipline; // Тип рыбалки
 
   TournamentModel({
     required this.id,
@@ -23,6 +26,9 @@ class TournamentModel {
     required this.organizer,
     required this.month,
     required this.type,
+    this.isOfficial = false,
+    this.category = TournamentCategory.commercial,
+    this.discipline = FishingDiscipline.carp,
   });
 
   // Проверка, является ли турнир многодневным
@@ -67,6 +73,10 @@ enum TournamentType {
   league, // Лига
   commercial, // Коммерческий
   casting, // Кастинг
+  worldChampionship, // Чемпионат мира
+  trainingCamp, // УТС
+  clubChampionship, // Чемпионат клубов
+  internationalTournament, // Международный турнир
 }
 
 extension TournamentTypeExtension on TournamentType {
@@ -84,6 +94,14 @@ extension TournamentTypeExtension on TournamentType {
         return 'Коммерческий';
       case TournamentType.casting:
         return 'Кастинг';
+      case TournamentType.worldChampionship:
+        return 'Чемпионат мира';
+      case TournamentType.trainingCamp:
+        return 'УТС';
+      case TournamentType.clubChampionship:
+        return 'Чемпионат клубов';
+      case TournamentType.internationalTournament:
+        return 'Международный турнир';
     }
   }
 
@@ -101,6 +119,94 @@ extension TournamentTypeExtension on TournamentType {
         return '💰';
       case TournamentType.casting:
         return '🎣';
+      case TournamentType.worldChampionship:
+        return '🌍';
+      case TournamentType.trainingCamp:
+        return '🏋️';
+      case TournamentType.clubChampionship:
+        return '🏛️';
+      case TournamentType.internationalTournament:
+        return '🌐';
+    }
+  }
+}
+
+enum TournamentCategory {
+  commercial, // Коммерческий
+  city, // Городской
+  regional, // Республиканский/региональный
+  international, // Международный
+  internationalInKz, // Международный в Казахстане
+}
+
+extension TournamentCategoryExtension on TournamentCategory {
+  String get displayName {
+    switch (this) {
+      case TournamentCategory.commercial:
+        return 'Коммерческий';
+      case TournamentCategory.city:
+        return 'Городской';
+      case TournamentCategory.regional:
+        return 'Республиканский';
+      case TournamentCategory.international:
+        return 'Международный';
+      case TournamentCategory.internationalInKz:
+        return 'Международный в РК';
+    }
+  }
+}
+
+enum FishingDiscipline {
+  carp, // Карп
+  iceFishing, // Подледный лов
+  troutSpinning, // Форель на спиннинг
+  feeder, // Фидер
+  floatFishing, // Поплавочная удочка
+  spinningWithBoat, // Спиннинг с лодок
+  streetFishing, // Street Fishing
+  casting, // Кастинг
+}
+
+extension FishingDisciplineExtension on FishingDiscipline {
+  String get displayName {
+    switch (this) {
+      case FishingDiscipline.carp:
+        return 'Карповая ловля';
+      case FishingDiscipline.iceFishing:
+        return 'Подледный лов';
+      case FishingDiscipline.troutSpinning:
+        return 'Форель на спиннинг';
+      case FishingDiscipline.feeder:
+        return 'Фидер';
+      case FishingDiscipline.floatFishing:
+        return 'Поплавочная удочка';
+      case FishingDiscipline.spinningWithBoat:
+        return 'Спиннинг с лодок';
+      case FishingDiscipline.streetFishing:
+        return 'Street Fishing';
+      case FishingDiscipline.casting:
+        return 'Кастинг';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case FishingDiscipline.carp:
+        return '🐟';
+      case FishingDiscipline.iceFishing:
+        return '❄️';
+      case FishingDiscipline.troutSpinning:
+        return '🎣';
+      case FishingDiscipline.feeder:
+        return '🪝';
+      case FishingDiscipline.floatFishing:
+        return '🎈';
+      case FishingDiscipline.spinningWithBoat:
+        return '🚤';
+      case FishingDiscipline.streetFishing:
+        return '🏙️';
+      case FishingDiscipline.casting:
+        return '🎯';
     }
   }
 }

@@ -9,7 +9,7 @@ import '../../utils/date_formatter.dart';
 import '../../localization/app_localizations.dart';
 import '../fishing_note/fishing_note_detail_screen.dart';
 import '../fishing_note/add_fishing_note_screen.dart';
-
+import '../../services/calendar_event_service.dart';
 
 class FishingCalendarScreen extends StatefulWidget {
   const FishingCalendarScreen({super.key});
@@ -20,6 +20,7 @@ class FishingCalendarScreen extends StatefulWidget {
 
 class _FishingCalendarScreenState extends State<FishingCalendarScreen> with SingleTickerProviderStateMixin {
   final _fishingNoteRepository = FishingNoteRepository();
+  final CalendarEventService _calendarEventService = CalendarEventService();
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -27,7 +28,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
   // Изменено: сделал final, так как карта только инициализируется один раз
   final Map<DateTime, List<FishingNoteModel>> _fishingEvents = {};
-  // Удалено: поле _allNotes не используется, удаляем его
+  List<CalendarEvent> _calendarEvents = [];
   bool _isLoading = true;
 
   late AnimationController _animationController;
@@ -36,6 +37,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   // Цвета для разных состояний
   final Color _pastFishingColor = const Color(0xFF2E7D32); // Зеленый для прошедших
   final Color _futureFishingColor = const Color(0xFFFF8F00); // Оранжевый для запланированных
+  final Color _tournamentColor = Colors.blue; // Синий для турниров
 
   @override
   void initState() {
@@ -70,7 +72,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
 
     try {
       final notes = await _fishingNoteRepository.getUserFishingNotes();
-      // Убрано: _allNotes = notes; так как это поле не используется
+      final events = await _calendarEventService.getCalendarEvents();
+      _calendarEvents = events;
       _processNotesForCalendar(notes);
 
       setState(() {
@@ -127,6 +130,26 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   List<FishingNoteModel> _getEventsForDay(DateTime day) {
     final dateKey = DateTime(day.year, day.month, day.day);
     return _fishingEvents[dateKey] ?? [];
+  }
+
+  List<CalendarEvent> _getCalendarEventsForDay(DateTime day) {
+    final dateKey = DateTime(day.year, day.month, day.day);
+    return _calendarEvents.where((event) {
+      final eventStartDate = DateTime(
+        event.startDate.year,
+        event.startDate.month,
+        event.startDate.day,
+      );
+      final eventEndDate = DateTime(
+        event.endDate.year,
+        event.endDate.month,
+        event.endDate.day,
+      );
+
+      return dateKey.isAtSameMomentAs(eventStartDate) ||
+          dateKey.isAtSameMomentAs(eventEndDate) ||
+          (dateKey.isAfter(eventStartDate) && dateKey.isBefore(eventEndDate));
+    }).toList();
   }
 
   bool _isPastFishing(DateTime date) {
@@ -425,8 +448,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
           Row(
             children: [
               _buildLegendItem(localizations.translate('past'), _pastFishingColor),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               _buildLegendItem(localizations.translate('planned'), _futureFishingColor),
+              const SizedBox(width: 12),
+              _buildLegendItem('Турниры', _tournamentColor),
             ],
           ),
         ],
@@ -458,7 +483,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   }
 
   Widget _buildCalendar() {
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.only(bottom: 8),
@@ -568,18 +592,36 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
             );
           },
           markerBuilder: (context, day, events) {
-            if (events.isEmpty) return null;
-            final isPast = _isPastFishing(day);
-            final color = isPast ? _pastFishingColor : _futureFishingColor;
+            final fishingEvents = _getEventsForDay(day);
+            final calendarEvents = _getCalendarEventsForDay(day);
+
+            if (fishingEvents.isEmpty && calendarEvents.isEmpty) return null;
+
             return Positioned(
               bottom: 1,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (fishingEvents.isNotEmpty)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.only(right: 2),
+                      decoration: BoxDecoration(
+                        color: _isPastFishing(day) ? _pastFishingColor : _futureFishingColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  if (calendarEvents.isNotEmpty)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: _tournamentColor, // Цвет для турниров
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
               ),
             );
           },
@@ -630,8 +672,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
   Widget _buildEventsList() {
     final localizations = AppLocalizations.of(context);
     final eventsForDay = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
+    final calendarEventsForDay = _selectedDay != null ? _getCalendarEventsForDay(_selectedDay!) : [];
 
-    if (eventsForDay.isEmpty) {
+    if (eventsForDay.isEmpty && calendarEventsForDay.isEmpty) {
       return Expanded(
         child: Center(
           child: Column(
@@ -674,13 +717,15 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
     }
 
     return Expanded(
-      child: ListView.builder(
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-        itemCount: eventsForDay.length,
-        itemBuilder: (context, index) {
-          final note = eventsForDay[index];
-          return _buildEventCard(note);
-        },
+        children: [
+          // Рыбалки
+          ...eventsForDay.map((note) => _buildEventCard(note)),
+
+          // Турниры
+          ...calendarEventsForDay.map((event) => _buildTournamentEventCard(event)),
+        ],
       ),
     );
   }
@@ -798,6 +843,97 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTournamentEventCard(CalendarEvent event) {
+    final localizations = AppLocalizations.of(context);
+    final isPast = event.endDate.isBefore(DateTime.now());
+    final statusColor = _tournamentColor;
+    final statusText = isPast ? 'Завершен' : 'Турнир';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: const Color(0xFF12332E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    event.title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (event.location != null)
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      event.location!,
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            if (event.description != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                event.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.6),
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

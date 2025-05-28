@@ -5,14 +5,23 @@ import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../models/tournament_model.dart';
 import '../../localization/app_localizations.dart';
+import '../../services/calendar_event_service.dart';
 
-class TournamentDetailScreen extends StatelessWidget {
+class TournamentDetailScreen extends StatefulWidget {
   final TournamentModel tournament;
 
   const TournamentDetailScreen({
     super.key,
     required this.tournament,
   });
+
+  @override
+  State<TournamentDetailScreen> createState() => _TournamentDetailScreenState();
+}
+
+class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
+  final CalendarEventService _calendarService = CalendarEventService();
+  bool _isAddingToCalendar = false;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +34,7 @@ class TournamentDetailScreen extends StatelessWidget {
           localizations.translate('tournament_details'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 22,
+            fontSize: 20, // Уменьшил размер
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -72,8 +81,8 @@ class TournamentDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Кнопки действий
-            _buildActionButtons(context),
+            // Кнопка действия
+            _buildActionButton(context),
 
             const SizedBox(height: 24),
           ],
@@ -105,16 +114,16 @@ class TournamentDetailScreen extends StatelessWidget {
             children: [
               // Иконка турнира
               Container(
-                width: 60,
-                height: 60,
+                width: 50, // Уменьшил размер
+                height: 50,
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
-                    tournament.type.icon,
-                    style: const TextStyle(fontSize: 32),
+                    widget.tournament.type.icon,
+                    style: const TextStyle(fontSize: 28), // Уменьшил размер
                   ),
                 ),
               ),
@@ -127,12 +136,14 @@ class TournamentDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tournament.name,
+                      widget.tournament.name,
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 20,
+                        fontSize: 18, // Уменьшил размер
                         fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 2, // Добавил ограничение строк
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -145,10 +156,10 @@ class TournamentDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        tournament.type.displayName,
+                        widget.tournament.type.displayName,
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 12,
+                          fontSize: 11, // Уменьшил размер
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -162,7 +173,7 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Статус
-          if (tournament.isActive)
+          if (widget.tournament.isActive)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -172,19 +183,20 @@ class TournamentDetailScreen extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                  const Icon(Icons.play_arrow, color: Colors.white, size: 16), // Уменьшил иконку
                   const SizedBox(width: 8),
                   Text(
                     'ТУРНИР АКТИВЕН',
                     style: TextStyle(
                       color: AppConstants.textColor,
+                      fontSize: 12, // Уменьшил размер
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             )
-          else if (tournament.isFuture)
+          else if (widget.tournament.isFuture)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -194,12 +206,13 @@ class TournamentDetailScreen extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.schedule, color: Colors.white, size: 18),
+                  const Icon(Icons.schedule, color: Colors.white, size: 16), // Уменьшил иконку
                   const SizedBox(width: 8),
                   Text(
                     'ПРЕДСТОЯЩИЙ',
                     style: TextStyle(
                       color: AppConstants.textColor,
+                      fontSize: 12, // Уменьшил размер
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -216,12 +229,13 @@ class TournamentDetailScreen extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  const Icon(Icons.check_circle, color: Colors.white, size: 16), // Уменьшил иконку
                   const SizedBox(width: 8),
                   Text(
                     'ЗАВЕРШЕН',
                     style: TextStyle(
                       color: AppConstants.textColor,
+                      fontSize: 12, // Уменьшил размер
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -246,13 +260,13 @@ class TournamentDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.event, color: AppConstants.primaryColor, size: 24),
+              Icon(Icons.event, color: AppConstants.primaryColor, size: 20), // Уменьшил иконку
               const SizedBox(width: 12),
               Text(
                 'Даты проведения',
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 18,
+                  fontSize: 16, // Уменьшил размер
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -271,15 +285,15 @@ class TournamentDetailScreen extends StatelessWidget {
                       'Дата',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
+                        fontSize: 12, // Уменьшил размер
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      tournament.formattedDate,
+                      widget.tournament.formattedDate,
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 16,
+                        fontSize: 14, // Уменьшил размер
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -294,15 +308,15 @@ class TournamentDetailScreen extends StatelessWidget {
                       'Продолжительность',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
+                        fontSize: 12, // Уменьшил размер
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${tournament.duration} часов',
+                      '${widget.tournament.duration} часов',
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 16,
+                        fontSize: 14, // Уменьшил размер
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -329,13 +343,13 @@ class TournamentDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.location_on, color: AppConstants.primaryColor, size: 24),
+              Icon(Icons.location_on, color: AppConstants.primaryColor, size: 20), // Уменьшил иконку
               const SizedBox(width: 12),
               Text(
                 'Место проведения',
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 18,
+                  fontSize: 16, // Уменьшил размер
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -345,10 +359,10 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           Text(
-            tournament.location,
+            widget.tournament.location,
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 16,
+              fontSize: 14, // Уменьшил размер
             ),
           ),
 
@@ -360,7 +374,7 @@ class TournamentDetailScreen extends StatelessWidget {
                 'Сектор: ',
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
+                  fontSize: 12, // Уменьшил размер
                 ),
               ),
               Container(
@@ -370,10 +384,10 @@ class TournamentDetailScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  tournament.sector,
+                  widget.tournament.sector,
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 14,
+                    fontSize: 12, // Уменьшил размер
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -398,13 +412,13 @@ class TournamentDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.group, color: AppConstants.primaryColor, size: 24),
+              Icon(Icons.group, color: AppConstants.primaryColor, size: 20), // Уменьшил иконку
               const SizedBox(width: 12),
               Text(
                 'Организатор',
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 18,
+                  fontSize: 16, // Уменьшил размер
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -414,10 +428,10 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           Text(
-            tournament.organizer,
+            widget.tournament.organizer,
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 16,
+              fontSize: 14, // Уменьшил размер
             ),
           ),
         ],
@@ -438,13 +452,13 @@ class TournamentDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.info, color: AppConstants.primaryColor, size: 24),
+              Icon(Icons.info, color: AppConstants.primaryColor, size: 20), // Уменьшил иконку
               const SizedBox(width: 12),
               Text(
                 'Дополнительная информация',
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 18,
+                  fontSize: 16, // Уменьшил размер
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -456,17 +470,13 @@ class TournamentDetailScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem('Месяц', tournament.month),
+                child: _buildInfoItem('Месяц', widget.tournament.month),
               ),
               Expanded(
-                child: _buildInfoItem('ID', tournament.id),
+                child: _buildInfoItem('Тип турнира', widget.tournament.type.displayName),
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          _buildInfoItem('Тип турнира', tournament.type.displayName),
         ],
       ),
     );
@@ -480,7 +490,7 @@ class TournamentDetailScreen extends StatelessWidget {
           label,
           style: TextStyle(
             color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 14,
+            fontSize: 12, // Уменьшил размер
           ),
         ),
         const SizedBox(height: 4),
@@ -488,7 +498,7 @@ class TournamentDetailScreen extends StatelessWidget {
           value,
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 16,
+            fontSize: 14, // Уменьшил размер
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -496,96 +506,140 @@ class TournamentDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Column(
-      children: [
-        // Кнопка создания заметки
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _createFishingNote(context),
-            icon: const Icon(Icons.note_add),
-            label: const Text('Создать заметку о рыбалке'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
-              foregroundColor: AppConstants.textColor,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+  Widget _buildActionButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isAddingToCalendar ? null : () => _addToCalendar(context),
+        icon: _isAddingToCalendar
+            ? const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+            : const Icon(Icons.calendar_today),
+        label: Text(_isAddingToCalendar ? 'Добавление...' : 'Добавить в календарь'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppConstants.primaryColor,
+          foregroundColor: AppConstants.textColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
-
-        const SizedBox(height: 12),
-
-        // Кнопка добавления в календарь
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _addToCalendar(context),
-            icon: const Icon(Icons.calendar_today),
-            label: const Text('Добавить в календарь'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppConstants.textColor,
-              side: BorderSide(color: AppConstants.textColor),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   void _copyTournamentInfo(BuildContext context) {
     final text = '''
-🏆 ${tournament.name}
+🏆 ${widget.tournament.name}
 
-📅 Дата: ${tournament.formattedDate}
-⏰ Продолжительность: ${tournament.duration} часов
-📍 Место: ${tournament.location}
-👥 Организатор: ${tournament.organizer}
-🎯 Сектор: ${tournament.sector}
+📅 Дата: ${widget.tournament.formattedDate}
+⏰ Продолжительность: ${widget.tournament.duration} часов
+📍 Место: ${widget.tournament.location}
+👥 Организатор: ${widget.tournament.organizer}
+🎯 Сектор: ${widget.tournament.sector}
 
-#карповаяловля #турнир #рыбалка
+#турнир #рыбалка #соревнования
     '''.trim();
 
     Clipboard.setData(ClipboardData(text: text));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Text('Информация о турнире скопирована в буфер обмена'),
         backgroundColor: Colors.green,
       ),
     );
   }
 
-  void _createFishingNote(BuildContext context) {
-    // Переход к созданию заметки с предзаполненными данными
-    Navigator.pushNamed(
-      context,
-      '/fishing_type_selection',
-      arguments: {
-        'tournament': tournament,
-        'prefilledData': {
-          'location': tournament.location,
-          'date': tournament.startDate,
-          'endDate': tournament.endDate,
-        },
+  void _addToCalendar(BuildContext context) async {
+    setState(() {
+      _isAddingToCalendar = true;
+    });
+
+    try {
+      // Показываем диалог выбора напоминания
+      final reminderType = await _showReminderDialog(context);
+
+      if (reminderType != null) {
+        // Добавляем событие в календарь
+        await _calendarService.addTournamentToCalendar(
+          tournament: widget.tournament,
+          reminderType: reminderType,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Турнир добавлен в календарь рыбалок'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при добавлении в календарь: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAddingToCalendar = false;
+        });
+      }
+    }
+  }
+
+  Future<ReminderType?> _showReminderDialog(BuildContext context) async {
+    return showDialog<ReminderType>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          title: Text(
+            'Когда напомнить?',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildReminderOption(context, 'За 1 час', ReminderType.oneHour),
+              _buildReminderOption(context, 'За 1 день', ReminderType.oneDay),
+              _buildReminderOption(context, 'За 1 неделю', ReminderType.oneWeek),
+              _buildReminderOption(context, 'Без напоминания', ReminderType.none),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Отмена',
+                style: TextStyle(color: AppConstants.textColor),
+              ),
+            ),
+          ],
+        );
       },
     );
   }
 
-  void _addToCalendar(BuildContext context) {
-    // Логика добавления в календарь приложения
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Турнир добавлен в календарь рыбалок'),
-        backgroundColor: Colors.green,
+  Widget _buildReminderOption(BuildContext context, String title, ReminderType type) {
+    return ListTile(
+      title: Text(
+        title,
+        style: TextStyle(color: AppConstants.textColor),
       ),
+      onTap: () => Navigator.pop(context, type),
     );
   }
 }
