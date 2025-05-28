@@ -85,6 +85,7 @@ enum FishingType {
 }
 
 extension FishingTypeExtension on FishingType {
+  /// Основной метод для получения переведенного названия
   String getDisplayName(Function(String) translate) {
     switch (this) {
       case FishingType.carpFishing:
@@ -106,25 +107,26 @@ extension FishingTypeExtension on FishingType {
     }
   }
 
-  // Fallback для обратной совместимости
+  /// Fallback для обратной совместимости - возвращает английские названия
+  /// Это решает проблему с хардкодом на русском языке
   String get displayName {
     switch (this) {
       case FishingType.carpFishing:
-        return 'Карповая рыбалка';
+        return 'Carp Fishing';
       case FishingType.casting:
-        return 'Кастинг';
+        return 'Casting';
       case FishingType.spinning:
-        return 'Спиннинг';
+        return 'Spinning';
       case FishingType.feeder:
-        return 'Фидер';
+        return 'Feeder';
       case FishingType.floatFishing:
-        return 'Поплавочная';
+        return 'Float Fishing';
       case FishingType.iceFishing:
-        return 'Зимняя рыбалка';
+        return 'Ice Fishing';
       case FishingType.flyFishing:
-        return 'Нахлыст';
+        return 'Fly Fishing';
       case FishingType.other:
-        return 'Другое';
+        return 'Other';
     }
   }
 
@@ -159,6 +161,7 @@ enum TournamentCategory {
 }
 
 extension TournamentCategoryExtension on TournamentCategory {
+  /// Основной метод для получения переведенного названия
   String getDisplayName(Function(String) translate) {
     switch (this) {
       case TournamentCategory.championship:
@@ -172,17 +175,18 @@ extension TournamentCategoryExtension on TournamentCategory {
     }
   }
 
-  // Fallback для обратной совместимости
+  /// Fallback для обратной совместимости - возвращает английские названия
+  /// Это решает проблему с хардкодом на русском языке
   String get displayName {
     switch (this) {
       case TournamentCategory.championship:
-        return 'Чемпионат';
+        return 'Championship';
       case TournamentCategory.cup:
-        return 'Кубок';
+        return 'Cup';
       case TournamentCategory.league:
-        return 'Лига';
+        return 'League';
       case TournamentCategory.tournament:
-        return 'Турнир';
+        return 'Tournament';
     }
   }
 

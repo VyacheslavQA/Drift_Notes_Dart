@@ -285,6 +285,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
   }
 
   Widget _buildFishingTypesView() {
+    final localizations = AppLocalizations.of(context);
     final fishingStats = _tournamentService.getFishingTypeStatistics();
 
     return ListView(
@@ -295,6 +296,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           FishingType.carpFishing,
           fishingStats[FishingType.carpFishing] ?? 0,
           _tournaments.where((t) => t.fishingType == FishingType.carpFishing).toList(),
+          localizations,
         ),
         const SizedBox(height: 12),
 
@@ -303,6 +305,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           FishingType.casting,
           fishingStats[FishingType.casting] ?? 0,
           _tournaments.where((t) => t.fishingType == FishingType.casting).toList(),
+          localizations,
         ),
 
         // Если будут другие типы рыбалки, добавим их здесь
@@ -310,7 +313,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     );
   }
 
-  Widget _buildFishingTypeCard(FishingType fishingType, int count, List<TournamentModel> tournaments) {
+  Widget _buildFishingTypeCard(FishingType fishingType, int count, List<TournamentModel> tournaments, AppLocalizations localizations) {
     return Card(
       color: AppConstants.surfaceColor,
       child: ExpansionTile(
@@ -319,14 +322,14 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           style: const TextStyle(fontSize: 24),
         ),
         title: Text(
-          fishingType.getDisplayName(AppLocalizations.of(context).translate),
+          fishingType.getDisplayName(localizations.translate),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         subtitle: Text(
-          '$count ${AppLocalizations.of(context).translate('tournaments_count')}',
+          '$count ${localizations.translate('tournaments_count')}',
           style: TextStyle(
             color: AppConstants.textColor.withValues(alpha: 0.7),
           ),
@@ -360,6 +363,8 @@ class _TournamentsScreenState extends State<TournamentsScreen>
   }
 
   Widget _buildTournamentsList(List<TournamentModel> tournaments) {
+    final localizations = AppLocalizations.of(context);
+
     if (tournaments.isEmpty) {
       return Center(
         child: Column(
@@ -372,7 +377,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              AppLocalizations.of(context).translate('no_tournaments'),
+              localizations.translate('no_tournaments'),
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 16,
@@ -423,7 +428,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             ),
 
             // Турниры месяца
-            ...monthTournaments.map((tournament) => _buildTournamentCard(tournament)),
+            ...monthTournaments.map((tournament) => _buildTournamentCard(tournament, localizations)),
 
             const SizedBox(height: 16),
           ],
@@ -432,7 +437,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     );
   }
 
-  Widget _buildTournamentCard(TournamentModel tournament) {
+  Widget _buildTournamentCard(TournamentModel tournament, AppLocalizations localizations) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -487,7 +492,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                           Row(
                             children: [
                               Text(
-                                tournament.fishingType.displayName,
+                                tournament.fishingType.getDisplayName(localizations.translate),
                                 style: TextStyle(
                                   color: AppConstants.primaryColor,
                                   fontSize: 12,
@@ -501,7 +506,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                tournament.category.displayName,
+                                tournament.category.getDisplayName(localizations.translate),
                                 style: TextStyle(
                                   color: AppConstants.textColor.withValues(alpha: 0.7),
                                   fontSize: 12,
@@ -518,8 +523,8 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                                     color: Colors.green,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child:                                   Text(
-                                    AppLocalizations.of(context).translate('active').toUpperCase(),
+                                  child: Text(
+                                    localizations.translate('active').toUpperCase(),
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 10,

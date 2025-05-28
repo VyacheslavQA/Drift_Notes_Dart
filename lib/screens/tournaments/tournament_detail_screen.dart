@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../models/tournament_model.dart';
 import '../../localization/app_localizations.dart';
+import '../../services/calendar_event_service.dart';
 
 class TournamentDetailScreen extends StatelessWidget {
   final TournamentModel tournament;
@@ -516,10 +517,10 @@ class TournamentDetailScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem(localizations.translate('month'), tournament.month),
+                child: _buildInfoItem(localizations.translate('month'), tournament.month, localizations),
               ),
               Expanded(
-                child: _buildInfoItem('ID', tournament.id),
+                child: _buildInfoItem('ID', tournament.id, localizations),
               ),
             ],
           ),
@@ -529,10 +530,10 @@ class TournamentDetailScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem(localizations.translate('category'), tournament.category.getDisplayName(localizations.translate)),
+                child: _buildInfoItem(localizations.translate('category'), tournament.category.getDisplayName(localizations.translate), localizations),
               ),
               Expanded(
-                child: _buildInfoItem(localizations.translate('status'), _getTournamentStatus(localizations)),
+                child: _buildInfoItem(localizations.translate('status'), _getTournamentStatus(localizations), localizations),
               ),
             ],
           ),
@@ -547,7 +548,7 @@ class TournamentDetailScreen extends StatelessWidget {
     return localizations.translate('finished');
   }
 
-  Widget _buildInfoItem(String label, String value) {
+  Widget _buildInfoItem(String label, String value, AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -625,7 +626,7 @@ ${tournament.category.icon} ${tournament.name}
 📍 ${localizations.translate('venue')}: ${tournament.location}
 👥 ${localizations.translate('organizer')}: ${tournament.organizer}
 
-#${tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
+#${tournament.fishingType.getDisplayName(localizations.translate).toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
     '''.trim();
 
     Clipboard.setData(ClipboardData(text: text));
@@ -649,19 +650,130 @@ ${tournament.category.icon} ${tournament.name}
           'location': tournament.location,
           'date': tournament.startDate,
           'endDate': tournament.endDate,
-          'fishingType': tournament.fishingType.displayName,
+          'fishingType': tournament.fishingType.getDisplayName(AppLocalizations.of(context).translate),
         },
       },
     );
   }
 
   void _addToCalendar(BuildContext context, AppLocalizations localizations) {
-    // Логика добавления в календарь приложения
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(localizations.translate('tournament_added_to_calendar')),
-        backgroundColor: Colors.green,
-      ),
+    _showAddToCalendarDialog(context, localizations);
+  }
+
+  void _showAddToCalendarDialog(BuildContext context, AppLocalizations localizations) {
+    ReminderType selectedReminder = ReminderType.oneDay;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppConstants.surfaceColor,
+              title: Text(
+                localizations.translate('add_to_calendar'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Добавить турнир "${tournament.name}" в календарь рыбалок?',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Напоминание:',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...ReminderType.values.map((type) {
+                    return RadioListTile<ReminderType>(
+                      title: Text(
+                        _getReminderTypeText(type, localizations),
+                        style: TextStyle(color: AppConstants.textColor),
+                      ),
+                      value: type,
+                      groupValue: selectedReminder,
+                      activeColor: AppConstants.primaryColor,
+                      onChanged: (ReminderType? value) {
+                        setState(() {
+                          selectedReminder = value!;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    localizations.translate('cancel'),
+                    style: TextStyle(color: AppConstants.textColor),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _performAddToCalendar(context, localizations, selectedReminder);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                  ),
+                  child: Text(localizations.translate('add')),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  String _getReminderTypeText(ReminderType type, AppLocalizations localizations) {
+    switch (type) {
+      case ReminderType.none:
+        return 'Без напоминания';
+      case ReminderType.oneHour:
+        return 'За 1 час';
+      case ReminderType.oneDay:
+        return 'За 1 день';
+      case ReminderType.oneWeek:
+        return 'За неделю';
+    }
+  }
+
+  Future<void> _performAddToCalendar(BuildContext context, AppLocalizations localizations, ReminderType reminderType) async {
+    try {
+      final calendarService = CalendarEventService();
+
+      await calendarService.addTournamentToCalendar(
+        tournament: tournament,
+        reminderType: reminderType,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(localizations.translate('tournament_added_to_calendar')),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при добавлении в календарь: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
