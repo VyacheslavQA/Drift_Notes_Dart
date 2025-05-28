@@ -2,6 +2,7 @@
 
 import '../models/shop_model.dart';
 
+
 class ShopService {
   static final ShopService _instance = ShopService._internal();
   factory ShopService() => _instance;
@@ -16,7 +17,7 @@ class ShopService {
         name: 'MasterCarp',
         description: 'Специализированный магазин товаров для карповой рыбалки. Широкий ассортимент снастей, прикормок и аксессуаров для успешной карповой ловли.',
         website: 'https://master-carp.kz',
-        logoUrl: 'assets/images/shops/mastercarp_logo.png', // Здесь будет ваш логотип
+        logoUrl: 'assets/shops/mastercarp_logo.png', // Здесь будет ваш логотип
         categories: [
           'Карповые удилища',
           'Катушки для карпа',

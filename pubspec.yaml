@@ -73,6 +73,7 @@ flutter:
   # Assets для приложения
   assets:
     - assets/images/
+    - assets/shops/
     - assets/images/fishing_types/
     - assets/sounds/
     - assets/localization/  # Файлы локализации
@@ -82,7 +83,7 @@ flutter:
     - assets/privacy_policy/privacy_policy_en.txt
     - assets/user_guide/
     - assets/icon/
-    - assets/images/shops/mastercarp_logo.png
+
 
 flutter_launcher_icons:
   android: "launcher_icon"

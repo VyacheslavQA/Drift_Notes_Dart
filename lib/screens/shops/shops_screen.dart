@@ -381,9 +381,20 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                     ),
                   ),
                   child: Center(
-                    child: Text(
-                      shop.specialization.icon,
-                      style: const TextStyle(fontSize: 28),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/shops/mastercarp_logo.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Text(
+                            shop.specialization.icon,
+                            style: const TextStyle(fontSize: 28),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),

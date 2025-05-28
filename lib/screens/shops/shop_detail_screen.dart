@@ -96,7 +96,7 @@ class ShopDetailScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип (placeholder)
+              // Логотип - ИСПРАВЛЕНО
               Container(
                 width: 80,
                 height: 80,
@@ -108,10 +108,21 @@ class ShopDetailScreen extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: Center(
-                  child: Text(
-                    shop.specialization.icon,
-                    style: const TextStyle(fontSize: 40),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    'assets/shops/mastercarp_logo.png',
+                    width: 76,
+                    height: 76,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Text(
+                          shop.specialization.icon,
+                          style: const TextStyle(fontSize: 40),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
