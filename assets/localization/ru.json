@@ -678,5 +678,48 @@
   "total": "Всего",
 
   "login_successful": "Успешный вход в систему",
-  "registration_successful": "Регистрация прошла успешно"
+  "registration_successful": "Регистрация прошла успешно",
+
+  "carp_fishing_type": "Карповая рыбалка",
+  "casting_type": "Кастинг",
+  "spinning_type": "Спиннинг",
+  "feeder_type": "Фидер",
+  "float_fishing_type": "Поплавочная",
+  "ice_fishing_type": "Зимняя рыбалка",
+  "fly_fishing_type": "Нахлыст",
+  "other_fishing_type": "Другое",
+
+  "championship": "Чемпионат",
+  "cup": "Кубок",
+  "league": "Лига",
+  "tournament": "Турнир",
+
+  "tournament_active": "ТУРНИР АКТИВЕН",
+  "upcoming": "ПРЕДСТОЯЩИЙ",
+  "completed": "ЗАВЕРШЕН",
+  "active": "Активный",
+  "future": "Предстоящий",
+  "finished": "Завершенный",
+
+  "event_dates": "Даты проведения",
+  "date": "Дата",
+  "duration": "Продолжительность",
+  "hours": "часов",
+  "venue": "Место проведения",
+  "organizer": "Организатор",
+  "fishing_type": "Тип рыбалки",
+  "additional_info": "Дополнительная информация",
+  "month": "Месяц",
+  "category": "Категория",
+  "status": "Статус",
+
+  "create_fishing_note": "Создать заметку о рыбалке",
+  "add_to_calendar": "Добавить в календарь",
+  "tournament_info_copied": "Информация о турнире скопирована в буфер обмена",
+  "tournament_added_to_calendar": "Турнир добавлен в календарь рыбалок",
+
+  "by_types": "По типам",
+  "tournaments_count": "турниров",
+  "carp_short": "Карповая",
+  "casting_short": "Кастинг"
 }

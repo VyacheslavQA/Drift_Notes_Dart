@@ -6,14 +6,10 @@ class TournamentModel {
   final DateTime startDate;
   final DateTime? endDate;
   final int duration; // в часах
-  final String sector;
   final String location;
   final String organizer;
   final String month; // для группировки
-  final TournamentType type;
-  final bool isOfficial; // Официальный или коммерческий
-  final TournamentCategory category; // Городской, республиканский, международный
-  final FishingDiscipline discipline; // Тип рыбалки
+  final FishingType fishingType; // новое поле - тип рыбалки
 
   TournamentModel({
     required this.id,
@@ -21,14 +17,10 @@ class TournamentModel {
     required this.startDate,
     this.endDate,
     required this.duration,
-    required this.sector,
     required this.location,
     required this.organizer,
     required this.month,
-    required this.type,
-    this.isOfficial = false,
-    this.category = TournamentCategory.commercial,
-    this.discipline = FishingDiscipline.carp,
+    required this.fishingType,
   });
 
   // Проверка, является ли турнир многодневным
@@ -64,148 +56,145 @@ class TournamentModel {
 
   // Проверка, будет ли турнир в будущем
   bool get isFuture => DateTime.now().isBefore(startDate);
+
+  // Определение типа турнира по названию
+  TournamentCategory get category {
+    final lowerName = name.toLowerCase();
+    if (lowerName.contains('чемпионат')) {
+      return TournamentCategory.championship;
+    } else if (lowerName.contains('кубок')) {
+      return TournamentCategory.cup;
+    } else if (lowerName.contains('лига')) {
+      return TournamentCategory.league;
+    } else {
+      return TournamentCategory.tournament;
+    }
+  }
 }
 
-enum TournamentType {
-  championship, // Чемпионат
-  cup, // Кубок
-  tournament, // Турнир
-  league, // Лига
-  commercial, // Коммерческий
-  casting, // Кастинг
-  worldChampionship, // Чемпионат мира
-  trainingCamp, // УТС
-  clubChampionship, // Чемпионат клубов
-  internationalTournament, // Международный турнир
+// Типы рыбалки
+enum FishingType {
+  carpFishing,    // Карповая рыбалка
+  casting,        // Кастинг
+  spinning,       // Спиннинг
+  feeder,         // Фидер
+  floatFishing,   // Поплавочная
+  iceFishing,     // Зимняя рыбалка
+  flyFishing,     // Нахлыст
+  other,          // Другое
 }
 
-extension TournamentTypeExtension on TournamentType {
+extension FishingTypeExtension on FishingType {
+  String getDisplayName(Function(String) translate) {
+    switch (this) {
+      case FishingType.carpFishing:
+        return translate('carp_fishing_type');
+      case FishingType.casting:
+        return translate('casting_type');
+      case FishingType.spinning:
+        return translate('spinning_type');
+      case FishingType.feeder:
+        return translate('feeder_type');
+      case FishingType.floatFishing:
+        return translate('float_fishing_type');
+      case FishingType.iceFishing:
+        return translate('ice_fishing_type');
+      case FishingType.flyFishing:
+        return translate('fly_fishing_type');
+      case FishingType.other:
+        return translate('other_fishing_type');
+    }
+  }
+
+  // Fallback для обратной совместимости
   String get displayName {
     switch (this) {
-      case TournamentType.championship:
-        return 'Чемпионат';
-      case TournamentType.cup:
-        return 'Кубок';
-      case TournamentType.tournament:
-        return 'Турнир';
-      case TournamentType.league:
-        return 'Лига';
-      case TournamentType.commercial:
-        return 'Коммерческий';
-      case TournamentType.casting:
+      case FishingType.carpFishing:
+        return 'Карповая рыбалка';
+      case FishingType.casting:
         return 'Кастинг';
-      case TournamentType.worldChampionship:
-        return 'Чемпионат мира';
-      case TournamentType.trainingCamp:
-        return 'УТС';
-      case TournamentType.clubChampionship:
-        return 'Чемпионат клубов';
-      case TournamentType.internationalTournament:
-        return 'Международный турнир';
+      case FishingType.spinning:
+        return 'Спиннинг';
+      case FishingType.feeder:
+        return 'Фидер';
+      case FishingType.floatFishing:
+        return 'Поплавочная';
+      case FishingType.iceFishing:
+        return 'Зимняя рыбалка';
+      case FishingType.flyFishing:
+        return 'Нахлыст';
+      case FishingType.other:
+        return 'Другое';
     }
   }
 
   String get icon {
     switch (this) {
-      case TournamentType.championship:
-        return '🏆';
-      case TournamentType.cup:
-        return '🥇';
-      case TournamentType.tournament:
+      case FishingType.carpFishing:
+        return '🐟';
+      case FishingType.casting:
         return '🎯';
-      case TournamentType.league:
-        return '⚔️';
-      case TournamentType.commercial:
-        return '💰';
-      case TournamentType.casting:
+      case FishingType.spinning:
         return '🎣';
-      case TournamentType.worldChampionship:
-        return '🌍';
-      case TournamentType.trainingCamp:
-        return '🏋️';
-      case TournamentType.clubChampionship:
-        return '🏛️';
-      case TournamentType.internationalTournament:
-        return '🌐';
+      case FishingType.feeder:
+        return '🪝';
+      case FishingType.floatFishing:
+        return '🎈';
+      case FishingType.iceFishing:
+        return '❄️';
+      case FishingType.flyFishing:
+        return '🪶';
+      case FishingType.other:
+        return '🏆';
     }
   }
 }
 
+// Категории турниров (для отображения типа)
 enum TournamentCategory {
-  commercial, // Коммерческий
-  city, // Городской
-  regional, // Республиканский/региональный
-  international, // Международный
-  internationalInKz, // Международный в Казахстане
+  championship,   // Чемпионат
+  cup,           // Кубок
+  league,        // Лига
+  tournament,    // Турнир
 }
 
 extension TournamentCategoryExtension on TournamentCategory {
-  String get displayName {
+  String getDisplayName(Function(String) translate) {
     switch (this) {
-      case TournamentCategory.commercial:
-        return 'Коммерческий';
-      case TournamentCategory.city:
-        return 'Городской';
-      case TournamentCategory.regional:
-        return 'Республиканский';
-      case TournamentCategory.international:
-        return 'Международный';
-      case TournamentCategory.internationalInKz:
-        return 'Международный в РК';
+      case TournamentCategory.championship:
+        return translate('championship');
+      case TournamentCategory.cup:
+        return translate('cup');
+      case TournamentCategory.league:
+        return translate('league');
+      case TournamentCategory.tournament:
+        return translate('tournament');
     }
   }
-}
 
-enum FishingDiscipline {
-  carp, // Карп
-  iceFishing, // Подледный лов
-  troutSpinning, // Форель на спиннинг
-  feeder, // Фидер
-  floatFishing, // Поплавочная удочка
-  spinningWithBoat, // Спиннинг с лодок
-  streetFishing, // Street Fishing
-  casting, // Кастинг
-}
-
-extension FishingDisciplineExtension on FishingDiscipline {
+  // Fallback для обратной совместимости
   String get displayName {
     switch (this) {
-      case FishingDiscipline.carp:
-        return 'Карповая ловля';
-      case FishingDiscipline.iceFishing:
-        return 'Подледный лов';
-      case FishingDiscipline.troutSpinning:
-        return 'Форель на спиннинг';
-      case FishingDiscipline.feeder:
-        return 'Фидер';
-      case FishingDiscipline.floatFishing:
-        return 'Поплавочная удочка';
-      case FishingDiscipline.spinningWithBoat:
-        return 'Спиннинг с лодок';
-      case FishingDiscipline.streetFishing:
-        return 'Street Fishing';
-      case FishingDiscipline.casting:
-        return 'Кастинг';
+      case TournamentCategory.championship:
+        return 'Чемпионат';
+      case TournamentCategory.cup:
+        return 'Кубок';
+      case TournamentCategory.league:
+        return 'Лига';
+      case TournamentCategory.tournament:
+        return 'Турнир';
     }
   }
 
   String get icon {
     switch (this) {
-      case FishingDiscipline.carp:
-        return '🐟';
-      case FishingDiscipline.iceFishing:
-        return '❄️';
-      case FishingDiscipline.troutSpinning:
-        return '🎣';
-      case FishingDiscipline.feeder:
-        return '🪝';
-      case FishingDiscipline.floatFishing:
-        return '🎈';
-      case FishingDiscipline.spinningWithBoat:
-        return '🚤';
-      case FishingDiscipline.streetFishing:
-        return '🏙️';
-      case FishingDiscipline.casting:
+      case TournamentCategory.championship:
+        return '🏆';
+      case TournamentCategory.cup:
+        return '🥇';
+      case TournamentCategory.league:
+        return '⚔️';
+      case TournamentCategory.tournament:
         return '🎯';
     }
   }

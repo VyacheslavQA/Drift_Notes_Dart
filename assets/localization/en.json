@@ -677,5 +677,48 @@
   "total": "Total",
 
   "login_successful": "Login successful",
-  "registration_successful": "Registration successful"
+  "registration_successful": "Registration successful",
+
+  "carp_fishing_type": "Carp Fishing",
+  "casting_type": "Casting",
+  "spinning_type": "Spinning",
+  "feeder_type": "Feeder",
+  "float_fishing_type": "Float Fishing",
+  "ice_fishing_type": "Ice Fishing",
+  "fly_fishing_type": "Fly Fishing",
+  "other_fishing_type": "Other",
+
+  "championship": "Championship",
+  "cup": "Cup",
+  "league": "League",
+  "tournament": "Tournament",
+
+  "tournament_active": "TOURNAMENT ACTIVE",
+  "upcoming": "UPCOMING",
+  "completed": "COMPLETED",
+  "active": "Active",
+  "future": "Upcoming",
+  "finished": "Finished",
+
+  "event_dates": "Event Dates",
+  "date": "Date",
+  "duration": "Duration",
+  "hours": "hours",
+  "venue": "Venue",
+  "organizer": "Organizer",
+  "fishing_type": "Fishing Type",
+  "additional_info": "Additional Information",
+  "month": "Month",
+  "category": "Category",
+  "status": "Status",
+
+  "create_fishing_note": "Create Fishing Note",
+  "add_to_calendar": "Add to Calendar",
+  "tournament_info_copied": "Tournament information copied to clipboard",
+  "tournament_added_to_calendar": "Tournament added to fishing calendar",
+
+  "by_types": "By Types",
+  "tournaments_count": "tournaments",
+  "carp_short": "Carp",
+  "casting_short": "Casting"
 }

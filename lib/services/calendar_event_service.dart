@@ -29,7 +29,7 @@ class CalendarEventService {
         startDate: tournament.startDate,
         endDate: tournament.endDate ?? tournament.startDate.add(Duration(hours: tournament.duration)),
         location: tournament.location,
-        description: 'Организатор: ${tournament.organizer}\nСектор: ${tournament.sector}',
+        description: 'Организатор: ${tournament.organizer}\nТип рыбалки: ${tournament.fishingType.displayName}\nКатегория: ${tournament.category.displayName}',
         type: CalendarEventType.tournament,
         reminderType: reminderType,
         sourceId: tournament.id,
