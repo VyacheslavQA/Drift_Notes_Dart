@@ -22,6 +22,7 @@ import 'marker_maps/marker_maps_list_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 import 'tournaments/tournaments_screen.dart';
+import 'shops/shops_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -345,7 +346,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildQuickActionItem(
                   icon: Icons.local_mall_outlined, // Современная иконка торгового центра
                   label: localizations.translate('shops'),
-                  onTap: () => _showComingSoonMessage(localizations.translate('shops')),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ShopsScreen()),
+                    );
+                  },
                 ),
               ),
             ),
