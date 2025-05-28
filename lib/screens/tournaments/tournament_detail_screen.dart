@@ -26,7 +26,7 @@ class TournamentDetailScreen extends StatelessWidget {
           localizations.translate('tournament_details'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -108,6 +108,7 @@ class TournamentDetailScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Иконка турнира
               Container(
@@ -136,24 +137,29 @@ class TournamentDetailScreen extends StatelessWidget {
                       tournament.name,
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        height: 1.2,
                       ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    Row(
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 10,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             color: AppConstants.primaryColor,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            tournament.fishingType.getDisplayName(localizations.translate),
+                            localizations.translate(tournament.fishingType.localizationKey),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -161,15 +167,14 @@ class TournamentDetailScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 10,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -180,7 +185,7 @@ class TournamentDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                tournament.category.getDisplayName(localizations.translate),
+                                localizations.translate(tournament.category.localizationKey),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
                                   fontSize: 12,
@@ -388,6 +393,7 @@ class TournamentDetailScreen extends StatelessWidget {
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
+              height: 1.3,
             ),
           ),
         ],
@@ -428,6 +434,7 @@ class TournamentDetailScreen extends StatelessWidget {
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
+              height: 1.3,
             ),
           ),
         ],
@@ -473,7 +480,7 @@ class TournamentDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              tournament.fishingType.getDisplayName(localizations.translate),
+              localizations.translate(tournament.fishingType.localizationKey),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 16,
@@ -517,25 +524,25 @@ class TournamentDetailScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem(localizations.translate('month'), tournament.month, localizations),
+                child: _buildInfoItem(
+                    localizations.translate('month'),
+                    tournament.month
+                ),
               ),
               Expanded(
-                child: _buildInfoItem('ID', tournament.id, localizations),
+                child: _buildInfoItem(
+                    localizations.translate('category'),
+                    localizations.translate(tournament.category.localizationKey)
+                ),
               ),
             ],
           ),
 
           const SizedBox(height: 12),
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoItem(localizations.translate('category'), tournament.category.getDisplayName(localizations.translate), localizations),
-              ),
-              Expanded(
-                child: _buildInfoItem(localizations.translate('status'), _getTournamentStatus(localizations), localizations),
-              ),
-            ],
+          _buildInfoItem(
+              localizations.translate('status'),
+              _getTournamentStatus(localizations)
           ),
         ],
       ),
@@ -548,7 +555,7 @@ class TournamentDetailScreen extends StatelessWidget {
     return localizations.translate('finished');
   }
 
-  Widget _buildInfoItem(String label, String value, AppLocalizations localizations) {
+  Widget _buildInfoItem(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -566,6 +573,7 @@ class TournamentDetailScreen extends StatelessWidget {
             color: AppConstants.textColor,
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            height: 1.2,
           ),
         ),
       ],
@@ -622,11 +630,11 @@ ${tournament.category.icon} ${tournament.name}
 
 📅 ${localizations.translate('date')}: ${tournament.formattedDate}
 ⏰ ${localizations.translate('duration')}: ${tournament.duration} ${localizations.translate('hours')}
-🎣 ${localizations.translate('fishing_type')}: ${tournament.fishingType.getDisplayName(localizations.translate)}
+🎣 ${localizations.translate('fishing_type')}: ${localizations.translate(tournament.fishingType.localizationKey)}
 📍 ${localizations.translate('venue')}: ${tournament.location}
 👥 ${localizations.translate('organizer')}: ${tournament.organizer}
 
-#${tournament.fishingType.getDisplayName(localizations.translate).toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
+#${tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
     '''.trim();
 
     Clipboard.setData(ClipboardData(text: text));
@@ -650,130 +658,39 @@ ${tournament.category.icon} ${tournament.name}
           'location': tournament.location,
           'date': tournament.startDate,
           'endDate': tournament.endDate,
-          'fishingType': tournament.fishingType.getDisplayName(AppLocalizations.of(context).translate),
+          'fishingType': tournament.fishingType.displayName,
         },
       },
     );
   }
 
-  void _addToCalendar(BuildContext context, AppLocalizations localizations) {
-    _showAddToCalendarDialog(context, localizations);
-  }
-
-  void _showAddToCalendarDialog(BuildContext context, AppLocalizations localizations) {
-    ReminderType selectedReminder = ReminderType.oneDay;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: AppConstants.surfaceColor,
-              title: Text(
-                localizations.translate('add_to_calendar'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Добавить турнир "${tournament.name}" в календарь рыбалок?',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Напоминание:',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...ReminderType.values.map((type) {
-                    return RadioListTile<ReminderType>(
-                      title: Text(
-                        _getReminderTypeText(type, localizations),
-                        style: TextStyle(color: AppConstants.textColor),
-                      ),
-                      value: type,
-                      groupValue: selectedReminder,
-                      activeColor: AppConstants.primaryColor,
-                      onChanged: (ReminderType? value) {
-                        setState(() {
-                          selectedReminder = value!;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    localizations.translate('cancel'),
-                    style: TextStyle(color: AppConstants.textColor),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await _performAddToCalendar(context, localizations, selectedReminder);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                  ),
-                  child: Text(localizations.translate('add')),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _getReminderTypeText(ReminderType type, AppLocalizations localizations) {
-    switch (type) {
-      case ReminderType.none:
-        return 'Без напоминания';
-      case ReminderType.oneHour:
-        return 'За 1 час';
-      case ReminderType.oneDay:
-        return 'За 1 день';
-      case ReminderType.oneWeek:
-        return 'За неделю';
-    }
-  }
-
-  Future<void> _performAddToCalendar(BuildContext context, AppLocalizations localizations, ReminderType reminderType) async {
+  void _addToCalendar(BuildContext context, AppLocalizations localizations) async {
     try {
       final calendarService = CalendarEventService();
 
+      // Добавляем турнир в календарь с напоминанием за день
       await calendarService.addTournamentToCalendar(
         tournament: tournament,
-        reminderType: reminderType,
+        reminderType: ReminderType.oneDay,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('tournament_added_to_calendar')),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('tournament_added_to_calendar')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка при добавлении в календарь: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при добавлении в календарь: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

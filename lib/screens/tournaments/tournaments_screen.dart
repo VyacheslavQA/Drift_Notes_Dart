@@ -29,7 +29,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this); // Увеличили до 5 вкладок
+    _tabController = TabController(length: 5, vsync: this);
     _loadTournaments();
   }
 
@@ -130,6 +130,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           labelColor: AppConstants.textColor,
           unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.6),
           isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(text: localizations.translate('all_tournaments')),
             Tab(text: localizations.translate('upcoming')),
@@ -279,6 +280,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 10,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -307,8 +309,6 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           _tournaments.where((t) => t.fishingType == FishingType.casting).toList(),
           localizations,
         ),
-
-        // Если будут другие типы рыбалки, добавим их здесь
       ],
     );
   }
@@ -322,7 +322,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           style: const TextStyle(fontSize: 24),
         ),
         title: Text(
-          fishingType.getDisplayName(localizations.translate),
+          localizations.translate(fishingType.localizationKey),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
@@ -338,12 +338,16 @@ class _TournamentsScreenState extends State<TournamentsScreen>
           title: Text(
             tournament.name,
             style: TextStyle(color: AppConstants.textColor),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
             '${tournament.formattedDate} • ${tournament.location}',
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           trailing: Text(
             tournament.category.icon,
@@ -465,11 +469,19 @@ class _TournamentsScreenState extends State<TournamentsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Иконка типа рыбалки
-                    Text(
-                      tournament.fishingType.icon,
-                      style: const TextStyle(fontSize: 24),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        tournament.fishingType.icon,
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                     const SizedBox(width: 12),
 
@@ -484,41 +496,59 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                               color: AppConstants.textColor,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              height: 1.2,
                             ),
-                            maxLines: 2,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
-                          Row(
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
                             children: [
-                              Text(
-                                tournament.fishingType.getDisplayName(localizations.translate),
-                                style: TextStyle(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
                                   color: AppConstants.primaryColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                tournament.category.icon,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                tournament.category.getDisplayName(localizations.translate),
-                                style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (tournament.isActive) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                                child: Text(
+                                  localizations.translate(tournament.fishingType.localizationKey),
+                                  style: TextStyle(
+                                    color: AppConstants.textColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
                                   ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      tournament.category.icon,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      localizations.translate(tournament.category.localizationKey),
+                                      style: TextStyle(
+                                        color: AppConstants.textColor,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (tournament.isActive)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: Colors.green,
                                     borderRadius: BorderRadius.circular(4),
@@ -527,12 +557,11 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                                     localizations.translate('active').toUpperCase(),
                                     style: TextStyle(
                                       color: AppConstants.textColor,
-                                      fontSize: 10,
+                                      fontSize: 9,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                              ],
                             ],
                           ),
                         ],
@@ -552,10 +581,10 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                           ),
                         ),
                         Text(
-                          '${tournament.duration}ч',
+                          '${tournament.duration}${localizations.translate('hours')}',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -571,7 +600,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     Icon(
                       Icons.location_on,
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -579,9 +608,10 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         tournament.location,
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 13,
+                          fontSize: 12,
+                          height: 1.2,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -595,7 +625,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                     Icon(
                       Icons.group,
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      size: 16,
+                      size: 14,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -603,9 +633,10 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         tournament.organizer,
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 13,
+                          fontSize: 12,
+                          height: 1.2,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

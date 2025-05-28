@@ -85,48 +85,47 @@ enum FishingType {
 }
 
 extension FishingTypeExtension on FishingType {
-  /// Основной метод для получения переведенного названия
-  String getDisplayName(Function(String) translate) {
+  // Получение правильного ключа локализации
+  String get localizationKey {
     switch (this) {
       case FishingType.carpFishing:
-        return translate('carp_fishing_type');
+        return 'carp_fishing_type';
       case FishingType.casting:
-        return translate('casting_type');
+        return 'casting_type';
       case FishingType.spinning:
-        return translate('spinning_type');
+        return 'spinning_type';
       case FishingType.feeder:
-        return translate('feeder_type');
+        return 'feeder_type';
       case FishingType.floatFishing:
-        return translate('float_fishing_type');
+        return 'float_fishing_type';
       case FishingType.iceFishing:
-        return translate('ice_fishing_type');
+        return 'ice_fishing_type';
       case FishingType.flyFishing:
-        return translate('fly_fishing_type');
+        return 'fly_fishing_type';
       case FishingType.other:
-        return translate('other_fishing_type');
+        return 'other_fishing_type';
     }
   }
 
-  /// Fallback для обратной совместимости - возвращает английские названия
-  /// Это решает проблему с хардкодом на русском языке
+  // Fallback для обратной совместимости
   String get displayName {
     switch (this) {
       case FishingType.carpFishing:
-        return 'Carp Fishing';
+        return 'Карповая рыбалка';
       case FishingType.casting:
-        return 'Casting';
+        return 'Кастинг';
       case FishingType.spinning:
-        return 'Spinning';
+        return 'Спиннинг';
       case FishingType.feeder:
-        return 'Feeder';
+        return 'Фидер';
       case FishingType.floatFishing:
-        return 'Float Fishing';
+        return 'Поплавочная';
       case FishingType.iceFishing:
-        return 'Ice Fishing';
+        return 'Зимняя рыбалка';
       case FishingType.flyFishing:
-        return 'Fly Fishing';
+        return 'Нахлыст';
       case FishingType.other:
-        return 'Other';
+        return 'Другое';
     }
   }
 
@@ -161,32 +160,31 @@ enum TournamentCategory {
 }
 
 extension TournamentCategoryExtension on TournamentCategory {
-  /// Основной метод для получения переведенного названия
-  String getDisplayName(Function(String) translate) {
+  // Получение правильного ключа локализации
+  String get localizationKey {
     switch (this) {
       case TournamentCategory.championship:
-        return translate('championship');
+        return 'championship';
       case TournamentCategory.cup:
-        return translate('cup');
+        return 'cup';
       case TournamentCategory.league:
-        return translate('league');
+        return 'league';
       case TournamentCategory.tournament:
-        return translate('tournament');
+        return 'tournament';
     }
   }
 
-  /// Fallback для обратной совместимости - возвращает английские названия
-  /// Это решает проблему с хардкодом на русском языке
+  // Fallback для обратной совместимости
   String get displayName {
     switch (this) {
       case TournamentCategory.championship:
-        return 'Championship';
+        return 'Чемпионат';
       case TournamentCategory.cup:
-        return 'Cup';
+        return 'Кубок';
       case TournamentCategory.league:
-        return 'League';
+        return 'Лига';
       case TournamentCategory.tournament:
-        return 'Tournament';
+        return 'Турнир';
     }
   }
 
