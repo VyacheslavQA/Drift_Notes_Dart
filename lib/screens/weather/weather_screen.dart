@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
@@ -11,8 +10,6 @@ import '../../services/weather/weather_api_service.dart';
 import '../../localization/app_localizations.dart';
 import 'weather_detail_screen.dart';
 import '../../services/fishing_forecast_service.dart';
-import '../../widgets/weather_charts.dart';
-import '../../widgets/bite_activity_chart.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -38,10 +35,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   late AnimationController _biteController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _biteAnimation;
-
-  // Данные для графиков
-  List<FlSpot> _pressureData = [];
-  List<double> _pressureTrend = [];
 
   @override
   void initState() {
@@ -109,8 +102,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           longitude: position.longitude,
         );
 
-        _generatePressureData(weather);
-
         if (mounted) {
           setState(() {
             _currentWeather = weather;
@@ -136,27 +127,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           _isLoading = false;
         });
         _rotationController.stop();
-      }
-    }
-  }
-
-  void _generatePressureData(WeatherApiResponse weather) {
-    _pressureData.clear();
-    _pressureTrend.clear();
-
-    if (weather.forecast.isNotEmpty) {
-      final hours = weather.forecast.first.hour;
-      final now = DateTime.now();
-
-      // Берем последние 24 часа и ближайшие 12
-      for (int i = 0; i < hours.length; i++) {
-        final hour = hours[i];
-        final time = DateTime.parse(hour.time);
-
-        if (time.isAfter(now.subtract(const Duration(hours: 24)))) {
-          _pressureData.add(FlSpot(i.toDouble(), hour.condition.code.toDouble()));
-          _pressureTrend.add(weather.current.pressureMb + (i - 12) * 0.5); // Имитация тренда
-        }
       }
     }
   }
@@ -618,7 +588,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget _buildPressureCard(double pressure) {
     final localizations = AppLocalizations.of(context);
     final pressureMmHg = (pressure / 1.333).round();
-    final trend = _getPressureTrend();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -649,8 +618,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
               const Spacer(),
               Icon(
-                trend > 0 ? Icons.trending_up : Icons.trending_down,
-                color: trend > 0 ? Colors.green : Colors.red,
+                Icons.trending_flat,
+                color: Colors.green,
                 size: 20,
               ),
             ],
@@ -687,38 +656,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               fontSize: 12,
             ),
           ),
-
-          const SizedBox(height: 12),
-
-          // Мини-график давления
-          if (_pressureTrend.isNotEmpty)
-            SizedBox(
-              height: 30,
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(show: false),
-                  titlesData: const FlTitlesData(show: false),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: _pressureTrend.asMap().entries.map((entry) =>
-                          FlSpot(entry.key.toDouble(), entry.value)
-                      ).toList(),
-                      isCurved: true,
-                      color: AppConstants.primaryColor,
-                      barWidth: 2,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ],
-                  minY: _pressureTrend.reduce(math.min) - 2,
-                  maxY: _pressureTrend.reduce(math.max) + 2,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1433,13 +1370,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   String _translateFishingRecommendation(String recommendation) {
     // Базовая реализация - можно расширить
     return recommendation;
-  }
-
-  double _getPressureTrend() {
-    // Имитация тренда - в реальном приложении нужны исторические данные
-    return (_pressureTrend.isNotEmpty && _pressureTrend.length > 1)
-        ? _pressureTrend.last - _pressureTrend.first
-        : 0.0;
   }
 
   String _getPressureDescription(double pressure) {
