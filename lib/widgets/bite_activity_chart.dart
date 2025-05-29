@@ -561,7 +561,7 @@ class _BiteActivityChartState extends State<BiteActivityChart>
         }
       },
       touchTooltipData: LineTouchTooltipData(
-        tooltipBgColor: AppConstants.surfaceColor.withValues(alpha: 0.95),
+        backgroundColor: AppConstants.surfaceColor.withValues(alpha: 0.95),
         tooltipBorder: BorderSide(
           color: AppConstants.primaryColor.withValues(alpha: 0.5),
           width: 1,

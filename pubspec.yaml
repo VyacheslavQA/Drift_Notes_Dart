@@ -61,7 +61,7 @@ dependencies:
   # Добавь эти, если их нет:
   permission_handler: ^11.1.0
 
-  fl_chart: ^0.66.0  # Добавь эту строку
+  fl_chart: ^0.68.0
   flutter_local_notifications: ^17.2.2
 
 
