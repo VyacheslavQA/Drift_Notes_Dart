@@ -34,6 +34,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Future<void> _loadWeather() async {
+    final localizations = AppLocalizations.of(context);
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -70,7 +72,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Ошибка загрузки погоды: $e';
+          _errorMessage = '${localizations.translate('error_loading')}: $e';
           _isLoading = false;
         });
       }
@@ -78,22 +80,24 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Future<Position?> _getCurrentPosition() async {
+    final localizations = AppLocalizations.of(context);
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Службы геолокации отключены');
+        throw Exception(localizations.translate('location_services_disabled'));
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Разрешение на геолокацию отклонено');
+          throw Exception(localizations.translate('location_permission_denied'));
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Разрешение на геолокацию отклонено навсегда');
+        throw Exception(localizations.translate('location_permission_denied_forever'));
       }
 
       return await Geolocator.getCurrentPosition(
@@ -101,7 +105,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       );
     } catch (e) {
       // Если не удалось получить местоположение, используем координаты по умолчанию (Москва)
-      debugPrint('Ошибка получения местоположения: $e');
+      debugPrint('${localizations.translate('location_error')}: $e');
       return Position(
         longitude: 37.6176,
         latitude: 55.7558,
@@ -168,6 +172,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildBody() {
+    final localizations = AppLocalizations.of(context);
+
     if (_isLoading) {
       return Center(
         child: CircularProgressIndicator(
@@ -201,7 +207,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadWeather,
-              child: const Text('Попробовать снова'),
+              child: Text(localizations.translate('try_again')),
             ),
           ],
         ),
@@ -209,8 +215,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
 
     if (_currentWeather == null) {
-      return const Center(
-        child: Text('Нет данных о погоде'),
+      return Center(
+        child: Text(
+          localizations.translate('no_data_to_display'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
       );
     }
 
@@ -237,6 +246,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildCurrentWeather() {
+    final localizations = AppLocalizations.of(context);
     final current = _currentWeather!.current;
 
     return GestureDetector(
@@ -292,7 +302,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Ощущается как ${current.feelslikeC.round()}°C',
+              '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°C',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -306,22 +316,22 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 Expanded(
                   child: _buildWeatherStat(
                     Icons.air,
-                    'Ветер',
-                    '${current.windKph.round()} км/ч',
+                    localizations.translate('wind'),
+                    '${current.windKph.round()} ${localizations.translate('km_h')}',
                   ),
                 ),
                 Expanded(
                   child: _buildWeatherStat(
                     Icons.water_drop,
-                    'Влажность',
+                    localizations.translate('humidity'),
                     '${current.humidity}%',
                   ),
                 ),
                 Expanded(
                   child: _buildWeatherStat(
                     Icons.visibility,
-                    'Видимость',
-                    '${current.visKm.round()} км',
+                    localizations.translate('visibility'),
+                    '${current.visKm.round()} ${localizations.translate('km')}',
                   ),
                 ),
               ],
@@ -334,14 +344,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.white70, size: 16),
-                  SizedBox(width: 6),
+                  const Icon(Icons.info_outline, color: Colors.white70, size: 16),
+                  const SizedBox(width: 6),
                   Text(
-                    'Нажмите для подробностей',
-                    style: TextStyle(
+                    localizations.translate('tap_for_details'),
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
                     ),
@@ -356,13 +366,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildFishingForecast() {
+    final localizations = AppLocalizations.of(context);
     if (_fishingForecast == null) return const SizedBox();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Прогноз для рыбалки',
+          localizations.translate('fishing_forecast'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -393,7 +404,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Активность клёва',
+                        localizations.translate('bite_activity'),
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 14,
@@ -417,17 +428,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildFishingFactorItem(
-                    'Давление',
+                    localizations.translate('pressure'),
                     _fishingForecast!['pressureFactor'],
                     Icons.speed,
                   ),
                   _buildFishingFactorItem(
-                    'Ветер',
+                    localizations.translate('wind'),
                     _fishingForecast!['windFactor'],
                     Icons.air,
                   ),
                   _buildFishingFactorItem(
-                    'Луна',
+                    localizations.translate('moon'),
                     _fishingForecast!['moonFactor'],
                     Icons.brightness_2,
                   ),
@@ -444,7 +455,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    _fishingForecast!['recommendation'],
+                    _translateFishingRecommendation(_fishingForecast!['recommendation']),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 14,
@@ -460,18 +471,19 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildFishingFactorItem(String label, double factor, IconData icon) {
+    final localizations = AppLocalizations.of(context);
     Color color = Colors.grey;
-    String text = 'Норма';
+    String text = localizations.translate('normal');
 
     if (factor > 0.7) {
       color = Colors.green;
-      text = 'Отлично';
+      text = localizations.translate('excellent');
     } else if (factor > 0.4) {
       color = Colors.orange;
-      text = 'Хорошо';
+      text = localizations.translate('good');
     } else {
       color = Colors.red;
-      text = 'Плохо';
+      text = localizations.translate('poor');
     }
 
     return Column(
@@ -505,11 +517,13 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   String _getFishingActivityText(double activity) {
-    if (activity > 0.8) return 'Отличная';
-    if (activity > 0.6) return 'Хорошая';
-    if (activity > 0.4) return 'Средняя';
-    if (activity > 0.2) return 'Слабая';
-    return 'Очень слабая';
+    final localizations = AppLocalizations.of(context);
+
+    if (activity > 0.8) return localizations.translate('excellent_activity');
+    if (activity > 0.6) return localizations.translate('good_activity');
+    if (activity > 0.4) return localizations.translate('moderate_activity');
+    if (activity > 0.2) return localizations.translate('weak_activity');
+    return localizations.translate('very_weak_activity');
   }
 
   Widget _buildWeatherStat(IconData icon, String label, String value) {
@@ -544,6 +558,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildHourlyForecast() {
+    final localizations = AppLocalizations.of(context);
+
     if (_currentWeather!.forecast.isEmpty) return const SizedBox();
 
     final todayHours = _currentWeather!.forecast.first.hour;
@@ -561,7 +577,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Почасовой прогноз',
+          localizations.translate('hourly_forecast'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -627,13 +643,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildDailyForecast() {
+    final localizations = AppLocalizations.of(context);
+
     if (_currentWeather!.forecast.length <= 1) return const SizedBox();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Прогноз на ${_currentWeather!.forecast.length} дня',
+          '${localizations.translate('forecast_for')} ${_currentWeather!.forecast.length} ${_getDaysText(_currentWeather!.forecast.length)}',
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -663,7 +681,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   SizedBox(
                     width: 70,
                     child: Text(
-                      isToday ? 'Сегодня' : _getDayOfWeek(date),
+                      isToday ? localizations.translate('today') : _getDayOfWeek(date),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -725,7 +743,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
         return localizations.translate(weekdays[weekdayIndex]);
       }
     } catch (e) {
-      debugPrint('Ошибка перевода дня недели: $e');
+      debugPrint('${localizations.translate('error_loading')}: $e');
     }
 
     // Fallback на русский
@@ -738,7 +756,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return DateFormat('EEE', 'ru').format(date);
   }
 
+  String _getDaysText(int count) {
+    final localizations = AppLocalizations.of(context);
+
+    // Используем существующую логику из DateFormatter
+    if (count == 1) return localizations.translate('day');
+    if (count >= 2 && count <= 4) return localizations.translate('days_2_4');
+    return localizations.translate('days_many');
+  }
+
   Widget _buildWeatherDetails() {
+    final localizations = AppLocalizations.of(context);
     final current = _currentWeather!.current;
     final astro = _currentWeather!.forecast.first.astro;
 
@@ -746,7 +774,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Подробности',
+          localizations.translate('weather_details'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -762,12 +790,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
           mainAxisSpacing: 12,
           childAspectRatio: 1.5,
           children: [
-            _buildDetailCard('Давление', '${current.pressureMb.round()} мб', Icons.speed),
-            _buildDetailCard('Видимость', '${current.visKm.round()} км', Icons.visibility),
-            _buildDetailCard('УФ-индекс', current.uv.toString(), Icons.wb_sunny),
-            _buildDetailCard('Восход', astro.sunrise, Icons.wb_twilight),
-            _buildDetailCard('Закат', astro.sunset, Icons.nights_stay),
-            _buildDetailCard('Фаза луны', _translateMoonPhase(astro.moonPhase), Icons.brightness_2),
+            _buildDetailCard(localizations.translate('pressure'), '${current.pressureMb.round()} ${localizations.translate('mb')}', Icons.speed),
+            _buildDetailCard(localizations.translate('visibility'), '${current.visKm.round()} ${localizations.translate('km')}', Icons.visibility),
+            _buildDetailCard(localizations.translate('uv_index'), current.uv.toString(), Icons.wb_sunny),
+            _buildDetailCard(localizations.translate('sunrise'), astro.sunrise, Icons.wb_twilight),
+            _buildDetailCard(localizations.translate('sunset'), astro.sunset, Icons.nights_stay),
+            _buildDetailCard(localizations.translate('moon_phase'), _translateMoonPhase(astro.moonPhase), Icons.brightness_2),
           ],
         ),
       ],
@@ -819,12 +847,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   Widget _buildDetailButton() {
+    final localizations = AppLocalizations.of(context);
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: _openWeatherDetails,
         icon: const Icon(Icons.info_outline),
-        label: const Text('Подробная информация о погоде'),
+        label: Text(localizations.translate('detailed_weather_info')),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppConstants.primaryColor,
           foregroundColor: AppConstants.textColor,
@@ -878,7 +908,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
-  /// Перевод описания погоды с английского на русский
+  /// Перевод описания погоды с английского используя локализацию
   String _translateWeatherDescription(String englishDescription) {
     final localizations = AppLocalizations.of(context);
 
@@ -952,13 +982,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return englishDescription;
   }
 
-  /// Перевод фазы луны с английского на русский
+  /// Перевод фазы луны с английского используя локализацию
   String _translateMoonPhase(String moonPhase) {
     final localizations = AppLocalizations.of(context);
 
     final cleanPhase = moonPhase.trim().toLowerCase();
 
-    // Словарь соответствий английских фаз луны к ключам локализации
     final Map<String, String> phaseToKey = {
       'new moon': 'moon_new_moon',
       'waxing crescent': 'moon_waxing_crescent',
@@ -977,5 +1006,26 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
 
     return moonPhase;
+  }
+
+  /// Перевод рекомендаций для рыбалки
+  String _translateFishingRecommendation(String recommendation) {
+    final localizations = AppLocalizations.of(context);
+
+    // Словарь русских рекомендаций к ключам локализации
+    final Map<String, String> recommendationToKey = {
+      'Отличные условия для рыбалки! Рыба должна быть очень активной.': 'excellent_fishing_conditions',
+      'Хорошие условия для рыбалки. Стоит попробовать!': 'good_fishing_conditions',
+      'Средние условия. Рыба может клевать, но не очень активно.': 'average_fishing_conditions',
+      'Слабые условия для рыбалки. Лучше подождать более благоприятной погоды.': 'poor_fishing_conditions',
+      'Неблагоприятные условия для рыбалки. Рекомендуется отложить выезд.': 'bad_fishing_conditions',
+    };
+
+    final localizationKey = recommendationToKey[recommendation];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    return recommendation;
   }
 }

@@ -842,53 +842,130 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
     }
   }
 
+  /// Перевод описания погоды с английского используя локализацию
   String _translateWeatherDescription(String englishDescription) {
-    final translations = {
-      'Sunny': 'Солнечно',
-      'Clear ': 'Ясно',
-      'Partly cloudy ': 'Переменная облачность',
-      'Partly Cloudy ': 'Переменная облачность',
-      'Cloudy': 'Облачно',
-      'Overcast': 'Пасмурно',
-      'Mist': 'Дымка',
-      'Fog': 'Туман',
-      'Patchy rain possible ': 'Местами дождь',
-      'Light rain': 'Легкий дождь',
-      'Moderate rain': 'Умеренный дождь',
-      'Heavy rain': 'Сильный дождь',
-      'Light snow': 'Легкий снег',
-      'Moderate snow': 'Умеренный снег',
-      'Heavy snow': 'Сильный снег',
-      'Thundery outbreaks possible': 'Возможны грозы',
-      'Patchy light drizzle': 'Местами легкая морось',
-      'Patchy rain nearby': 'Местами дождь поблизости',
+    final localizations = AppLocalizations.of(context);
+
+    // Очищаем описание от лишних пробелов
+    final cleanDescription = englishDescription.trim().toLowerCase();
+
+    // Словарь соответствий английских описаний к ключам локализации
+    final Map<String, String> descriptionToKey = {
+      'sunny': 'weather_sunny',
+      'clear': 'weather_clear',
+      'partly cloudy': 'weather_partly_cloudy',
+      'cloudy': 'weather_cloudy',
+      'overcast': 'weather_overcast',
+      'mist': 'weather_mist',
+      'patchy rain possible': 'weather_patchy_rain_possible',
+      'patchy rain nearby': 'weather_patchy_rain_nearby',
+      'patchy light drizzle': 'weather_patchy_light_drizzle',
+      'light drizzle': 'weather_light_drizzle',
+      'freezing drizzle': 'weather_freezing_drizzle',
+      'heavy freezing drizzle': 'weather_heavy_freezing_drizzle',
+      'patchy light rain': 'weather_patchy_light_rain',
+      'light rain': 'weather_light_rain',
+      'moderate rain at times': 'weather_moderate_rain_at_times',
+      'moderate rain': 'weather_moderate_rain',
+      'heavy rain at times': 'weather_heavy_rain_at_times',
+      'heavy rain': 'weather_heavy_rain',
+      'light freezing rain': 'weather_light_freezing_rain',
+      'moderate or heavy freezing rain': 'weather_moderate_or_heavy_freezing_rain',
+      'light showers of ice pellets': 'weather_light_showers_of_ice_pellets',
+      'moderate or heavy showers of ice pellets': 'weather_moderate_or_heavy_showers_of_ice_pellets',
+      'patchy snow possible': 'weather_patchy_snow_possible',
+      'patchy snow nearby': 'weather_patchy_snow_nearby',
+      'patchy light snow': 'weather_patchy_light_snow',
+      'light snow': 'weather_light_snow',
+      'patchy moderate snow': 'weather_patchy_moderate_snow',
+      'moderate snow': 'weather_moderate_snow',
+      'patchy heavy snow': 'weather_patchy_heavy_snow',
+      'heavy snow': 'weather_heavy_snow',
+      'ice pellets': 'weather_ice_pellets',
+      'light snow showers': 'weather_light_snow_showers',
+      'moderate or heavy snow showers': 'weather_moderate_or_heavy_snow_showers',
+      'patchy light snow with thunder': 'weather_patchy_light_snow_with_thunder',
+      'moderate or heavy snow with thunder': 'weather_moderate_or_heavy_snow_with_thunder',
+      'light rain shower': 'weather_light_rain_shower',
+      'moderate or heavy rain shower': 'weather_moderate_or_heavy_rain_shower',
+      'torrential rain shower': 'weather_torrential_rain_shower',
+      'thundery outbreaks possible': 'weather_thundery_outbreaks_possible',
+      'patchy light rain with thunder': 'weather_patchy_light_rain_with_thunder',
+      'moderate or heavy rain with thunder': 'weather_moderate_or_heavy_rain_with_thunder',
+      'patchy sleet possible': 'weather_patchy_sleet_possible',
+      'patchy sleet nearby': 'weather_patchy_sleet_nearby',
+      'light sleet': 'weather_light_sleet',
+      'moderate or heavy sleet': 'weather_moderate_or_heavy_sleet',
+      'light sleet showers': 'weather_light_sleet_showers',
+      'moderate or heavy sleet showers': 'weather_moderate_or_heavy_sleet_showers',
+      'blowing snow': 'weather_blowing_snow',
+      'blizzard': 'weather_blizzard',
+      'fair': 'weather_fair',
+      'hot': 'weather_hot',
+      'cold': 'weather_cold',
+      'windy': 'weather_windy',
     };
-    return translations[englishDescription] ?? englishDescription;
+
+    // Ищем соответствующий ключ локализации
+    final localizationKey = descriptionToKey[cleanDescription];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    // Если точного совпадения нет, возвращаем оригинальное описание
+    return englishDescription;
   }
 
+  /// Перевод направления ветра с английского используя локализацию
   String _translateWindDirection(String windDir) {
-    final translations = {
-      'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
-      'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
-      'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
-      'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
+    final localizations = AppLocalizations.of(context);
+
+    final Map<String, String> translations = {
+      'N': localizations.translate('wind_n'),
+      'NNE': localizations.translate('wind_nne'),
+      'NE': localizations.translate('wind_ne'),
+      'ENE': localizations.translate('wind_ene'),
+      'E': localizations.translate('wind_e'),
+      'ESE': localizations.translate('wind_ese'),
+      'SE': localizations.translate('wind_se'),
+      'SSE': localizations.translate('wind_sse'),
+      'S': localizations.translate('wind_s'),
+      'SSW': localizations.translate('wind_ssw'),
+      'SW': localizations.translate('wind_sw'),
+      'WSW': localizations.translate('wind_wsw'),
+      'W': localizations.translate('wind_w'),
+      'WNW': localizations.translate('wind_wnw'),
+      'NW': localizations.translate('wind_nw'),
+      'NNW': localizations.translate('wind_nnw'),
     };
+
     return translations[windDir] ?? windDir;
   }
 
+  /// Перевод фазы луны с английского используя локализацию
   String _translateMoonPhase(String moonPhase) {
-    final translations = {
-      'New Moon': 'Новолуние',
-      'Waxing Crescent': 'Растущая луна',
-      'First Quarter': 'Первая четверть',
-      'Waxing Gibbous': 'Растущая луна',
-      'Full Moon': 'Полнолуние',
-      'Waning Gibbous': 'Убывающая луна',
-      'Last Quarter': 'Последняя четверть',
-      'Third Quarter': 'Третья четверть',
-      'Waning Crescent': 'Убывающая луна',
+    final localizations = AppLocalizations.of(context);
+
+    final cleanPhase = moonPhase.trim().toLowerCase();
+
+    final Map<String, String> phaseToKey = {
+      'new moon': 'moon_new_moon',
+      'waxing crescent': 'moon_waxing_crescent',
+      'first quarter': 'moon_first_quarter',
+      'waxing gibbous': 'moon_waxing_gibbous',
+      'full moon': 'moon_full_moon',
+      'waning gibbous': 'moon_waning_gibbous',
+      'last quarter': 'moon_last_quarter',
+      'third quarter': 'moon_third_quarter',
+      'waning crescent': 'moon_waning_crescent',
     };
-    return translations[moonPhase] ?? moonPhase;
+
+    final localizationKey = phaseToKey[cleanPhase];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    return moonPhase;
   }
 
   String _getHumidityDescription(int humidity) {
