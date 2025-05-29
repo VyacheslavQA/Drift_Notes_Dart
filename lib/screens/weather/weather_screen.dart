@@ -49,164 +49,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     // Загрузку погоды перенесем в didChangeDependencies
 
 
-    /// Показать подсказку о настройке уведомлений
-    void _showNotificationSetupTip() {
-      final localizations = AppLocalizations.of(context);
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppConstants.surfaceColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.notifications_active,
-                  color: Colors.amber,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  localizations.translate('weather_notifications'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            'Настройте уведомления о погоде, чтобы получать информацию о благоприятных условиях для рыбалки, изменениях давления и предупреждения о непогоде.',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              height: 1.5,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                localizations.translate('cancel'),
-                style: TextStyle(color: AppConstants.textColor),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WeatherNotificationsSettingsScreen(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-              ),
-              child: Text(localizations.translate('settings')),
-            ),
-          ],
-        ),
-      );
-    }
-
-    /// Проверка, включены ли уведомления о погоде
-    Future<bool> _isWeatherNotificationsEnabled() async {
-      try {
-        return _weatherNotificationService.settings.enabled;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    Widget _buildNotificationSettingsCard() {
-      final localizations = AppLocalizations.of(context);
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.amber.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WeatherNotificationsSettingsScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: Colors.amber,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations.translate('weather_notifications'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Получайте уведомления о благоприятных условиях для рыбалки',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
     /// Показать подсказку о настройке уведомлений
     void _showNotificationSetupTip() {
       final localizations = AppLocalizations.of(context);
@@ -464,6 +307,90 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
         _rotationController.stop();
       }
     }
+  }
+
+  /// Проверка, включены ли уведомления о погоде
+  Future<bool> _isWeatherNotificationsEnabled() async {
+    try {
+      return _weatherNotificationService.settings.enabled;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Widget _buildNotificationSettingsCard() {
+    final localizations = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.amber.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const WeatherNotificationsSettingsScreen(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.notifications_active,
+                  color: Colors.amber,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      localizations.translate('weather_notifications'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Получайте уведомления о благоприятных условиях для рыбалки',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppConstants.textColor.withValues(alpha: 0.5),
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<Position?> _getCurrentPosition() async {
