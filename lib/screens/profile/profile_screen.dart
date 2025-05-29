@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
-import '../../utils/countries_data.dart';
+import '../../services/geography_service.dart';
 import '../../localization/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _userRepository = UserRepository();
   final _firebaseService = FirebaseService();
+  final _geographyService = GeographyService();
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _displayNameController;
@@ -33,14 +34,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingCountries = false;
   bool _isLoadingCities = false;
 
+  // Добавляем переменные для сохранения ключей
+  String? _selectedCountryKey;
+  String? _selectedCityKey;
+
   @override
   void initState() {
     super.initState();
     _displayNameController = TextEditingController();
     _emailController = TextEditingController();
+  }
 
-    _loadUserData();
-    _loadCountries();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isLoading) {
+      _loadCountries();
+      _loadUserData();
+    }
   }
 
   @override
@@ -58,12 +69,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final countries = await CountriesData.getLocalizedCountries(context);
+      final countries = await _geographyService.getLocalizedCountries(context);
       if (mounted) {
         setState(() {
           _availableCountries = countries;
           _isLoadingCountries = false;
         });
+
+        // После загрузки стран проверяем сохраненную страну
+        await _updateSelectedCountryFromSaved();
       }
     } catch (e) {
       if (mounted) {
@@ -71,6 +85,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _isLoadingCountries = false;
         });
         debugPrint('❌ Ошибка загрузки стран: $e');
+      }
+    }
+  }
+
+  Future<void> _updateSelectedCountryFromSaved() async {
+    if (_selectedCountryKey != null && _availableCountries.isNotEmpty) {
+      try {
+        // Пытаемся найти страну по ключу
+        final countryName = await _geographyService.getCountryNameByKey(_selectedCountryKey!, context);
+        if (countryName != null && _availableCountries.contains(countryName)) {
+          setState(() {
+            _selectedCountry = countryName;
+          });
+          // Загружаем города для выбранной страны
+          await _loadCitiesForCountry(countryName);
+        } else {
+          // Если не нашли по ключу, пытаемся найти в списке как есть
+          if (_availableCountries.contains(_selectedCountryKey)) {
+            setState(() {
+              _selectedCountry = _selectedCountryKey;
+            });
+            await _loadCitiesForCountry(_selectedCountryKey!);
+          } else {
+            debugPrint('🚫 Сохраненная страна "$_selectedCountryKey" не найдена в списке доступных стран');
+            setState(() {
+              _selectedCountry = null;
+              _selectedCountryKey = null;
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка при обновлении выбранной страны: $e');
+        setState(() {
+          _selectedCountry = null;
+          _selectedCountryKey = null;
+        });
       }
     }
   }
@@ -85,12 +135,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final cities = await CountriesData.getLocalizedCitiesForCountry(country, context);
+      final cities = await _geographyService.getLocalizedCitiesForCountry(country, context);
       if (mounted) {
         setState(() {
           _availableCities = cities;
           _isLoadingCities = false;
         });
+
+        // После загрузки городов проверяем сохраненный город
+        await _updateSelectedCityFromSaved();
       }
     } catch (e) {
       if (mounted) {
@@ -98,6 +151,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _isLoadingCities = false;
         });
         debugPrint('❌ Ошибка загрузки городов для $country: $e');
+      }
+    }
+  }
+
+  Future<void> _updateSelectedCityFromSaved() async {
+    if (_selectedCityKey != null && _availableCities.isNotEmpty && _selectedCountry != null) {
+      try {
+        // Пытаемся найти город по ключу
+        final cityName = await _geographyService.getCityNameByKey(
+            _selectedCityKey!,
+            _selectedCountry!,
+            context
+        );
+        if (cityName != null && _availableCities.contains(cityName)) {
+          setState(() {
+            _selectedCity = cityName;
+          });
+        } else {
+          // Если не нашли по ключу, пытаемся найти в списке как есть
+          if (_availableCities.contains(_selectedCityKey)) {
+            setState(() {
+              _selectedCity = _selectedCityKey;
+            });
+          } else {
+            debugPrint('🚫 Сохраненный город "$_selectedCityKey" не найден в списке доступных городов');
+            setState(() {
+              _selectedCity = null;
+              _selectedCityKey = null;
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка при обновлении выбранного города: $e');
+        setState(() {
+          _selectedCity = null;
+          _selectedCityKey = null;
+        });
       }
     }
   }
@@ -114,16 +204,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _displayNameController.text = userData.displayName ?? '';
           _emailController.text = userData.email;
-          _selectedCountry = userData.country;
-          _selectedCity = userData.city;
           _selectedExperience = userData.experience;
           _selectedFishingTypes = List<String>.from(userData.fishingTypes);
-        });
 
-        // Если страна выбрана, загрузим доступные города
-        if (_selectedCountry != null && _selectedCountry!.isNotEmpty) {
-          await _loadCitiesForCountry(_selectedCountry!);
-        }
+          // Сохраняем ключи из базы данных
+          _selectedCountryKey = userData.country;
+          _selectedCityKey = userData.city;
+        });
       } else {
         // Если нет данных в Firestore, используем данные из FirebaseAuth
         final user = _firebaseService.currentUser;
@@ -158,11 +245,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
+      // Получаем ключи стран и городов для сохранения
+      String? countryKey;
+      String? cityKey;
+
+      if (_selectedCountry != null) {
+        countryKey = await _geographyService.getCountryKeyByName(_selectedCountry!, context);
+        // Если не нашли ключ, используем название как есть
+        countryKey ??= _selectedCountry;
+      }
+
+      if (_selectedCity != null && _selectedCountry != null) {
+        cityKey = await _geographyService.getCityKeyByName(
+            _selectedCity!,
+            _selectedCountry!,
+            context
+        );
+        // Если не нашли ключ, используем название как есть
+        cityKey ??= _selectedCity;
+      }
+
       // Обновляем данные пользователя
       final userData = {
         'displayName': _displayNameController.text.trim(),
-        'country': _selectedCountry ?? '',
-        'city': _selectedCity ?? '',
+        'country': countryKey ?? '',
+        'city': cityKey ?? '',
         'experience': _selectedExperience,
         'fishingTypes': _selectedFishingTypes,
       };
@@ -414,7 +521,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : null,
       ),
       isExpanded: true,
-      value: _selectedCountry,
+      // ИСПРАВЛЕНИЕ: Проверяем, что выбранная страна есть в списке
+      value: (_selectedCountry != null && _availableCountries.contains(_selectedCountry!))
+          ? _selectedCountry
+          : null,
       hint: Text(
           _isLoadingCountries
               ? localizations.translate('loading')
@@ -430,9 +540,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (value != null) {
           setState(() {
             _selectedCountry = value;
-            _selectedCity = null; // Сбрасываем выбранный город
+            _selectedCity = null;
+            _selectedCityKey = null;
           });
-          _loadCitiesForCountry(value); // Загружаем города для выбранной страны
+          _loadCitiesForCountry(value);
         }
       },
     );
@@ -458,7 +569,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : null,
       ),
       isExpanded: true,
-      value: _selectedCity,
+      // ИСПРАВЛЕНИЕ: Проверяем, что выбранный город есть в списке
+      value: (_selectedCity != null && _availableCities.contains(_selectedCity!))
+          ? _selectedCity
+          : null,
       hint: Text(
           _isLoadingCities
               ? localizations.translate('loading')
