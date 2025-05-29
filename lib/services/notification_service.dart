@@ -4,43 +4,32 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
-  // Singleton pattern
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  // Ключ для хранения уведомлений
-  static const String _notificationsKey = 'app_notifications';
-
-  // Список уведомлений
+  final Uuid _uuid = const Uuid();
   final List<NotificationModel> _notifications = [];
 
-  // Stream контроллер для уведомлений
+  // Stream для уведомления UI об изменениях
   final StreamController<List<NotificationModel>> _notificationsController =
   StreamController<List<NotificationModel>>.broadcast();
 
-  // Getter для получения stream уведомлений
   Stream<List<NotificationModel>> get notificationsStream => _notificationsController.stream;
 
-  // Getter для получения текущих уведомлений
-  List<NotificationModel> get notifications => List.unmodifiable(_notifications);
-
-  // Getter для получения непрочитанных уведомлений
-  List<NotificationModel> get unreadNotifications =>
-      _notifications.where((notification) => !notification.isRead).toList();
-
-  // Getter для количества непрочитанных уведомлений
-  int get unreadCount => unreadNotifications.length;
+  // Ключ для SharedPreferences
+  static const String _notificationsKey = 'local_notifications';
 
   /// Инициализация сервиса
   Future<void> initialize() async {
     debugPrint('📱 Инициализация сервиса уведомлений...');
 
     try {
-      await _loadNotifications();
+      await _loadNotificationsFromStorage();
       debugPrint('✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений');
     } catch (e) {
       debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
@@ -48,7 +37,7 @@ class NotificationService {
   }
 
   /// Загрузка уведомлений из локального хранилища
-  Future<void> _loadNotifications() async {
+  Future<void> _loadNotificationsFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notificationsJson = prefs.getStringList(_notificationsKey) ?? [];
@@ -71,10 +60,8 @@ class NotificationService {
       // Ограничиваем количество уведомлений (максимум 100)
       if (_notifications.length > 100) {
         _notifications.removeRange(100, _notifications.length);
-        await _saveNotifications(); // Сохраняем обрезанный список
+        await _saveNotificationsToStorage();
       }
-
-      _notifyListeners();
 
     } catch (e) {
       debugPrint('❌ Ошибка загрузки уведомлений: $e');
@@ -82,7 +69,7 @@ class NotificationService {
   }
 
   /// Сохранение уведомлений в локальное хранилище
-  Future<void> _saveNotifications() async {
+  Future<void> _saveNotificationsToStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notificationsJson = _notifications
@@ -90,7 +77,6 @@ class NotificationService {
           .toList();
 
       await prefs.setStringList(_notificationsKey, notificationsJson);
-
     } catch (e) {
       debugPrint('❌ Ошибка сохранения уведомлений: $e');
     }
@@ -99,15 +85,26 @@ class NotificationService {
   /// Добавление нового уведомления
   Future<void> addNotification(NotificationModel notification) async {
     try {
-      _notifications.insert(0, notification); // Добавляем в начало списка
+      // Проверяем, нет ли уже такого уведомления (по ID)
+      final existingIndex = _notifications.indexWhere((n) => n.id == notification.id);
+
+      if (existingIndex != -1) {
+        // Обновляем существующее
+        _notifications[existingIndex] = notification;
+      } else {
+        // Добавляем новое в начало списка
+        _notifications.insert(0, notification);
+      }
 
       // Ограничиваем количество уведомлений
       if (_notifications.length > 100) {
-        _notifications.removeLast();
+        _notifications.removeRange(100, _notifications.length);
       }
 
-      await _saveNotifications();
-      _notifyListeners();
+      await _saveNotificationsToStorage();
+
+      // Уведомляем слушателей об изменениях
+      _notificationsController.add(List.from(_notifications));
 
       debugPrint('✅ Уведомление добавлено: ${notification.title}');
 
@@ -116,25 +113,58 @@ class NotificationService {
     }
   }
 
-  /// Отметка уведомления как прочитанного
+  /// Создание и добавление уведомления (упрощенный метод)
+  Future<void> createNotification({
+    required String title,
+    required String message,
+    NotificationType type = NotificationType.general,
+    Map<String, dynamic> data = const {},
+  }) async {
+    final notification = NotificationModel(
+      id: _uuid.v4(),
+      title: title,
+      message: message,
+      type: type,
+      timestamp: DateTime.now(),
+      data: data,
+    );
+
+    await addNotification(notification);
+  }
+
+  /// Получение всех уведомлений
+  List<NotificationModel> getAllNotifications() {
+    return List.from(_notifications);
+  }
+
+  /// Получение непрочитанных уведомлений
+  List<NotificationModel> getUnreadNotifications() {
+    return _notifications.where((notification) => !notification.isRead).toList();
+  }
+
+  /// Количество непрочитанных уведомлений
+  int getUnreadCount() {
+    return _notifications.where((notification) => !notification.isRead).length;
+  }
+
+  /// Отметить уведомление как прочитанное
   Future<void> markAsRead(String notificationId) async {
     try {
       final index = _notifications.indexWhere((n) => n.id == notificationId);
 
       if (index != -1) {
         _notifications[index] = _notifications[index].copyWith(isRead: true);
-        await _saveNotifications();
-        _notifyListeners();
+        await _saveNotificationsToStorage();
+        _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Уведомление отмечено как прочитанное: $notificationId');
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка отметки уведомления как прочитанного: $e');
     }
   }
 
-  /// Отметка всех уведомлений как прочитанных
+  /// Отметить все уведомления как прочитанные
   Future<void> markAllAsRead() async {
     try {
       bool hasChanges = false;
@@ -147,12 +177,11 @@ class NotificationService {
       }
 
       if (hasChanges) {
-        await _saveNotifications();
-        _notifyListeners();
+        await _saveNotificationsToStorage();
+        _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Все уведомления отмечены как прочитанные');
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка отметки всех уведомлений как прочитанных: $e');
     }
@@ -162,15 +191,14 @@ class NotificationService {
   Future<void> removeNotification(String notificationId) async {
     try {
       final initialLength = _notifications.length;
-      _notifications.removeWhere((n) => n.id == notificationId);
+      _notifications.removeWhere((notification) => notification.id == notificationId);
 
       if (_notifications.length != initialLength) {
-        await _saveNotifications();
-        _notifyListeners();
+        await _saveNotificationsToStorage();
+        _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Уведомление удалено: $notificationId');
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка удаления уведомления: $e');
     }
@@ -180,11 +208,10 @@ class NotificationService {
   Future<void> clearAllNotifications() async {
     try {
       _notifications.clear();
-      await _saveNotifications();
-      _notifyListeners();
+      await _saveNotificationsToStorage();
+      _notificationsController.add(List.from(_notifications));
 
       debugPrint('✅ Все уведомления очищены');
-
     } catch (e) {
       debugPrint('❌ Ошибка очистки уведомлений: $e');
     }
@@ -192,48 +219,76 @@ class NotificationService {
 
   /// Получение уведомлений по типу
   List<NotificationModel> getNotificationsByType(NotificationType type) {
-    return _notifications.where((n) => n.type == type).toList();
+    return _notifications.where((notification) => notification.type == type).toList();
   }
 
-  /// Получение уведомлений за период
-  List<NotificationModel> getNotificationsForPeriod(DateTime startDate, DateTime endDate) {
-    return _notifications.where((n) =>
-    n.timestamp.isAfter(startDate) && n.timestamp.isBefore(endDate)
-    ).toList();
+  /// Добавление тестового уведомления (для разработки)
+  Future<void> addTestNotification() async {
+    await createNotification(
+      title: 'Тестовое уведомление',
+      message: 'Это тестовое уведомление для проверки работы системы',
+      type: NotificationType.general,
+      data: {
+        'test': true,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
   }
 
-  /// Уведомление слушателей об изменениях
-  void _notifyListeners() {
-    if (!_notificationsController.isClosed) {
-      _notificationsController.add(List.unmodifiable(_notifications));
-    }
+  /// Добавление уведомления о благоприятных условиях для рыбалки
+  Future<void> addFavorableConditionsNotification({
+    required int scorePoints,
+    required String bestTime,
+    Map<String, dynamic> additionalData = const {},
+  }) async {
+    await createNotification(
+      title: 'Отличные условия для рыбалки!',
+      message: 'Прогноз клева: $scorePoints баллов из 100. Лучшее время: $bestTime',
+      type: NotificationType.biteForecast,
+      data: {
+        'scorePoints': scorePoints,
+        'bestTime': bestTime,
+        ...additionalData,
+      },
+    );
   }
 
-  /// Создание быстрых уведомлений для тестирования
-  Future<void> addTestNotifications() async {
-    final testNotifications = [
-      NotificationModel(
-        id: 'test_1',
-        title: 'Добро пожаловать!',
-        message: 'Спасибо за использование Drift Notes!',
-        type: NotificationType.general,
-        timestamp: DateTime.now(),
-      ),
-      NotificationModel(
-        id: 'test_2',
-        title: 'Прогноз клева',
-        message: 'Сегодня отличные условия для рыбалки!',
-        type: NotificationType.biteForecast,
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-    ];
-
-    for (final notification in testNotifications) {
-      await addNotification(notification);
-    }
+  /// Добавление уведомления о изменении погоды
+  Future<void> addWeatherChangeNotification({
+    required String title,
+    required String description,
+    Map<String, dynamic> weatherData = const {},
+  }) async {
+    await createNotification(
+      title: title,
+      message: description,
+      type: NotificationType.weatherUpdate,
+      data: {
+        'weatherChange': true,
+        ...weatherData,
+      },
+    );
   }
 
-  /// Очистка ресурсов
+  /// Добавление напоминания о рыбалке
+  Future<void> addFishingReminder({
+    required String location,
+    required DateTime scheduledTime,
+    Map<String, dynamic> additionalData = const {},
+  }) async {
+    await createNotification(
+      title: 'Напоминание о рыбалке',
+      message: 'Запланированная рыбалка в $location',
+      type: NotificationType.fishingReminder,
+      data: {
+        'location': location,
+        'scheduledTime': scheduledTime.toIso8601String(),
+        ...additionalData,
+      },
+    );
+  }
+
+  /// Освобождение ресурсов
   void dispose() {
     _notificationsController.close();
   }
