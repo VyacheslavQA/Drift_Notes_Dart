@@ -909,5 +909,30 @@
   "dew_point": "Dew point",
   "low_pressure": "Low pressure",
   "normal_pressure": "Normal pressure",
-  "high_pressure": "High pressure"
+  "high_pressure": "High pressure",
+
+  ,
+  "excellent_activity": "Excellent activity",
+  "good_activity": "Good activity",
+  "moderate_activity": "Moderate activity",
+  "poor_activity": "Poor activity",
+  "very_poor_activity": "Very poor activity",
+
+  "excellent_conditions_recommendation": "Excellent conditions! Perfect time for fishing.",
+  "good_conditions_recommendation": "Good conditions for fishing.",
+  "moderate_conditions_recommendation": "Moderate conditions, worth trying.",
+  "poor_conditions_recommendation": "Conditions aren't great, but there's still a chance.",
+  "very_poor_conditions_recommendation": "Poor conditions for fishing.",
+
+  "low_pressure_tip": "Fish at depth during low pressure",
+  "good_wind_tip": "Good wind - fish from the windward side",
+  "calm_weather_tip": "Use light lures in calm weather",
+  "golden_hour_tip": "Golden hour - use active lures",
+  "cold_weather_tip": "Fish are less active in cold weather - slow down your retrieve",
+
+  "sunrise_activity_reason": "Morning fish activity",
+  "sunset_activity_reason": "Evening fish activity",
+
+  "morning_bait_recommendation": "Use bright colored lures",
+  "evening_bait_recommendation": "Try surface lures"
 }
