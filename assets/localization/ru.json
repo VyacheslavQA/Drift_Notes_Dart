@@ -1020,5 +1020,51 @@
 
   "humidity_optimal": "Оптимальная влажность для клева",
   "humidity_low": "Низкая влажность",
-  "humidity_high": "Высокая влажность"
+  "humidity_high": "Высокая влажность",
+
+  "weather_notifications": "Уведомления о погоде",
+  "weather_notifications_desc": "Получайте уведомления об изменениях погоды и благоприятных условиях для рыбалки",
+  "general_settings": "Основные настройки",
+  "notification_types": "Типы уведомлений",
+  "threshold_settings": "Настройки порогов",
+  "time_settings": "Настройки времени",
+
+  "pressure_change_notifications": "Изменение давления",
+  "pressure_change_notifications_desc": "Уведомления при значительном изменении атмосферного давления",
+  "favorable_conditions_notifications": "Благоприятные условия",
+  "favorable_conditions_notifications_desc": "Уведомления при отличных условиях для рыбалки",
+  "storm_warning_notifications": "Предупреждения о непогоде",
+  "storm_warning_notifications_desc": "Предупреждения о грозе, сильном ветре и других опасных условиях",
+  "daily_forecast_notifications": "Ежедневный прогноз",
+  "daily_forecast_notifications_desc": "Утренний прогноз клева на день",
+  "bite_activity_notifications": "Активность клева",
+  "bite_activity_notifications_desc": "Уведомления о высокой активности рыбы",
+  "wind_change_notifications": "Изменение ветра",
+  "wind_change_notifications_desc": "Уведомления при значительном изменении силы ветра",
+  "temperature_change_notifications": "Изменение температуры",
+  "temperature_change_notifications_desc": "Уведомления при резком изменении температуры",
+
+  "pressure_threshold": "Порог изменения давления",
+  "pressure_threshold_desc": "Минимальное изменение давления для отправки уведомления",
+  "temperature_threshold": "Порог изменения температуры",
+  "temperature_threshold_desc": "Минимальное изменение температуры для отправки уведомления",
+  "wind_threshold": "Порог изменения ветра",
+  "wind_threshold_desc": "Минимальное изменение скорости ветра для отправки уведомления",
+
+  "daily_forecast_time": "Время ежедневного прогноза",
+  "daily_forecast_time_desc": "Время отправки утреннего прогноза клева",
+
+  "check_weather_now": "Проверить погоду сейчас",
+  "send_daily_forecast": "Отправить прогноз дня",
+  "weather_check_completed": "Проверка погоды завершена",
+  "daily_forecast_sent": "Ежедневный прогноз отправлен",
+  "settings_saved": "Настройки сохранены",
+
+  "weather_alert_pressure_change": "Изменение давления",
+  "weather_alert_favorable_conditions": "Отличные условия для рыбалки!",
+  "weather_alert_storm_warning": "Предупреждение о погоде",
+  "weather_alert_daily_forecast": "Прогноз рыбалки на сегодня",
+  "weather_alert_bite_activity": "Высокая активность клева",
+  "weather_alert_wind_change": "Изменение ветра",
+  "weather_alert_temperature_change": "Изменение температуры"
 }

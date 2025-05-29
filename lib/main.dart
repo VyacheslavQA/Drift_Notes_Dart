@@ -22,6 +22,7 @@ import 'services/offline/offline_storage_service.dart';
 import 'services/offline/sync_service.dart';
 import 'utils/network_utils.dart';
 import 'config/api_keys.dart';
+import 'services/weather_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,11 +36,13 @@ void main() async {
   // Инициализация локали для форматирования дат
   await initializeDateFormatting('ru_RU', null);
   await initializeDateFormatting('en_US', null);
+  await WeatherNotificationService().initialize();
 
   // Устанавливаем ориентацию экрана только на портретный режим
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
+
   ]);
 
   // Настройка системного UI (статус бар и навигационная панель)

@@ -1019,5 +1019,51 @@
 
   "humidity_optimal": "Optimal humidity for bite",
   "humidity_low": "Low humidity",
-  "humidity_high": "High humidity"
+  "humidity_high": "High humidity",
+
+  "weather_notifications": "Weather Notifications",
+  "weather_notifications_desc": "Receive notifications about weather changes and favorable fishing conditions",
+  "general_settings": "General Settings",
+  "notification_types": "Notification Types",
+  "threshold_settings": "Threshold Settings",
+  "time_settings": "Time Settings",
+
+  "pressure_change_notifications": "Pressure Changes",
+  "pressure_change_notifications_desc": "Notifications for significant atmospheric pressure changes",
+  "favorable_conditions_notifications": "Favorable Conditions",
+  "favorable_conditions_notifications_desc": "Notifications for excellent fishing conditions",
+  "storm_warning_notifications": "Storm Warnings",
+  "storm_warning_notifications_desc": "Warnings about thunderstorms, strong winds and other dangerous conditions",
+  "daily_forecast_notifications": "Daily Forecast",
+  "daily_forecast_notifications_desc": "Morning bite forecast for the day",
+  "bite_activity_notifications": "Bite Activity",
+  "bite_activity_notifications_desc": "Notifications about high fish activity",
+  "wind_change_notifications": "Wind Changes",
+  "wind_change_notifications_desc": "Notifications for significant wind speed changes",
+  "temperature_change_notifications": "Temperature Changes",
+  "temperature_change_notifications_desc": "Notifications for sudden temperature changes",
+
+  "pressure_threshold": "Pressure Change Threshold",
+  "pressure_threshold_desc": "Minimum pressure change to trigger notification",
+  "temperature_threshold": "Temperature Change Threshold",
+  "temperature_threshold_desc": "Minimum temperature change to trigger notification",
+  "wind_threshold": "Wind Change Threshold",
+  "wind_threshold_desc": "Minimum wind speed change to trigger notification",
+
+  "daily_forecast_time": "Daily Forecast Time",
+  "daily_forecast_time_desc": "Time to send morning bite forecast",
+
+  "check_weather_now": "Check Weather Now",
+  "send_daily_forecast": "Send Daily Forecast",
+  "weather_check_completed": "Weather check completed",
+  "daily_forecast_sent": "Daily forecast sent",
+  "settings_saved": "Settings saved",
+
+  "weather_alert_pressure_change": "Pressure Change",
+  "weather_alert_favorable_conditions": "Excellent Fishing Conditions!",
+  "weather_alert_storm_warning": "Weather Warning",
+  "weather_alert_daily_forecast": "Today's Fishing Forecast",
+  "weather_alert_bite_activity": "High Bite Activity",
+  "weather_alert_wind_change": "Wind Change",
+  "weather_alert_temperature_change": "Temperature Change"
 }
