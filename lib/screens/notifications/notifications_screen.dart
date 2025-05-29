@@ -562,7 +562,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.general:
         return Icons.notifications;
       case NotificationType.fishingReminder:
-        return Icons.fishing;
+        return Icons.catching_pokemon; // или Icons.anchor
       case NotificationType.biteForecast:
         return Icons.show_chart;
       case NotificationType.weatherUpdate:
