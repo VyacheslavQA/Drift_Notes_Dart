@@ -11,6 +11,8 @@ import '../../services/weather/weather_api_service.dart';
 import '../../localization/app_localizations.dart';
 import 'weather_detail_screen.dart';
 import '../../services/fishing_forecast_service.dart';
+import '../../widgets/weather_charts.dart';
+import '../../widgets/bite_activity_chart.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
