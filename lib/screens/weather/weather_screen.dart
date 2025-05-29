@@ -10,6 +10,8 @@ import '../../services/weather/weather_api_service.dart';
 import '../../localization/app_localizations.dart';
 import 'weather_detail_screen.dart';
 import '../../services/fishing_forecast_service.dart';
+import '../../widgets/weather_charts.dart';
+import '../../widgets/bite_activity_chart.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -241,6 +243,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 _buildHourlyForecast(),
                 const SizedBox(height: 24),
                 _buildBestTimeSection(),
+                const SizedBox(height: 24),
+                _buildChartsSection(),
                 const SizedBox(height: 24),
                 _buildDetailButton(),
                 const SizedBox(height: 100),
@@ -1383,6 +1387,63 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ],
         ),
       ),
+    );
+  }
+
+  // Секция с графиками
+  Widget _buildChartsSection() {
+    final localizations = AppLocalizations.of(context);
+
+    return Column(
+      children: [
+        // График активности клева
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.analytics,
+                    color: AppConstants.textColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    localizations.translate('bite_activity'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              BiteActivityChart(
+                fishingForecast: _fishingForecast,
+                weatherData: _currentWeather,
+                height: 220,
+                showTitle: false,
+                showLegend: true,
+                isInteractive: true,
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // График давления
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: PressureChart(
+            weatherData: _currentWeather!,
+            height: 200,
+          ),
+        ),
+      ],
     );
   }
 
