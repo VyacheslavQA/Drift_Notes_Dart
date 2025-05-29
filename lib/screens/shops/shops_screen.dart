@@ -168,7 +168,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: _buildFilterChip(
-                        label: spec.displayName,
+                        label: localizations.translate(spec.localizationKey),
                         icon: spec.icon,
                         isSelected: _selectedSpecialization == spec,
                         onTap: () => _onSpecializationFilterChanged(spec),
@@ -338,6 +338,8 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
   }
 
   Widget _buildShopCard(ShopModel shop) {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -368,7 +370,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Логотип магазина (placeholder пока)
+                // Логотип магазина
                 Container(
                   width: 60,
                   height: 60,
@@ -432,7 +434,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                shop.status.displayName,
+                                localizations.translate(shop.status.localizationKey),
                                 style: TextStyle(
                                   color: shop.status == ShopStatus.premium
                                       ? Colors.amber
@@ -458,7 +460,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          shop.specialization.displayName,
+                          localizations.translate(shop.specialization.localizationKey),
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 12,
@@ -469,9 +471,9 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
 
                       const SizedBox(height: 8),
 
-                      // Описание
+                      // Описание (теперь переводится)
                       Text(
-                        shop.description,
+                        localizations.translate(shop.description),
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 14,
@@ -491,17 +493,17 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                           if (shop.hasOnlineStore)
                             _buildFeatureChip(
                               Icons.shopping_cart,
-                              'Интернет-магазин',
+                              localizations.translate('internet_store'),
                             ),
                           if (shop.hasDelivery)
                             _buildFeatureChip(
                               Icons.local_shipping,
-                              'Доставка',
+                              localizations.translate('delivery_service'),
                             ),
                           if (shop.services.isNotEmpty)
                             _buildFeatureChip(
                               Icons.build,
-                              'Услуги',
+                              localizations.translate('shop_services'),
                             ),
                         ],
                       ),

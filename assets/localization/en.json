@@ -869,5 +869,22 @@
   "good_fishing_conditions": "Good fishing conditions. Worth trying!",
   "average_fishing_conditions": "Average conditions. Fish may bite, but not very actively.",
   "poor_fishing_conditions": "Poor fishing conditions. Better wait for more favorable weather.",
-  "bad_fishing_conditions": "Unfavorable fishing conditions. Recommended to postpone the trip."
+  "bad_fishing_conditions": "Unfavorable fishing conditions. Recommended to postpone the trip.",
+
+  "internet_store": "Online Store",
+  "delivery_service": "Delivery",
+  "shop_services": "Services",
+  "consultation_on_tackle": "Tackle consultation",
+  "kit_selection": "Kit selection",
+  "fishing_technique_advice": "Fishing technique advice",
+  "wide_assortment": "Wide assortment",
+  "specialized_store": "Specialized store",
+  "carp_rods": "Carp rods",
+  "carp_reels": "Carp reels",
+  "baits_and_boilies": "Baits and boilies",
+  "bite_alarms": "Bite alarms",
+  "rod_pods": "Rod pods and stands",
+  "carp_accessories": "Carp fishing accessories",
+  "keepnets_and_sacks": "Keepnets and sacks",
+  "rigs_and_tackle": "Rigs and tackle"
 }

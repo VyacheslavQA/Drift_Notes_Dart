@@ -15,24 +15,24 @@ class ShopService {
       ShopModel(
         id: 'mastercarp_1',
         name: 'MasterCarp',
-        description: 'Специализированный магазин товаров для карповой рыбалки. Широкий ассортимент снастей, прикормок и аксессуаров для успешной карповой ловли.',
+        description: 'specialized_store', // Ключ локализации
         website: 'https://master-carp.kz',
-        logoUrl: 'assets/shops/mastercarp_logo.png', // Здесь будет ваш логотип
+        logoUrl: 'assets/shops/mastercarp_logo.png',
         categories: [
-          'Карповые удилища',
-          'Катушки для карпа',
-          'Прикормки и бойлы',
-          'Сигнализаторы поклевки',
-          'Подставки и род-поды',
-          'Аксессуары для карпфишинга',
-          'Садки и мешки',
-          'Снасти и оснастки',
+          'carp_rods',
+          'carp_reels',
+          'baits_and_boilies',
+          'bite_alarms',
+          'rod_pods',
+          'carp_accessories',
+          'keepnets_and_sacks',
+          'rigs_and_tackle',
         ],
         specialization: ShopSpecialization.carpFishing,
         services: [
-          'Консультации по снастям',
-          'Подбор комплектов',
-          'Советы по технике ловли',
+          'consultation_on_tackle',
+          'kit_selection',
+          'fishing_technique_advice',
         ],
         hasDelivery: true,
         hasOnlineStore: true,
@@ -47,10 +47,10 @@ class ShopService {
       // ShopModel(
       //   id: 'fishing_world_1',
       //   name: 'Мир Рыбалки',
-      //   description: 'Универсальный магазин рыболовных товаров',
+      //   description: 'universal_fishing_store',
       //   website: 'https://example.com',
       //   logoUrl: 'assets/images/shops/fishing_world_logo.png',
-      //   categories: ['Спиннинги', 'Катушки', 'Приманки'],
+      //   categories: ['spinning_rods', 'reels', 'lures'],
       //   specialization: ShopSpecialization.universal,
       //   hasDelivery: true,
       //   hasOnlineStore: true,
@@ -68,16 +68,13 @@ class ShopService {
     }
   }
 
-  // Поиск магазинов по названию
+  // Поиск магазинов по названию (теперь поиск только по имени, так как описание - ключ локализации)
   List<ShopModel> searchShops(String query) {
     if (query.isEmpty) return getAllShops();
 
     final lowercaseQuery = query.toLowerCase();
     return getAllShops().where((shop) =>
-    shop.name.toLowerCase().contains(lowercaseQuery) ||
-        shop.description.toLowerCase().contains(lowercaseQuery) ||
-        shop.categories.any((category) =>
-            category.toLowerCase().contains(lowercaseQuery))
+        shop.name.toLowerCase().contains(lowercaseQuery)
     ).toList();
   }
 
@@ -118,7 +115,7 @@ class ShopService {
     return stats;
   }
 
-  // Получить все уникальные категории товаров
+  // Получить все уникальные категории товаров (теперь возвращаем ключи локализации)
   List<String> getAllCategories() {
     final categories = <String>{};
 
@@ -129,12 +126,10 @@ class ShopService {
     return categories.toList()..sort();
   }
 
-  // Получить магазины по категории товаров
-  List<ShopModel> getShopsByCategory(String category) {
+  // Получить магазины по категории товаров (поиск по ключам локализации)
+  List<ShopModel> getShopsByCategory(String categoryKey) {
     return getAllShops().where((shop) =>
-        shop.categories.any((shopCategory) =>
-            shopCategory.toLowerCase().contains(category.toLowerCase())
-        )
+        shop.categories.contains(categoryKey)
     ).toList();
   }
 }

@@ -96,7 +96,7 @@ class ShopDetailScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип - ИСПРАВЛЕНО
+              // Логотип
               Container(
                 width: 80,
                 height: 80,
@@ -157,7 +157,7 @@ class ShopDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        shop.specialization.displayName,
+                        localizations.translate(shop.specialization.localizationKey),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 14,
@@ -195,7 +195,7 @@ class ShopDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              shop.status.displayName,
+                              localizations.translate(shop.status.localizationKey),
                               style: TextStyle(
                                 color: shop.status == ShopStatus.premium
                                     ? Colors.amber
@@ -221,17 +221,17 @@ class ShopDetailScreen extends StatelessWidget {
             children: [
               _buildFeatureItem(
                 icon: Icons.shopping_cart,
-                label: localizations.translate('online_store'),
+                label: localizations.translate('internet_store'),
                 isActive: shop.hasOnlineStore,
               ),
               _buildFeatureItem(
                 icon: Icons.local_shipping,
-                label: localizations.translate('delivery'),
+                label: localizations.translate('delivery_service'),
                 isActive: shop.hasDelivery,
               ),
               _buildFeatureItem(
                 icon: Icons.build,
-                label: localizations.translate('services'),
+                label: localizations.translate('shop_services'),
                 isActive: shop.services.isNotEmpty,
               ),
             ],
@@ -308,7 +308,7 @@ class ShopDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            shop.description,
+            localizations.translate(shop.description), // Теперь переводится
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 16,
@@ -349,7 +349,7 @@ class ShopDetailScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: shop.categories.map((category) =>
+            children: shop.categories.map((categoryKey) =>
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -364,7 +364,7 @@ class ShopDetailScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    category,
+                    localizations.translate(categoryKey), // Переводим категории
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 14,
@@ -395,7 +395,7 @@ class ShopDetailScreen extends StatelessWidget {
               Icon(Icons.build, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
-                localizations.translate('services'),
+                localizations.translate('shop_services'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
@@ -405,7 +405,7 @@ class ShopDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...shop.services.map((service) =>
+          ...shop.services.map((serviceKey) =>
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -419,7 +419,7 @@ class ShopDetailScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        service,
+                        localizations.translate(serviceKey), // Переводим услуги
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.8),
                           fontSize: 14,

@@ -870,5 +870,22 @@
   "good_fishing_conditions": "Хорошие условия для рыбалки. Стоит попробовать!",
   "average_fishing_conditions": "Средние условия. Рыба может клевать, но не очень активно.",
   "poor_fishing_conditions": "Слабые условия для рыбалки. Лучше подождать более благоприятной погоды.",
-  "bad_fishing_conditions": "Неблагоприятные условия для рыбалки. Рекомендуется отложить выезд."
+  "bad_fishing_conditions": "Неблагоприятные условия для рыбалки. Рекомендуется отложить выезд.",
+
+  "internet_store": "Интернет-магазин",
+  "delivery_service": "Доставка",
+  "shop_services": "Услуги",
+  "consultation_on_tackle": "Консультации по снастям",
+  "kit_selection": "Подбор комплектов",
+  "fishing_technique_advice": "Советы по технике ловли",
+  "wide_assortment": "Широкий ассортимент",
+  "specialized_store": "Специализированный магазин",
+  "carp_rods": "Карповые удилища",
+  "carp_reels": "Катушки для карпа",
+  "baits_and_boilies": "Прикормки и бойлы",
+  "bite_alarms": "Сигнализаторы поклевки",
+  "rod_pods": "Подставки и род-поды",
+  "carp_accessories": "Аксессуары для карпфишинга",
+  "keepnets_and_sacks": "Садки и мешки",
+  "rigs_and_tackle": "Снасти и оснастки"
 }
