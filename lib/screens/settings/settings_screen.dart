@@ -11,6 +11,7 @@ import '../../localization/app_localizations.dart';
 import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
+import 'weather_notifications_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -466,6 +467,31 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                       context,
                       MaterialPageRoute(
                         builder: (context) => const LanguageSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // НОВАЯ СЕКЦИЯ: Уведомления
+              _buildSectionHeader(localizations.translate('notifications')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.notifications_active, color: Colors.amber),
+                  title: Text(localizations.translate('weather_notifications')),
+                  subtitle: Text(localizations.translate('weather_notifications_desc')),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WeatherNotificationsSettingsScreen(),
                       ),
                     );
                   },

@@ -20,6 +20,16 @@ class WeatherApiResponse {
           .toList() ?? [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'location': location.toJson(),
+      'current': current.toJson(),
+      'forecast': {
+        'forecastday': forecast.map((day) => day.toJson()).toList(),
+      },
+    };
+  }
 }
 
 class Location {
@@ -48,6 +58,17 @@ class Location {
       lon: (json['lon'] as num?)?.toDouble() ?? 0.0,
       tzId: json['tz_id']?.toString() ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'region': region,
+      'country': country,
+      'lat': lat,
+      'lon': lon,
+      'tz_id': tzId,
+    };
   }
 }
 
@@ -93,6 +114,22 @@ class Current {
       uv: (json['uv'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'temp_c': tempC,
+      'feelslike_c': feelslikeC,
+      'humidity': humidity,
+      'pressure_mb': pressureMb,
+      'wind_kph': windKph,
+      'wind_dir': windDir,
+      'condition': condition.toJson(),
+      'cloud': cloud,
+      'is_day': isDay,
+      'vis_km': visKm,
+      'uv': uv,
+    };
+  }
 }
 
 class Condition {
@@ -112,6 +149,14 @@ class Condition {
       icon: json['icon']?.toString() ?? '',
       code: (json['code'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'icon': icon,
+      'code': code,
+    };
   }
 }
 
@@ -138,6 +183,15 @@ class ForecastDay {
           .toList() ?? [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date,
+      'day': day.toJson(),
+      'astro': astro.toJson(),
+      'hour': hour.map((h) => h.toJson()).toList(),
+    };
+  }
 }
 
 class Day {
@@ -157,6 +211,14 @@ class Day {
       mintempC: (json['mintemp_c'] as num?)?.toDouble() ?? 0.0,
       condition: Condition.fromJson(json['condition'] ?? {}),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'maxtemp_c': maxtempC,
+      'mintemp_c': mintempC,
+      'condition': condition.toJson(),
+    };
   }
 }
 
@@ -190,6 +252,18 @@ class Hour {
       chanceOfRain: (json['chance_of_rain'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'time': time,
+      'temp_c': tempC,
+      'condition': condition.toJson(),
+      'wind_kph': windKph,
+      'wind_dir': windDir,
+      'humidity': humidity,
+      'chance_of_rain': chanceOfRain,
+    };
+  }
 }
 
 class Astro {
@@ -215,5 +289,15 @@ class Astro {
       moonset: json['moonset']?.toString() ?? '',
       moonPhase: json['moon_phase']?.toString() ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'sunrise': sunrise,
+      'sunset': sunset,
+      'moonrise': moonrise,
+      'moonset': moonset,
+      'moon_phase': moonPhase,
+    };
   }
 }
