@@ -888,5 +888,27 @@
   "carp_accessories": "Аксессуары для карпфишинга",
   "keepnets_and_sacks": "Садки и мешки",
   "rigs_and_tackle": "Снасти и оснастки",
-  "coming_soon": "скоро будет доступен"
+  "coming_soon": "скоро будет доступен",
+
+  "key_fishing_indicators": "Ключевые показатели для рыбалки",
+  "updated": "Обновлено",
+  "loading_weather": "Загрузка погоды...",
+  "weather_error": "Ошибка загрузки погоды",
+  "bite_forecast": "Прогноз клёва",
+  "points": "баллов",
+  "best_fishing_time_today": "Лучшее время для рыбалки сегодня",
+  "now": "Сейчас",
+  "excellent_for_fishing": "Отлично для рыбалки",
+  "good_for_fishing": "Хорошо для рыбалки",
+  "moderate_for_fishing": "Умеренно для рыбалки",
+  "difficult_for_fishing": "Сложно для рыбалки",
+  "dry_comfortable": "Сухо, комфортно",
+  "slightly_humid": "Слегка влажно",
+  "very_humid": "Очень влажно",
+  "morning_activity": "Утренняя активность",
+  "evening_activity": "Вечерняя активность",
+  "dew_point": "Точка росы",
+  "low_pressure": "Низкое давление",
+  "normal_pressure": "Нормальное давление",
+  "high_pressure": "Высокое давление"
 }

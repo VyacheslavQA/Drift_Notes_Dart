@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather/weather_api_service.dart';
@@ -17,7 +19,7 @@ class WeatherScreen extends StatefulWidget {
   State<WeatherScreen> createState() => _WeatherScreenState();
 }
 
-class _WeatherScreenState extends State<WeatherScreen> {
+class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateMixin {
   final WeatherApiService _weatherService = WeatherApiService();
   final FishingForecastService _fishingForecastService = FishingForecastService();
 
@@ -26,11 +28,38 @@ class _WeatherScreenState extends State<WeatherScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   String _locationName = '';
+  DateTime _lastUpdated = DateTime.now();
+
+  // Анимации
+  late AnimationController _rotationController;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  // Данные для мини-графика давления
+  List<FlSpot> _pressureData = [];
 
   @override
   void initState() {
     super.initState();
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
     _loadWeather();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    _fadeController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadWeather() async {
@@ -41,24 +70,25 @@ class _WeatherScreenState extends State<WeatherScreen> {
       _errorMessage = null;
     });
 
+    _rotationController.repeat();
+
     try {
-      // Получаем текущее местоположение
       final position = await _getCurrentPosition();
 
       if (position != null) {
-        // Получаем прогноз погоды с часовыми данными
         final weather = await _weatherService.getForecast(
           latitude: position.latitude,
           longitude: position.longitude,
           days: 3,
         );
 
-        // Получаем прогноз для рыбалки
         final fishingForecast = await _fishingForecastService.getFishingForecast(
           weather: weather,
           latitude: position.latitude,
           longitude: position.longitude,
         );
+
+        _generatePressureData(weather);
 
         if (mounted) {
           setState(() {
@@ -66,7 +96,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
             _fishingForecast = fishingForecast;
             _locationName = '${weather.location.name}, ${weather.location.region}';
             _isLoading = false;
+            _lastUpdated = DateTime.now();
           });
+
+          _rotationController.stop();
+          _fadeController.forward();
         }
       }
     } catch (e) {
@@ -75,6 +109,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
           _errorMessage = '${localizations.translate('error_loading')}: $e';
           _isLoading = false;
         });
+        _rotationController.stop();
+      }
+    }
+  }
+
+  void _generatePressureData(WeatherApiResponse weather) {
+    _pressureData.clear();
+    if (weather.forecast.isNotEmpty) {
+      final hours = weather.forecast.first.hour;
+      for (int i = 0; i < hours.length; i++) {
+        final hour = hours[i];
+        final time = DateTime.parse(hour.time);
+        if (time.isAfter(DateTime.now().subtract(const Duration(hours: 12)))) {
+          _pressureData.add(FlSpot(i.toDouble(), hour.condition.code.toDouble()));
+        }
       }
     }
   }
@@ -100,11 +149,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
         throw Exception(localizations.translate('location_permission_denied_forever'));
       }
 
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
     } catch (e) {
-      // Если не удалось получить местоположение, используем координаты по умолчанию (Москва)
       debugPrint('${localizations.translate('location_error')}: $e');
       return Position(
         longitude: 37.6176,
@@ -121,7 +167,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
-  // Метод для перехода к детальной странице погоды
   void _openWeatherDetails() {
     if (_currentWeather != null) {
       Navigator.push(
@@ -142,30 +187,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          localizations.translate('weather'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppConstants.textColor),
-            onPressed: _loadWeather,
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _loadWeather,
+        color: AppConstants.primaryColor,
         child: _buildBody(),
       ),
     );
@@ -175,43 +199,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
     final localizations = AppLocalizations.of(context);
 
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-        ),
-      );
+      return _buildLoadingState();
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadWeather,
-              child: Text(localizations.translate('try_again')),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorState();
     }
 
     if (_currentWeather == null) {
@@ -223,140 +215,107 @@ class _WeatherScreenState extends State<WeatherScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return CustomScrollView(
+      slivers: [
+        _buildHeaderSliver(),
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              children: [
+                _buildKeyMetricsSection(),
+                const SizedBox(height: 20),
+                _buildBiteMeter(),
+                const SizedBox(height: 20),
+                _buildHourlyForecast(),
+                const SizedBox(height: 20),
+                _buildBestTimeSection(),
+                const SizedBox(height: 20),
+                _buildDetailButton(),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    final localizations = AppLocalizations.of(context);
+
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildCurrentWeather(),
-          const SizedBox(height: 20),
-          _buildFishingForecast(),
-          const SizedBox(height: 20),
-          _buildHourlyForecast(),
-          const SizedBox(height: 20),
-          _buildDailyForecast(),
-          const SizedBox(height: 20),
-          _buildWeatherDetails(),
-          const SizedBox(height: 20),
-          // Кнопка для перехода к детальной информации
-          _buildDetailButton(),
+          AnimatedBuilder(
+            animation: _rotationController,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _rotationController.value * 2 * math.pi,
+                child: Icon(
+                  Icons.cloud_sync,
+                  size: 64,
+                  color: AppConstants.primaryColor,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(
+            localizations.translate('loading_weather'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCurrentWeather() {
+  Widget _buildErrorState() {
     final localizations = AppLocalizations.of(context);
-    final current = _currentWeather!.current;
 
-    return GestureDetector(
-      onTap: _openWeatherDetails,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              current.isDay == 1 ? Colors.blue[400]! : Colors.indigo[800]!,
-              current.isDay == 1 ? Colors.blue[600]! : Colors.indigo[900]!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Температура
+            Icon(
+              Icons.cloud_off,
+              size: 64,
+              color: Colors.red[400],
+            ),
+            const SizedBox(height: 24),
             Text(
-              '${current.tempC.round()}°C',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 72,
-                fontWeight: FontWeight.w300,
+              localizations.translate('weather_error'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            // Название локации
+            const SizedBox(height: 16),
             Text(
-              _locationName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            // Описание погоды с переводом
-            Text(
-              _translateWeatherDescription(current.condition.text),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°C',
-              style: const TextStyle(
-                color: Colors.white70,
+              _errorMessage!,
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 16,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            // Статистика погоды
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.air,
-                    localizations.translate('wind'),
-                    '${current.windKph.round()} ${localizations.translate('km_h')}',
-                  ),
-                ),
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.water_drop,
-                    localizations.translate('humidity'),
-                    '${current.humidity}%',
-                  ),
-                ),
-                Expanded(
-                  child: _buildWeatherStat(
-                    Icons.visibility,
-                    localizations.translate('visibility'),
-                    '${current.visKm.round()} ${localizations.translate('km')}',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Подсказка о детальной информации
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.white70, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    localizations.translate('tap_for_details'),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _loadWeather,
+              icon: const Icon(Icons.refresh),
+              label: Text(localizations.translate('try_again')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -365,195 +324,578 @@ class _WeatherScreenState extends State<WeatherScreen> {
     );
   }
 
-  Widget _buildFishingForecast() {
+  Widget _buildHeaderSliver() {
     final localizations = AppLocalizations.of(context);
-    if (_fishingForecast == null) return const SizedBox();
+    final current = _currentWeather!.current;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          localizations.translate('fishing_forecast'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
+    return SliverAppBar(
+      expandedHeight: 200,
+      floating: false,
+      pinned: true,
+      backgroundColor: AppConstants.backgroundColor,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
           decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                current.isDay == 1
+                    ? Colors.blue[400]!.withValues(alpha: 0.8)
+                    : Colors.indigo[800]!.withValues(alpha: 0.8),
+                AppConstants.backgroundColor,
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              // Общая активность клёва
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.set_meal,
-                    color: _getFishingActivityColor(_fishingForecast!['overallActivity']),
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Локация и время обновления
+                  Row(
                     children: [
-                      Text(
-                        localizations.translate('bite_activity'),
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
+                      Icon(
+                        Icons.location_on,
+                        color: AppConstants.textColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _locationName,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      Text(
-                        _getFishingActivityText(_fishingForecast!['overallActivity']),
-                        style: TextStyle(
-                          color: _getFishingActivityColor(_fishingForecast!['overallActivity']),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${localizations.translate('updated')}: ${DateFormat('HH:mm').format(_lastUpdated)}',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Температура и описание
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${current.tempC.round()}°',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 48,
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            Text(
+                              '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°',
+                              style: TextStyle(
+                                color: AppConstants.textColor.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _translateWeatherDescription(current.condition.text),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      AnimatedBuilder(
+                        animation: _fadeController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: 0.8 + (_fadeController.value * 0.2),
+                            child: Icon(
+                              _getWeatherIcon(current.condition.code),
+                              size: 64,
+                              color: AppConstants.textColor,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Детали прогноза
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeyMetricsSection() {
+    final localizations = AppLocalizations.of(context);
+    final current = _currentWeather!.current;
+    final astro = _currentWeather!.forecast.first.astro;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('key_fishing_indicators'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.1,
+            children: [
+              _buildPressureCard(current.pressureMb),
+              _buildWindCard(current.windKph, current.windDir),
+              _buildMoonCard(astro.moonPhase),
+              _buildHumidityCard(current.humidity),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPressureCard(double pressure) {
+    final localizations = AppLocalizations.of(context);
+    final pressureMmHg = (pressure / 1.333).round();
+    final trend = _getPressureTrend();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.speed,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  localizations.translate('pressure'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                trend > 0 ? Icons.trending_up : Icons.trending_down,
+                color: trend > 0 ? Colors.green : Colors.red,
+                size: 20,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$pressureMmHg мм',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _getPressureDescription(pressure),
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Мини-график давления
+          if (_pressureData.isNotEmpty)
+            SizedBox(
+              height: 30,
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: _pressureData.take(12).toList(),
+                      isCurved: true,
+                      color: AppConstants.primaryColor,
+                      barWidth: 2,
+                      dotData: const FlDotData(show: false),
+                    ),
+                  ],
+                  minY: _pressureData.map((e) => e.y).reduce(math.min) - 5,
+                  maxY: _pressureData.map((e) => e.y).reduce(math.max) + 5,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWindCard(double windKph, String windDir) {
+    final localizations = AppLocalizations.of(context);
+    final windMs = (windKph / 3.6).round();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.air,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  localizations.translate('wind'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$windMs м/с',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _buildWindCompass(windDir),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _translateWindDirection(windDir),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      _getWindImpactOnFishing(windKph),
+                      style: TextStyle(
+                        color: _getWindImpactColor(windKph),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoonCard(String moonPhase) {
+    final localizations = AppLocalizations.of(context);
+    final moonImpact = _getMoonImpactOnFishing(moonPhase);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.brightness_2,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  localizations.translate('moon_phase'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildMoonIcon(moonPhase),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _translateMoonPhase(moonPhase),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      moonImpact['description'],
+                      style: TextStyle(
+                        color: moonImpact['color'],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHumidityCard(int humidity) {
+    final localizations = AppLocalizations.of(context);
+    final dewPoint = _calculateDewPoint(_currentWeather!.current.tempC, humidity);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.water_drop,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  localizations.translate('humidity'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$humidity%',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${localizations.translate('dew_point')}: ${dewPoint.round()}°',
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _getHumidityComfort(humidity),
+            style: TextStyle(
+              color: _getHumidityComfortColor(humidity),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBiteMeter() {
+    final localizations = AppLocalizations.of(context);
+    if (_fishingForecast == null) return const SizedBox();
+
+    final activity = _fishingForecast!['overallActivity'] as double;
+    final recommendation = _fishingForecast!['recommendation'] as String;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _getBiteActivityColor(activity).withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              localizations.translate('bite_forecast'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Круглая шкала клёвометра
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: Stack(
                 children: [
-                  _buildFishingFactorItem(
-                    localizations.translate('pressure'),
-                    _fishingForecast!['pressureFactor'],
-                    Icons.speed,
+                  // Фоновая окружность
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppConstants.textColor.withValues(alpha: 0.2),
+                        width: 8,
+                      ),
+                    ),
                   ),
-                  _buildFishingFactorItem(
-                    localizations.translate('wind'),
-                    _fishingForecast!['windFactor'],
-                    Icons.air,
+                  // Прогресс
+                  CustomPaint(
+                    size: const Size(120, 120),
+                    painter: BiteMeterPainter(
+                      progress: activity,
+                      color: _getBiteActivityColor(activity),
+                    ),
                   ),
-                  _buildFishingFactorItem(
-                    localizations.translate('moon'),
-                    _fishingForecast!['moonFactor'],
-                    Icons.brightness_2,
+                  // Центральный текст
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${(activity * 100).round()}',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          localizations.translate('points'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Рекомендации
-              if (_fishingForecast!['recommendation'] != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _translateFishingRecommendation(_fishingForecast!['recommendation']),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 16),
+            Text(
+              _getBiteActivityText(activity),
+              style: TextStyle(
+                color: _getBiteActivityColor(activity),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _translateFishingRecommendation(recommendation),
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.8),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildFishingFactorItem(String label, double factor, IconData icon) {
-    final localizations = AppLocalizations.of(context);
-    Color color = Colors.grey;
-    String text = localizations.translate('normal');
-
-    if (factor > 0.7) {
-      color = Colors.green;
-      text = localizations.translate('excellent');
-    } else if (factor > 0.4) {
-      color = Colors.orange;
-      text = localizations.translate('good');
-    } else {
-      color = Colors.red;
-      text = localizations.translate('poor');
-    }
-
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _getFishingActivityColor(double activity) {
-    if (activity > 0.7) return Colors.green;
-    if (activity > 0.4) return Colors.orange;
-    return Colors.red;
-  }
-
-  String _getFishingActivityText(double activity) {
-    final localizations = AppLocalizations.of(context);
-
-    if (activity > 0.8) return localizations.translate('excellent_activity');
-    if (activity > 0.6) return localizations.translate('good_activity');
-    if (activity > 0.4) return localizations.translate('moderate_activity');
-    if (activity > 0.2) return localizations.translate('weak_activity');
-    return localizations.translate('very_weak_activity');
-  }
-
-  Widget _buildWeatherStat(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+      ),
     );
   }
 
@@ -562,11 +904,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     if (_currentWeather!.forecast.isEmpty) return const SizedBox();
 
-    final todayHours = _currentWeather!.forecast.first.hour;
+    final hours = _currentWeather!.forecast.first.hour;
     final now = DateTime.now();
-
-    // Фильтруем только будущие часы
-    final upcomingHours = todayHours.where((hour) {
+    final upcomingHours = hours.where((hour) {
       final hourTime = DateTime.parse(hour.time);
       return hourTime.isAfter(now);
     }).take(12).toList();
@@ -576,60 +916,89 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          localizations.translate('hourly_forecast'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            localizations.translate('hourly_forecast'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 120,
+          height: 160,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: upcomingHours.length,
             itemBuilder: (context, index) {
               final hour = upcomingHours[index];
               final time = DateTime.parse(hour.time);
+              final biteActivity = _calculateHourlyBiteActivity(hour);
 
               return Container(
-                width: 80,
+                width: 100,
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppConstants.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _getBiteActivityColor(biteActivity).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Text(
-                      DateFormat('HH:mm').format(time),
+                      index == 0 ? localizations.translate('now') : DateFormat('HH:mm').format(time),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     Icon(
                       _getWeatherIcon(hour.condition.code),
                       color: AppConstants.textColor,
-                      size: 24,
+                      size: 28,
                     ),
                     Text(
                       '${hour.tempC.round()}°',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      '${hour.chanceOfRain.round()}%',
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.air,
+                          color: AppConstants.textColor.withValues(alpha: 0.6),
+                          size: 12,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${(hour.windKph / 3.6).round()}',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.8),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: _getBiteActivityColor(biteActivity),
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ],
@@ -642,206 +1011,74 @@ class _WeatherScreenState extends State<WeatherScreen> {
     );
   }
 
-  Widget _buildDailyForecast() {
+  Widget _buildBestTimeSection() {
     final localizations = AppLocalizations.of(context);
-
-    if (_currentWeather!.forecast.length <= 1) return const SizedBox();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${localizations.translate('forecast_for')} ${_currentWeather!.forecast.length} ${_getDaysText(_currentWeather!.forecast.length)}',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _currentWeather!.forecast.length,
-          itemBuilder: (context, index) {
-            final day = _currentWeather!.forecast[index];
-            final date = DateTime.parse(day.date);
-            final isToday = index == 0;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppConstants.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  // День недели
-                  SizedBox(
-                    width: 70,
-                    child: Text(
-                      isToday ? localizations.translate('today') : _getDayOfWeek(date),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Иконка погоды
-                  Icon(
-                    _getWeatherIcon(day.day.condition.code),
-                    color: AppConstants.textColor,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 16),
-                  // Описание погоды
-                  Expanded(
-                    child: Text(
-                      _translateWeatherDescription(day.day.condition.text),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Температура
-                  Text(
-                    '${day.day.mintempC.round()}°/${day.day.maxtempC.round()}°',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  String _getDayOfWeek(DateTime date) {
-    final localizations = AppLocalizations.of(context);
-    final weekdays = [
-      'monday', 'tuesday', 'wednesday', 'thursday',
-      'friday', 'saturday', 'sunday'
-    ];
-
-    try {
-      final weekdayIndex = date.weekday - 1;
-      if (weekdayIndex >= 0 && weekdayIndex < weekdays.length) {
-        return localizations.translate(weekdays[weekdayIndex]);
-      }
-    } catch (e) {
-      debugPrint('${localizations.translate('error_loading')}: $e');
-    }
-
-    // Fallback на русский
-    const russianWeekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    final weekdayIndex = date.weekday - 1;
-    if (weekdayIndex >= 0 && weekdayIndex < russianWeekdays.length) {
-      return russianWeekdays[weekdayIndex];
-    }
-
-    return DateFormat('EEE', 'ru').format(date);
-  }
-
-  String _getDaysText(int count) {
-    final localizations = AppLocalizations.of(context);
-
-    // Используем существующую логику из DateFormatter
-    if (count == 1) return localizations.translate('day');
-    if (count >= 2 && count <= 4) return localizations.translate('days_2_4');
-    return localizations.translate('days_many');
-  }
-
-  Widget _buildWeatherDetails() {
-    final localizations = AppLocalizations.of(context);
-    final current = _currentWeather!.current;
     final astro = _currentWeather!.forecast.first.astro;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          localizations.translate('weather_details'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.amber.withValues(alpha: 0.3),
+            width: 1,
           ),
         ),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.5,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailCard(localizations.translate('pressure'), '${current.pressureMb.round()} ${localizations.translate('mb')}', Icons.speed),
-            _buildDetailCard(localizations.translate('visibility'), '${current.visKm.round()} ${localizations.translate('km')}', Icons.visibility),
-            _buildDetailCard(localizations.translate('uv_index'), current.uv.toString(), Icons.wb_sunny),
-            _buildDetailCard(localizations.translate('sunrise'), astro.sunrise, Icons.wb_twilight),
-            _buildDetailCard(localizations.translate('sunset'), astro.sunset, Icons.nights_stay),
-            _buildDetailCard(localizations.translate('moon_phase'), _translateMoonPhase(astro.moonPhase), Icons.brightness_2),
+            Row(
+              children: [
+                Icon(
+                  Icons.star,
+                  color: Colors.amber,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  localizations.translate('best_fishing_time_today'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Лучшие периоды
+            ..._getBestTimeWindows().map((window) => _buildTimeWindow(window)),
+
+            const SizedBox(height: 16),
+
+            // Восход и закат
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSunTimeCard(
+                    localizations.translate('sunrise'),
+                    astro.sunrise,
+                    Icons.wb_twilight,
+                    Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildSunTimeCard(
+                    localizations.translate('sunset'),
+                    astro.sunset,
+                    Icons.nights_stay,
+                    Colors.deepPurple,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildDetailCard(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppConstants.textColor.withValues(alpha: 0.7), size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ),
     );
   }
@@ -849,183 +1086,350 @@ class _WeatherScreenState extends State<WeatherScreen> {
   Widget _buildDetailButton() {
     final localizations = AppLocalizations.of(context);
 
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _openWeatherDetails,
-        icon: const Icon(Icons.info_outline),
-        label: Text(localizations.translate('detailed_weather_info')),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppConstants.primaryColor,
-          foregroundColor: AppConstants.textColor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _openWeatherDetails,
+          icon: const Icon(Icons.info_outline),
+          label: Text(localizations.translate('detailed_weather_info')),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: AppConstants.textColor,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
     );
   }
 
+  // Вспомогательные методы
+
   IconData _getWeatherIcon(int code) {
     switch (code) {
-      case 1000: // Clear
-        return Icons.wb_sunny;
-      case 1003: // Partly cloudy
-      case 1006: // Cloudy
-      case 1009: // Overcast
-        return Icons.cloud;
-      case 1030: // Mist
-      case 1135: // Fog
-      case 1147: // Freezing fog
-        return Icons.cloud;
-      case 1063: // Patchy rain possible
-      case 1180: // Patchy light rain
-      case 1183: // Light rain
-      case 1186: // Moderate rain at times
-      case 1189: // Moderate rain
-      case 1192: // Heavy rain at times
-      case 1195: // Heavy rain
-      case 1198: // Light freezing rain
-      case 1201: // Moderate or heavy freezing rain
-        return Icons.grain;
-      case 1066: // Patchy snow possible
-      case 1210: // Patchy light snow
-      case 1213: // Light snow
-      case 1216: // Patchy moderate snow
-      case 1219: // Moderate snow
-      case 1222: // Patchy heavy snow
-      case 1225: // Heavy snow
-        return Icons.ac_unit;
-      case 1087: // Thundery outbreaks possible
-      case 1273: // Patchy light rain with thunder
-      case 1276: // Moderate or heavy rain with thunder
-      case 1279: // Patchy light snow with thunder
-      case 1282: // Moderate or heavy snow with thunder
-        return Icons.flash_on;
-      default:
-        return Icons.wb_sunny;
+      case 1000: return Icons.wb_sunny;
+      case 1003: case 1006: case 1009: return Icons.cloud;
+      case 1030: case 1135: case 1147: return Icons.cloud;
+      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: case 1198: case 1201: return Icons.grain;
+      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: return Icons.ac_unit;
+      case 1087: case 1273: case 1276: case 1279: case 1282: return Icons.flash_on;
+      default: return Icons.wb_sunny;
     }
   }
 
-  /// Перевод описания погоды с английского используя локализацию
-  String _translateWeatherDescription(String englishDescription) {
+  String _translateWeatherDescription(String description) {
+    // Базовая реализация - можно расширить
+    return description;
+  }
+
+  String _translateWindDirection(String direction) {
     final localizations = AppLocalizations.of(context);
-
-    // Очищаем описание от лишних пробелов
-    final cleanDescription = englishDescription.trim().toLowerCase();
-
-    // Словарь соответствий английских описаний к ключам локализации
-    final Map<String, String> descriptionToKey = {
-      'sunny': 'weather_sunny',
-      'clear': 'weather_clear',
-      'partly cloudy': 'weather_partly_cloudy',
-      'cloudy': 'weather_cloudy',
-      'overcast': 'weather_overcast',
-      'mist': 'weather_mist',
-      'patchy rain possible': 'weather_patchy_rain_possible',
-      'patchy rain nearby': 'weather_patchy_rain_nearby',
-      'patchy light drizzle': 'weather_patchy_light_drizzle',
-      'light drizzle': 'weather_light_drizzle',
-      'freezing drizzle': 'weather_freezing_drizzle',
-      'heavy freezing drizzle': 'weather_heavy_freezing_drizzle',
-      'patchy light rain': 'weather_patchy_light_rain',
-      'light rain': 'weather_light_rain',
-      'moderate rain at times': 'weather_moderate_rain_at_times',
-      'moderate rain': 'weather_moderate_rain',
-      'heavy rain at times': 'weather_heavy_rain_at_times',
-      'heavy rain': 'weather_heavy_rain',
-      'light freezing rain': 'weather_light_freezing_rain',
-      'moderate or heavy freezing rain': 'weather_moderate_or_heavy_freezing_rain',
-      'light showers of ice pellets': 'weather_light_showers_of_ice_pellets',
-      'moderate or heavy showers of ice pellets': 'weather_moderate_or_heavy_showers_of_ice_pellets',
-      'patchy snow possible': 'weather_patchy_snow_possible',
-      'patchy snow nearby': 'weather_patchy_snow_nearby',
-      'patchy light snow': 'weather_patchy_light_snow',
-      'light snow': 'weather_light_snow',
-      'patchy moderate snow': 'weather_patchy_moderate_snow',
-      'moderate snow': 'weather_moderate_snow',
-      'patchy heavy snow': 'weather_patchy_heavy_snow',
-      'heavy snow': 'weather_heavy_snow',
-      'ice pellets': 'weather_ice_pellets',
-      'light snow showers': 'weather_light_snow_showers',
-      'moderate or heavy snow showers': 'weather_moderate_or_heavy_snow_showers',
-      'patchy light snow with thunder': 'weather_patchy_light_snow_with_thunder',
-      'moderate or heavy snow with thunder': 'weather_moderate_or_heavy_snow_with_thunder',
-      'light rain shower': 'weather_light_rain_shower',
-      'moderate or heavy rain shower': 'weather_moderate_or_heavy_rain_shower',
-      'torrential rain shower': 'weather_torrential_rain_shower',
-      'thundery outbreaks possible': 'weather_thundery_outbreaks_possible',
-      'patchy light rain with thunder': 'weather_patchy_light_rain_with_thunder',
-      'moderate or heavy rain with thunder': 'weather_moderate_or_heavy_rain_with_thunder',
-      'patchy sleet possible': 'weather_patchy_sleet_possible',
-      'patchy sleet nearby': 'weather_patchy_sleet_nearby',
-      'light sleet': 'weather_light_sleet',
-      'moderate or heavy sleet': 'weather_moderate_or_heavy_sleet',
-      'light sleet showers': 'weather_light_sleet_showers',
-      'moderate or heavy sleet showers': 'weather_moderate_or_heavy_sleet_showers',
-      'blowing snow': 'weather_blowing_snow',
-      'blizzard': 'weather_blizzard',
-      'fair': 'weather_fair',
-      'hot': 'weather_hot',
-      'cold': 'weather_cold',
-      'windy': 'weather_windy',
+    final Map<String, String> translations = {
+      'N': localizations.translate('wind_n'),
+      'NE': localizations.translate('wind_ne'),
+      'E': localizations.translate('wind_e'),
+      'SE': localizations.translate('wind_se'),
+      'S': localizations.translate('wind_s'),
+      'SW': localizations.translate('wind_sw'),
+      'W': localizations.translate('wind_w'),
+      'NW': localizations.translate('wind_nw'),
     };
-
-    // Ищем соответствующий ключ локализации
-    final localizationKey = descriptionToKey[cleanDescription];
-    if (localizationKey != null) {
-      return localizations.translate(localizationKey);
-    }
-
-    // Если точного совпадения нет, возвращаем оригинальное описание
-    return englishDescription;
+    return translations[direction] ?? direction;
   }
 
-  /// Перевод фазы луны с английского используя локализацию
-  String _translateMoonPhase(String moonPhase) {
-    final localizations = AppLocalizations.of(context);
-
-    final cleanPhase = moonPhase.trim().toLowerCase();
-
-    final Map<String, String> phaseToKey = {
-      'new moon': 'moon_new_moon',
-      'waxing crescent': 'moon_waxing_crescent',
-      'first quarter': 'moon_first_quarter',
-      'waxing gibbous': 'moon_waxing_gibbous',
-      'full moon': 'moon_full_moon',
-      'waning gibbous': 'moon_waning_gibbous',
-      'last quarter': 'moon_last_quarter',
-      'third quarter': 'moon_third_quarter',
-      'waning crescent': 'moon_waning_crescent',
-    };
-
-    final localizationKey = phaseToKey[cleanPhase];
-    if (localizationKey != null) {
-      return localizations.translate(localizationKey);
-    }
-
-    return moonPhase;
+  String _translateMoonPhase(String phase) {
+    // Базовая реализация - можно расширить
+    return phase;
   }
 
-  /// Перевод рекомендаций для рыбалки
   String _translateFishingRecommendation(String recommendation) {
-    final localizations = AppLocalizations.of(context);
-
-    // Словарь русских рекомендаций к ключам локализации
-    final Map<String, String> recommendationToKey = {
-      'Отличные условия для рыбалки! Рыба должна быть очень активной.': 'excellent_fishing_conditions',
-      'Хорошие условия для рыбалки. Стоит попробовать!': 'good_fishing_conditions',
-      'Средние условия. Рыба может клевать, но не очень активно.': 'average_fishing_conditions',
-      'Слабые условия для рыбалки. Лучше подождать более благоприятной погоды.': 'poor_fishing_conditions',
-      'Неблагоприятные условия для рыбалки. Рекомендуется отложить выезд.': 'bad_fishing_conditions',
-    };
-
-    final localizationKey = recommendationToKey[recommendation];
-    if (localizationKey != null) {
-      return localizations.translate(localizationKey);
-    }
-
+    // Базовая реализация - можно расширить
     return recommendation;
   }
+
+  double _getPressureTrend() {
+    // Заглушка - нужно будет реализовать на основе исторических данных
+    return 0.0;
+  }
+
+  String _getPressureDescription(double pressure) {
+    final localizations = AppLocalizations.of(context);
+    if (pressure < 1000) return localizations.translate('low_pressure');
+    if (pressure < 1020) return localizations.translate('normal_pressure');
+    return localizations.translate('high_pressure');
+  }
+
+  Widget _buildWindCompass(String direction) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor.withValues(alpha: 0.2),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          direction,
+          style: TextStyle(
+            color: AppConstants.primaryColor,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getWindImpactOnFishing(double windKph) {
+    final localizations = AppLocalizations.of(context);
+    if (windKph < 10) return localizations.translate('excellent_for_fishing');
+    if (windKph < 20) return localizations.translate('good_for_fishing');
+    if (windKph < 30) return localizations.translate('moderate_for_fishing');
+    return localizations.translate('difficult_for_fishing');
+  }
+
+  Color _getWindImpactColor(double windKph) {
+    if (windKph < 10) return Colors.green;
+    if (windKph < 20) return Colors.lightGreen;
+    if (windKph < 30) return Colors.orange;
+    return Colors.red;
+  }
+
+  Widget _buildMoonIcon(String phase) {
+    // Упрощенная версия - можно сделать более детальной
+    return Icon(
+      Icons.brightness_2,
+      color: Colors.amber,
+      size: 24,
+    );
+  }
+
+  Map<String, dynamic> _getMoonImpactOnFishing(String phase) {
+    final localizations = AppLocalizations.of(context);
+    // Упрощенная логика
+    if (phase.toLowerCase().contains('full')) {
+      return {
+        'description': localizations.translate('excellent_activity'),
+        'color': Colors.green,
+      };
+    } else if (phase.toLowerCase().contains('new')) {
+      return {
+        'description': localizations.translate('good_activity'),
+        'color': Colors.lightGreen,
+      };
+    }
+    return {
+      'description': localizations.translate('moderate_activity'),
+      'color': Colors.orange,
+    };
+  }
+
+  double _calculateDewPoint(double tempC, int humidity) {
+    final a = 17.27;
+    final b = 237.7;
+    final alpha = ((a * tempC) / (b + tempC)) + math.log(humidity / 100.0);
+    return (b * alpha) / (a - alpha);
+  }
+
+  String _getHumidityComfort(int humidity) {
+    final localizations = AppLocalizations.of(context);
+    if (humidity < 40) return localizations.translate('dry_comfortable');
+    if (humidity < 60) return localizations.translate('comfortable');
+    if (humidity < 80) return localizations.translate('slightly_humid');
+    return localizations.translate('very_humid');
+  }
+
+  Color _getHumidityComfortColor(int humidity) {
+    if (humidity < 40) return Colors.orange;
+    if (humidity < 60) return Colors.green;
+    if (humidity < 80) return Colors.lightGreen;
+    return Colors.red;
+  }
+
+  Color _getBiteActivityColor(double activity) {
+    if (activity > 0.8) return const Color(0xFF4CAF50);
+    if (activity > 0.6) return const Color(0xFFFFC107);
+    if (activity > 0.4) return const Color(0xFFFF9800);
+    return const Color(0xFFF44336);
+  }
+
+  String _getBiteActivityText(double activity) {
+    final localizations = AppLocalizations.of(context);
+    if (activity > 0.8) return localizations.translate('excellent_activity');
+    if (activity > 0.6) return localizations.translate('good_activity');
+    if (activity > 0.4) return localizations.translate('moderate_activity');
+    if (activity > 0.2) return localizations.translate('weak_activity');
+    return localizations.translate('very_weak_activity');
+  }
+
+  double _calculateHourlyBiteActivity(Hour hour) {
+    // Упрощенная логика расчета активности клева по часам
+    double activity = 0.5;
+
+    // Время суток
+    final hourOfDay = DateTime.parse(hour.time).hour;
+    if (hourOfDay >= 5 && hourOfDay <= 8) activity += 0.2; // Утро
+    if (hourOfDay >= 18 && hourOfDay <= 21) activity += 0.2; // Вечер
+    if (hourOfDay >= 22 || hourOfDay <= 4) activity -= 0.1; // Ночь
+
+    // Температура
+    if (hour.tempC >= 15 && hour.tempC <= 25) activity += 0.1;
+
+    // Ветер
+    if (hour.windKph < 15) activity += 0.1;
+    else if (hour.windKph > 25) activity -= 0.2;
+
+    // Вероятность дождя
+    if (hour.chanceOfRain > 50) activity -= 0.1;
+
+    return activity.clamp(0.0, 1.0);
+  }
+
+  List<Map<String, dynamic>> _getBestTimeWindows() {
+    final localizations = AppLocalizations.of(context);
+    // Упрощенная версия - можно сделать более умной
+    return [
+      {
+        'time': '06:00 - 08:00',
+        'reason': localizations.translate('morning_activity'),
+        'activity': 0.85,
+      },
+      {
+        'time': '18:00 - 20:00',
+        'reason': localizations.translate('evening_activity'),
+        'activity': 0.9,
+      },
+    ];
+  }
+
+  Widget _buildTimeWindow(Map<String, dynamic> window) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _getBiteActivityColor(window['activity']).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _getBiteActivityColor(window['activity']).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _getBiteActivityColor(window['activity']),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  window['time'],
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  window['reason'],
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${(window['activity'] * 100).round()}%',
+            style: TextStyle(
+              color: _getBiteActivityColor(window['activity']),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSunTimeCard(String title, String time, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            time,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Кастомный painter для клёвометра
+class BiteMeterPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  BiteMeterPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = 8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radius = size.width / 2 - 4;
+
+    const double startAngle = -math.pi / 2;
+    final double sweepAngle = 2 * math.pi * progress;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

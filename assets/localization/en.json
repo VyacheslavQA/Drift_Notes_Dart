@@ -887,5 +887,27 @@
   "carp_accessories": "Carp fishing accessories",
   "keepnets_and_sacks": "Keepnets and sacks",
   "rigs_and_tackle": "Rigs and tackle",
-  "coming_soon": "coming soon"
+  "coming_soon": "coming soon",
+
+  "key_fishing_indicators": "Key Fishing Indicators",
+  "updated": "Updated",
+  "loading_weather": "Loading weather...",
+  "weather_error": "Weather loading error",
+  "bite_forecast": "Bite Forecast",
+  "points": "points",
+  "best_fishing_time_today": "Best fishing time today",
+  "now": "Now",
+  "excellent_for_fishing": "Excellent for fishing",
+  "good_for_fishing": "Good for fishing",
+  "moderate_for_fishing": "Moderate for fishing",
+  "difficult_for_fishing": "Difficult for fishing",
+  "dry_comfortable": "Dry, comfortable",
+  "slightly_humid": "Slightly humid",
+  "very_humid": "Very humid",
+  "morning_activity": "Morning activity",
+  "evening_activity": "Evening activity",
+  "dew_point": "Dew point",
+  "low_pressure": "Low pressure",
+  "normal_pressure": "Normal pressure",
+  "high_pressure": "High pressure"
 }
