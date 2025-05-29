@@ -270,7 +270,7 @@ class _PressureChartState extends State<PressureChart> {
                     }
                   },
                   touchTooltipData: LineTouchTooltipData(
-                    backgroundColor: AppConstants.surfaceColor.withValues(alpha: 0.9),
+                    getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
                     tooltipBorder: BorderSide(
                       color: AppConstants.primaryColor.withValues(alpha: 0.5),
                       width: 1,
@@ -531,7 +531,7 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
                 lineTouchData: LineTouchData(
                   enabled: true,
                   touchTooltipData: LineTouchTooltipData(
-                    backgroundColor: AppConstants.surfaceColor.withValues(alpha: 0.9),
+                    getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
                     tooltipBorder: BorderSide(
                       color: AppConstants.primaryColor.withValues(alpha: 0.5),
                       width: 1,
