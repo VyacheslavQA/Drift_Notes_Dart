@@ -912,7 +912,7 @@
   "normal_pressure": "Нормальное давление",
   "high_pressure": "Высокое давление",
 
-  ,
+
   "excellent_activity": "Отличная активность",
   "good_activity": "Хорошая активность",
   "moderate_activity": "Умеренная активность",
@@ -935,5 +935,90 @@
   "sunset_activity_reason": "Вечерняя активность рыбы",
 
   "morning_bait_recommendation": "Используйте яркие приманки",
-  "evening_bait_recommendation": "Попробуйте поверхностные приманки"
+  "evening_bait_recommendation": "Попробуйте поверхностные приманки",
+
+  "excellent_conditions_recommendation": "Отличные условия! Самое время для рыбалки.",
+  "good_conditions_recommendation": "Хорошие условия для клева.",
+  "moderate_conditions_recommendation": "Умеренные условия, стоит попробовать.",
+  "poor_conditions_recommendation": "Условия не очень, но шанс есть.",
+  "very_poor_conditions_recommendation": "Плохие условия для рыбалки.",
+
+  "low_pressure_tip": "При низком давлении ловите на глубине",
+  "good_wind_tip": "Хороший ветер - ловите с наветренной стороны",
+  "calm_weather_tip": "В штиль используйте легкие приманки",
+  "golden_hour_tip": "Золотое время - используйте активные приманки",
+  "cold_weather_tip": "В холодную погоду рыба менее активна - замедлите проводку",
+
+  "sunrise_activity_reason": "Утренняя активность рыбы",
+  "sunset_activity_reason": "Вечерняя активность рыбы",
+
+  "morning_bait_recommendation": "Используйте яркие приманки",
+  "evening_bait_recommendation": "Попробуйте поверхностные приманки",
+
+  "pressure_trend_stable": "Стабильное",
+  "pressure_trend_rising": "Растет",
+  "pressure_trend_falling": "Падает",
+  "pressure_trend_rapidly_rising": "Быстро растет",
+  "pressure_trend_rapidly_falling": "Быстро падает",
+
+  "wind_impact_excellent": "Отлично для рыбалки",
+  "wind_impact_good": "Хорошо для рыбалки",
+  "wind_impact_moderate": "Умеренно для рыбалки",
+  "wind_impact_poor": "Сложно для рыбалки",
+  "wind_impact_very_poor": "Очень сложно для рыбалки",
+
+  "moon_impact_excellent": "Отличное влияние",
+  "moon_impact_good": "Хорошее влияние",
+  "moon_impact_moderate": "Умеренное влияние",
+  "moon_impact_poor": "Слабое влияние",
+
+  "bite_activity_excellent": "Отличная активность",
+  "bite_activity_good": "Хорошая активность",
+  "bite_activity_moderate": "Умеренная активность",
+  "bite_activity_poor": "Слабая активность",
+  "bite_activity_very_poor": "Очень слабая активность",
+
+  "fishing_conditions": "Условия для рыбалки",
+  "bite_forecast_title": "Прогноз клева",
+  "optimal_time_windows": "Оптимальное время",
+  "fishing_tips": "Советы для рыбалки",
+  "weather_factors": "Погодные факторы",
+  "pressure_analysis": "Анализ давления",
+  "wind_analysis": "Анализ ветра",
+  "moon_analysis": "Влияние луны",
+  "temperature_analysis": "Анализ температуры",
+
+  "hourly_bite_forecast": "Почасовой прогноз клева",
+  "bite_probability": "Вероятность клева",
+  "optimal_fishing_depth": "Оптимальная глубина ловли",
+  "recommended_baits": "Рекомендуемые приманки",
+  "fishing_technique": "Техника ловли",
+
+  "pressure_stable_good": "Стабильное давление благоприятно для клева",
+  "pressure_low_bad": "Низкое давление - рыба пассивна",
+  "pressure_high_bad": "Высокое давление - клев слабый",
+
+  "wind_optimal": "Оптимальный ветер для рыбалки",
+  "wind_calm": "Штиль - используйте легкие приманки",
+  "wind_strong": "Сильный ветер затрудняет рыбалку",
+
+  "moon_active_phase": "Активная фаза луны усиливает клев",
+  "moon_passive_phase": "Пассивная фаза луны",
+
+  "temperature_optimal": "Комфортная температура для рыбалки",
+  "temperature_cold": "Холодная погода - рыба малоактивна",
+  "temperature_hot": "Жаркая погода - рыба уходит на глубину",
+
+  "cloudiness_optimal": "Оптимальная облачность для рыбалки",
+  "rain_negative": "Дождь ухудшает клев",
+  "thunderstorm_dangerous": "Гроза - рыбалка опасна",
+
+  "golden_time": "Золотое время для рыбалки",
+  "good_time": "Хорошее время для клева",
+  "average_time": "Среднее время для рыбалки",
+  "poor_time": "Неблагоприятное время",
+
+  "humidity_optimal": "Оптимальная влажность для клева",
+  "humidity_low": "Низкая влажность",
+  "humidity_high": "Высокая влажность"
 }

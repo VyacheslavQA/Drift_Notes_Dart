@@ -911,7 +911,7 @@
   "normal_pressure": "Normal pressure",
   "high_pressure": "High pressure",
 
-  ,
+
   "excellent_activity": "Excellent activity",
   "good_activity": "Good activity",
   "moderate_activity": "Moderate activity",
@@ -934,5 +934,90 @@
   "sunset_activity_reason": "Evening fish activity",
 
   "morning_bait_recommendation": "Use bright colored lures",
-  "evening_bait_recommendation": "Try surface lures"
+  "evening_bait_recommendation": "Try surface lures",
+
+  "excellent_conditions_recommendation": "Excellent conditions! Perfect time for fishing.",
+  "good_conditions_recommendation": "Good conditions for fishing.",
+  "moderate_conditions_recommendation": "Moderate conditions, worth trying.",
+  "poor_conditions_recommendation": "Conditions aren't great, but there's still a chance.",
+  "very_poor_conditions_recommendation": "Poor conditions for fishing.",
+
+  "low_pressure_tip": "Fish at depth during low pressure",
+  "good_wind_tip": "Good wind - fish from the windward side",
+  "calm_weather_tip": "Use light lures in calm weather",
+  "golden_hour_tip": "Golden hour - use active lures",
+  "cold_weather_tip": "Fish are less active in cold weather - slow down your retrieve",
+
+  "sunrise_activity_reason": "Morning fish activity",
+  "sunset_activity_reason": "Evening fish activity",
+
+  "morning_bait_recommendation": "Use bright colored lures",
+  "evening_bait_recommendation": "Try surface lures",
+
+  "pressure_trend_stable": "Stable",
+  "pressure_trend_rising": "Rising",
+  "pressure_trend_falling": "Falling",
+  "pressure_trend_rapidly_rising": "Rapidly rising",
+  "pressure_trend_rapidly_falling": "Rapidly falling",
+
+  "wind_impact_excellent": "Excellent for fishing",
+  "wind_impact_good": "Good for fishing",
+  "wind_impact_moderate": "Moderate for fishing",
+  "wind_impact_poor": "Difficult for fishing",
+  "wind_impact_very_poor": "Very difficult for fishing",
+
+  "moon_impact_excellent": "Excellent influence",
+  "moon_impact_good": "Good influence",
+  "moon_impact_moderate": "Moderate influence",
+  "moon_impact_poor": "Poor influence",
+
+  "bite_activity_excellent": "Excellent activity",
+  "bite_activity_good": "Good activity",
+  "bite_activity_moderate": "Moderate activity",
+  "bite_activity_poor": "Poor activity",
+  "bite_activity_very_poor": "Very poor activity",
+
+  "fishing_conditions": "Fishing conditions",
+  "bite_forecast_title": "Bite forecast",
+  "optimal_time_windows": "Optimal time",
+  "fishing_tips": "Fishing tips",
+  "weather_factors": "Weather factors",
+  "pressure_analysis": "Pressure analysis",
+  "wind_analysis": "Wind analysis",
+  "moon_analysis": "Moon influence",
+  "temperature_analysis": "Temperature analysis",
+
+  "hourly_bite_forecast": "Hourly bite forecast",
+  "bite_probability": "Bite probability",
+  "optimal_fishing_depth": "Optimal fishing depth",
+  "recommended_baits": "Recommended baits",
+  "fishing_technique": "Fishing technique",
+
+  "pressure_stable_good": "Stable pressure is favorable for fishing",
+  "pressure_low_bad": "Low pressure - fish are passive",
+  "pressure_high_bad": "High pressure - weak bite",
+
+  "wind_optimal": "Optimal wind for fishing",
+  "wind_calm": "Calm weather - use light lures",
+  "wind_strong": "Strong wind makes fishing difficult",
+
+  "moon_active_phase": "Active moon phase enhances bite",
+  "moon_passive_phase": "Passive moon phase",
+
+  "temperature_optimal": "Comfortable temperature for fishing",
+  "temperature_cold": "Cold weather - fish are less active",
+  "temperature_hot": "Hot weather - fish go deeper",
+
+  "cloudiness_optimal": "Optimal cloudiness for fishing",
+  "rain_negative": "Rain worsens bite",
+  "thunderstorm_dangerous": "Thunderstorm - fishing is dangerous",
+
+  "golden_time": "Golden time for fishing",
+  "good_time": "Good time for bite",
+  "average_time": "Average time for fishing",
+  "poor_time": "Unfavorable time",
+
+  "humidity_optimal": "Optimal humidity for bite",
+  "humidity_low": "Low humidity",
+  "humidity_high": "High humidity"
 }

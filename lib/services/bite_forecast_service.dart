@@ -158,7 +158,7 @@ class BiteForecastService {
     if (windKph >= 3 && windKph <= 15) {
       value = 0.8;
       impact = FactorImpact.positive;
-      description = 'Оптимальный ветер для рыбалки';
+      description = 'Оптимальный ветер для рыбalки';
     } else if (windKph < 3) {
       value = 0.4;
       impact = FactorImpact.negative;
