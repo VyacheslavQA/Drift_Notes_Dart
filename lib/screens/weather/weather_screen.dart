@@ -880,165 +880,102 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   /// Перевод описания погоды с английского на русский
   String _translateWeatherDescription(String englishDescription) {
-    final translations = {
-      // Ясная погода
-      'Sunny': 'Солнечно',
-      'Clear': 'Ясно',
+    final localizations = AppLocalizations.of(context);
 
-      // Облачность (все варианты регистра)
-      'Partly cloudy': 'Переменная облачность',
-      'Partly Cloudy': 'Переменная облачность',
-      'PARTLY CLOUDY': 'Переменная облачность',
-      'Cloudy': 'Облачно',
-      'cloudy': 'Облачно',
-      'CLOUDY': 'Облачно',
-      'Overcast': 'Пасмурно',
-      'overcast': 'Пасмурно',
-      'OVERCAST': 'Пасмурно',
+    // Очищаем описание от лишних пробелов
+    final cleanDescription = englishDescription.trim().toLowerCase();
 
-      // Туман
-      'Mist': 'Дымка',
-      'mist': 'Дымка',
-      'Fog': 'Туман',
-      'fog': 'Туман',
-      'Freezing fog': 'Ледяной туман',
-      'freezing fog': 'Ледяной туман',
-
-      // Дождь - все варианты
-      'Patchy rain possible': 'Местами дождь',
-      'patchy rain possible': 'Местами дождь',
-      'Patchy rain nearby': 'Местами дождь поблизости',
-      'patchy rain nearby': 'Местами дождь поблизости',
-      'Patchy light drizzle': 'Местами легкая морось',
-      'patchy light drizzle': 'Местами легкая морось',
-      'Light drizzle': 'Легкая морось',
-      'light drizzle': 'Легкая морось',
-      'Freezing drizzle': 'Ледяная морось',
-      'freezing drizzle': 'Ледяная морось',
-      'Heavy freezing drizzle': 'Сильная ледяная морось',
-      'heavy freezing drizzle': 'Сильная ледяная морось',
-      'Patchy light rain': 'Местами легкий дождь',
-      'patchy light rain': 'Местами легкий дождь',
-      'Light rain': 'Легкий дождь',
-      'light rain': 'Легкий дождь',
-      'Moderate rain at times': 'Временами умеренный дождь',
-      'moderate rain at times': 'Временами умеренный дождь',
-      'Moderate rain': 'Умеренный дождь',
-      'moderate rain': 'Умеренный дождь',
-      'Heavy rain at times': 'Временами сильный дождь',
-      'heavy rain at times': 'Временами сильный дождь',
-      'Heavy rain': 'Сильный дождь',
-      'heavy rain': 'Сильный дождь',
-      'Light freezing rain': 'Легкий ледяной дождь',
-      'light freezing rain': 'Легкий ледяной дождь',
-      'Moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
-      'moderate or heavy freezing rain': 'Умеренный или сильный ледяной дождь',
-      'Light showers of ice pellets': 'Легкий ледяной дождь',
-      'light showers of ice pellets': 'Легкий ледяной дождь',
-      'Moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
-      'moderate or heavy showers of ice pellets': 'Умеренный или сильный ледяной дождь',
-
-      // Снег - все варианты
-      'Patchy snow possible': 'Местами снег',
-      'patchy snow possible': 'Местами снег',
-      'Patchy snow nearby': 'Местами снег поблизости',
-      'patchy snow nearby': 'Местами снег поблизости',
-      'Patchy light snow': 'Местами легкий снег',
-      'patchy light snow': 'Местами легкий снег',
-      'Light snow': 'Легкий снег',
-      'light snow': 'Легкий снег',
-      'Patchy moderate snow': 'Местами умеренный снег',
-      'patchy moderate snow': 'Местами умеренный снег',
-      'Moderate snow': 'Умеренный снег',
-      'moderate snow': 'Умеренный снег',
-      'Patchy heavy snow': 'Местами сильный снег',
-      'patchy heavy snow': 'Местами сильный снег',
-      'Heavy snow': 'Сильный снег',
-      'heavy snow': 'Сильный снег',
-      'Ice pellets': 'Ледяная крупа',
-      'ice pellets': 'Ледяная крупа',
-      'Light snow showers': 'Легкие снежные ливни',
-      'light snow showers': 'Легкие снежные ливни',
-      'Moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
-      'moderate or heavy snow showers': 'Умеренные или сильные снежные ливни',
-      'Patchy light snow with thunder': 'Местами легкий снег с грозой',
-      'patchy light snow with thunder': 'Местами легкий снег с грозой',
-      'Moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
-      'moderate or heavy snow with thunder': 'Умеренный или сильный снег с грозой',
-
-      // Дождь с ливнями
-      'Light rain shower': 'Легкий ливень',
-      'light rain shower': 'Легкий ливень',
-      'Moderate or heavy rain shower': 'Умеренный или сильный ливень',
-      'moderate or heavy rain shower': 'Умеренный или сильный ливень',
-      'Torrential rain shower': 'Проливной ливень',
-      'torrential rain shower': 'Проливной ливень',
-
-      // Гроза
-      'Thundery outbreaks possible': 'Возможны грозы',
-      'thundery outbreaks possible': 'Возможны грозы',
-      'Patchy light rain with thunder': 'Местами легкий дождь с грозой',
-      'patchy light rain with thunder': 'Местами легкий дождь с грозой',
-      'Moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
-      'moderate or heavy rain with thunder': 'Умеренный или сильный дождь с грозой',
-
-      // Град и мокрый снег
-      'Patchy sleet possible': 'Местами мокрый снег',
-      'patchy sleet possible': 'Местами мокрый снег',
-      'Patchy sleet nearby': 'Местами мокрый снег поблизости',
-      'patchy sleet nearby': 'Местами мокрый снег поблизости',
-      'Light sleet': 'Легкий мокрый снег',
-      'light sleet': 'Легкий мокрый снег',
-      'Moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
-      'moderate or heavy sleet': 'Умеренный или сильный мокрый снег',
-      'Light sleet showers': 'Легкие ливни с мокрым снегом',
-      'light sleet showers': 'Легкие ливни с мокрым снегом',
-      'Moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
-      'moderate or heavy sleet showers': 'Умеренные или сильные ливни с мокрым снегом',
-
-      // Другие условия
-      'Blowing snow': 'Метель',
-      'blowing snow': 'Метель',
-      'Blizzard': 'Буран',
-      'blizzard': 'Буран',
-
-      // Дополнительные варианты
-      'Fair': 'Ясно',
-      'fair': 'ясно',
-      'Hot': 'Жарко',
-      'hot': 'жарко',
-      'Cold': 'Холодно',
-      'cold': 'холодно',
-      'Windy': 'Ветрено',
-      'windy': 'ветрено',
+    // Словарь соответствий английских описаний к ключам локализации
+    final Map<String, String> descriptionToKey = {
+      'sunny': 'weather_sunny',
+      'clear': 'weather_clear',
+      'partly cloudy': 'weather_partly_cloudy',
+      'cloudy': 'weather_cloudy',
+      'overcast': 'weather_overcast',
+      'mist': 'weather_mist',
+      'patchy rain possible': 'weather_patchy_rain_possible',
+      'patchy rain nearby': 'weather_patchy_rain_nearby',
+      'patchy light drizzle': 'weather_patchy_light_drizzle',
+      'light drizzle': 'weather_light_drizzle',
+      'freezing drizzle': 'weather_freezing_drizzle',
+      'heavy freezing drizzle': 'weather_heavy_freezing_drizzle',
+      'patchy light rain': 'weather_patchy_light_rain',
+      'light rain': 'weather_light_rain',
+      'moderate rain at times': 'weather_moderate_rain_at_times',
+      'moderate rain': 'weather_moderate_rain',
+      'heavy rain at times': 'weather_heavy_rain_at_times',
+      'heavy rain': 'weather_heavy_rain',
+      'light freezing rain': 'weather_light_freezing_rain',
+      'moderate or heavy freezing rain': 'weather_moderate_or_heavy_freezing_rain',
+      'light showers of ice pellets': 'weather_light_showers_of_ice_pellets',
+      'moderate or heavy showers of ice pellets': 'weather_moderate_or_heavy_showers_of_ice_pellets',
+      'patchy snow possible': 'weather_patchy_snow_possible',
+      'patchy snow nearby': 'weather_patchy_snow_nearby',
+      'patchy light snow': 'weather_patchy_light_snow',
+      'light snow': 'weather_light_snow',
+      'patchy moderate snow': 'weather_patchy_moderate_snow',
+      'moderate snow': 'weather_moderate_snow',
+      'patchy heavy snow': 'weather_patchy_heavy_snow',
+      'heavy snow': 'weather_heavy_snow',
+      'ice pellets': 'weather_ice_pellets',
+      'light snow showers': 'weather_light_snow_showers',
+      'moderate or heavy snow showers': 'weather_moderate_or_heavy_snow_showers',
+      'patchy light snow with thunder': 'weather_patchy_light_snow_with_thunder',
+      'moderate or heavy snow with thunder': 'weather_moderate_or_heavy_snow_with_thunder',
+      'light rain shower': 'weather_light_rain_shower',
+      'moderate or heavy rain shower': 'weather_moderate_or_heavy_rain_shower',
+      'torrential rain shower': 'weather_torrential_rain_shower',
+      'thundery outbreaks possible': 'weather_thundery_outbreaks_possible',
+      'patchy light rain with thunder': 'weather_patchy_light_rain_with_thunder',
+      'moderate or heavy rain with thunder': 'weather_moderate_or_heavy_rain_with_thunder',
+      'patchy sleet possible': 'weather_patchy_sleet_possible',
+      'patchy sleet nearby': 'weather_patchy_sleet_nearby',
+      'light sleet': 'weather_light_sleet',
+      'moderate or heavy sleet': 'weather_moderate_or_heavy_sleet',
+      'light sleet showers': 'weather_light_sleet_showers',
+      'moderate or heavy sleet showers': 'weather_moderate_or_heavy_sleet_showers',
+      'blowing snow': 'weather_blowing_snow',
+      'blizzard': 'weather_blizzard',
+      'fair': 'weather_fair',
+      'hot': 'weather_hot',
+      'cold': 'weather_cold',
+      'windy': 'weather_windy',
     };
 
-    return translations[englishDescription] ?? englishDescription;
+    // Ищем соответствующий ключ локализации
+    final localizationKey = descriptionToKey[cleanDescription];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    // Если точного совпадения нет, возвращаем оригинальное описание
+    return englishDescription;
   }
 
   /// Перевод фазы луны с английского на русский
   String _translateMoonPhase(String moonPhase) {
-    final translations = {
-      'New Moon': 'Новолуние',
-      'new moon': 'Новолуние',
-      'Waxing Crescent': 'Растущая луна',
-      'waxing crescent': 'Растущая луна',
-      'First Quarter': 'Первая четверть',
-      'first quarter': 'Первая четверть',
-      'Waxing Gibbous': 'Растущая луна',
-      'waxing gibbous': 'Растущая луна',
-      'Full Moon': 'Полнолуние',
-      'full moon': 'Полнолуние',
-      'Waning Gibbous': 'Убывающая луна',
-      'waning gibbous': 'Убывающая луна',
-      'Last Quarter': 'Последняя четверть',
-      'last quarter': 'Последняя четверть',
-      'Third Quarter': 'Третья четверть',
-      'third quarter': 'Третья четверть',
-      'Waning Crescent': 'Убывающая луна',
-      'waning crescent': 'Убывающая луна',
+    final localizations = AppLocalizations.of(context);
+
+    final cleanPhase = moonPhase.trim().toLowerCase();
+
+    // Словарь соответствий английских фаз луны к ключам локализации
+    final Map<String, String> phaseToKey = {
+      'new moon': 'moon_new_moon',
+      'waxing crescent': 'moon_waxing_crescent',
+      'first quarter': 'moon_first_quarter',
+      'waxing gibbous': 'moon_waxing_gibbous',
+      'full moon': 'moon_full_moon',
+      'waning gibbous': 'moon_waning_gibbous',
+      'last quarter': 'moon_last_quarter',
+      'third quarter': 'moon_third_quarter',
+      'waning crescent': 'moon_waning_crescent',
     };
 
-    return translations[moonPhase] ?? moonPhase;
+    final localizationKey = phaseToKey[cleanPhase];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    return moonPhase;
   }
 }

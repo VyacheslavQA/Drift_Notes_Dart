@@ -145,46 +145,46 @@ class WeatherService {
       final localizations = AppLocalizations.of(_context!);
       switch (code) {
         case 0:
-          return localizations.translate('clear');
+          return localizations.translate('weather_clear');
         case 1:
         case 2:
         case 3:
-          return localizations.translate('partly_cloudy');
+          return localizations.translate('weather_partly_cloudy');
         case 45:
         case 48:
-          return localizations.translate('fog');
+          return localizations.translate('weather_mist');
         case 51:
         case 53:
         case 55:
-          return localizations.translate('drizzle');
+          return localizations.translate('weather_light_drizzle');
         case 56:
         case 57:
-          return localizations.translate('freezing_drizzle');
+          return localizations.translate('weather_freezing_drizzle');
         case 61:
         case 63:
         case 65:
-          return localizations.translate('rain');
+          return localizations.translate('weather_light_rain');
         case 66:
         case 67:
-          return localizations.translate('freezing_rain');
+          return localizations.translate('weather_light_freezing_rain');
         case 71:
         case 73:
         case 75:
-          return localizations.translate('snow');
+          return localizations.translate('weather_light_snow');
         case 77:
-          return localizations.translate('snow_grains');
+          return localizations.translate('weather_ice_pellets');
         case 80:
         case 81:
         case 82:
-          return localizations.translate('rain_showers');
+          return localizations.translate('weather_light_rain_shower');
         case 85:
         case 86:
-          return localizations.translate('snow_showers');
+          return localizations.translate('weather_light_snow_showers');
         case 95:
-          return localizations.translate('thunderstorm');
+          return localizations.translate('weather_thundery_outbreaks_possible');
         case 96:
         case 99:
-          return localizations.translate('thunderstorm_with_hail');
+          return localizations.translate('weather_thundery_outbreaks_possible');
         default:
           return localizations.translate('unknown_weather');
       }
@@ -242,14 +242,14 @@ class WeatherService {
   String _getWindDirection(int degrees) {
     if (_context != null) {
       final localizations = AppLocalizations.of(_context!);
-      if (degrees >= 337.5 || degrees < 22.5) return localizations.translate('north');
-      if (degrees >= 22.5 && degrees < 67.5) return localizations.translate('northeast');
-      if (degrees >= 67.5 && degrees < 112.5) return localizations.translate('east');
-      if (degrees >= 112.5 && degrees < 157.5) return localizations.translate('southeast');
-      if (degrees >= 157.5 && degrees < 202.5) return localizations.translate('south');
-      if (degrees >= 202.5 && degrees < 247.5) return localizations.translate('southwest');
-      if (degrees >= 247.5 && degrees < 292.5) return localizations.translate('west');
-      if (degrees >= 292.5 && degrees < 337.5) return localizations.translate('northwest');
+      if (degrees >= 337.5 || degrees < 22.5) return localizations.translate('wind_n');
+      if (degrees >= 22.5 && degrees < 67.5) return localizations.translate('wind_ne');
+      if (degrees >= 67.5 && degrees < 112.5) return localizations.translate('wind_e');
+      if (degrees >= 112.5 && degrees < 157.5) return localizations.translate('wind_se');
+      if (degrees >= 157.5 && degrees < 202.5) return localizations.translate('wind_s');
+      if (degrees >= 202.5 && degrees < 247.5) return localizations.translate('wind_sw');
+      if (degrees >= 247.5 && degrees < 292.5) return localizations.translate('wind_w');
+      if (degrees >= 292.5 && degrees < 337.5) return localizations.translate('wind_nw');
       return localizations.translate('unknown_direction');
     }
 
