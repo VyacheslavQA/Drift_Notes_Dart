@@ -46,5 +46,6 @@ flutter {
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics")
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
