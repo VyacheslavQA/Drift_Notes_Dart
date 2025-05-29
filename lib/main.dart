@@ -1,5 +1,3 @@
-// Путь: lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,7 +12,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
-import 'screens/help/help_contact_screen.dart'; // Добавлен импорт
+import 'screens/help/help_contact_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'localization/app_localizations.dart';
@@ -33,7 +31,6 @@ void main() async {
   debugPrint('Google Maps ключ установлен: ${ApiKeys.hasGoogleMapsKey}');
   debugPrint('Weather ключ установлен: ${ApiKeys.hasWeatherKey}');
   debugPrint('==============================');
-
 
   // Инициализация локали для форматирования дат
   await initializeDateFormatting('ru_RU', null);
@@ -222,7 +219,7 @@ class DriftNotesApp extends StatelessWidget {
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
-            '/help_contact': (context) => const HelpContactScreen(), // Добавлен маршрут
+            '/help_contact': (context) => const HelpContactScreen(),
           },
         );
       },

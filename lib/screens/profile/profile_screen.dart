@@ -24,11 +24,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String? _selectedCountry;
   String? _selectedCity;
+  List<String> _availableCountries = [];
   List<String> _availableCities = [];
   String? _selectedExperience;
   List<String> _selectedFishingTypes = [];
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isLoadingCountries = false;
+  bool _isLoadingCities = false;
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailController = TextEditingController();
 
     _loadUserData();
+    _loadCountries();
   }
 
   @override
@@ -44,6 +48,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _displayNameController.dispose();
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCountries() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingCountries = true;
+    });
+
+    try {
+      final countries = await CountriesData.getLocalizedCountries(context);
+      if (mounted) {
+        setState(() {
+          _availableCountries = countries;
+          _isLoadingCountries = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCountries = false;
+        });
+        debugPrint('❌ Ошибка загрузки стран: $e');
+      }
+    }
+  }
+
+  Future<void> _loadCitiesForCountry(String country) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingCities = true;
+      _availableCities = [];
+      _selectedCity = null;
+    });
+
+    try {
+      final cities = await CountriesData.getLocalizedCitiesForCountry(country, context);
+      if (mounted) {
+        setState(() {
+          _availableCities = cities;
+          _isLoadingCities = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCities = false;
+        });
+        debugPrint('❌ Ошибка загрузки городов для $country: $e');
+      }
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -62,12 +118,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _selectedCity = userData.city;
           _selectedExperience = userData.experience;
           _selectedFishingTypes = List<String>.from(userData.fishingTypes);
-
-          // Если страна выбрана, загрузим доступные города
-          if (_selectedCountry != null && _selectedCountry!.isNotEmpty) {
-            _loadCitiesForCountry(_selectedCountry!);
-          }
         });
+
+        // Если страна выбрана, загрузим доступные города
+        if (_selectedCountry != null && _selectedCountry!.isNotEmpty) {
+          await _loadCitiesForCountry(_selectedCountry!);
+        }
       } else {
         // Если нет данных в Firestore, используем данные из FirebaseAuth
         final user = _firebaseService.currentUser;
@@ -89,17 +145,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  // Загрузка городов для выбранной страны
-  void _loadCitiesForCountry(String country) {
-    // Получаем города для выбранной страны
-    _availableCities = CountriesData.getCitiesForCountry(country);
-
-    // Если ранее выбранного города нет в списке, сбрасываем выбор
-    if (_selectedCity != null && !_availableCities.contains(_selectedCity)) {
-      _selectedCity = null;
     }
   }
 
@@ -226,57 +271,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
 
               // Выпадающий список стран
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: localizations.translate('country'),
-                  prefixIcon: const Icon(Icons.public),
-                ),
-                isExpanded: true,
-                value: _selectedCountry,
-                hint: Text(localizations.translate('select_country')),
-                items: CountriesData.countries.map((country) {
-                  return DropdownMenuItem<String>(
-                    value: country,
-                    child: Text(country),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedCountry = value;
-                      _selectedCity = null; // Сбрасываем выбранный город
-                      _loadCitiesForCountry(value); // Загружаем города для выбранной страны
-                    });
-                  }
-                },
-              ),
+              _buildCountryDropdown(localizations),
 
               const SizedBox(height: 16),
 
-              // Выпадающий список городов (активен только если выбрана страна)
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: localizations.translate('city'),
-                  prefixIcon: const Icon(Icons.location_city),
-                ),
-                isExpanded: true,
-                value: _selectedCity,
-                hint: Text(localizations.translate('select_city')),
-                items: _availableCities.map((city) {
-                  return DropdownMenuItem<String>(
-                    value: city,
-                    child: Text(city),
-                  );
-                }).toList(),
-                onChanged: _selectedCountry != null
-                    ? (value) {
-                  setState(() {
-                    _selectedCity = value;
-                  });
-                }
-                    : null,
-                disabledHint: Text(localizations.translate('first_select_country')),
-              ),
+              // Выпадающий список городов
+              _buildCityDropdown(localizations),
 
               const SizedBox(height: 24),
 
@@ -295,7 +295,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Wrap(
                 spacing: 8,
                 children: AppConstants.experienceLevels.map((levelKey) {
-                  // ИСПРАВЛЕНО: используем ключи локализации напрямую
                   String translatedLevel = localizations.translate(levelKey);
 
                   return ChoiceChip(
@@ -336,7 +335,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Wrap(
                 spacing: 8,
                 children: AppConstants.fishingTypes.map((typeKey) {
-                  // ИСПРАВЛЕНО: используем ключи локализации напрямую
                   String translatedType = localizations.translate(typeKey);
 
                   return FilterChip(
@@ -392,6 +390,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCountryDropdown(AppLocalizations localizations) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: localizations.translate('country'),
+        prefixIcon: const Icon(Icons.public),
+        suffixIcon: _isLoadingCountries
+            ? SizedBox(
+          width: 20,
+          height: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppConstants.textColor,
+            ),
+          ),
+        )
+            : null,
+      ),
+      isExpanded: true,
+      value: _selectedCountry,
+      hint: Text(
+          _isLoadingCountries
+              ? localizations.translate('loading')
+              : localizations.translate('select_country')
+      ),
+      items: _availableCountries.map((country) {
+        return DropdownMenuItem<String>(
+          value: country,
+          child: Text(country),
+        );
+      }).toList(),
+      onChanged: _isLoadingCountries ? null : (value) {
+        if (value != null) {
+          setState(() {
+            _selectedCountry = value;
+            _selectedCity = null; // Сбрасываем выбранный город
+          });
+          _loadCitiesForCountry(value); // Загружаем города для выбранной страны
+        }
+      },
+    );
+  }
+
+  Widget _buildCityDropdown(AppLocalizations localizations) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: localizations.translate('city'),
+        prefixIcon: const Icon(Icons.location_city),
+        suffixIcon: _isLoadingCities
+            ? SizedBox(
+          width: 20,
+          height: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppConstants.textColor,
+            ),
+          ),
+        )
+            : null,
+      ),
+      isExpanded: true,
+      value: _selectedCity,
+      hint: Text(
+          _isLoadingCities
+              ? localizations.translate('loading')
+              : _selectedCountry != null
+              ? localizations.translate('select_city')
+              : localizations.translate('first_select_country')
+      ),
+      items: _availableCities.map((city) {
+        return DropdownMenuItem<String>(
+          value: city,
+          child: Text(city),
+        );
+      }).toList(),
+      onChanged: (_selectedCountry != null && !_isLoadingCities)
+          ? (value) {
+        setState(() {
+          _selectedCity = value;
+        });
+      }
+          : null,
+      disabledHint: Text(
+          _selectedCountry == null
+              ? localizations.translate('first_select_country')
+              : localizations.translate('loading')
       ),
     );
   }

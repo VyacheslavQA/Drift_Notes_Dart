@@ -153,9 +153,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Показ сообщения о том, что раздел в разработке
   void _showComingSoonMessage(String sectionName) {
+    final localizations = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$sectionName скоро будет доступен'),
+        content: Text('$sectionName ${localizations.translate('coming_soon')}'),
         backgroundColor: AppConstants.primaryColor,
         duration: const Duration(seconds: 2),
       ),

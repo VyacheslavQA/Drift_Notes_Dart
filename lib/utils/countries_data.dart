@@ -1,8 +1,13 @@
 // Путь: lib/utils/countries_data.dart
 
+import 'package:flutter/material.dart';
+import '../services/geography_service.dart';
+
 class CountriesData {
-  // Список стран
-  static final List<String> countries = [
+  static final GeographyService _geographyService = GeographyService();
+
+  // Статические данные как fallback (на случай если сервис недоступен)
+  static final List<String> _fallbackCountries = [
     'Россия',
     'Беларусь',
     'Украина',
@@ -18,11 +23,9 @@ class CountriesData {
     'Латвия',
     'Литва',
     'Эстония',
-    // Можно добавить больше стран
   ];
 
-  // Словарь городов по странам
-  static final Map<String, List<String>> _citiesByCountry = {
+  static final Map<String, List<String>> _fallbackCitiesByCountry = {
     'Россия': [
       'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург',
       'Нижний Новгород', 'Казань', 'Челябинск', 'Омск', 'Самара',
@@ -42,11 +45,71 @@ class CountriesData {
       'Киев', 'Харьков', 'Одесса', 'Днепр', 'Донецк',
       'Запорожье', 'Львов', 'Кривой Рог', 'Николаев', 'Мариуполь',
     ],
-    // Можно добавить города для других стран
   };
 
-  // Получение списка городов для выбранной страны
+  /// Получить список локализованных стран
+  static Future<List<String>> getLocalizedCountries(BuildContext context) async {
+    try {
+      final countries = await _geographyService.getLocalizedCountries(context);
+      if (countries.isNotEmpty) {
+        return countries;
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения локализованных стран: $e');
+    }
+
+    // Fallback на статические данные
+    return _fallbackCountries;
+  }
+
+  /// Получить список локализованных городов для страны
+  static Future<List<String>> getLocalizedCitiesForCountry(
+      String countryName,
+      BuildContext context
+      ) async {
+    try {
+      final cities = await _geographyService.getLocalizedCitiesForCountry(
+          countryName,
+          context
+      );
+      if (cities.isNotEmpty) {
+        return cities;
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения локализованных городов: $e');
+    }
+
+    // Fallback на статические данные
+    return _fallbackCitiesByCountry[countryName] ?? [];
+  }
+
+  // Старые методы для обратной совместимости
+  @Deprecated('Используйте getLocalizedCountries() вместо этого')
+  static List<String> get countries => _fallbackCountries;
+
+  @Deprecated('Используйте getLocalizedCitiesForCountry() вместо этого')
   static List<String> getCitiesForCountry(String country) {
-    return _citiesByCountry[country] ?? [];
+    return _fallbackCitiesByCountry[country] ?? [];
+  }
+
+  /// Предзагрузить географические данные для быстрого доступа
+  static Future<void> preloadGeographyData(BuildContext context) async {
+    try {
+      await _geographyService.getLocalizedCountries(context);
+      debugPrint('✅ Географические данные предзагружены');
+    } catch (e) {
+      debugPrint('❌ Ошибка предзагрузки географических данных: $e');
+    }
+  }
+
+  /// Очистить кэш географических данных (полезно при смене языка)
+  static void clearGeographyCache() {
+    _geographyService.clearCache();
+    debugPrint('🗑️ Кэш географических данных очищен');
+  }
+
+  /// Получить информацию о кэше
+  static Map<String, dynamic> getCacheInfo() {
+    return _geographyService.getCacheInfo();
   }
 }

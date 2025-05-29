@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/countries_data.dart';
 
 class LanguageProvider extends ChangeNotifier {
   Locale _currentLocale = const Locale('ru', 'RU');
@@ -48,6 +49,8 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> changeLanguage(Locale newLocale) async {
     if (_currentLocale == newLocale) {
       debugPrint('🔄 Язык уже установлен: ${newLocale.languageCode}');
+      // Очищаем кэш географических данных при смене языка
+      CountriesData.clearGeographyCache();
       return;
     }
 
