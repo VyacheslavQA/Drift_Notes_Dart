@@ -749,5 +749,21 @@
   "universal_shop": "Universal",
   "regular_shop": "Regular",
   "recommended_shop": "Recommended",
-  "premium_shop": "Premium"
+  "premium_shop": "Premium",
+
+  "storage_cleanup_screen": "Storage Cleanup",
+  "delete_problematic_note": "Delete Problematic Note",
+  "note_id": "Note ID",
+  "enter_note_id_to_delete": "Enter note ID to delete",
+  "delete_note_by_id": "Delete Note",
+  "notes_in_local_storage": "Notes in local storage",
+  "no_notes_in_local_storage": "No notes in local storage",
+  "refresh_list": "Refresh List",
+  "no_id": "No ID",
+  "no_title": "No Title",
+  "no_date": "No Date",
+  "note_deleted_by_id": "Note deleted successfully",
+  "note_not_found_by_id": "Note not found",
+  "error_deleting_note_by_id": "Error deleting note",
+  "enter_note_id": "Enter note ID"
 }

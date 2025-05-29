@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../localization/app_localizations.dart';
 
 class StorageCleanupScreen extends StatefulWidget {
   const StorageCleanupScreen({super.key});
@@ -46,18 +47,21 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      final localizations = AppLocalizations.of(context);
       setState(() {
-        _errorMessage = 'Ошибка при загрузке данных: $e';
+        _errorMessage = '${localizations.translate('error_loading')}: $e';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _deleteNoteById(String noteId) async {
+    final localizations = AppLocalizations.of(context);
+
     if (noteId.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Введите ID заметки')),
+          SnackBar(content: Text(localizations.translate('enter_note_id'))),
         );
       }
       return;
@@ -77,14 +81,17 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Заметка $noteId успешно удалена'),
+              content: Text('${localizations.translate('note_deleted_by_id')}: $noteId'),
               backgroundColor: Colors.green,
             ),
           );
+
+          // Очищаем поле ввода
+          _noteIdController.clear();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Заметка $noteId не найдена'),
+              content: Text('${localizations.translate('note_not_found_by_id')}: $noteId'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -96,7 +103,7 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: Text('${localizations.translate('error_deleting_note_by_id')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -106,22 +113,29 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Очистка хранилища',
+        title: Text(
+          localizations.translate('storage_cleanup_screen'),
           style: TextStyle(
+            color: AppConstants.textColor,
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        message: 'Загрузка...',
+        message: localizations.translate('loading'),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -137,37 +151,51 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Удаление проблемной заметки',
+                      Text(
+                        localizations.translate('delete_problematic_note'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppConstants.textColor,
                         ),
                       ),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _noteIdController,
+                        style: TextStyle(color: AppConstants.textColor),
                         decoration: InputDecoration(
-                          labelText: 'ID заметки',
-                          hintText: 'Введите ID заметки для удаления',
+                          labelText: localizations.translate('note_id'),
+                          labelStyle: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                          ),
+                          hintText: localizations.translate('enter_note_id_to_delete'),
+                          hintStyle: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
+                          ),
                           filled: true,
                           fillColor: const Color(0xFF12332E),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppConstants.primaryColor,
+                              width: 2,
+                            ),
+                          ),
                         ),
-                        style: const TextStyle(color: Colors.white),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.delete),
-                          label: const Text('Удалить заметку'),
+                          label: Text(localizations.translate('delete_note_by_id')),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -186,11 +214,11 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
               const SizedBox(height: 20),
 
               Text(
-                'Заметки в локальном хранилище (${_offlineNotes.length}):',
-                style: const TextStyle(
+                '${localizations.translate('notes_in_local_storage')} (${_offlineNotes.length}):',
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppConstants.textColor,
                 ),
               ),
 
@@ -205,11 +233,13 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                   ),
                 )
               else if (_offlineNotes.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
-                    'Нет заметок в локальном хранилище',
-                    style: TextStyle(color: Colors.white70),
+                    localizations.translate('no_notes_in_local_storage'),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                    ),
                   ),
                 )
               else
@@ -219,11 +249,11 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                   itemCount: _offlineNotes.length,
                   itemBuilder: (context, index) {
                     final note = _offlineNotes[index];
-                    final noteId = note['id'] ?? 'Нет ID';
-                    String title = note['title'] ?? note['location'] ?? 'Без названия';
+                    final noteId = note['id'] ?? localizations.translate('no_id');
+                    String title = note['title'] ?? note['location'] ?? localizations.translate('no_title');
 
                     // Пытаемся получить дату заметки
-                    String date = 'Нет даты';
+                    String date = localizations.translate('no_date');
                     try {
                       if (note['date'] != null) {
                         final timestamp = note['date'] is int
@@ -247,11 +277,13 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                       child: ListTile(
                         title: Text(
                           title,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: AppConstants.textColor),
                         ),
                         subtitle: Text(
-                          'ID: $noteId\nДата: $date',
-                          style: const TextStyle(color: Colors.white70),
+                          'ID: $noteId\n${localizations.translate('date')}: $date',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                          ),
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
@@ -268,9 +300,10 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Обновить список'),
+                  label: Text(localizations.translate('refresh_list')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

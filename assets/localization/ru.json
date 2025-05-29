@@ -750,5 +750,21 @@
   "universal_shop": "Универсальный",
   "regular_shop": "Обычный",
   "recommended_shop": "Рекомендуемый",
-  "premium_shop": "Премиум"
+  "premium_shop": "Премиум",
+
+  "storage_cleanup_screen": "Очистка хранилища",
+  "delete_problematic_note": "Удаление проблемной заметки",
+  "note_id": "ID заметки",
+  "enter_note_id_to_delete": "Введите ID заметки для удаления",
+  "delete_note_by_id": "Удалить заметку",
+  "notes_in_local_storage": "Заметки в локальном хранилище",
+  "no_notes_in_local_storage": "Нет заметок в локальном хранилище",
+  "refresh_list": "Обновить список",
+  "no_id": "Нет ID",
+  "no_title": "Без названия",
+  "no_date": "Нет даты",
+  "note_deleted_by_id": "Заметка успешно удалена",
+  "note_not_found_by_id": "Заметка не найдена",
+  "error_deleting_note_by_id": "Ошибка при удалении заметки",
+  "enter_note_id": "Введите ID заметки"
 }
