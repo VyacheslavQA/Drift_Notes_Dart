@@ -8,13 +8,10 @@ import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather/weather_api_service.dart';
 import '../../localization/app_localizations.dart';
-import 'weather_detail_screen.dart';
 import '../../services/fishing_forecast_service.dart';
-import '../../widgets/weather_charts.dart';
 import '../../widgets/bite_activity_chart.dart';
 import '../../services/weather_notification_service.dart';
 import '../../screens/settings/weather_notifications_settings_screen.dart';
-
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -46,167 +43,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   void initState() {
     super.initState();
     _initAnimations();
-    // Загрузку погоды перенесем в didChangeDependencies
-
-
-
-    /// Показать подсказку о настройке уведомлений
-    void _showNotificationSetupTip() {
-      final localizations = AppLocalizations.of(context);
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppConstants.surfaceColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.notifications_active,
-                  color: Colors.amber,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  localizations.translate('weather_notifications'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            'Настройте уведомления о погоде, чтобы получать информацию о благоприятных условиях для рыбалки, изменениях давления и предупреждения о непогоде.',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              height: 1.5,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                localizations.translate('cancel'),
-                style: TextStyle(color: AppConstants.textColor),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WeatherNotificationsSettingsScreen(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-              ),
-              child: Text(localizations.translate('settings')),
-            ),
-          ],
-        ),
-      );
-    }
-    /// Проверка, включены ли уведомления о погоде
-    Future<bool> _isWeatherNotificationsEnabled() async {
-      try {
-        return _weatherNotificationService.settings.enabled;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    Widget _buildNotificationSettingsCard() {
-      final localizations = AppLocalizations.of(context);
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.amber.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WeatherNotificationsSettingsScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: Colors.amber,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations.translate('weather_notifications'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Получайте уведомления о благоприятных условиях для рыбалки',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
   }
 
   @override
@@ -309,6 +145,123 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     }
   }
 
+  Future<Position?> _getCurrentPosition() async {
+    if (!mounted) return null;
+
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception(localizations.translate('location_services_disabled'));
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception(localizations.translate('location_permission_denied'));
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(localizations.translate('location_permission_denied_forever'));
+      }
+
+      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    } catch (e) {
+      debugPrint('${localizations.translate('location_error')}: $e');
+      // Возвращаем координаты Павлодара как fallback
+      return Position(
+        longitude: 76.9574,
+        latitude: 52.2962,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+    }
+  }
+
+  /// Показать подсказку о настройке уведомлений
+  void _showNotificationSetupTip() {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_active,
+                color: Colors.amber,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                localizations.translate('weather_notifications'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Настройте уведомления о погоде, чтобы получать информацию о благоприятных условиях для рыбалки, изменениях давления и предупреждения о непогоде.',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 16,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              localizations.translate('cancel'),
+              style: TextStyle(color: AppConstants.textColor),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WeatherNotificationsSettingsScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+            ),
+            child: Text(localizations.translate('settings')),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Проверка, включены ли уведомления о погоде
   Future<bool> _isWeatherNotificationsEnabled() async {
     try {
@@ -393,62 +346,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  Future<Position?> _getCurrentPosition() async {
-    if (!mounted) return null;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw Exception(localizations.translate('location_services_disabled'));
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception(localizations.translate('location_permission_denied'));
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception(localizations.translate('location_permission_denied_forever'));
-      }
-
-      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    } catch (e) {
-      debugPrint('${localizations.translate('location_error')}: $e');
-      // Возвращаем координаты Павлодара как fallback
-      return Position(
-        longitude: 76.9574,
-        latitude: 52.2962,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-      );
-    }
-  }
-
-  void _openWeatherDetails() {
-    if (_currentWeather != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WeatherDetailScreen(
-            weatherData: _currentWeather!,
-            locationName: _locationName,
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -495,10 +392,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 _buildChartsSection(),
                 const SizedBox(height: 24),
                 _buildNotificationSettingsCard(),
-                const SizedBox(height: 24),
-                _buildDetailButton(),
                 const SizedBox(height: 100),
-
               ],
             ),
           ),
@@ -831,7 +725,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  // Ключевые показатели (4 карточки) - ИСПРАВЛЕНО
+  // Ключевые показатели (4 карточки)
   Widget _buildKeyMetricsGrid() {
     final localizations = AppLocalizations.of(context);
     final current = _currentWeather!.current;
@@ -857,7 +751,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.3, // Увеличено для предотвращения переполнения
+            childAspectRatio: 1.3,
             children: [
               _buildPressureCard(current.pressureMb),
               _buildWindCard(current.windKph, current.windDir),
@@ -875,7 +769,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final pressureMmHg = (pressure / 1.333).round();
 
     return Container(
-      padding: const EdgeInsets.all(12), // Уменьшено с 16
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(20),
@@ -886,12 +780,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Добавлено
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6), // Уменьшено с 8
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -899,12 +793,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 child: Icon(
                   Icons.speed,
                   color: AppConstants.primaryColor,
-                  size: 18, // Уменьшено с 20
+                  size: 18,
                 ),
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.all(3), // Уменьшено
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
@@ -912,42 +806,36 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 child: Icon(
                   Icons.trending_flat,
                   color: Colors.green,
-                  size: 14, // Уменьшено
+                  size: 14,
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 8), // Уменьшено
-
+          const SizedBox(height: 8),
           Text(
             localizations.translate('pressure'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12, // Уменьшено
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
+          const SizedBox(height: 2),
           Text(
             '$pressureMmHg мм',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 20, // Уменьшено
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
-          Flexible( // Добавлено для предотвращения переполнения
+          const SizedBox(height: 2),
+          Flexible(
             child: Text(
               _getPressureDescription(pressure),
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 10, // Уменьшено
+                fontSize: 10,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
@@ -963,7 +851,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final windMs = (windKph / 3.6).round();
 
     return Container(
-      padding: const EdgeInsets.all(12), // Уменьшено
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(20),
@@ -974,12 +862,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Добавлено
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6), // Уменьшено
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -987,55 +875,47 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 child: Icon(
                   Icons.air,
                   color: AppConstants.primaryColor,
-                  size: 18, // Уменьшено
+                  size: 18,
                 ),
               ),
               const Spacer(),
               _buildWindCompass(windDir),
             ],
           ),
-
-          const SizedBox(height: 8), // Уменьшено
-
+          const SizedBox(height: 8),
           Text(
             localizations.translate('wind'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12, // Уменьшено
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
+          const SizedBox(height: 2),
           Text(
             '$windMs м/с',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 20, // Уменьшено
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
+          const SizedBox(height: 2),
           Text(
             _translateWindDirection(windDir),
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 11, // Уменьшено
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
-          Flexible( // Добавлено для предотвращения переполнения
+          const SizedBox(height: 2),
+          Flexible(
             child: Text(
               _getWindImpactOnFishing(windKph),
               style: TextStyle(
                 color: _getWindImpactColor(windKph),
-                fontSize: 9, // Уменьшено
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -1052,7 +932,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final moonImpact = _getMoonImpactOnFishing(moonPhase);
 
     return Container(
-      padding: const EdgeInsets.all(12), // Уменьшено
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(20),
@@ -1063,12 +943,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Добавлено
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6), // Уменьшено
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -1076,48 +956,42 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 child: Icon(
                   Icons.brightness_2,
                   color: AppConstants.primaryColor,
-                  size: 18, // Уменьшено
+                  size: 18,
                 ),
               ),
               const Spacer(),
               _buildMoonIcon(moonPhase),
             ],
           ),
-
-          const SizedBox(height: 8), // Уменьшено
-
+          const SizedBox(height: 8),
           Text(
             localizations.translate('moon_phase'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12, // Уменьшено
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
-          Flexible( // Добавлено для предотвращения переполнения
+          const SizedBox(height: 2),
+          Flexible(
             child: Text(
               _translateMoonPhase(moonPhase),
               style: TextStyle(
                 color: AppConstants.textColor,
-                fontSize: 13, // Уменьшено
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
           ),
-
-          const SizedBox(height: 4), // Уменьшено
-
-          Flexible( // Добавлено для предотвращения переполнения
+          const SizedBox(height: 4),
+          Flexible(
             child: Text(
               moonImpact['description'],
               style: TextStyle(
                 color: moonImpact['color'],
-                fontSize: 9, // Уменьшено
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -1134,7 +1008,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final dewPoint = _calculateDewPoint(temp, humidity);
 
     return Container(
-      padding: const EdgeInsets.all(12), // Уменьшено
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(20),
@@ -1145,12 +1019,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Добавлено
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6), // Уменьшено
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -1158,12 +1032,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 child: Icon(
                   Icons.water_drop,
                   color: AppConstants.primaryColor,
-                  size: 18, // Уменьшено
+                  size: 18,
                 ),
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2), // Уменьшено
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 decoration: BoxDecoration(
                   color: _getHumidityComfortColor(humidity).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
@@ -1172,44 +1046,38 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   _getHumidityComfort(humidity),
                   style: TextStyle(
                     color: _getHumidityComfortColor(humidity),
-                    fontSize: 8, // Уменьшено
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 8), // Уменьшено
-
+          const SizedBox(height: 8),
           Text(
             localizations.translate('humidity'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12, // Уменьшено
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
+          const SizedBox(height: 2),
           Text(
             '$humidity%',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 20, // Уменьшено
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-
-          const SizedBox(height: 2), // Уменьшено
-
-          Flexible( // Добавлено для предотвращения переполнения
+          const SizedBox(height: 2),
+          Flexible(
             child: Text(
               '${localizations.translate('dew_point')}: ${dewPoint.round()}°',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 9, // Уменьшено
+                fontSize: 9,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -1267,9 +1135,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   ),
                 ),
                 const Spacer(),
-
-
-
                 // Индикатор активности уведомлений
                 FutureBuilder<bool>(
                   future: _isWeatherNotificationsEnabled(),
@@ -1547,11 +1412,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                       ),
                     ),
 
-                    // Ветер и осадки - ИСПРАВЛЕНО ПЕРЕПОЛНЕНИЕ
+                    // Ветер и осадки
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Flexible( // Добавлено для предотвращения переполнения
+                        Flexible(
                           child: Column(
                             children: [
                               Icon(
@@ -1570,7 +1435,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                             ],
                           ),
                         ),
-                        Flexible( // Добавлено для предотвращения переполнения
+                        Flexible(
                           child: Column(
                             children: [
                               Icon(
@@ -1656,7 +1521,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded( // Добавлено для предотвращения переполнения
+                Expanded(
                   child: Text(
                     localizations.translate('best_fishing_time_today'),
                     style: TextStyle(
@@ -1715,85 +1580,44 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget _buildChartsSection() {
     final localizations = AppLocalizations.of(context);
 
-    return Column(
-      children: [
-        // График активности клева
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.analytics,
-                    color: AppConstants.textColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.translate('bite_activity'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.analytics,
+                color: AppConstants.textColor,
+                size: 20,
               ),
-              const SizedBox(height: 12),
-              BiteActivityChart(
-                fishingForecast: _fishingForecast,
-                weatherData: _currentWeather,
-                height: 220,
-                showTitle: false,
-                showLegend: true,
-                isInteractive: true,
+              const SizedBox(width: 8),
+              Text(
+                localizations.translate('bite_activity'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // График давления
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: PressureChart(
-            weatherData: _currentWeather!,
-            height: 200,
+          const SizedBox(height: 12),
+          BiteActivityChart(
+            fishingForecast: _fishingForecast,
+            weatherData: _currentWeather,
+            height: 220,
+            showTitle: false,
+            showLegend: true,
+            isInteractive: true,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailButton() {
-    final localizations = AppLocalizations.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: _openWeatherDetails,
-          icon: const Icon(Icons.info_outline),
-          label: Text(localizations.translate('detailed_weather_info')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppConstants.primaryColor,
-            foregroundColor: AppConstants.textColor,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
-          ),
-        ),
+        ],
       ),
     );
   }
 
-  // Остальные вспомогательные методы остаются без изменений...
+  // Вспомогательные методы
 
   IconData _getWeatherIcon(int code) {
     switch (code) {
@@ -1843,7 +1667,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   Widget _buildWindCompass(String direction) {
     return Container(
-      width: 28, // Уменьшено
+      width: 28,
       height: 28,
       decoration: BoxDecoration(
         color: AppConstants.primaryColor.withValues(alpha: 0.2),
@@ -1854,7 +1678,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           direction,
           style: TextStyle(
             color: AppConstants.primaryColor,
-            fontSize: 10, // Уменьшено
+            fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1879,7 +1703,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   Widget _buildMoonIcon(String phase) {
     return Container(
-      width: 24, // Уменьшено
+      width: 24,
       height: 24,
       decoration: BoxDecoration(
         color: Colors.amber.withValues(alpha: 0.2),
@@ -1888,7 +1712,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       child: const Icon(
         Icons.brightness_2,
         color: Colors.amber,
-        size: 14, // Уменьшено
+        size: 14,
       ),
     );
   }

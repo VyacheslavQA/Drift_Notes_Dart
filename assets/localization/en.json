@@ -174,7 +174,6 @@
   "return_to_login": "Return to login",
 
   "fishing_timers": "Fishing Timers",
-  "start": "START",
   "stop": "STOP",
   "reset": "RESET",
 
@@ -259,7 +258,6 @@
   "please_confirm_password": "Please confirm password",
   "passwords_dont_match": "Passwords don't match",
 
-  "clear": "Clear",
   "partly_cloudy": "Partly cloudy",
   "fog": "Fog",
   "drizzle": "Drizzle",
@@ -290,7 +288,6 @@
   "1_5_hours": "1.5 hours",
   "2_hours": "2 hours",
   "3_hours": "3 hours",
-  "other": "Other",
   "set_time": "Set time",
   "hours": "Hours",
   "minutes": "Minutes",
@@ -313,8 +310,6 @@
   "playing": "Playing",
 
   "profile_title": "Profile",
-  "name": "Name",
-  "email": "Email",
   "country": "Country",
   "city": "City",
   "experience_level": "Experience Level",
@@ -412,7 +407,6 @@
   "marker": "marker",
   "markers_2_4": "markers",
   "sector": "Sector",
-  "marker_maps": "Marker Maps",
   "edit_marker_map": "Edit marker map",
   "create_marker_map": "Create marker map",
   "markers_count": "Number of markers",
@@ -508,7 +502,6 @@
   "map_deleted_successfully": "Map deleted successfully",
   "error_deleting_map": "Error deleting map",
   "error_saving_changes": "Error saving changes",
-  "save_changes": "Save Changes",
   "add_marker_dialog_title": "Adding Marker",
   "remember_me": "Remember me",
 
@@ -548,7 +541,6 @@
 
   "detailed_weather": "Detailed Weather",
   "now": "Now",
-  "today": "Today",
   "forecast": "Forecast",
   "main_indicators": "Main Indicators",
   "wind": "Wind",
@@ -620,7 +612,6 @@
   "invalid_login_credentials": "Invalid login credentials",
   "session_expired": "Session expired. Please log in again",
   "auth_error_general": "Login error. Please check your credentials and try again",
-
   "invalid_credentials": "Invalid email or password",
 
   "version": "Version",
@@ -665,7 +656,6 @@
   "one_number": "At least 1 number",
   "privacy_policy_agreement": "privacy policy",
 
-  "tournaments": "Tournaments",
   "all_tournaments": "All tournaments",
   "upcoming": "Upcoming",
   "active": "Active",
@@ -693,21 +683,14 @@
   "tournament": "Tournament",
 
   "tournament_active": "TOURNAMENT ACTIVE",
-  "upcoming": "UPCOMING",
   "completed": "COMPLETED",
-  "active": "Active",
   "future": "Upcoming",
   "finished": "Finished",
 
   "event_dates": "Event Dates",
-  "date": "Date",
-  "duration": "Duration",
-  "hours": "hours",
   "venue": "Venue",
   "organizer": "Organizer",
-  "fishing_type": "Fishing Type",
   "additional_info": "Additional Information",
-  "month": "Month",
   "category": "Category",
   "status": "Status",
 
@@ -721,7 +704,6 @@
   "carp_short": "Carp",
   "casting_short": "Casting",
 
-  "shops": "Shops",
   "search_shops": "Search shops...",
   "all_shops": "All shops",
   "total_shops": "Total",
@@ -730,7 +712,6 @@
   "recommended": "Recommended",
   "no_shops_found": "No shops found",
   "no_shops_available": "No shops available yet",
-  "description": "Description",
   "product_categories": "Product Categories",
   "services": "Services",
   "contacts": "Contacts",
@@ -893,48 +874,18 @@
   "updated": "Updated",
   "loading_weather": "Loading weather...",
   "weather_error": "Weather loading error",
-  "bite_forecast": "Bite Forecast",
   "points": "points",
   "best_fishing_time_today": "Best fishing time today",
-  "now": "Now",
   "excellent_for_fishing": "Excellent for fishing",
   "good_for_fishing": "Good for fishing",
   "moderate_for_fishing": "Moderate for fishing",
   "difficult_for_fishing": "Difficult for fishing",
   "dry_comfortable": "Dry, comfortable",
   "slightly_humid": "Slightly humid",
-  "very_humid": "Very humid",
   "morning_activity": "Morning activity",
   "evening_activity": "Evening activity",
-  "dew_point": "Dew point",
-  "low_pressure": "Low pressure",
-  "normal_pressure": "Normal pressure",
-  "high_pressure": "High pressure",
 
-
-  "excellent_activity": "Excellent activity",
-  "good_activity": "Good activity",
-  "moderate_activity": "Moderate activity",
-  "poor_activity": "Poor activity",
   "very_poor_activity": "Very poor activity",
-
-  "excellent_conditions_recommendation": "Excellent conditions! Perfect time for fishing.",
-  "good_conditions_recommendation": "Good conditions for fishing.",
-  "moderate_conditions_recommendation": "Moderate conditions, worth trying.",
-  "poor_conditions_recommendation": "Conditions aren't great, but there's still a chance.",
-  "very_poor_conditions_recommendation": "Poor conditions for fishing.",
-
-  "low_pressure_tip": "Fish at depth during low pressure",
-  "good_wind_tip": "Good wind - fish from the windward side",
-  "calm_weather_tip": "Use light lures in calm weather",
-  "golden_hour_tip": "Golden hour - use active lures",
-  "cold_weather_tip": "Fish are less active in cold weather - slow down your retrieve",
-
-  "sunrise_activity_reason": "Morning fish activity",
-  "sunset_activity_reason": "Evening fish activity",
-
-  "morning_bait_recommendation": "Use bright colored lures",
-  "evening_bait_recommendation": "Try surface lures",
 
   "excellent_conditions_recommendation": "Excellent conditions! Perfect time for fishing.",
   "good_conditions_recommendation": "Good conditions for fishing.",
