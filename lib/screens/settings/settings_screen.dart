@@ -12,6 +12,7 @@ import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
+import 'weather_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -499,6 +500,31 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
               ),
 
               const SizedBox(height: 20),
+
+              const SizedBox(height: 20),
+
+// НОВАЯ СЕКЦИЯ: Настройки погоды
+              _buildSectionHeader(localizations.translate('weather_settings')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.cloud, color: Colors.blue),
+                  title: Text(localizations.translate('weather_settings')),
+                  subtitle: Text(localizations.translate('weather_settings_desc')),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WeatherSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
               // Очистка данных - теперь идет перед безопасностью
               _buildSectionHeader(localizations.translate('data_and_storage')),

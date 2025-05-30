@@ -1096,5 +1096,8 @@
   "wind_wnw": "WNW",
   "wind_nnw": "NNW",
 
-  "moderate_activity": "Moderate activity"
+  "moderate_activity": "Moderate activity",
+
+  "weather_settings": "Weather Settings",
+  "weather_settings_desc": "Units of measurement, barometer calibration and notifications"
 }

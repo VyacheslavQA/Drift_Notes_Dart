@@ -1026,7 +1026,8 @@
   "wind_wnw": "ЗСЗ",
   "wind_nnw": "ССЗ",
 
-  "moderate_activity": "Умеренная активность"
+  "moderate_activity": "Умеренная активность",
 
-
+  "weather_settings": "Настройки погоды",
+  "weather_settings_desc": "Единицы измерения, калибровка барометра и уведомления"
 }
