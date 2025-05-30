@@ -24,7 +24,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   final WeatherApiService _weatherService = WeatherApiService();
   final FishingForecastService _fishingForecastService = FishingForecastService();
 
-
   WeatherApiResponse? _currentWeather;
   Map<String, dynamic>? _fishingForecast;
   bool _isLoading = true;
@@ -186,8 +185,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       );
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -988,7 +985,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   ),
                 ),
                 const Spacer(),
-
+              ],
+            ),
 
             const SizedBox(height: 24),
 
@@ -1115,7 +1113,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ],
         ),
       ),
-    )
+    );
   }
 
   // Временные блоки (горизонтальный скролл)
@@ -1526,27 +1524,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     if (pressure < 1000) return localizations.translate('low_pressure');
     if (pressure < 1020) return localizations.translate('normal_pressure');
     return localizations.translate('high_pressure');
-  }
-
-  Widget _buildWindCompass(String direction) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: AppConstants.primaryColor.withValues(alpha: 0.2),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          direction,
-          style: TextStyle(
-            color: AppConstants.primaryColor,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
   }
 
   String _getWindImpactOnFishing(double windKph) {
