@@ -768,13 +768,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _getWindImpactColor(windKph).withValues(alpha: 0.2),
+                    color: Colors.cyan.withValues(alpha: 0.2), // ИЗМЕНЕНО: было _getWindImpactColor(windKph)
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     _translateWindDirection(windDir),
                     style: TextStyle(
-                      color: _getWindImpactColor(windKph),
+                      color: Colors.cyan, // ИЗМЕНЕНО: было _getWindImpactColor(windKph)
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
