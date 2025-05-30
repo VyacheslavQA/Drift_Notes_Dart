@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../localization/app_localizations.dart';
+import '../../services/weather_settings_service.dart';
 
 class PressureDetailScreen extends StatefulWidget {
   final WeatherApiResponse weatherData;
@@ -27,6 +28,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
+
+  final WeatherSettingsService _weatherSettings = WeatherSettingsService();
 
   List<FlSpot> _pressureSpots = [];
   List<String> _timeLabels = [];
@@ -88,9 +91,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
       final randomVariation = (math.Random().nextDouble() - 0.5) * 4; // Случайные колебания
       final trendVariation = i * 0.2; // Общий тренд
 
-      final pressure = basePressure + dailyVariation + randomVariation + trendVariation;
+      final pressureMb = basePressure + dailyVariation + randomVariation + trendVariation;
 
-      _pressureSpots.add(FlSpot(i.toDouble() + 24, pressure));
+      // Конвертируем в выбранные единицы с учетом калибровки
+      final convertedPressure = _weatherSettings.convertPressure(pressureMb);
+
+      _pressureSpots.add(FlSpot(i.toDouble() + 24, convertedPressure));
 
       if (i % 6 == 0) {
         _timeLabels.add(DateFormat('HH:mm').format(time));
@@ -103,14 +109,17 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
       _minPressure = _pressureSpots.map((spot) => spot.y).reduce(math.min) - 5;
       _maxPressure = _pressureSpots.map((spot) => spot.y).reduce(math.max) + 5;
 
-      // Определяем тренд
+      // Определяем тренд в выбранных единицах
       final firstPressure = _pressureSpots.first.y;
       final lastPressure = _pressureSpots.last.y;
       _pressure24hChange = lastPressure - firstPressure;
 
-      if (_pressure24hChange > 2) {
+      // Пороги в зависимости от единиц измерения
+      final threshold = _weatherSettings.pressureUnit == PressureUnit.mmhg ? 1.5 : 2.0;
+
+      if (_pressure24hChange > threshold) {
         _pressureTrend = 'rising';
-      } else if (_pressure24hChange < -2) {
+      } else if (_pressure24hChange < -threshold) {
         _pressureTrend = 'falling';
       } else {
         _pressureTrend = 'stable';
@@ -122,7 +131,6 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     final currentPressure = widget.weatherData.current.pressureMb;
-    final pressureMmHg = (currentPressure / 1.333).round();
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -155,7 +163,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 builder: (context, child) {
                   return Transform.translate(
                     offset: Offset(0, _slideAnimation.value),
-                    child: _buildCurrentPressureCard(pressureMmHg, currentPressure),
+                    child: _buildCurrentPressureCard(currentPressure),
                   );
                 },
               ),
@@ -220,8 +228,10 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildCurrentPressureCard(int pressureMmHg, double pressureMb) {
+  Widget _buildCurrentPressureCard(double pressureMb) {
     final localizations = AppLocalizations.of(context);
+    final convertedPressure = _weatherSettings.convertPressure(pressureMb);
+    final formattedPressure = _weatherSettings.formatPressure(pressureMb, showUnit: false);
 
     return Container(
       width: double.infinity,
@@ -293,7 +303,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                pressureMmHg.toString(),
+                formattedPressure,
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 48,
@@ -304,7 +314,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 8, left: 4),
                 child: Text(
-                  'мм рт.ст.',
+                  _weatherSettings.getPressureUnitSymbol(),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 16,
@@ -317,16 +327,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
           const SizedBox(height: 8),
 
-          Text(
-            '${pressureMb.toStringAsFixed(1)} гПа',
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.8),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           // Статус давления
           Container(
@@ -392,7 +393,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               Expanded(
                 child: _buildTrendItem(
                   localizations.translate('change'),
-                  '${_pressure24hChange >= 0 ? '+' : ''}${_pressure24hChange.toStringAsFixed(1)} гПа',
+                  '${_pressure24hChange >= 0 ? '+' : ''}${_pressure24hChange.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
                   _pressure24hChange >= 0 ? Icons.trending_up : Icons.trending_down,
                   _pressure24hChange >= 0 ? Colors.green : Colors.red,
                 ),
@@ -534,7 +535,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 5,
+                  horizontalInterval: _getGridInterval(),
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
                       color: AppConstants.textColor.withValues(alpha: 0.1),
@@ -547,7 +548,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 50,
-                      interval: 10,
+                      interval: _getGridInterval(),
                       getTitlesWidget: (value, meta) {
                         return Text(
                           value.toInt().toString(),
@@ -617,6 +618,30 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                     ),
                   ),
                 ],
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                    tooltipBorder: BorderSide(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final pressure = spot.y;
+                        return LineTooltipItem(
+                          '${pressure.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
+                          TextStyle(
+                            color: AppConstants.textColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
                 minY: _minPressure,
                 maxY: _maxPressure,
               ),
@@ -779,17 +804,40 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
   // Вспомогательные методы
 
+  double _getGridInterval() {
+    // Подбираем интервал в зависимости от единиц измерения
+    switch (_weatherSettings.pressureUnit) {
+      case PressureUnit.mmhg:
+        return 5; // Для мм рт.ст.
+      case PressureUnit.hpa:
+        return 10; // Для гПа
+      case PressureUnit.inhg:
+        return 0.2; // Для дюймов
+    }
+  }
+
   Color _getPressureStatusColor(double pressure) {
-    if (pressure >= 1010 && pressure <= 1025) return Colors.green;
-    if (pressure < 1000 || pressure > 1030) return Colors.red;
+    // Учитываем калибровку при определении статуса
+    final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
+
+    if (calibratedPressure >= 1010 && calibratedPressure <= 1025) return Colors.green;
+    if (calibratedPressure < 1000 || calibratedPressure > 1030) return Colors.red;
     return Colors.orange;
   }
 
   String _getPressureStatus(double pressure) {
     final localizations = AppLocalizations.of(context);
-    if (pressure >= 1010 && pressure <= 1025) return localizations.translate('optimal_for_fishing');
-    if (pressure < 1000) return localizations.translate('low_pressure');
-    if (pressure > 1030) return localizations.translate('high_pressure');
+    final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
+
+    if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
+      return localizations.translate('optimal_for_fishing');
+    }
+    if (calibratedPressure < 1000) {
+      return localizations.translate('low_pressure');
+    }
+    if (calibratedPressure > 1030) {
+      return localizations.translate('high_pressure');
+    }
     return localizations.translate('moderate_pressure');
   }
 
@@ -820,20 +868,21 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
   Map<String, dynamic> _getFishingImpact(double pressure) {
     final localizations = AppLocalizations.of(context);
+    final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
-    if (pressure >= 1010 && pressure <= 1025) {
+    if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
       return {
         'level': localizations.translate('excellent_for_fishing'),
         'description': localizations.translate('pressure_excellent_description'),
         'color': Colors.green,
       };
-    } else if (pressure < 1000) {
+    } else if (calibratedPressure < 1000) {
       return {
         'level': localizations.translate('poor_for_fishing'),
         'description': localizations.translate('pressure_low_description'),
         'color': Colors.red,
       };
-    } else if (pressure > 1030) {
+    } else if (calibratedPressure > 1030) {
       return {
         'level': localizations.translate('poor_for_fishing'),
         'description': localizations.translate('pressure_high_description'),
@@ -850,20 +899,21 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
   List<String> _getPressureRecommendations(double pressure) {
     final localizations = AppLocalizations.of(context);
+    final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
-    if (pressure >= 1010 && pressure <= 1025) {
+    if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
       return [
         localizations.translate('pressure_rec_optimal_1'),
         localizations.translate('pressure_rec_optimal_2'),
         localizations.translate('pressure_rec_optimal_3'),
       ];
-    } else if (pressure < 1000) {
+    } else if (calibratedPressure < 1000) {
       return [
         localizations.translate('pressure_rec_low_1'),
         localizations.translate('pressure_rec_low_2'),
         localizations.translate('pressure_rec_low_3'),
       ];
-    } else if (pressure > 1030) {
+    } else if (calibratedPressure > 1030) {
       return [
         localizations.translate('pressure_rec_high_1'),
         localizations.translate('pressure_rec_high_2'),

@@ -1029,5 +1029,26 @@
   "moderate_activity": "Умеренная активность",
 
   "weather_settings": "Настройки погоды",
-  "weather_settings_desc": "Единицы измерения, калибровка барометра и уведомления"
+  "weather_settings_desc": "Единицы измерения, калибровка барометра и уведомления",
+
+  "recommendations": "Рекомендации",
+  "stable": "Стабильно",
+  "pressure_rising_description": "Давление растет - рыба становится более активной",
+  "pressure_falling_description": "Давление падает - активность рыбы снижается",
+  "pressure_stable_description": "Стабильное давление - предсказуемые условия",
+  "pressure_excellent_description": "Отличное давление для рыбалки. Рыба активна и хорошо клюет.",
+  "pressure_low_description": "Низкое давление. Рыба пассивна, клев слабый.",
+  "pressure_high_description": "Высокое давление. Рыба менее активна.",
+  "pressure_moderate_description": "Умеренные условия для рыбалки.",
+  "pressure_rec_optimal_1": "Используйте активные приманки",
+  "pressure_rec_optimal_2": "Рыбачьте на средних глубинах",
+  "pressure_rec_optimal_3": "Отличное время для трофейной рыбалки",
+  "pressure_rec_low_1": "Ловите на глубине с медленной проводкой",
+  "pressure_rec_low_2": "Используйте натуральные приманки",
+  "pressure_rec_low_3": "Будьте терпеливы - клев может быть редким",
+  "pressure_rec_high_1": "Попробуйте мелководные участки",
+  "pressure_rec_high_2": "Используйте мелкие приманки",
+  "pressure_rec_high_3": "Рыбачьте в утренние и вечерние часы",
+  "pressure_rec_moderate_1": "Экспериментируйте с разными приманками",
+  "pressure_rec_moderate_2": "Меняйте глубину ловли"
 }

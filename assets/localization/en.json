@@ -1099,5 +1099,26 @@
   "moderate_activity": "Moderate activity",
 
   "weather_settings": "Weather Settings",
-  "weather_settings_desc": "Units of measurement, barometer calibration and notifications"
+  "weather_settings_desc": "Units of measurement, barometer calibration and notifications",
+
+  "recommendations": "Recommendations",
+  "stable": "Stable",
+  "pressure_rising_description": "Pressure is rising - fish become more active",
+  "pressure_falling_description": "Pressure is falling - fish activity decreases",
+  "pressure_stable_description": "Stable pressure - predictable conditions",
+  "pressure_excellent_description": "Excellent pressure for fishing. Fish are active and biting well.",
+  "pressure_low_description": "Low pressure. Fish are passive, weak bite.",
+  "pressure_high_description": "High pressure. Fish are less active.",
+  "pressure_moderate_description": "Moderate conditions for fishing.",
+  "pressure_rec_optimal_1": "Use active lures",
+  "pressure_rec_optimal_2": "Fish at medium depths",
+  "pressure_rec_optimal_3": "Great time for trophy fishing",
+  "pressure_rec_low_1": "Fish deep with slow retrieve",
+  "pressure_rec_low_2": "Use natural baits",
+  "pressure_rec_low_3": "Be patient - bites may be rare",
+  "pressure_rec_high_1": "Try shallow areas",
+  "pressure_rec_high_2": "Use smaller lures",
+  "pressure_rec_high_3": "Fish during morning and evening hours",
+  "pressure_rec_moderate_1": "Experiment with different lures",
+  "pressure_rec_moderate_2": "Vary fishing depth"
 }
