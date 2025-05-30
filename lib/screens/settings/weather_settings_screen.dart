@@ -78,6 +78,26 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
+  String _getBarometerCalibrationText() {
+    // Получаем символ единицы для текущих настроек давления
+    final unitSymbol = _weatherSettings.getPressureUnitSymbol();
+
+    // Конвертируем значение калибровки в текущие единицы
+    // Калибровка хранится в гПа, но отображаем в выбранных единицах
+    double displayValue = _barometerCalibration;
+
+    // Если выбраны мм рт.ст., конвертируем из гПа
+    if (_selectedPressureUnit == PressureUnit.mmhg) {
+      displayValue = _barometerCalibration / 1.333;
+    } else if (_selectedPressureUnit == PressureUnit.inhg) {
+      displayValue = _barometerCalibration / 33.8639;
+    }
+    // Для гПа оставляем как есть
+
+    final sign = displayValue >= 0 ? '+' : '';
+    return '$sign${displayValue.toStringAsFixed(1)} $unitSymbol';
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -374,7 +394,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '${_barometerCalibration >= 0 ? '+' : ''}${_barometerCalibration.toStringAsFixed(1)} гПа',
+                  _getBarometerCalibrationText(),
                   style: TextStyle(
                     color: AppConstants.primaryColor,
                     fontSize: 14,

@@ -655,13 +655,32 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              _weatherSettings.formatPressure(pressure, showUnit: false),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            // ИСПРАВЛЕНО: Добавлено отображение единиц измерения
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _weatherSettings.formatPressure(pressure, showUnit: false),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    _weatherSettings.getPressureUnitSymbol(),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 2),
             Flexible(
@@ -753,13 +772,32 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              _weatherSettings.formatWindSpeed(windKph, showUnit: false),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            // ИСПРАВЛЕНО: Добавлено отображение единиц измерения
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _weatherSettings.formatWindSpeed(windKph, showUnit: false),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    _weatherSettings.getWindSpeedUnitSymbol(),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Expanded(
