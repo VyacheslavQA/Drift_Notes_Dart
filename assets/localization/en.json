@@ -1094,5 +1094,7 @@
   "wind_ssw": "SSW",
   "wind_wsw": "WSW",
   "wind_wnw": "WNW",
-  "wind_nnw": "NNW"
+  "wind_nnw": "NNW",
+
+  "moderate_activity": "Moderate activity"
 }
