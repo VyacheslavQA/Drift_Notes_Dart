@@ -464,7 +464,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _weatherSettings.convertTemperature(current.tempC).round().toString(),
+                            _weatherSettings.convertTemperature(_currentWeather!.current.tempC).round().toString(),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 48,
@@ -547,7 +547,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  // Ключевые показатели (4 карточки)
+  // Ключевые показатели (4 карточки) - ИЗМЕНЕНО: увеличена высота блоков
   Widget _buildKeyMetricsGrid() {
     final localizations = AppLocalizations.of(context);
     final current = _currentWeather!.current;
@@ -573,7 +573,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
+            childAspectRatio: 1.1, // ИЗМЕНЕНО: было 1.3, стало 1.1 (блоки стали выше)
             children: [
               _buildPressureCard(current.pressureMb),
               _buildWindCard(current.windKph, current.windDir),
