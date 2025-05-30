@@ -1218,7 +1218,7 @@ class _Weather7DaysTabState extends State<Weather7DaysTab>
 
   List<double> _getWeeklyTemps() {
     final forecast = _generateSevenDaysForecast();
-    return forecast.map((day) => (day['minTemp'] as double + day['maxTemp'] as double) / 2).toList();
+    return forecast.map((day) => ((day['minTemp'] as double) + (day['maxTemp'] as double)) / 2).toList();
   }
 
   List<double> _getWeeklyActivities() {

@@ -262,7 +262,7 @@ class _Weather14DaysTabState extends State<Weather14DaysTab>
                       ),
                       CustomPaint(
                         size: const Size(100, 100),
-                        painter: BiteMeterPainter(
+                        painter: BiteMeterPainter14Days(
                           progress: twoWeeksActivity,
                           color: _getBiteActivityColor(twoWeeksActivity),
                         ),
@@ -1604,11 +1604,11 @@ class _Weather14DaysTabState extends State<Weather14DaysTab>
 }
 
 // Кастомный painter для клёвометра
-class BiteMeterPainter extends CustomPainter {
+class BiteMeterPainter14Days extends CustomPainter {
   final double progress;
   final Color color;
 
-  BiteMeterPainter({required this.progress, required this.color});
+  BiteMeterPainter14Days({required this.progress, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {

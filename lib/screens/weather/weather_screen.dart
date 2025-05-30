@@ -14,6 +14,9 @@ import 'pressure_detail_screen.dart';
 import 'wind_detail_screen.dart';
 import '../../widgets/animated_border_widget.dart';
 import '../../widgets/enhanced_bite_activity_chart.dart';
+import 'weather_3days_tab.dart';
+import 'weather_7days_tab.dart';
+import 'weather_14days_tab.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -227,9 +230,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             child: RefreshIndicator(
               onRefresh: _loadWeather,
               color: AppConstants.primaryColor,
-              child: _selectedTabIndex == 0
-                  ? _buildBody() // Текущий контент для таба "Сегодня"
-                  : _buildComingSoonTab(), // Заглушка для остальных табов
+              child: _isLoading
+                  ? _buildLoadingState()
+                  : _errorMessage != null
+                  ? _buildErrorState()
+                  : _buildTabContent(),
             ),
           ),
         ],
@@ -1767,20 +1772,168 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  String _getHourRecommendation(int hour, double activity) {
-    if (activity > 0.8) {
-      if (hour >= 5 && hour <= 9) {
-        return '🌅 Утренний клев! Используйте яркие приманки';
-      } else if (hour >= 18 && hour <= 21) {
-        return '🌇 Вечерний жор! Время для трофеев';
-      }
-      return '🎣 Отличное время для активной ловли';
-    } else if (activity > 0.6) {
-      return '👍 Хорошие условия, стоит попробовать';
-    } else if (activity > 0.3) {
-      return '⚠️ Слабая активность, нужно терпение';
+  Widget _buildAppBarWithTabs() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: AppConstants.textColor.withValues(alpha: 0.1),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Заголовок экрана
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cloud,
+                    color: AppConstants.primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    localizations.translate('weather'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Кнопка обновления
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      onPressed: _loadWeather,
+                      icon: Icon(
+                        Icons.refresh,
+                        color: AppConstants.primaryColor,
+                        size: 24,
+                      ),
+                      tooltip: 'Обновить',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Табы периодов
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppConstants.surfaceColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: AppConstants.primaryColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: Colors.white,
+                unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.7),
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                dividerColor: Colors.transparent,
+                tabs: [
+                  Tab(text: localizations.translate('today')),
+                  Tab(text: '3 ${localizations.translate('days_many')}'),
+                  Tab(text: '7 ${localizations.translate('days_many')}'),
+                  Tab(text: '14 ${localizations.translate('days_many')}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
+    if (_currentWeather == null) {
+      return _buildNoDataState();
     }
-    return '😴 Рыба неактивна, лучше отдохнуть';
+
+    switch (_selectedTabIndex) {
+      case 0:
+        return _buildTodayTab(); // Существующий контент для "Сегодня"
+      case 1:
+        return Weather3DaysTab(
+          weatherData: _currentWeather!,
+          fishingForecast: _fishingForecast,
+          locationName: _locationName,
+          onRefresh: _loadWeather,
+        );
+      case 2:
+        return Weather7DaysTab(
+          weatherData: _currentWeather!,
+          fishingForecast: _fishingForecast,
+          locationName: _locationName,
+          onRefresh: _loadWeather,
+        );
+      case 3:
+        return Weather14DaysTab(
+          weatherData: _currentWeather!,
+          fishingForecast: _fishingForecast,
+          locationName: _locationName,
+          onRefresh: _loadWeather,
+        );
+      default:
+        return _buildTodayTab();
+    }
+  }
+
+  Widget _buildTodayTab() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          _buildCompactHeader(),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                _buildKeyMetricsGrid(),
+                const SizedBox(height: 24),
+                _buildBiteMeter(),
+                const SizedBox(height: 24),
+                _buildHourlyForecast(),
+                const SizedBox(height: 24),
+                _buildBestTimeSection(),
+                const SizedBox(height: 24),
+                _buildChartsSection(),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   double _calculateHourlyBiteActivity(Hour hour) {
@@ -1915,207 +2068,22 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ],
     );
   }
-  Widget _buildAppBarWithTabs() {
-    final localizations = AppLocalizations.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: AppConstants.textColor.withValues(alpha: 0.1),
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Заголовок экрана
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.cloud,
-                    color: AppConstants.primaryColor,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    localizations.translate('weather'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Кнопка обновления
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      onPressed: _loadWeather,
-                      icon: Icon(
-                        Icons.refresh,
-                        color: AppConstants.primaryColor,
-                        size: 24,
-                      ),
-                      tooltip: 'Обновить',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Табы периодов
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppConstants.surfaceColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: AppConstants.primaryColor,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding: const EdgeInsets.all(4),
-                labelColor: Colors.white,
-                unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.7),
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                dividerColor: Colors.transparent,
-                tabs: [
-                  Tab(text: localizations.translate('today')),
-                  Tab(text: '3 ${localizations.translate('days_many')}'),
-                  Tab(text: '7 ${localizations.translate('days_many')}'),
-                  Tab(text: '14 ${localizations.translate('days_many')}'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComingSoonTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.construction,
-              size: 64,
-              color: AppConstants.primaryColor,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Скоро будет готово!',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Работаем над расширенным прогнозом',
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-
-String _getHourRecommendation(int hour, double activity) {
-  if (activity > 0.8) {
-    if (hour >= 5 && hour <= 9) {
-      return '🌅 Утренний клев! Используйте яркие приманки';
-    } else if (hour >= 18 && hour <= 21) {
-      return '🌇 Вечерний жор! Время для трофеев';
+  String _getHourRecommendation(int hour, double activity) {
+    if (activity > 0.8) {
+      if (hour >= 5 && hour <= 9) {
+        return '🌅 Утренний клев! Используйте яркие приманки';
+      } else if (hour >= 18 && hour <= 21) {
+        return '🌇 Вечерний жор! Время для трофеев';
+      }
+      return '🎣 Отличное время для активной ловли';
+    } else if (activity > 0.6) {
+      return '👍 Хорошие условия, стоит попробовать';
+    } else if (activity > 0.3) {
+      return '⚠️ Слабая активность, нужно терпение';
     }
-    return '🎣 Отличное время для активной ловли';
-  } else if (activity > 0.6) {
-    return '👍 Хорошие условия, стоит попробовать';
-  } else if (activity > 0.3) {
-    return '⚠️ Слабая активность, нужно терпение';
+    return '😴 Рыба неактивна, лучше отдохнуть';
   }
-  return '😴 Рыба неактивна, лучше отдохнуть';
-}
-
-
-// Кастомный painter для клёвометра
-class BiteMeterPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  BiteMeterPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint backgroundPaint = Paint()
-      ..color = color.withValues(alpha: 0.1)
-      ..strokeWidth = 8
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final Paint progressPaint = Paint()
-      ..color = color
-      ..strokeWidth = 8
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final Offset center = Offset(size.width / 2, size.height / 2);
-    final double radius = size.width / 2 - 4;
-
-    const double startAngle = -math.pi / 2;
-    const double maxSweepAngle = 2 * math.pi;
-    final double sweepAngle = maxSweepAngle * progress;
-
-    // Рисуем фоновую окружность
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    // Рисуем прогресс
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      false,
-      progressPaint,
-    );
-  }
-
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 
