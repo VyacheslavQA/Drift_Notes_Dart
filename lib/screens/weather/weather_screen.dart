@@ -682,13 +682,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4), // УМЕНЬШЕНО: было 2, стало 4 (поднимаем текст)
             Flexible(
               child: Text(
                 _getPressureDescription(pressure),
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 10,
+                  fontSize: 11, // УВЕЛИЧЕНО: было 10, стало 11
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -799,7 +799,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4), // УМЕНЬШЕНО: было 8, стало 4 (поднимаем текст)
             Expanded(
               child: Align(
                 alignment: Alignment.bottomLeft,
@@ -807,7 +807,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   _getWindImpactOnFishing(windKph),
                   style: TextStyle(
                     color: _getWindImpactColor(windKph),
-                    fontSize: 9,
+                    fontSize: 10, // УВЕЛИЧЕНО: было 9, стало 10
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
@@ -879,13 +879,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               maxLines: 2,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2), // УМЕНЬШЕНО: было 4, стало 2 (поднимаем текст)
           Flexible(
             child: Text(
               moonImpact['description'],
               style: TextStyle(
                 color: moonImpact['color'],
-                fontSize: 9,
+                fontSize: 10, // УВЕЛИЧЕНО: было 9, стало 10
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -965,13 +965,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4), // УВЕЛИЧЕНО: было 2, стало 4 (поднимаем текст)
           Flexible(
             child: Text(
               '${localizations.translate('dew_point')}: ${_weatherSettings.formatTemperature(dewPoint, showUnit: false)}°',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 9,
+                fontSize: 10, // УВЕЛИЧЕНО: было 9, стало 10
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
