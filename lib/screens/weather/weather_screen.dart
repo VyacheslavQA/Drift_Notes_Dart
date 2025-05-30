@@ -40,6 +40,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   late AnimationController _biteController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _biteAnimation;
+  late TabController _tabController;
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
@@ -81,6 +83,22 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       CurvedAnimation(parent: _biteController, curve: Curves.elasticOut),
     );
 
+    // Инициализируем TabController
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: _selectedTabIndex,
+    );
+
+// Слушаем изменения табов
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _selectedTabIndex = _tabController.index;
+        });
+      }
+    });
+
 
   }
 
@@ -94,6 +112,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     _rotationController.dispose();
     _fadeController.dispose();
     _biteController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -201,10 +220,19 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
-      body: RefreshIndicator(
-        onRefresh: _loadWeather,
-        color: AppConstants.primaryColor,
-        child: _buildBody(),
+      body: Column(
+        children: [
+          _buildAppBarWithTabs(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadWeather,
+              color: AppConstants.primaryColor,
+              child: _selectedTabIndex == 0
+                  ? _buildBody() // Текущий контент для таба "Сегодня"
+                  : _buildComingSoonTab(), // Заглушка для остальных табов
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1887,6 +1915,145 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ],
     );
   }
+  Widget _buildAppBarWithTabs() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: AppConstants.textColor.withValues(alpha: 0.1),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Заголовок экрана
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cloud,
+                    color: AppConstants.primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    localizations.translate('weather'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Кнопка обновления
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      onPressed: _loadWeather,
+                      icon: Icon(
+                        Icons.refresh,
+                        color: AppConstants.primaryColor,
+                        size: 24,
+                      ),
+                      tooltip: 'Обновить',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Табы периодов
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppConstants.surfaceColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: AppConstants.primaryColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: Colors.white,
+                unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.7),
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                dividerColor: Colors.transparent,
+                tabs: [
+                  Tab(text: localizations.translate('today')),
+                  Tab(text: '3 ${localizations.translate('days_many')}'),
+                  Tab(text: '7 ${localizations.translate('days_many')}'),
+                  Tab(text: '14 ${localizations.translate('days_many')}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComingSoonTab() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.construction,
+              size: 64,
+              color: AppConstants.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Скоро будет готово!',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Работаем над расширенным прогнозом',
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 
@@ -1951,4 +2118,6 @@ class BiteMeterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
+
+
 }
