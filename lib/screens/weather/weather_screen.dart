@@ -10,10 +10,10 @@ import '../../services/weather/weather_api_service.dart';
 import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/fishing_forecast_service.dart';
-import '../../widgets/bite_activity_chart.dart';
 import 'pressure_detail_screen.dart';
 import 'wind_detail_screen.dart';
 import '../../widgets/animated_border_widget.dart';
+import '../../widgets/enhanced_bite_activity_chart.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -80,6 +80,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     _biteAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _biteController, curve: Curves.elasticOut),
     );
+
+
   }
 
   Future<void> _initWeatherSettings() async {
@@ -1478,17 +1480,17 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             ],
           ),
           const SizedBox(height: 12),
-          BiteActivityChart(
+          EnhancedBiteActivityChart(
             fishingForecast: _fishingForecast,
             weatherData: _currentWeather,
-            height: 320, // Увеличена высота для нового функционала
-            showTitle: false,
-            showLegend: true,
-            isInteractive: true,
+            height: 320,
             selectedFishingType: 'spinning', // По умолчанию
-            onFishingTypeChanged: (type) {
-              // Здесь можно сохранить выбор пользователя
-              debugPrint('🎣 Выбран тип рыбалки: $type');
+            onTimeSlotTapped: (hour, activity) {
+              // Здесь можно показать детали времени
+              debugPrint('🎣 Выбран час: $hour, активность: ${(activity * 100).round()}%');
+
+              // Можно добавить показ диалога с подробностями
+              _showHourDetails(hour, activity);
             },
           ),
         ],
