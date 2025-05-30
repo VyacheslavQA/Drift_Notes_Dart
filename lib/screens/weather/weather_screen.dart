@@ -13,6 +13,7 @@ import '../../services/fishing_forecast_service.dart';
 import '../../widgets/bite_activity_chart.dart';
 import 'pressure_detail_screen.dart';
 import 'wind_detail_screen.dart';
+import '../../widgets/animated_border_widget.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -589,7 +590,14 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget _buildPressureCard(double pressure) {
     final localizations = AppLocalizations.of(context);
 
-    return InkWell(
+    return AnimatedBorderWidget(
+      borderRadius: 20.0,
+      borderWidth: 3.0, // Увеличили толщину
+      glowColor: AppConstants.primaryColor,
+      baseColor: AppConstants.textColor.withValues(alpha: 0.4), // Ярче базовая рамка
+      animationDuration: const Duration(seconds: 4),
+      glowSize: 15.0, // Больше размер свечения
+      glowIntensity: 1.0, // Максимальная интенсивность
       onTap: () {
         Navigator.push(
           context,
@@ -601,16 +609,19 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ),
         );
       },
-      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppConstants.surfaceColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
+          // Добавляем дополнительное свечение к самому контейнеру
+          boxShadow: [
+            BoxShadow(
+              color: AppConstants.primaryColor.withValues(alpha: 0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,7 +666,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             const SizedBox(height: 2),
-            // ИСПРАВЛЕНО: Добавлено отображение единиц измерения
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -682,13 +692,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 ),
               ],
             ),
-            const SizedBox(height: 4), // УМЕНЬШЕНО: было 2, стало 4 (поднимаем текст)
+            const SizedBox(height: 4),
             Flexible(
               child: Text(
                 _getPressureDescription(pressure),
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 11, // УВЕЛИЧЕНО: было 10, стало 11
+                  fontSize: 11,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -703,7 +713,14 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget _buildWindCard(double windKph, String windDir) {
     final localizations = AppLocalizations.of(context);
 
-    return InkWell(
+    return AnimatedBorderWidget(
+      borderRadius: 20.0,
+      borderWidth: 3.0, // Увеличили толщину
+      glowColor: Colors.cyan,
+      baseColor: AppConstants.textColor.withValues(alpha: 0.4), // Ярче базовая рамка
+      animationDuration: const Duration(seconds: 3),
+      glowSize: 15.0, // Больше размер свечения
+      glowIntensity: 1.0, // Максимальная интенсивность
       onTap: () {
         Navigator.push(
           context,
@@ -715,16 +732,19 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ),
         );
       },
-      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppConstants.surfaceColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
+          // Добавляем дополнительное свечение к самому контейнеру
+          boxShadow: [
+            BoxShadow(
+              color: Colors.cyan.withValues(alpha: 0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,12 +755,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    color: Colors.cyan.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.air,
-                    color: AppConstants.primaryColor,
+                    color: Colors.cyan,
                     size: 18,
                   ),
                 ),
@@ -772,7 +792,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             const SizedBox(height: 2),
-            // ИСПРАВЛЕНО: Добавлено отображение единиц измерения
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -799,7 +818,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 ),
               ],
             ),
-            const SizedBox(height: 4), // УМЕНЬШЕНО: было 8, стало 4 (поднимаем текст)
+            const SizedBox(height: 4),
             Expanded(
               child: Align(
                 alignment: Alignment.bottomLeft,
@@ -807,7 +826,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   _getWindImpactOnFishing(windKph),
                   style: TextStyle(
                     color: _getWindImpactColor(windKph),
-                    fontSize: 10, // УВЕЛИЧЕНО: было 9, стало 10
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
