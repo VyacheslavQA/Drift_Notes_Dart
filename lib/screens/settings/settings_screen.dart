@@ -476,7 +476,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // НОВАЯ СЕКЦИЯ: Уведомления
+              // ЕДИНСТВЕННОЕ МЕСТО ДЛЯ УВЕДОМЛЕНИЙ
               _buildSectionHeader(localizations.translate('notifications')),
               Card(
                 color: AppConstants.cardColor,
@@ -501,9 +501,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              const SizedBox(height: 20),
-
-// НОВАЯ СЕКЦИЯ: Настройки погоды
+              // НАСТРОЙКИ ПОГОДЫ ТОЛЬКО ДЛЯ ЕДИНИЦ ИЗМЕРЕНИЯ И КАЛИБРОВКИ
               _buildSectionHeader(localizations.translate('weather_settings')),
               Card(
                 color: AppConstants.cardColor,
@@ -513,7 +511,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 child: ListTile(
                   leading: const Icon(Icons.cloud, color: Colors.blue),
                   title: Text(localizations.translate('weather_settings')),
-                  subtitle: Text(localizations.translate('weather_settings_desc')),
+                  subtitle: Text('Единицы измерения и калибровка'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
@@ -526,7 +524,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 ),
               ),
 
-              // Очистка данных - теперь идет перед безопасностью
+              const SizedBox(height: 20),
+
+              // Очистка данных
               _buildSectionHeader(localizations.translate('data_and_storage')),
               Card(
                 color: AppConstants.cardColor,
@@ -563,7 +563,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // Безопасность - теперь идет после данных и хранилища
+              // Безопасность
               _buildSectionHeader(localizations.translate('security')),
               Card(
                 color: AppConstants.cardColor,

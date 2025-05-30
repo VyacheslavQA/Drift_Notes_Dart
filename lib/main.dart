@@ -24,6 +24,7 @@ import 'utils/network_utils.dart';
 import 'config/api_keys.dart';
 import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
+import 'services/weather_settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,8 @@ void main() async {
   // Инициализация сервисов уведомлений
   await NotificationService().initialize();
   await WeatherNotificationService().initialize();
+  await WeatherSettingsService().initialize();
+
 
   // Устанавливаем ориентацию экрана только на портретный режим
   await SystemChrome.setPreferredOrientations([

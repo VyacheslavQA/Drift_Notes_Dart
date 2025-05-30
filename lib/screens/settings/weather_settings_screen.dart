@@ -1,11 +1,9 @@
 // Путь: lib/screens/settings/weather_settings_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
-import '../../services/weather_preferences_service.dart';
 import '../../localization/app_localizations.dart';
-import 'weather_notifications_settings_screen.dart';
+import '../../services/weather_settings_service.dart';
 
 class WeatherSettingsScreen extends StatefulWidget {
   const WeatherSettingsScreen({super.key});
@@ -15,10 +13,12 @@ class WeatherSettingsScreen extends StatefulWidget {
 }
 
 class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
-  final WeatherPreferencesService _preferencesService = WeatherPreferencesService();
-  final TextEditingController _calibrationController = TextEditingController();
+  final WeatherSettingsService _weatherSettings = WeatherSettingsService();
 
-  bool _isLoading = false;
+  late TemperatureUnit _selectedTemperatureUnit;
+  late WindSpeedUnit _selectedWindSpeedUnit;
+  late PressureUnit _selectedPressureUnit;
+  late double _barometerCalibration;
 
   @override
   void initState() {
@@ -26,31 +26,56 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     _loadCurrentSettings();
   }
 
-  @override
-  void dispose() {
-    _calibrationController.dispose();
-    super.dispose();
-  }
-
   void _loadCurrentSettings() {
     setState(() {
-      _calibrationController.text = _preferencesService.pressureCalibration.toStringAsFixed(1);
+      _selectedTemperatureUnit = _weatherSettings.temperatureUnit;
+      _selectedWindSpeedUnit = _weatherSettings.windSpeedUnit;
+      _selectedPressureUnit = _weatherSettings.pressureUnit;
+      _barometerCalibration = _weatherSettings.barometerCalibration;
     });
   }
 
-  Future<void> _saveCalibration() async {
-    final value = double.tryParse(_calibrationController.text) ?? 0.0;
-    await _preferencesService.setPressureCalibration(value);
+  Future<void> _updateTemperatureUnit(TemperatureUnit unit) async {
+    await _weatherSettings.setTemperatureUnit(unit);
+    setState(() {
+      _selectedTemperatureUnit = unit;
+    });
+    _showSavedMessage();
+  }
 
-    if (mounted) {
-      final localizations = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('settings_saved')),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+  Future<void> _updateWindSpeedUnit(WindSpeedUnit unit) async {
+    await _weatherSettings.setWindSpeedUnit(unit);
+    setState(() {
+      _selectedWindSpeedUnit = unit;
+    });
+    _showSavedMessage();
+  }
+
+  Future<void> _updatePressureUnit(PressureUnit unit) async {
+    await _weatherSettings.setPressureUnit(unit);
+    setState(() {
+      _selectedPressureUnit = unit;
+    });
+    _showSavedMessage();
+  }
+
+  Future<void> _updateBarometerCalibration(double calibration) async {
+    await _weatherSettings.setBarometerCalibration(calibration);
+    setState(() {
+      _barometerCalibration = calibration;
+    });
+    _showSavedMessage();
+  }
+
+  void _showSavedMessage() {
+    final localizations = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(localizations.translate('settings_saved')),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
@@ -61,7 +86,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Настройки погоды',
+          localizations.translate('weather_settings'),
           style: TextStyle(color: AppConstants.textColor),
         ),
         backgroundColor: Colors.transparent,
@@ -71,39 +96,30 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
-        ),
-      )
-          : ListView(
+      body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Уведомления о погоде
-          _buildSectionHeader('Уведомления'),
-          _buildNotificationsCard(),
-
-          const SizedBox(height: 24),
-
           // Единицы измерения
           _buildSectionHeader('Единицы измерения'),
+
+          // Температура
           _buildTemperatureUnitCard(),
           const SizedBox(height: 12),
+
+          // Скорость ветра
           _buildWindSpeedUnitCard(),
           const SizedBox(height: 12),
+
+          // Давление
           _buildPressureUnitCard(),
 
           const SizedBox(height: 24),
 
+          // Калибровка
+          _buildSectionHeader('Калибровка'),
+
           // Калибровка барометра
-          _buildSectionHeader('Калибровка барометра'),
-          _buildCalibrationCard(),
-
-          const SizedBox(height: 24),
-
-          // Сброс настроек
-          _buildResetCard(),
+          _buildBarometerCalibrationCard(),
 
           const SizedBox(height: 40),
         ],
@@ -125,35 +141,6 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildNotificationsCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: const Icon(Icons.notifications_active, color: Colors.amber),
-        title: Text(
-          'Уведомления о погоде',
-          style: TextStyle(color: AppConstants.textColor),
-        ),
-        subtitle: Text(
-          'Настройка уведомлений о благоприятных условиях',
-          style: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const WeatherNotificationsSettingsScreen(),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildTemperatureUnitCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -166,7 +153,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.thermostat, color: Colors.red, size: 24),
+              Icon(Icons.thermostat, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Температура',
@@ -183,17 +170,19 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  'Цельсий (°C)',
-                  _preferencesService.temperatureUnit == TemperatureUnit.celsius,
-                      () => _setTemperatureUnit(TemperatureUnit.celsius),
+                  title: 'Цельсий',
+                  subtitle: '°C',
+                  isSelected: _selectedTemperatureUnit == TemperatureUnit.celsius,
+                  onTap: () => _updateTemperatureUnit(TemperatureUnit.celsius),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildUnitOption(
-                  'Фаренгейт (°F)',
-                  _preferencesService.temperatureUnit == TemperatureUnit.fahrenheit,
-                      () => _setTemperatureUnit(TemperatureUnit.fahrenheit),
+                  title: 'Фаренгейт',
+                  subtitle: '°F',
+                  isSelected: _selectedTemperatureUnit == TemperatureUnit.fahrenheit,
+                  onTap: () => _updateTemperatureUnit(TemperatureUnit.fahrenheit),
                 ),
               ),
             ],
@@ -215,7 +204,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.air, color: Colors.blue, size: 24),
+              Icon(Icons.air, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Скорость ветра',
@@ -232,17 +221,28 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  'Метры/сек (м/с)',
-                  _preferencesService.windSpeedUnit == WindSpeedUnit.metersPerSecond,
-                      () => _setWindSpeedUnit(WindSpeedUnit.metersPerSecond),
+                  title: 'м/с',
+                  subtitle: 'Метры/сек',
+                  isSelected: _selectedWindSpeedUnit == WindSpeedUnit.ms,
+                  onTap: () => _updateWindSpeedUnit(WindSpeedUnit.ms),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildUnitOption(
-                  'Км/час (км/ч)',
-                  _preferencesService.windSpeedUnit == WindSpeedUnit.kilometersPerHour,
-                      () => _setWindSpeedUnit(WindSpeedUnit.kilometersPerHour),
+                  title: 'км/ч',
+                  subtitle: 'Км/час',
+                  isSelected: _selectedWindSpeedUnit == WindSpeedUnit.kmh,
+                  onTap: () => _updateWindSpeedUnit(WindSpeedUnit.kmh),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildUnitOption(
+                  title: 'mph',
+                  subtitle: 'Мили/час',
+                  isSelected: _selectedWindSpeedUnit == WindSpeedUnit.mph,
+                  onTap: () => _updateWindSpeedUnit(WindSpeedUnit.mph),
                 ),
               ),
             ],
@@ -264,7 +264,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.speed, color: Colors.green, size: 24),
+              Icon(Icons.speed, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Атмосферное давление',
@@ -281,17 +281,28 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  'мм рт.ст.',
-                  _preferencesService.pressureUnit == PressureUnit.mmHg,
-                      () => _setPressureUnit(PressureUnit.mmHg),
+                  title: 'мм рт.ст.',
+                  subtitle: 'Привычно',
+                  isSelected: _selectedPressureUnit == PressureUnit.mmhg,
+                  onTap: () => _updatePressureUnit(PressureUnit.mmhg),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildUnitOption(
-                  'Гектопаскали (гПа)',
-                  _preferencesService.pressureUnit == PressureUnit.hPa,
-                      () => _setPressureUnit(PressureUnit.hPa),
+                  title: 'гПа',
+                  subtitle: 'Научно',
+                  isSelected: _selectedPressureUnit == PressureUnit.hpa,
+                  onTap: () => _updatePressureUnit(PressureUnit.hpa),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildUnitOption(
+                  title: 'inHg',
+                  subtitle: 'Дюймы',
+                  isSelected: _selectedPressureUnit == PressureUnit.inhg,
+                  onTap: () => _updatePressureUnit(PressureUnit.inhg),
                 ),
               ),
             ],
@@ -301,7 +312,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildCalibrationCard() {
+  Widget _buildBarometerCalibrationCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -313,226 +324,119 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.tune, color: Colors.orange, size: 24),
+              Icon(Icons.tune, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
-              Text(
-                'Корректировка показаний',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Калибровка барометра',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Настройте корректировку на основе домашнего барометра. Значение в гПа будет добавлено ко всем показаниям давления.',
+            'Корректировка показаний давления относительно местных метеостанций',
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,
-              height: 1.4,
             ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _calibrationController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
-                  ],
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    labelText: 'Корректировка (гПа)',
-                    labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-                    hintText: '0.0',
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                    prefixText: _calibrationController.text.startsWith('-') ? '' : '+',
-                    suffixText: 'гПа',
-                    filled: true,
-                    fillColor: AppConstants.backgroundColor.withValues(alpha: 0.5),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppConstants.primaryColor),
-                    ),
-                  ),
+                child: Slider(
+                  value: _barometerCalibration,
+                  min: -20.0,
+                  max: 20.0,
+                  divisions: 80,
+                  onChanged: (value) {
+                    setState(() {
+                      _barometerCalibration = value;
+                    });
+                  },
+                  onChangeEnd: (value) {
+                    _updateBarometerCalibration(value);
+                  },
+                  activeColor: AppConstants.primaryColor,
                 ),
               ),
               const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: _saveCalibration,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_barometerCalibration >= 0 ? '+' : ''}${_barometerCalibration.toStringAsFixed(1)} гПа',
+                  style: TextStyle(
+                    color: AppConstants.primaryColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                child: const Text('Сохранить'),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppConstants.backgroundColor.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.blue,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Пример: если домашний барометр показывает на 3 гПа больше, введите +3.0',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8),
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResetCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: const Icon(Icons.restore, color: Colors.grey),
-        title: Text(
-          'Сбросить настройки',
-          style: TextStyle(color: AppConstants.textColor),
-        ),
-        subtitle: Text(
-          'Вернуть все настройки к значениям по умолчанию',
-          style: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: _showResetConfirmation,
-      ),
-    );
-  }
-
-  Widget _buildUnitOption(String title, bool isSelected, VoidCallback onTap) {
+  Widget _buildUnitOption({
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
               ? AppConstants.primaryColor.withValues(alpha: 0.2)
               : AppConstants.backgroundColor.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
-          border: isSelected
-              ? Border.all(color: AppConstants.primaryColor, width: 2)
-              : Border.all(color: AppConstants.textColor.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: isSelected
+                ? AppConstants.primaryColor
+                : AppConstants.textColor.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
         ),
-        child: Row(
+        child: Column(
           children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: isSelected ? AppConstants.primaryColor : AppConstants.textColor.withValues(alpha: 0.5),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? AppConstants.primaryColor : AppConstants.textColor,
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isSelected
+                    ? AppConstants.primaryColor.withValues(alpha: 0.8)
+                    : AppConstants.textColor.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _setTemperatureUnit(TemperatureUnit unit) async {
-    await _preferencesService.setTemperatureUnit(unit);
-    setState(() {});
-  }
-
-  Future<void> _setWindSpeedUnit(WindSpeedUnit unit) async {
-    await _preferencesService.setWindSpeedUnit(unit);
-    setState(() {});
-  }
-
-  Future<void> _setPressureUnit(PressureUnit unit) async {
-    await _preferencesService.setPressureUnit(unit);
-    setState(() {});
-  }
-
-  Future<void> _showResetConfirmation() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          'Сброс настроек',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          'Вы уверены, что хотите сбросить все настройки погоды к значениям по умолчанию?',
-          style: TextStyle(color: AppConstants.textColor),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Отмена',
-              style: TextStyle(color: AppConstants.textColor),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Сбросить'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await _preferencesService.resetToDefaults();
-      _loadCurrentSettings();
-      setState(() {});
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Настройки сброшены'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
   }
 }
