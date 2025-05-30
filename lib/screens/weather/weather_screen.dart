@@ -1688,6 +1688,73 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     return localizations.translate('very_weak_activity');
   }
 
+  void _showHourDetails(int hour, double activity) {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          '${hour.toString().padLeft(2, '0')}:00',
+          style: TextStyle(color: AppConstants.textColor, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${localizations.translate('bite_activity')}: ${(activity * 100).round()}%',
+              style: TextStyle(
+                color: _getBiteActivityColor(activity),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _getBiteActivityText(activity),
+              style: TextStyle(color: AppConstants.textColor),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _getHourRecommendation(hour, activity),
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.8),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              localizations.translate('close'),
+              style: TextStyle(color: AppConstants.primaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getHourRecommendation(int hour, double activity) {
+    if (activity > 0.8) {
+      if (hour >= 5 && hour <= 9) {
+        return '🌅 Утренний клев! Используйте яркие приманки';
+      } else if (hour >= 18 && hour <= 21) {
+        return '🌇 Вечерний жор! Время для трофеев';
+      }
+      return '🎣 Отличное время для активной ловли';
+    } else if (activity > 0.6) {
+      return '👍 Хорошие условия, стоит попробовать';
+    } else if (activity > 0.3) {
+      return '⚠️ Слабая активность, нужно терпение';
+    }
+    return '😴 Рыба неактивна, лучше отдохнуть';
+  }
+
   double _calculateHourlyBiteActivity(Hour hour) {
     double activity = 0.5;
 
@@ -1821,6 +1888,25 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 }
+
+
+
+String _getHourRecommendation(int hour, double activity) {
+  if (activity > 0.8) {
+    if (hour >= 5 && hour <= 9) {
+      return '🌅 Утренний клев! Используйте яркие приманки';
+    } else if (hour >= 18 && hour <= 21) {
+      return '🌇 Вечерний жор! Время для трофеев';
+    }
+    return '🎣 Отличное время для активной ловли';
+  } else if (activity > 0.6) {
+    return '👍 Хорошие условия, стоит попробовать';
+  } else if (activity > 0.3) {
+    return '⚠️ Слабая активность, нужно терпение';
+  }
+  return '😴 Рыба неактивна, лучше отдохнуть';
+}
+
 
 // Кастомный painter для клёвометра
 class BiteMeterPainter extends CustomPainter {
