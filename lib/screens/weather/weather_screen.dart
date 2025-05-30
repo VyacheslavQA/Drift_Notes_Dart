@@ -1462,10 +1462,15 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           BiteActivityChart(
             fishingForecast: _fishingForecast,
             weatherData: _currentWeather,
-            height: 220,
+            height: 320, // Увеличена высота для нового функционала
             showTitle: false,
             showLegend: true,
             isInteractive: true,
+            selectedFishingType: 'spinning', // По умолчанию
+            onFishingTypeChanged: (type) {
+              // Здесь можно сохранить выбор пользователя
+              debugPrint('🎣 Выбран тип рыбалки: $type');
+            },
           ),
         ],
       ),
