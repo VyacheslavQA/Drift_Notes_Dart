@@ -12,6 +12,8 @@ import '../../services/fishing_forecast_service.dart';
 import '../../widgets/bite_activity_chart.dart';
 import '../../services/weather_notification_service.dart';
 import '../../screens/settings/weather_notifications_settings_screen.dart';
+import 'pressure_detail_screen.dart';
+import 'wind_detail_screen.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -768,80 +770,94 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final localizations = AppLocalizations.of(context);
     final pressureMmHg = (pressure / 1.333).round();
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppConstants.primaryColor.withValues(alpha: 0.2),
-          width: 1,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PressureDetailScreen(
+              weatherData: _currentWeather!,
+              locationName: _locationName,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.speed,
+                    color: AppConstants.primaryColor,
+                    size: 18,
+                  ),
                 ),
-                child: Icon(
-                  Icons.speed,
-                  color: AppConstants.primaryColor,
-                  size: 18,
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.trending_flat,
+                    color: Colors.green,
+                    size: 14,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  Icons.trending_flat,
-                  color: Colors.green,
-                  size: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            localizations.translate('pressure'),
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '$pressureMmHg мм',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Flexible(
-            child: Text(
-              _getPressureDescription(pressure),
+            const SizedBox(height: 8),
+            Text(
+              localizations.translate('pressure'),
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 10,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              '$pressureMmHg мм',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Flexible(
+              child: Text(
+                _getPressureDescription(pressure),
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: 10,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -850,79 +866,93 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     final localizations = AppLocalizations.of(context);
     final windMs = (windKph / 3.6).round();
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppConstants.primaryColor.withValues(alpha: 0.2),
-          width: 1,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WindDetailScreen(
+              weatherData: _currentWeather!,
+              locationName: _locationName,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.air,
+                    color: AppConstants.primaryColor,
+                    size: 18,
+                  ),
                 ),
-                child: Icon(
-                  Icons.air,
-                  color: AppConstants.primaryColor,
-                  size: 18,
-                ),
-              ),
-              const Spacer(),
-              _buildWindCompass(windDir),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            localizations.translate('wind'),
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+                const Spacer(),
+                _buildWindCompass(windDir),
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '$windMs м/с',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _translateWindDirection(windDir),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Flexible(
-            child: Text(
-              _getWindImpactOnFishing(windKph),
+            const SizedBox(height: 8),
+            Text(
+              localizations.translate('wind'),
               style: TextStyle(
-                color: _getWindImpactColor(windKph),
-                fontSize: 9,
+                color: AppConstants.textColor.withValues(alpha: 0.7),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$windMs м/с',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _translateWindDirection(windDir),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Flexible(
+              child: Text(
+                _getWindImpactOnFishing(windKph),
+                style: TextStyle(
+                  color: _getWindImpactColor(windKph),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
