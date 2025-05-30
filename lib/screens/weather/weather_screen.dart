@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather/weather_api_service.dart';
+import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/fishing_forecast_service.dart';
 import '../../widgets/bite_activity_chart.dart';
@@ -23,6 +24,7 @@ class WeatherScreen extends StatefulWidget {
 class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateMixin {
   final WeatherApiService _weatherService = WeatherApiService();
   final FishingForecastService _fishingForecastService = FishingForecastService();
+  final WeatherSettingsService _weatherSettings = WeatherSettingsService();
 
   WeatherApiResponse? _currentWeather;
   Map<String, dynamic>? _fishingForecast;
@@ -42,6 +44,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   void initState() {
     super.initState();
     _initAnimations();
+    _initWeatherSettings();
   }
 
   @override
@@ -76,6 +79,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     _biteAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _biteController, curve: Curves.elasticOut),
     );
+  }
+
+  Future<void> _initWeatherSettings() async {
+    // Инициализируем настройки погоды, если еще не инициализированы
+    debugPrint('🌤️ Инициализация настроек погоды в weather_screen');
   }
 
   @override
@@ -451,12 +459,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Температура
+                      // Температура с динамическими единицами
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${current.tempC.round()}',
+                            _weatherSettings.convertTemperature(current.tempC).round().toString(),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 48,
@@ -467,7 +475,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              '°C',
+                              _weatherSettings.getTemperatureUnitSymbol(),
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 20,
@@ -497,7 +505,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°',
+                              '${localizations.translate('feels_like')} ${_weatherSettings.formatTemperature(current.feelslikeC, showUnit: false)}${_weatherSettings.getTemperatureUnitSymbol()}',
                               style: TextStyle(
                                 color: AppConstants.textColor.withValues(alpha: 0.7),
                                 fontSize: 14,
@@ -580,7 +588,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   Widget _buildPressureCard(double pressure) {
     final localizations = AppLocalizations.of(context);
-    final pressureMmHg = (pressure / 1.333).round();
 
     return InkWell(
       onTap: () {
@@ -649,7 +656,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             ),
             const SizedBox(height: 2),
             Text(
-              '$pressureMmHg мм',
+              _weatherSettings.formatPressure(pressure, showUnit: false),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 20,
@@ -676,7 +683,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   Widget _buildWindCard(double windKph, String windDir) {
     final localizations = AppLocalizations.of(context);
-    final windMs = (windKph / 3.6).round();
 
     return InkWell(
       onTap: () {
@@ -748,7 +754,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             ),
             const SizedBox(height: 2),
             Text(
-              '$windMs м/с',
+              _weatherSettings.formatWindSpeed(windKph, showUnit: false),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 20,
@@ -924,7 +930,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           const SizedBox(height: 2),
           Flexible(
             child: Text(
-              '${localizations.translate('dew_point')}: ${dewPoint.round()}°',
+              '${localizations.translate('dew_point')}: ${_weatherSettings.formatTemperature(dewPoint, showUnit: false)}°',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 9,
@@ -1213,9 +1219,9 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                       size: 36,
                     ),
 
-                    // Температура
+                    // Температура с динамическими единицами
                     Text(
-                      '${hour.tempC.round()}°',
+                      _weatherSettings.formatTemperature(hour.tempC, showUnit: false) + _weatherSettings.getTemperatureUnitSymbol(),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 20,
@@ -1236,7 +1242,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                                 size: 14,
                               ),
                               Text(
-                                '${(hour.windKph / 3.6).round()}',
+                                _weatherSettings.formatWindSpeed(hour.windKph, showUnit: false),
                                 style: TextStyle(
                                   color: AppConstants.textColor.withValues(alpha: 0.8),
                                   fontSize: 11,
@@ -1521,8 +1527,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   String _getPressureDescription(double pressure) {
     final localizations = AppLocalizations.of(context);
-    if (pressure < 1000) return localizations.translate('low_pressure');
-    if (pressure < 1020) return localizations.translate('normal_pressure');
+    // Учитываем калибровку барометра при проверке диапазонов
+    final calibratedPressure = _weatherSettings.convertPressure(pressure);
+    final originalPressure = pressure + _weatherSettings.barometerCalibration;
+
+    if (originalPressure < 1000) return localizations.translate('low_pressure');
+    if (originalPressure < 1020) return localizations.translate('normal_pressure');
     return localizations.translate('high_pressure');
   }
 
