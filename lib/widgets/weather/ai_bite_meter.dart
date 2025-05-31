@@ -6,17 +6,20 @@ import '../../constants/app_constants.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../localization/app_localizations.dart';
 import '../animated_border_widget.dart';
+import '../../screens/weather/fishing_type_detail_screen.dart';
 
 class AIBiteMeter extends StatefulWidget {
   final MultiFishingTypePrediction? aiPrediction;
   final VoidCallback? onCompareTypes;
   final Function(String)? onSelectType;
+  final List<String>? preferredTypes; // Фильтр из настроек
 
   const AIBiteMeter({
     super.key,
     this.aiPrediction,
     this.onCompareTypes,
     this.onSelectType,
+    this.preferredTypes,
   });
 
   @override
@@ -29,6 +32,45 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   late AnimationController _pulseController;
   late Animation<double> _gaugeAnimation;
   late Animation<double> _pulseAnimation;
+
+  // Конфигурация типов рыбалки с иконками
+  static const Map<String, Map<String, String>> fishingTypes = {
+    'carp_fishing': {
+      'name': 'Карповая рыбалка',
+      'icon': 'assets/images/fishing_types/carp_fishing.png',
+      'nameKey': 'carp_fishing',
+    },
+    'feeder': {
+      'name': 'Фидер',
+      'icon': 'assets/images/fishing_types/feeder.png',
+      'nameKey': 'feeder',
+    },
+    'float_fishing': {
+      'name': 'Поплавочная',
+      'icon': 'assets/images/fishing_types/float_fishing.png',
+      'nameKey': 'float_fishing',
+    },
+    'fly_fishing': {
+      'name': 'Нахлыст',
+      'icon': 'assets/images/fishing_types/fly_fishing.png',
+      'nameKey': 'fly_fishing',
+    },
+    'ice_fishing': {
+      'name': 'Зимняя рыбалка',
+      'icon': 'assets/images/fishing_types/ice_fishing.png',
+      'nameKey': 'ice_fishing',
+    },
+    'spinning': {
+      'name': 'Спиннинг',
+      'icon': 'assets/images/fishing_types/spinning.png',
+      'nameKey': 'spinning',
+    },
+    'trolling': {
+      'name': 'Троллинг',
+      'icon': 'assets/images/fishing_types/trolling.png',
+      'nameKey': 'trolling',
+    },
+  };
 
   @override
   void initState() {
@@ -70,6 +112,39 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     _gaugeController.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  List<String> _getFilteredTypes() {
+    // Если указаны предпочтения - показываем только их
+    if (widget.preferredTypes != null && widget.preferredTypes!.isNotEmpty) {
+      return widget.preferredTypes!;
+    }
+    // Иначе показываем все доступные типы
+    return fishingTypes.keys.toList();
+  }
+
+  String _getBestFilteredType() {
+    if (widget.aiPrediction == null) return 'spinning';
+
+    final filteredTypes = _getFilteredTypes();
+    final rankings = widget.aiPrediction!.comparison.rankings;
+
+    // Ищем лучший тип среди отфильтрованных
+    for (final ranking in rankings) {
+      if (filteredTypes.contains(ranking.fishingType)) {
+        return ranking.fishingType;
+      }
+    }
+
+    return filteredTypes.isNotEmpty ? filteredTypes.first : 'spinning';
+  }
+
+  int _getBestFilteredScore() {
+    if (widget.aiPrediction == null) return 50;
+
+    final bestType = _getBestFilteredType();
+    final prediction = widget.aiPrediction!.allPredictions[bestType];
+    return prediction?.overallScore ?? 50;
   }
 
   @override
@@ -136,9 +211,8 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildAIPredictionContent(AppLocalizations localizations) {
-    final prediction = widget.aiPrediction!;
-    final bestType = prediction.bestPrediction;
-    final score = bestType.overallScore;
+    final score = _getBestFilteredScore();
+    final bestType = _getBestFilteredType();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -171,8 +245,13 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
           const SizedBox(height: 20),
 
+          // Горизонтальный список типов рыбалки
+          _buildFishingTypesScroll(localizations, bestType),
+
+          const SizedBox(height: 20),
+
           // Информация о лучшем типе рыбалки
-          _buildBestTypeInfo(prediction, localizations),
+          _buildBestTypeInfo(bestType, localizations),
 
           const SizedBox(height: 16),
 
@@ -189,6 +268,9 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildHeader(AppLocalizations localizations) {
+    final filteredCount = _getFilteredTypes().length;
+    final totalCount = fishingTypes.length;
+
     return Row(
       children: [
         Container(
@@ -241,7 +323,9 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            localizations.translate('all_types'),
+            filteredCount == totalCount
+                ? localizations.translate('all_types')
+                : '$filteredCount/$totalCount',
             style: TextStyle(
               color: AppConstants.primaryColor,
               fontSize: 12,
@@ -361,8 +445,162 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  Widget _buildBestTypeInfo(MultiFishingTypePrediction prediction, AppLocalizations localizations) {
-    final bestType = prediction.comparison.bestOverall;
+  Widget _buildFishingTypesScroll(AppLocalizations localizations, String bestType) {
+    final filteredTypes = _getFilteredTypes();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            localizations.translate('fishing_types_comparison'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: filteredTypes.length,
+            itemBuilder: (context, index) {
+              final type = filteredTypes[index];
+              final isBest = type == bestType;
+              return _buildFishingTypeCard(type, isBest, localizations);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFishingTypeCard(String type, bool isBest, AppLocalizations localizations) {
+    final typeInfo = fishingTypes[type];
+    if (typeInfo == null) return const SizedBox();
+
+    final prediction = widget.aiPrediction!.allPredictions[type];
+    final score = prediction?.overallScore ?? 0;
+
+    Widget cardContent = Container(
+      width: 70,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: isBest
+            ? AppConstants.primaryColor.withValues(alpha: 0.1)
+            : AppConstants.backgroundColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isBest
+              ? AppConstants.primaryColor
+              : AppConstants.textColor.withValues(alpha: 0.2),
+          width: isBest ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openFishingTypeDetail(type, localizations),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Иконка типа рыбалки
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isBest
+                        ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                        : AppConstants.textColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      typeInfo['icon']!,
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.fishing,
+                          size: 20,
+                          color: isBest
+                              ? AppConstants.primaryColor
+                              : AppConstants.textColor.withValues(alpha: 0.6),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                // Название типа
+                Text(
+                  localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
+                  style: TextStyle(
+                    color: isBest
+                        ? AppConstants.primaryColor
+                        : AppConstants.textColor,
+                    fontSize: 10,
+                    fontWeight: isBest ? FontWeight.bold : FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Если это лучший тип - добавляем анимированную рамку
+    if (isBest) {
+      return AnimatedBorderWidget(
+        borderRadius: 12.0,
+        glowColor: AppConstants.primaryColor,
+        baseColor: AppConstants.primaryColor.withValues(alpha: 0.3),
+        animationDuration: const Duration(seconds: 4),
+        glowSize: 15.0,
+        glowIntensity: 0.6,
+        child: cardContent,
+      );
+    }
+
+    return cardContent;
+  }
+
+  void _openFishingTypeDetail(String type, AppLocalizations localizations) {
+    final prediction = widget.aiPrediction!.allPredictions[type];
+    if (prediction == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FishingTypeDetailScreen(
+          fishingType: type,
+          prediction: prediction,
+          typeInfo: fishingTypes[type]!,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBestTypeInfo(String bestType, AppLocalizations localizations) {
+    final typeInfo = fishingTypes[bestType];
+    final prediction = widget.aiPrediction!.allPredictions[bestType];
+
+    if (typeInfo == null || prediction == null) return const SizedBox();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -382,9 +620,21 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               color: AppConstants.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              bestType.icon,
-              style: const TextStyle(fontSize: 24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                typeInfo['icon']!,
+                width: 24,
+                height: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.fishing,
+                    size: 24,
+                    color: AppConstants.primaryColor,
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -393,7 +643,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${localizations.translate('ai_recommendation')} ${bestType.typeName}',
+                  '${localizations.translate('ai_recommendation')} ${localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!}',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -402,7 +652,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  bestType.shortRecommendation,
+                  prediction.recommendation,
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -414,11 +664,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: bestType.scoreColor,
+              color: _getScoreColor(prediction.overallScore),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${bestType.score}',
+              '${prediction.overallScore}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -431,7 +681,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  Widget _buildKeyFactors(AIBitePrediction prediction, AppLocalizations localizations) {
+  Widget _buildKeyFactors(String bestType, AppLocalizations localizations) {
+    final prediction = widget.aiPrediction!.allPredictions[bestType];
+    if (prediction == null) return const SizedBox();
+
     final topFactors = prediction.topPositiveFactors.take(3).toList();
 
     if (topFactors.isEmpty) {
@@ -492,7 +745,9 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildActionButtons(AppLocalizations localizations) {
-    final nextWindow = widget.aiPrediction!.bestPrediction.nextBestTimeWindow;
+    final bestType = _getBestFilteredType();
+    final prediction = widget.aiPrediction!.allPredictions[bestType];
+    final nextWindow = prediction?.nextBestTimeWindow;
 
     return Row(
       children: [
