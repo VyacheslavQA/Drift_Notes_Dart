@@ -42,7 +42,9 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   late AnimationController _fadeController;
   late AnimationController _pullHintController;
   late Animation<double> _pullHintAnimation;
+  late Animation<Offset> _pullHintSlideAnimation;
   bool _showPullHint = true;
+  bool _hasShownHintOnce = false;
 
   @override
   void initState() {
@@ -55,6 +57,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     super.didChangeDependencies();
     if (_isLoading && _currentWeather == null) {
       _loadWeather();
+    } else {
+      // Проверяем, нужно ли показать подсказку для существующих данных
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _startPullHintIfNeeded();
+      });
     }
   }
 
@@ -70,28 +77,60 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
 
     _pullHintController = AnimationController(
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
-    _pullHintAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+    // Анимация прозрачности для пульсирующего эффекта
+    _pullHintAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(
         parent: _pullHintController,
         curve: Curves.easeInOut,
       ),
     );
 
-    // Запускаем анимацию подсказки
-    _pullHintController.repeat(reverse: true);
+    // Анимация сдвига для имитации движения вниз
+    _pullHintSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, -0.5),
+      end: const Offset(0, 0.2),
+    ).animate(
+      CurvedAnimation(
+        parent: _pullHintController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
-    // Скрываем подсказку через 10 секунд
-    Future.delayed(const Duration(seconds: 10), () {
-      if (mounted) {
-        setState(() {
-          _showPullHint = false;
-        });
-      }
-    });
+    _startPullHintIfNeeded();
+  }
+
+  void _startPullHintIfNeeded() {
+    // Показываем подсказку если:
+    // 1. Еще не показывали в этой сессии
+    // 2. Или данные устарели (более 1 часа)
+    // 3. Или есть ошибка
+    final shouldShow = !_hasShownHintOnce ||
+        _errorMessage != null ||
+        (_currentWeather != null &&
+            DateTime.now().difference(_lastUpdated).inHours > 1);
+
+    if (shouldShow && !_isLoading) {
+      setState(() {
+        _showPullHint = true;
+      });
+
+      _pullHintController.repeat(reverse: true);
+      _hasShownHintOnce = true;
+
+      // Скрываем через 8 секунд
+      Future.delayed(const Duration(seconds: 8), () {
+        if (mounted && _showPullHint) {
+          setState(() {
+            _showPullHint = false;
+          });
+          _pullHintController.stop();
+        }
+      });
+    }
   }
 
   @override
@@ -111,6 +150,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       _showPullHint = false; // Скрываем подсказку при загрузке
     });
 
+    _pullHintController.stop();
     _loadingController.repeat();
 
     try {
@@ -143,6 +183,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
           _loadingController.stop();
           _fadeController.forward();
+
+          // Показываем подсказку после успешной загрузки (для новых пользователей)
+          if (!_hasShownHintOnce) {
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) _startPullHintIfNeeded();
+            });
+          }
         }
       }
     } catch (e) {
@@ -152,6 +199,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           _isLoading = false;
         });
         _loadingController.stop();
+
+        // Показываем подсказку при ошибке
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) _startPullHintIfNeeded();
+        });
       }
     }
   }
@@ -227,15 +279,15 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // Заголовок экрана
+          // Заголовок экрана (без кнопки обновления)
           SliverToBoxAdapter(
             child: _buildScreenHeader(),
           ),
 
-          // Подсказка о pull-to-refresh
+          // Анимированная подсказка pull-to-refresh
           if (_showPullHint)
             SliverToBoxAdapter(
-              child: _buildPullToRefreshHint(),
+              child: _buildAnimatedPullHint(),
             ),
 
           // Заголовок с температурой
@@ -325,65 +377,78 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 fontWeight: FontWeight.bold,
               ),
             ),
+            // Убрали кнопку обновления - теперь только Spacer
             const Spacer(),
-            // Кнопка обновления
-            Container(
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                onPressed: _loadWeather,
-                icon: Icon(
-                  Icons.refresh,
-                  color: AppConstants.primaryColor,
-                  size: 24,
-                ),
-                tooltip: 'Обновить',
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPullToRefreshHint() {
+  Widget _buildAnimatedPullHint() {
     return AnimatedBuilder(
-      animation: _pullHintAnimation,
+      animation: _pullHintController,
       builder: (context, child) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Opacity(
-                opacity: _pullHintAnimation.value,
-                child: Icon(
-                  Icons.keyboard_arrow_down,
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  size: 20,
-                ),
+          height: 32,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          child: SlideTransition(
+            position: _pullHintSlideAnimation,
+            child: FadeTransition(
+              opacity: _pullHintAnimation,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Левая стрелка
+                  Transform.scale(
+                    scale: 0.8 + (_pullHintAnimation.value * 0.4),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppConstants.primaryColor.withValues(
+                        alpha: 0.3 + (_pullHintAnimation.value * 0.4),
+                      ),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Текст с градиентом
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [
+                        AppConstants.primaryColor.withValues(alpha: 0.6),
+                        AppConstants.primaryColor,
+                        AppConstants.primaryColor.withValues(alpha: 0.6),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ).createShader(bounds),
+                    child: Text(
+                      'Потяните для обновления',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Правая стрелка
+                  Transform.scale(
+                    scale: 0.8 + (_pullHintAnimation.value * 0.4),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppConstants.primaryColor.withValues(
+                        alpha: 0.3 + (_pullHintAnimation.value * 0.4),
+                      ),
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Потяните для обновления',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Opacity(
-                opacity: _pullHintAnimation.value,
-                child: Icon(
-                  Icons.keyboard_arrow_down,
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  size: 20,
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
