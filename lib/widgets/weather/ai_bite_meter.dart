@@ -29,12 +29,13 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     with TickerProviderStateMixin {
   late AnimationController _meterController;
   late AnimationController _pulseController;
-  late AnimationController _factorsController;
+  late AnimationController _fishAnimationController;
   late Animation<double> _meterAnimation;
   late Animation<double> _pulseAnimation;
-  late Animation<double> _factorsAnimation;
+  late Animation<double> _fishAnimation;
 
   String _currentSelectedType = 'spinning';
+  bool _showAllTypes = false;
 
   @override
   void initState() {
@@ -55,8 +56,8 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       vsync: this,
     );
 
-    _factorsController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+    _fishAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -74,27 +75,23 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       ),
     );
 
-    _factorsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _fishAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _factorsController,
-        curve: Curves.easeOutCubic,
+        parent: _fishAnimationController,
+        curve: Curves.easeInOut,
       ),
     );
 
-    // Запускаем анимации
     _meterController.forward();
     _pulseController.repeat(reverse: true);
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) _factorsController.forward();
-    });
+    _fishAnimationController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _meterController.dispose();
     _pulseController.dispose();
-    _factorsController.dispose();
+    _fishAnimationController.dispose();
     super.dispose();
   }
 
@@ -127,13 +124,13 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           children: [
             _buildHeader(),
             const SizedBox(height: 24),
-            _buildAIMeter(),
+            _buildMainMeter(),
             const SizedBox(height: 24),
-            _buildTypeSelector(),
+            _buildFishingTypeSelector(),
             const SizedBox(height: 20),
-            _buildRecommendation(),
+            _buildSimpleRecommendation(),
             const SizedBox(height: 16),
-            _buildTopFactors(),
+            _buildKeyFactors(),
             const SizedBox(height: 20),
             _buildActionButtons(),
           ],
@@ -166,7 +163,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '🧠 ИИ анализирует...',
+                  '🧠 ИИ анализирует клев...',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 18,
@@ -186,7 +183,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             ),
             const SizedBox(height: 16),
             Text(
-              'Подбираем лучший тип рыбалки...',
+              'Анализируем все виды рыбалки...',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 14,
@@ -200,66 +197,80 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildHeader() {
-    final localizations = AppLocalizations.of(context);
     final prediction = _getCurrentPrediction();
+    final config = AIBitePredictionService.fishingTypeConfigs[_currentSelectedType];
 
     return Row(
       children: [
+        // Иконка типа рыбалки
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
+            color: prediction.scoreColor.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(
-            Icons.psychology,
-            color: AppConstants.primaryColor,
-            size: 20,
+          child: Text(
+            config?.icon ?? '🎣',
+            style: const TextStyle(fontSize: 28),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '🧠 ИИ Прогноз клева',
+                '🧠 Прогноз клева ИИ',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 4),
               Text(
-                'Уверенность: ${prediction.confidencePercent}%',
+                config?.name ?? 'Спиннинг',
                 style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 12,
+                  color: prediction.scoreColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
+        // Индикатор уверенности
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.purple.withValues(alpha: 0.2),
+            color: Colors.green.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            'AI v${widget.aiPrediction!.bestPrediction.modelVersion}',
-            style: const TextStyle(
-              color: Colors.purple,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.verified,
+                color: Colors.green,
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${prediction.confidencePercent}%',
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAIMeter() {
+  Widget _buildMainMeter() {
     final prediction = _getCurrentPrediction();
     final score = prediction.overallScore;
 
@@ -271,66 +282,87 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           builder: (context, child) {
             return Transform.scale(
               scale: score >= 80 ? _pulseAnimation.value : 1.0,
-              child: SizedBox(
-                width: 160,
-                height: 160,
+              child: Container(
+                width: 180,
+                height: 180,
                 child: Stack(
                   children: [
-                    // Фоновая окружность
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppConstants.textColor.withValues(alpha: 0.1),
-                          width: 12,
-                        ),
-                      ),
-                    ),
-                    // ИИ прогресс
+                    // Основной круговой индикатор
                     CustomPaint(
-                      size: const Size(160, 160),
-                      painter: FixedAIBiteMeterPainter(
-                        progress: (score / 100.0) * _meterAnimation.value.clamp(0.0, 1.0),
+                      size: const Size(180, 180),
+                      painter: EnhancedBiteMeterPainter(
+                        progress: (score / 100.0) * _meterAnimation.value,
                         color: prediction.scoreColor,
-                        showSpark: score >= 80,
-                        animationValue: _meterAnimation.value.clamp(0.0, 1.0),
+                        backgroundColor: AppConstants.textColor.withValues(alpha: 0.1),
+                        strokeWidth: 16,
                       ),
                     ),
-                    // Центральный контент
+
+                    // Центральное содержимое
                     Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            '${(score * _meterAnimation.value.clamp(0.0, 1.0)).round()}',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          // Балл
+                          AnimatedBuilder(
+                            animation: _meterAnimation,
+                            builder: (context, child) {
+                              return Text(
+                                '${(score * _meterAnimation.value).round()}',
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 42,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            },
                           ),
+
+                          // Из 100
                           Text(
-                            'баллов',
+                            'из 100',
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(alpha: 0.6),
                               fontSize: 12,
                             ),
                           ),
-                          const SizedBox(height: 4),
+
+                          const SizedBox(height: 8),
+
+                          // Уровень активности
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
                               color: prediction.scoreColor.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              prediction.activityLevel.displayName,
+                              _getSimpleActivityText(score),
                               style: TextStyle(
                                 color: prediction.scoreColor,
-                                fontSize: 10,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Анимированная рыбка
+                          AnimatedBuilder(
+                            animation: _fishAnimation,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(
+                                  math.sin(_fishAnimation.value * math.pi * 2) * 8,
+                                  0,
+                                ),
+                                child: Text(
+                                  score >= 70 ? '🐟💨' : score >= 40 ? '🐟' : '😴',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -345,11 +377,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  Widget _buildTypeSelector() {
-    if (widget.aiPrediction == null) return const SizedBox();
-
-    final rankings = widget.aiPrediction!.comparison.rankings.take(4).toList();
-
+  Widget _buildFishingTypeSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -370,120 +398,167 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               ),
             ),
             const Spacer(),
-            if (widget.onCompareTypes != null)
-              GestureDetector(
-                onTap: widget.onCompareTypes,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Все типы',
-                    style: TextStyle(
-                      color: AppConstants.primaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showAllTypes = !_showAllTypes;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: rankings.map((ranking) => _buildTypeChip(ranking)).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTypeChip(FishingTypeRanking ranking) {
-    final isSelected = _currentSelectedType == ranking.fishingType;
-    final isBest = ranking.fishingType == widget.aiPrediction!.bestFishingType;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentSelectedType = ranking.fishingType;
-        });
-        widget.onSelectType?.call(ranking.fishingType);
-
-        // Перезапускаем анимацию при смене типа
-        _meterController.reset();
-        _meterController.forward();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? ranking.scoreColor.withValues(alpha: 0.2)
-              : AppConstants.backgroundColor.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? ranking.scoreColor
-                : AppConstants.textColor.withValues(alpha: 0.2),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              ranking.icon,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      ranking.typeName,
+                      _showAllTypes ? 'Скрыть' : 'Все типы',
                       style: TextStyle(
-                        color: isSelected
-                            ? ranking.scoreColor
-                            : AppConstants.textColor,
+                        color: AppConstants.primaryColor,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (isBest) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.star,
-                        color: Colors.amber,
-                        size: 12,
-                      ),
-                    ],
+                    const SizedBox(width: 4),
+                    Icon(
+                      _showAllTypes ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: AppConstants.primaryColor,
+                      size: 16,
+                    ),
                   ],
                 ),
-                Text(
-                  '${ranking.score} б.',
-                  style: TextStyle(
-                    color: isSelected
-                        ? ranking.scoreColor
-                        : AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        _buildTypeChips(),
+      ],
     );
   }
 
-  Widget _buildRecommendation() {
+  Widget _buildTypeChips() {
+    final allTypes = AIBitePredictionService.fishingTypeConfigs.entries.toList();
+    final displayTypes = _showAllTypes ? allTypes : allTypes.take(4).toList();
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: displayTypes.map((entry) {
+        final type = entry.key;
+        final config = entry.value;
+        final prediction = widget.aiPrediction?.allPredictions[type];
+        final score = prediction?.overallScore ?? 0;
+        final isSelected = _currentSelectedType == type;
+        final isBest = type == widget.aiPrediction?.bestFishingType;
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _currentSelectedType = type;
+            });
+            widget.onSelectType?.call(type);
+            _meterController.reset();
+            _meterController.forward();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? _getScoreColor(score).withValues(alpha: 0.2)
+                  : AppConstants.backgroundColor.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? _getScoreColor(score)
+                    : AppConstants.textColor.withValues(alpha: 0.2),
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  config.icon,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          config.name,
+                          style: TextStyle(
+                            color: isSelected
+                                ? _getScoreColor(score)
+                                : AppConstants.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (isBest) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.star,
+                            color: Colors.amber,
+                            size: 12,
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      '$score б. • ${_getSimpleActivityText(score)}',
+                      style: TextStyle(
+                        color: isSelected
+                            ? _getScoreColor(score)
+                            : AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSimpleRecommendation() {
     final prediction = _getCurrentPrediction();
+    final score = prediction.overallScore;
+
+    String emoji;
+    String title;
+    String description;
+
+    if (score >= 80) {
+      emoji = '🔥';
+      title = 'ОТЛИЧНЫЕ УСЛОВИЯ!';
+      description = 'Идеальное время для рыбалки. Рыба очень активна!';
+    } else if (score >= 60) {
+      emoji = '👍';
+      title = 'ХОРОШИЕ УСЛОВИЯ';
+      description = 'Стоит попробовать! Клев должен быть неплохой.';
+    } else if (score >= 40) {
+      emoji = '🤔';
+      title = 'СРЕДНИЕ УСЛОВИЯ';
+      description = 'Можно рыбачить, но потребуется терпение.';
+    } else if (score >= 20) {
+      emoji = '😐';
+      title = 'СЛАБЫЕ УСЛОВИЯ';
+      description = 'Клев будет слабым, лучше подождать.';
+    } else {
+      emoji = '😴';
+      title = 'ОЧЕНЬ СЛАБЫЕ УСЛОВИЯ';
+      description = 'Рыба пассивна. Стоит отложить рыбалку.';
+    }
 
     return Container(
       width: double.infinity,
@@ -497,102 +572,91 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lightbulb,
-                color: prediction.scoreColor,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
               Text(
-                'Рекомендация ИИ:',
-                style: TextStyle(
-                  color: prediction.scoreColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                emoji,
+                style: const TextStyle(fontSize: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: prediction.scoreColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            prediction.recommendation,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 14,
-              height: 1.4,
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTopFactors() {
+  Widget _buildKeyFactors() {
     final prediction = _getCurrentPrediction();
     final topFactors = prediction.factors.take(3).toList();
 
     if (topFactors.isEmpty) return const SizedBox();
 
-    return AnimatedBuilder(
-      animation: _factorsAnimation,
-      builder: (context, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
+            Icon(
+              Icons.analytics,
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
             Text(
-              '📊 Ключевые факторы:',
+              'Ключевые факторы:',
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12),
-            ...topFactors.asMap().entries.map((entry) {
-              final index = entry.key;
-              final factor = entry.value;
-              final delay = index * 0.2;
-              final animationValue = _factorsAnimation.value.clamp(0.0, 1.0);
-              final delayedValue = (animationValue - delay).clamp(0.0, 1.0);
-
-              return FadeTransition(
-                opacity: AlwaysStoppedAnimation(delayedValue),
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.5, 0),
-                    end: Offset.zero,
-                  ).animate(AlwaysStoppedAnimation(delayedValue)),
-                  child: _buildFactorItem(factor),
-                ),
-              );
-            }).toList(),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 12),
+        ...topFactors.map((factor) => _buildSimpleFactorItem(factor)).toList(),
+      ],
     );
   }
 
-  Widget _buildFactorItem(BiteFactorAnalysis factor) {
+  Widget _buildSimpleFactorItem(BiteFactorAnalysis factor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppConstants.backgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: factor.impactColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
       ),
       child: Row(
         children: [
           Text(
             factor.icon,
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -603,18 +667,16 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   factor.name,
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  factor.description,
+                  _getSimpleFactorDescription(factor),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 11,
+                    fontSize: 12,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -622,14 +684,14 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: factor.impactColor.withValues(alpha: 0.2),
+              color: factor.isPositive ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${factor.impact > 0 ? '+' : ''}${factor.impact}',
+              factor.isPositive ? 'ПЛЮС' : 'МИНУС',
               style: TextStyle(
-                color: factor.impactColor,
-                fontSize: 11,
+                color: factor.isPositive ? Colors.green : Colors.red,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -651,10 +713,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.amber.withValues(alpha: 0.3),
+                  color: Colors.orange.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -665,14 +727,14 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                     children: [
                       Icon(
                         Icons.schedule,
-                        color: Colors.amber,
+                        color: Colors.orange,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'Лучшее время',
                         style: TextStyle(
-                          color: Colors.amber,
+                          color: Colors.orange,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -707,7 +769,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () => _showDetailedAnalysis(),
-            icon: const Icon(Icons.analytics, size: 16),
+            icon: const Icon(Icons.info_outline, size: 16),
             label: const Text('Подробнее', style: TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
@@ -726,7 +788,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   // Вспомогательные методы
   AIBitePrediction _getCurrentPrediction() {
     if (widget.aiPrediction == null) {
-      // Fallback
       return AIBitePrediction(
         overallScore: 50,
         activityLevel: ActivityLevel.moderate,
@@ -744,6 +805,30 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
     return widget.aiPrediction!.allPredictions[_currentSelectedType] ??
         widget.aiPrediction!.bestPrediction;
+  }
+
+  Color _getScoreColor(int score) {
+    if (score >= 80) return const Color(0xFF4CAF50);
+    if (score >= 60) return const Color(0xFF8BC34A);
+    if (score >= 40) return const Color(0xFFFFC107);
+    if (score >= 20) return const Color(0xFFFF9800);
+    return const Color(0xFFF44336);
+  }
+
+  String _getSimpleActivityText(int score) {
+    if (score >= 80) return 'Отлично';
+    if (score >= 60) return 'Хорошо';
+    if (score >= 40) return 'Средне';
+    if (score >= 20) return 'Слабо';
+    return 'Очень слабо';
+  }
+
+  String _getSimpleFactorDescription(BiteFactorAnalysis factor) {
+    if (factor.isPositive) {
+      return 'Способствует клеву';
+    } else {
+      return 'Ухудшает клев';
+    }
   }
 
   void _showDetailedAnalysis() {
@@ -774,7 +859,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Анализ
                       Text(
                         'Подробный анализ:',
                         style: TextStyle(
@@ -794,7 +878,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       ),
                       const SizedBox(height: 16),
 
-                      // Советы
                       if (prediction.tips.isNotEmpty) ...[
                         Text(
                           'Советы ИИ:',
@@ -855,67 +938,60 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 }
 
-// ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ Кастомный painter для ИИ клевометра
-class FixedAIBiteMeterPainter extends CustomPainter {
+// Улучшенный painter для клевометра
+class EnhancedBiteMeterPainter extends CustomPainter {
   final double progress;
   final Color color;
-  final bool showSpark;
-  final double animationValue;
+  final Color backgroundColor;
+  final double strokeWidth;
 
-  FixedAIBiteMeterPainter({
+  EnhancedBiteMeterPainter({
     required this.progress,
     required this.color,
-    required this.showSpark,
-    required this.animationValue,
+    required this.backgroundColor,
+    required this.strokeWidth,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint backgroundPaint = Paint()
-      ..color = color.withValues(alpha: 0.1)
-      ..strokeWidth = 12
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - strokeWidth / 2;
+
+    // Фоновая окружность
+    final backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final Paint progressPaint = Paint()
-      ..strokeWidth = 12
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    // ИСПРАВЛЕНИЕ: Безопасное создание градиента
-    final safeProgress = progress.clamp(0.0, 1.0);
-
-    // Создаем линейный градиент вместо SweepGradient
-    final progressGradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        color.withValues(alpha: 0.5),
-        color,
-        color.withValues(alpha: 0.8),
-      ],
-      stops: const [0.0, 0.5, 1.0],
-    );
-
-    progressPaint.shader = progressGradient.createShader(
-      Rect.fromCircle(
-        center: Offset(size.width / 2, size.height / 2),
-        radius: size.width / 2 - 6,
-      ),
-    );
-
-    final Offset center = Offset(size.width / 2, size.height / 2);
-    final double radius = size.width / 2 - 6;
-
-    const double startAngle = -math.pi / 2;
-    const double maxSweepAngle = 2 * math.pi * 0.9; // Не полный круг, чтобы избежать проблем
-    final double sweepAngle = maxSweepAngle * safeProgress;
-
-    // Рисуем фоновую окружность
     canvas.drawCircle(center, radius, backgroundPaint);
 
-    // Рисуем прогресс
-    if (sweepAngle > 0) {
+    // Прогресс окружность
+    if (progress > 0) {
+      final progressPaint = Paint()
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      // Градиент для прогресса
+      final gradient = SweepGradient(
+        startAngle: -math.pi / 2,
+        endAngle: -math.pi / 2 + (2 * math.pi * progress),
+        colors: [
+          color.withValues(alpha: 0.5),
+          color,
+          color.withValues(alpha: 0.8),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      );
+
+      progressPaint.shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: radius),
+      );
+
+      const startAngle = -math.pi / 2;
+      final sweepAngle = 2 * math.pi * progress;
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
@@ -923,48 +999,19 @@ class FixedAIBiteMeterPainter extends CustomPainter {
         false,
         progressPaint,
       );
-    }
 
-    // Добавляем искры для отличных условий
-    if (showSpark && safeProgress > 0.8) {
-      _drawSparks(canvas, center, radius, sweepAngle, color);
-    }
+      // Точка в конце прогресса
+      if (progress > 0.05) {
+        final endAngle = startAngle + sweepAngle;
+        final endX = center.dx + radius * math.cos(endAngle);
+        final endY = center.dy + radius * math.sin(endAngle);
 
-    // Добавляем ИИ эффект
-    _drawAIEffect(canvas, center, radius, animationValue.clamp(0.0, 1.0), color);
-  }
+        final dotPaint = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
 
-  void _drawSparks(Canvas canvas, Offset center, double radius, double sweepAngle, Color color) {
-    final Paint sparkPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // Рисуем несколько искр вдоль прогресса
-    for (int i = 0; i < 3; i++) {
-      final angle = (-math.pi / 2) + (sweepAngle * (0.3 + i * 0.2));
-      final sparkRadius = radius + 8 + (math.sin(animationValue.clamp(0.0, 1.0) * math.pi * 4) * 3);
-
-      final sparkX = center.dx + sparkRadius * math.cos(angle);
-      final sparkY = center.dy + sparkRadius * math.sin(angle);
-
-      canvas.drawCircle(
-        Offset(sparkX, sparkY),
-        2 + math.sin(animationValue.clamp(0.0, 1.0) * math.pi * 6) * 1,
-        sparkPaint,
-      );
-    }
-  }
-
-  void _drawAIEffect(Canvas canvas, Offset center, double radius, double animation, Color color) {
-    final Paint aiPaint = Paint()
-      ..color = color.withValues(alpha: (0.3 * (1 - animation) + 0.1).clamp(0.0, 1.0))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    // Рисуем пульсирующие круги
-    for (int i = 0; i < 3; i++) {
-      final aiRadius = radius + 15 + (i * 10) + (animation * 20);
-      canvas.drawCircle(center, aiRadius, aiPaint);
+        canvas.drawCircle(Offset(endX, endY), strokeWidth / 2, dotPaint);
+      }
     }
   }
 

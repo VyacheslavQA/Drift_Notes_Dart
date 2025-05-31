@@ -29,11 +29,13 @@ class WeatherHeader extends StatefulWidget {
 class _WeatherHeaderState extends State<WeatherHeader>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
-  late AnimationController _effectsController; // Отдельный контроллер для эффектов
+  late AnimationController _effectsController;
+  late AnimationController _breathingController; // Для "дышащих" эффектов
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _effectsAnimation;
+  late Animation<double> _breathingAnimation;
 
   @override
   void initState() {
@@ -47,9 +49,15 @@ class _WeatherHeaderState extends State<WeatherHeader>
       vsync: this,
     );
 
-    // Отдельный контроллер для погодных эффектов
+    // Медленные эффекты для непрерывных погодных условий
     _effectsController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(seconds: 4), // Увеличили время
+      vsync: this,
+    );
+
+    // Очень медленное "дыхание" для иконок
+    _breathingController = AnimationController(
+      duration: const Duration(seconds: 3),
       vsync: this,
     );
 
@@ -81,14 +89,24 @@ class _WeatherHeaderState extends State<WeatherHeader>
       ),
     );
 
+    // Плавное дыхание
+    _breathingAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(
+        parent: _breathingController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _animationController.forward();
-    _effectsController.repeat(); // Запускаем эффекты в цикле
+    _effectsController.repeat();
+    _breathingController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _effectsController.dispose();
+    _breathingController.dispose();
     super.dispose();
   }
 
@@ -370,22 +388,89 @@ class _WeatherHeaderState extends State<WeatherHeader>
     final color = _getWeatherIconColor(current.condition.code);
     final conditionText = current.condition.text.toLowerCase();
 
-    // Добавляем эффекты для разных типов погоды
+    // Добавляем более приятные эффекты для разных типов погоды
     if (conditionText.contains('rain') || conditionText.contains('drizzle')) {
       return _buildRainyEffect(icon, color);
     } else if (conditionText.contains('snow') || conditionText.contains('blizzard')) {
       return _buildSnowyEffect(icon, color);
     } else if (conditionText.contains('thunder') || conditionText.contains('storm')) {
       return _buildThunderEffect(icon, color);
+    } else if (conditionText.contains('sun') || conditionText.contains('clear')) {
+      return _buildSunnyEffect(icon, color);
+    } else if (conditionText.contains('cloud')) {
+      return _buildCloudyEffect(icon, color);
+    } else if (conditionText.contains('wind')) {
+      return _buildWindyEffect(icon, color);
     } else {
-      return Icon(
-        icon,
-        size: 60,
-        color: color,
-      );
+      return _buildBreathingIcon(icon, color);
     }
   }
 
+  // Новый эффект для солнечной погоды - мягкое свечение
+  Widget _buildSunnyEffect(IconData icon, Color color) {
+    return AnimatedBuilder(
+      animation: _breathingController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.yellow.withValues(alpha: 0.3 * _breathingAnimation.value),
+                blurRadius: 15 * _breathingAnimation.value,
+                spreadRadius: 8 * _breathingAnimation.value,
+              ),
+            ],
+          ),
+          child: Transform.scale(
+            scale: _breathingAnimation.value,
+            child: Icon(icon, size: 60, color: color),
+          ),
+        );
+      },
+    );
+  }
+
+  // Облачная погода - плавное движение
+  Widget _buildCloudyEffect(IconData icon, Color color) {
+    return AnimatedBuilder(
+      animation: _effectsController,
+      builder: (context, child) {
+        final drift = math.sin(_effectsAnimation.value * 2 * math.pi) * 3;
+        return Transform.translate(
+          offset: Offset(drift, 0),
+          child: AnimatedBuilder(
+            animation: _breathingController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _breathingAnimation.value,
+                child: Icon(icon, size: 60, color: color),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // Ветреная погода - покачивание
+  Widget _buildWindyEffect(IconData icon, Color color) {
+    return AnimatedBuilder(
+      animation: _effectsController,
+      builder: (context, child) {
+        final sway = math.sin(_effectsAnimation.value * 4 * math.pi) * 5;
+        return Transform.rotate(
+          angle: sway * 0.05, // Небольшое покачивание
+          child: Transform.translate(
+            offset: Offset(sway, 0),
+            child: Icon(icon, size: 60, color: color),
+          ),
+        );
+      },
+    );
+  }
+
+  // Обновленный эффект дождя - более естественные капли
   Widget _buildRainyEffect(IconData icon, Color color) {
     return AnimatedBuilder(
       animation: _effectsController,
@@ -395,25 +480,36 @@ class _WeatherHeaderState extends State<WeatherHeader>
           height: 80,
           child: Stack(
             children: [
-              // Основная иконка
+              // Основная иконка с легким дыханием
               Center(
-                child: Icon(icon, size: 50, color: color),
+                child: AnimatedBuilder(
+                  animation: _breathingController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _breathingAnimation.value,
+                      child: Icon(icon, size: 50, color: color),
+                    );
+                  },
+                ),
               ),
-              // Анимированные капли дождя
-              ...List.generate(5, (index) {
-                final delay = index * 0.2;
+              // Более реалистичные капли дождя
+              ...List.generate(4, (index) {
+                final delay = index * 0.25;
                 final animValue = (_effectsAnimation.value + delay) % 1.0;
+                final startX = 20 + (index * 15.0);
+                final endY = 10 + (animValue * 55);
+
                 return Positioned(
-                  left: 15 + (index * 12.0),
-                  top: 10 + (animValue * 50),
+                  left: startX,
+                  top: endY,
                   child: Opacity(
-                    opacity: (1.0 - animValue) * 0.8,
+                    opacity: (math.sin(animValue * math.pi) * 0.8).clamp(0.0, 0.8),
                     child: Container(
-                      width: 3,
-                      height: 8,
+                      width: 2,
+                      height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.lightBlue,
-                        borderRadius: BorderRadius.circular(1.5),
+                        color: Colors.lightBlue.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(1),
                       ),
                     ),
                   ),
@@ -426,6 +522,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
     );
   }
 
+  // Обновленный эффект снега - более плавное падение
   Widget _buildSnowyEffect(IconData icon, Color color) {
     return AnimatedBuilder(
       animation: _effectsController,
@@ -437,22 +534,35 @@ class _WeatherHeaderState extends State<WeatherHeader>
             children: [
               // Основная иконка
               Center(
-                child: Icon(icon, size: 50, color: color),
+                child: AnimatedBuilder(
+                  animation: _breathingController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _breathingAnimation.value,
+                      child: Icon(icon, size: 50, color: color),
+                    );
+                  },
+                ),
               ),
-              // Анимированные снежинки
-              ...List.generate(8, (index) {
+              // Плавно падающие снежинки
+              ...List.generate(6, (index) {
                 final delay = index * 0.15;
                 final animValue = (_effectsAnimation.value + delay) % 1.0;
-                final horizontalOffset = math.sin(animValue * math.pi * 4) * 10;
+                final horizontalDrift = math.sin((animValue + delay) * math.pi * 3) * 8;
+                final verticalPos = 5 + (animValue * 65);
+
                 return Positioned(
-                  left: 20 + (index * 8.0) + horizontalOffset,
-                  top: 5 + (animValue * 60),
+                  left: 15 + (index * 10.0) + horizontalDrift,
+                  top: verticalPos,
                   child: Opacity(
-                    opacity: (1.0 - animValue) * 0.9,
-                    child: Icon(
-                      Icons.ac_unit,
-                      size: 8,
-                      color: Colors.white,
+                    opacity: (math.sin(animValue * math.pi) * 0.9).clamp(0.0, 0.9),
+                    child: Transform.rotate(
+                      angle: animValue * math.pi * 2,
+                      child: Icon(
+                        Icons.ac_unit,
+                        size: 6,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                     ),
                   ),
                 );
@@ -464,58 +574,88 @@ class _WeatherHeaderState extends State<WeatherHeader>
     );
   }
 
+  // Обновленный эффект грозы - естественные вспышки
   Widget _buildThunderEffect(IconData icon, Color color) {
     return AnimatedBuilder(
       animation: _effectsController,
       builder: (context, child) {
-        // Создаём эффект вспышки каждые 0.5 секунды
-        final flashPhase = (_effectsAnimation.value * 4) % 1.0;
-        final isFlashing = flashPhase < 0.1; // Короткая вспышка
+        // Создаём естественные вспышки: редкие и короткие
+        final timePhase = _effectsAnimation.value;
+
+        // Вспышка происходит только в определенные моменты
+        final flashTrigger1 = (timePhase > 0.15 && timePhase < 0.25);
+        final flashTrigger2 = (timePhase > 0.7 && timePhase < 0.75);
+        final isFlashing = flashTrigger1 || flashTrigger2;
+
+        // Интенсивность вспышки
+        double flashIntensity = 0.0;
+        if (flashTrigger1) {
+          flashIntensity = math.sin((timePhase - 0.15) * math.pi * 10).clamp(0.0, 1.0);
+        } else if (flashTrigger2) {
+          flashIntensity = math.sin((timePhase - 0.7) * math.pi * 20).clamp(0.0, 1.0);
+        }
 
         return Container(
           decoration: isFlashing ? BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.yellow.withValues(alpha: 0.8),
-                blurRadius: 30,
-                spreadRadius: 15,
+                color: Colors.yellow.withValues(alpha: 0.6 * flashIntensity),
+                blurRadius: 25 * flashIntensity,
+                spreadRadius: 10 * flashIntensity,
               ),
             ],
           ) : null,
           child: Stack(
             children: [
-              // Основная иконка
+              // Основная иконка с дыханием
               Center(
-                child: Icon(
-                  icon,
-                  size: 50,
-                  color: isFlashing ? Colors.yellow[100] : color,
+                child: AnimatedBuilder(
+                  animation: _breathingController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _breathingAnimation.value,
+                      child: Icon(
+                        icon,
+                        size: 50,
+                        color: isFlashing
+                            ? Color.lerp(color, Colors.yellow[100], flashIntensity * 0.7)
+                            : color,
+                      ),
+                    );
+                  },
                 ),
               ),
-              // Дополнительные молнии
-              if (isFlashing) ...[
+              // Деликатные молнии только во время вспышки
+              if (isFlashing && flashIntensity > 0.5) ...[
                 Positioned(
-                  top: 15,
-                  left: 35,
-                  child: Icon(
-                    Icons.flash_on,
-                    size: 12,
-                    color: Colors.yellow[300],
-                  ),
-                ),
-                Positioned(
-                  top: 45,
-                  right: 25,
-                  child: Icon(
-                    Icons.flash_on,
-                    size: 8,
-                    color: Colors.yellow[400],
+                  top: 20,
+                  left: 40,
+                  child: Opacity(
+                    opacity: flashIntensity,
+                    child: Icon(
+                      Icons.flash_on,
+                      size: 8,
+                      color: Colors.yellow[200],
+                    ),
                   ),
                 ),
               ],
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // Базовый "дышащий" эффект для обычных иконок
+  Widget _buildBreathingIcon(IconData icon, Color color) {
+    return AnimatedBuilder(
+      animation: _breathingController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _breathingAnimation.value,
+          child: Icon(icon, size: 60, color: color),
         );
       },
     );
