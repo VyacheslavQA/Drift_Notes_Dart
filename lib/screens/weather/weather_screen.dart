@@ -15,9 +15,6 @@ import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../widgets/weather/ai_bite_meter.dart';
 import '../../widgets/weather/hourly_forecast.dart';
 import '../../widgets/weather/best_time_section.dart';
-import 'weather_3days_tab.dart';
-import 'weather_7days_tab.dart';
-import 'weather_14days_tab.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -39,9 +36,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   String? _errorMessage;
   String _locationName = '';
   DateTime _lastUpdated = DateTime.now();
-
-  // Навигация
-  int _selectedTabIndex = 0; // 0 - сегодня, 1 - 3 дня, 2 - 7 дней, 3 - 14 дней
 
   // Анимации
   late AnimationController _loadingController;
@@ -207,7 +201,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       body: _buildContent(),
-      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
@@ -224,33 +217,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       return _buildNoDataState();
     }
 
-    switch (_selectedTabIndex) {
-      case 0:
-        return _buildTodayContent();
-      case 1:
-        return Weather3DaysTab(
-          weatherData: _currentWeather!,
-          fishingForecast: _aiPrediction?.toOldFormat(),
-          locationName: _locationName,
-          onRefresh: _loadWeather,
-        );
-      case 2:
-        return Weather7DaysTab(
-          weatherData: _currentWeather!,
-          fishingForecast: _aiPrediction?.toOldFormat(),
-          locationName: _locationName,
-          onRefresh: _loadWeather,
-        );
-      case 3:
-        return Weather14DaysTab(
-          weatherData: _currentWeather!,
-          fishingForecast: _aiPrediction?.toOldFormat(),
-          locationName: _locationName,
-          onRefresh: _loadWeather,
-        );
-      default:
-        return _buildTodayContent();
-    }
+    return _buildTodayContent();
   }
 
   Widget _buildTodayContent() {
@@ -358,6 +325,23 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const Spacer(),
+            // Кнопка обновления
+            Container(
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _loadWeather,
+                icon: Icon(
+                  Icons.refresh,
+                  color: AppConstants.primaryColor,
+                  size: 24,
+                ),
+                tooltip: 'Обновить',
+              ),
+            ),
           ],
         ),
       ),
@@ -365,8 +349,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildPullToRefreshHint() {
-    final localizations = AppLocalizations.of(context);
-
     return AnimatedBuilder(
       animation: _pullHintAnimation,
       builder: (context, child) {
@@ -406,88 +388,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
         );
       },
     );
-  }
-
-  Widget _buildBottomNavigation() {
-    final localizations = AppLocalizations.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppConstants.textColor.withValues(alpha: 0.1),
-            offset: const Offset(0, -2),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(
-                label: '3 ${localizations.translate('days_many')}',
-                isSelected: _selectedTabIndex == 1,
-                onTap: () => _switchTab(1),
-              ),
-              _buildNavItem(
-                label: '7 ${localizations.translate('days_many')}',
-                isSelected: _selectedTabIndex == 2,
-                onTap: () => _switchTab(2),
-              ),
-              _buildNavItem(
-                label: '14 ${localizations.translate('days_many')}',
-                isSelected: _selectedTabIndex == 3,
-                onTap: () => _switchTab(3),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _switchTab(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-    });
   }
 
   Widget _buildLoadingState() {
