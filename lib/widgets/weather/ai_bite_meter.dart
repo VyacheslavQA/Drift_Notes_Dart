@@ -262,6 +262,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildAIMeter() {
+    final localizations = AppLocalizations.of(context);
     final prediction = _getCurrentPrediction();
     final score = prediction.overallScore;
 
@@ -312,7 +313,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                             ),
                           ),
                           Text(
-                            AppLocalizations.of(context).translate('points'),
+                            localizations.translate('points'),
                             style: TextStyle(
                               color: AppConstants.textColor.withValues(alpha: 0.7),
                               fontSize: 12,
@@ -407,6 +408,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildTypeChip(FishingTypeRanking ranking) {
+    final localizations = AppLocalizations.of(context);
     final isSelected = _currentSelectedType == ranking.fishingType;
     final isBest = ranking.fishingType == widget.aiPrediction!.bestFishingType;
 
@@ -470,7 +472,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   ],
                 ),
                 Text(
-                  '${ranking.score} ${AppLocalizations.of(context).translate('points')}',
+                  '${ranking.score} ${localizations.translate('points')}',
                   style: TextStyle(
                     color: isSelected
                         ? ranking.scoreColor
@@ -729,14 +731,16 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
   // Вспомогательные методы
   AIBitePrediction _getCurrentPrediction() {
+    final localizations = AppLocalizations.of(context);
+
     if (widget.aiPrediction == null) {
       // Fallback
       return AIBitePrediction(
         overallScore: 50,
         activityLevel: ActivityLevel.moderate,
         confidence: 0.5,
-        recommendation: AppLocalizations.of(context).translate('basic_recommendation'),
-        detailedAnalysis: AppLocalizations.of(context).translate('analysis_unavailable'),
+        recommendation: localizations.translate('basic_recommendation'),
+        detailedAnalysis: localizations.translate('analysis_unavailable'),
         factors: [],
         bestTimeWindows: [],
         tips: [],
