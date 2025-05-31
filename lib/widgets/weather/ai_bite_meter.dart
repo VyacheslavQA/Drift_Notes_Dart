@@ -60,11 +60,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       vsync: this,
     );
 
-    // ИСПРАВЛЕНИЕ: Используем безопасные кривые без превышения [0,1]
     _meterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _meterController,
-        curve: Curves.easeOutCubic, // Заменил elasticOut на безопасную кривую
+        curve: Curves.easeOutCubic,
       ),
     );
 
@@ -78,7 +77,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     _factorsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _factorsController,
-        curve: Curves.easeOutCubic, // Заменил easeOutBack на безопасную кривую
+        curve: Curves.easeOutCubic,
       ),
     );
 
@@ -291,10 +290,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                     CustomPaint(
                       size: const Size(160, 160),
                       painter: FixedAIBiteMeterPainter(
-                        progress: (score / 100.0) * _meterAnimation.value.clamp(0.0, 1.0), // ИСПРАВЛЕНИЕ: clamp
+                        progress: (score / 100.0) * _meterAnimation.value.clamp(0.0, 1.0),
                         color: prediction.scoreColor,
                         showSpark: score >= 80,
-                        animationValue: _meterAnimation.value.clamp(0.0, 1.0), // ИСПРАВЛЕНИЕ: clamp
+                        animationValue: _meterAnimation.value.clamp(0.0, 1.0),
                       ),
                     ),
                     // Центральный контент
@@ -303,7 +302,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '${(score * _meterAnimation.value.clamp(0.0, 1.0)).round()}', // ИСПРАВЛЕНИЕ: clamp
+                            '${(score * _meterAnimation.value.clamp(0.0, 1.0)).round()}',
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 36,
@@ -557,8 +556,8 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               final index = entry.key;
               final factor = entry.value;
               final delay = index * 0.2;
-              final animationValue = _factorsAnimation.value.clamp(0.0, 1.0); // ИСПРАВЛЕНИЕ: clamp
-              final delayedValue = (animationValue - delay).clamp(0.0, 1.0); // ИСПРАВЛЕНИЕ: clamp
+              final animationValue = _factorsAnimation.value.clamp(0.0, 1.0);
+              final delayedValue = (animationValue - delay).clamp(0.0, 1.0);
 
               return FadeTransition(
                 opacity: AlwaysStoppedAnimation(delayedValue),
@@ -856,7 +855,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 }
 
-// ИСПРАВЛЕННЫЙ Кастомный painter для ИИ клевометра
+// ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ Кастомный painter для ИИ клевометра
 class FixedAIBiteMeterPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -883,18 +882,19 @@ class FixedAIBiteMeterPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // ИСПРАВЛЕНИЕ: Создаем безопасный градиент без выхода за пределы [0,1]
+    // ИСПРАВЛЕНИЕ: Безопасное создание градиента
     final safeProgress = progress.clamp(0.0, 1.0);
-    final progressGradient = SweepGradient(
-      startAngle: -math.pi / 2,
-      endAngle: -math.pi / 2 + (2 * math.pi * safeProgress),
+
+    // Создаем линейный градиент вместо SweepGradient
+    final progressGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
       colors: [
         color.withValues(alpha: 0.5),
         color,
         color.withValues(alpha: 0.8),
       ],
-      // ИСПРАВЛЕНИЕ: Обеспечиваем, что все stops находятся в диапазоне [0,1]
-      stops: [0.0, 0.5, 1.0],
+      stops: const [0.0, 0.5, 1.0],
     );
 
     progressPaint.shader = progressGradient.createShader(
@@ -908,20 +908,22 @@ class FixedAIBiteMeterPainter extends CustomPainter {
     final double radius = size.width / 2 - 6;
 
     const double startAngle = -math.pi / 2;
-    const double maxSweepAngle = 2 * math.pi;
+    const double maxSweepAngle = 2 * math.pi * 0.9; // Не полный круг, чтобы избежать проблем
     final double sweepAngle = maxSweepAngle * safeProgress;
 
     // Рисуем фоновую окружность
     canvas.drawCircle(center, radius, backgroundPaint);
 
     // Рисуем прогресс
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      false,
-      progressPaint,
-    );
+    if (sweepAngle > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        progressPaint,
+      );
+    }
 
     // Добавляем искры для отличных условий
     if (showSpark && safeProgress > 0.8) {
