@@ -1084,6 +1084,31 @@
   "excellent_activity": "отличный",
   "good_activity": "хороший",
   "poor_activity": "слабый",
-  "very_poor_activity": "очень слабый"
+  "very_poor_activity": "очень слабый",
+
+  "very_poor_activity": "очень слабый",
+
+  "weather_ai_analysis": "Анализ погоды и ИИ",
+  "update_weather_ai": "Обновить погоду и ИИ",
+  "weather_and_ai_analysis": "Погода и ИИ анализ",
+  "update_weather_and_ai": "Обновить погоду и ИИ",
+  "ai_weather_analysis": "ИИ анализ погоды",
+  "for": "для",
+  "ai_analyzing": "ИИ анализирует...",
+  "ai_analysis_complete": "ИИ анализ завершен",
+  "best_fishing_type": "Лучший тип рыбалки",
+  "fishing_type_analysis": "Анализ типов рыбалки",
+  "ai_recommendation_short": "Рекомендация ИИ",
+  "optimal_conditions": "Оптимальные условия",
+  "fishing_score": "Рейтинг рыбалки",
+  "activity_level": "Уровень активности",
+  "confidence_level": "Уровень уверенности",
+  "weather_analysis": "Анализ погоды",
+  "ai_enhanced": "Улучшено ИИ",
+  "local_analysis": "Локальный анализ",
+  "ai_processing": "Обработка ИИ...",
+  "generating_forecast": "Генерация прогноза..."
+
+}
 
 }

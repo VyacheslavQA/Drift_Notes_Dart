@@ -1153,5 +1153,30 @@
   "excellent_activity": "excellent",
   "good_activity": "good",
   "poor_activity": "poor",
-  "very_poor_activity": "very poor"
+  "very_poor_activity": "very poor",
+
+  "very_poor_activity": "very poor",
+
+  "weather_ai_analysis": "Weather AI Analysis",
+  "update_weather_ai": "Update Weather AI",
+  "weather_and_ai_analysis": "Weather and AI Analysis",
+  "update_weather_and_ai": "Update Weather and AI",
+  "ai_weather_analysis": "AI Weather Analysis",
+  "for": "for",
+  "ai_analyzing": "AI analyzing...",
+  "ai_analysis_complete": "AI analysis complete",
+  "best_fishing_type": "Best fishing type",
+  "fishing_type_analysis": "Fishing type analysis",
+  "ai_recommendation_short": "AI Recommendation",
+  "optimal_conditions": "Optimal conditions",
+  "fishing_score": "Fishing score",
+  "activity_level": "Activity level",
+  "confidence_level": "Confidence level",
+  "weather_analysis": "Weather analysis",
+  "ai_enhanced": "AI Enhanced",
+  "local_analysis": "Local analysis",
+  "ai_processing": "AI processing...",
+  "generating_forecast": "Generating forecast..."
+
+}
 }

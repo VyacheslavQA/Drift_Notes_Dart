@@ -1037,6 +1037,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   }
 
   Widget _buildWeatherCard() {
+    final localizations = AppLocalizations.of(context);
     if (_weather == null) return const SizedBox();
 
     return Container(
@@ -1081,7 +1082,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Ощущается как ${_weather!.feelsLike.toStringAsFixed(1)}°C',
+                      '${localizations.translate('feels_like')} ${_weather!.feelsLike.toStringAsFixed(1)}°C',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -1098,17 +1099,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             children: [
               _buildWeatherInfoItem(
                 icon: Icons.air,
-                label: 'Ветер',
+                label: localizations.translate('wind'),
                 value: '${_weather!.windDirection}, ${_weather!.windSpeed} м/с',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.water_drop,
-                label: 'Влажность',
+                label: localizations.translate('humidity'),
                 value: '${_weather!.humidity}%',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.speed,
-                label: 'Давление',
+                label: localizations.translate('pressure'),
                 value: '${(_weather!.pressure / 1.333).toInt()} мм',
               ),
             ],
@@ -1119,17 +1120,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             children: [
               _buildWeatherInfoItem(
                 icon: Icons.cloud,
-                label: 'Облачность',
+                label: localizations.translate('clouds'),
                 value: '${_weather!.cloudCover}%',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.wb_twilight,
-                label: 'Восход',
+                label: localizations.translate('sunrise'),
                 value: _weather!.sunrise,
               ),
               _buildWeatherInfoItem(
                 icon: Icons.nights_stay,
-                label: 'Закат',
+                label: localizations.translate('sunset'),
                 value: _weather!.sunset,
               ),
             ],
@@ -1206,7 +1207,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Время: ${DateFormat('HH:mm').format(record.time)}',
+                      '${localizations.translate('bite_time')}: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                       ),

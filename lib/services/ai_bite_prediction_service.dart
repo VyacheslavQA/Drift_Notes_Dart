@@ -9,6 +9,8 @@ import '../models/weather_api_model.dart';
 import '../models/ai_bite_prediction_model.dart';
 import '../models/fishing_note_model.dart';
 import '../config/api_keys.dart';
+import '../services/weather/weather_service.dart';
+import '../models/weather_api_model.dart';
 
 class AIBitePredictionService {
   static final AIBitePredictionService _instance = AIBitePredictionService._internal();
@@ -104,6 +106,66 @@ class AIBitePredictionService {
     } catch (e) {
       debugPrint('❌ Ошибка прогноза: $e');
       return _getFallbackPrediction(weather, userHistory, latitude, longitude);
+    }
+  }
+
+  /// Получить прогноз для конкретного типа рыбалки (обертка для удобства)
+  Future<AIBitePrediction> getPredictionForFishingType({
+    required String fishingType,
+    required double latitude,
+    required double longitude,
+    DateTime? date,
+  }) async {
+    try {
+      debugPrint('🎯 Получаем прогноз для $fishingType...');
+
+      // Создаем фиктивный объект погоды для тестирования
+      // TODO: Получить реальную погоду когда будет правильный API
+      final fakeWeather = WeatherApiResponse(
+        location: Location(
+          name: 'Test Location',
+          region: '',
+          country: '',
+          lat: latitude,
+          lon: longitude,
+          tzId: '',
+        ),
+        current: Current(
+          tempC: 15.0,
+          feelslikeC: 15.0,
+          humidity: 65,
+          pressureMb: 1013.0,
+          windKph: 10.0,
+          windDir: 'N',
+          condition: Condition(text: 'Clear', icon: '', code: 1000),
+          cloud: 20,
+          isDay: 1,
+          visKm: 10.0,
+          uv: 5.0,
+        ),
+        forecast: [],
+      );
+
+      // Используем существующий метод для получения мульти-прогноза
+      final multiPrediction = await getMultiFishingTypePrediction(
+        weather: fakeWeather,
+        latitude: latitude,
+        longitude: longitude,
+        targetDate: date,
+        preferredTypes: [fishingType],
+      );
+
+      // Возвращаем прогноз для конкретного типа
+      final prediction = multiPrediction.allPredictions[fishingType];
+      if (prediction == null) {
+        throw Exception('Не удалось получить прогноз для типа рыбалки: $fishingType');
+      }
+
+      debugPrint('✅ Прогноз для $fishingType готов: ${prediction.overallScore} баллов');
+      return prediction;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения прогноза для $fishingType: $e');
+      rethrow;
     }
   }
 
