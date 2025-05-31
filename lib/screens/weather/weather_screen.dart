@@ -2084,8 +2084,52 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     }
     return '😴 Рыба неактивна, лучше отдохнуть';
   }
+}
+
+// Кастомный painter для клёвометра
+class BiteMeterPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  BiteMeterPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint backgroundPaint = Paint()
+      ..color = color.withValues(alpha: 0.1)
+      ..strokeWidth = 8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final Paint progressPaint = Paint()
+      ..color = color
+      ..strokeWidth = 8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radius = size.width / 2 - 4;
+
+    const double startAngle = -math.pi / 2;
+    const double maxSweepAngle = 2 * math.pi;
+    final double sweepAngle = maxSweepAngle * progress;
+
+    // Рисуем фоновую окружность
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Рисуем прогресс
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
-
-
 }
+
+
+
