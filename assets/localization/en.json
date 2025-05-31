@@ -1133,5 +1133,18 @@
   "humid": "Humid",
   "comfortable": "Comfortable",
   "pleasant": "Pleasant",
-  "clouds": "Clouds"
+  "clouds": "Clouds",
+
+  "ai_bite_forecast": "AI Bite Forecast",
+  "confidence": "Confidence",
+  "all_types": "All types",
+  "ai_recommendation": "AI Recommendation:",
+  "key_factors": "📊 Key factors:",
+  "best_time": "Best time",
+  "more_details": "More details",
+  "basic_recommendation": "Basic recommendation",
+  "analysis_unavailable": "Analysis unavailable",
+  "detailed_ai_analysis": "📊 Detailed AI Analysis",
+  "detailed_analysis": "Detailed analysis:",
+  "ai_tips": "AI Tips:"
 }
