@@ -384,8 +384,8 @@ class _WeatherHeaderState extends State<WeatherHeader>
   }
 
   Widget _buildWeatherIconWithEffects(Current current) {
-    final icon = _getWeatherIcon(current.condition.code);
-    final color = _getWeatherIconColor(current.condition.code);
+    final icon = _getWeatherIcon(current.condition.code, current.isDay == 1);
+    final color = _getWeatherIconColor(current.condition.code, current.isDay == 1);
     final conditionText = current.condition.text.toLowerCase();
 
     // Добавляем более приятные эффекты для разных типов погоды
@@ -396,7 +396,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
     } else if (conditionText.contains('thunder') || conditionText.contains('storm')) {
       return _buildThunderEffect(icon, color);
     } else if (conditionText.contains('sun') || conditionText.contains('clear')) {
-      return _buildSunnyEffect(icon, color);
+      return _buildSunnyEffect(icon, color, current.isDay == 1);
     } else if (conditionText.contains('cloud')) {
       return _buildCloudyEffect(icon, color);
     } else if (conditionText.contains('wind')) {
@@ -406,19 +406,25 @@ class _WeatherHeaderState extends State<WeatherHeader>
     }
   }
 
-  // Новый эффект для солнечной погоды - мягкое свечение
-  Widget _buildSunnyEffect(IconData icon, Color color) {
+  // Новый эффект для солнечной погоды - мягкое свечение (с учетом времени суток)
+  Widget _buildSunnyEffect(IconData icon, Color color, bool isDay) {
     return AnimatedBuilder(
       animation: _breathingController,
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: [
+            boxShadow: isDay ? [
               BoxShadow(
                 color: Colors.yellow.withValues(alpha: 0.3 * _breathingAnimation.value),
                 blurRadius: 15 * _breathingAnimation.value,
                 spreadRadius: 8 * _breathingAnimation.value,
+              ),
+            ] : [
+              BoxShadow(
+                color: Colors.blue.withValues(alpha: 0.2 * _breathingAnimation.value),
+                blurRadius: 10 * _breathingAnimation.value,
+                spreadRadius: 5 * _breathingAnimation.value,
               ),
             ],
           ),
@@ -806,31 +812,49 @@ class _WeatherHeaderState extends State<WeatherHeader>
     return Colors.purple[900]!.withValues(alpha: 0.6);
   }
 
-  IconData _getWeatherIcon(int code) {
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ: Учитывает время суток
+  IconData _getWeatherIcon(int code, bool isDay) {
     switch (code) {
-      case 1000: return Icons.wb_sunny;
-      case 1003: case 1006: case 1009: return Icons.cloud;
-      case 1030: case 1135: case 1147: return Icons.cloud;
+      case 1000: // Clear/Sunny
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
+      case 1003: // Partly cloudy
+        return isDay ? Icons.partly_sunny : Icons.cloud;
+      case 1006: case 1009: // Cloudy/Overcast
+      return Icons.cloud;
+      case 1030: case 1135: case 1147: // Mist/Fog
+      return Icons.cloud;
       case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
-      case 1198: case 1201: return Icons.grain;
+      case 1198: case 1201: // Rain
+      return Icons.grain;
       case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
-      case 1237: case 1255: case 1258: case 1261: case 1264: return Icons.ac_unit;
-      case 1087: case 1273: case 1276: case 1279: case 1282: return Icons.flash_on;
-      default: return Icons.wb_sunny;
+      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
+      return Icons.ac_unit;
+      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
+      return Icons.flash_on;
+      default:
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }
   }
 
-  Color _getWeatherIconColor(int code) {
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ: Учитывает время суток
+  Color _getWeatherIconColor(int code, bool isDay) {
     switch (code) {
-      case 1000: return Colors.yellow[300]!;
-      case 1003: case 1006: case 1009: return Colors.grey[300]!;
-      case 1030: case 1135: case 1147: return Colors.grey[400]!;
+      case 1000: // Clear/Sunny
+        return isDay ? Colors.yellow[300]! : Colors.blue[200]!;
+      case 1003: case 1006: case 1009: // Cloudy
+      return Colors.grey[300]!;
+      case 1030: case 1135: case 1147: // Mist/Fog
+      return Colors.grey[400]!;
       case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
-      case 1198: case 1201: return Colors.blue[300]!;
+      case 1198: case 1201: // Rain
+      return Colors.blue[300]!;
       case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
-      case 1237: case 1255: case 1258: case 1261: case 1264: return Colors.white;
-      case 1087: case 1273: case 1276: case 1279: case 1282: return Colors.yellow[400]!;
-      default: return Colors.yellow[300]!;
+      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
+      return Colors.white;
+      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
+      return Colors.yellow[400]!;
+      default:
+        return isDay ? Colors.yellow[300]! : Colors.blue[200]!;
     }
   }
 

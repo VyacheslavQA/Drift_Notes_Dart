@@ -348,17 +348,18 @@ class AIBitePredictionService {
     required bool useAI,
   }) {
     final predictions = <String, AIBitePrediction>{};
-    final baseSuitability = weatherAnalysis['overall_suitability'] as double;
+    final current = weather.current;
 
-    // Типы рыбалки с их характеристиками
+    // Исправляем конфигурацию типов рыбалки с более реалистичными параметрами
     final fishingTypes = {
       'spinning': {
         'name': 'Спиннинг',
         'wind_tolerance': 25.0, // км/ч
-        'temp_optimal_min': 10.0,
+        'temp_optimal_min': 8.0,
         'temp_optimal_max': 25.0,
         'pressure_sensitivity': 0.8,
-        'base_score_modifier': 0.0,
+        'season_bonus': _getSeasonBonus('spinning', _getSeason(targetDate)),
+        'base_score': 45.0, // Разный базовый скор
       },
       'feeder': {
         'name': 'Фидер',
@@ -366,7 +367,8 @@ class AIBitePredictionService {
         'temp_optimal_min': 12.0,
         'temp_optimal_max': 28.0,
         'pressure_sensitivity': 0.9,
-        'base_score_modifier': 5.0,
+        'season_bonus': _getSeasonBonus('feeder', _getSeason(targetDate)),
+        'base_score': 50.0,
       },
       'carp_fishing': {
         'name': 'Карповая рыбалка',
@@ -374,7 +376,8 @@ class AIBitePredictionService {
         'temp_optimal_min': 15.0,
         'temp_optimal_max': 30.0,
         'pressure_sensitivity': 1.0,
-        'base_score_modifier': 0.0,
+        'season_bonus': _getSeasonBonus('carp_fishing', _getSeason(targetDate)),
+        'base_score': 40.0,
       },
       'float_fishing': {
         'name': 'Поплавочная рыбалка',
@@ -382,7 +385,8 @@ class AIBitePredictionService {
         'temp_optimal_min': 8.0,
         'temp_optimal_max': 25.0,
         'pressure_sensitivity': 0.7,
-        'base_score_modifier': 10.0,
+        'season_bonus': _getSeasonBonus('float_fishing', _getSeason(targetDate)),
+        'base_score': 55.0,
       },
       'ice_fishing': {
         'name': 'Зимняя рыбалка',
@@ -390,7 +394,8 @@ class AIBitePredictionService {
         'temp_optimal_min': -15.0,
         'temp_optimal_max': 5.0,
         'pressure_sensitivity': 1.2,
-        'base_score_modifier': weather.current.tempC < 5 ? 20.0 : -30.0,
+        'season_bonus': _getSeasonBonus('ice_fishing', _getSeason(targetDate)),
+        'base_score': current.tempC <= 0 ? 60.0 : 10.0, // Кардинально разные скоры зимой и летом
       },
       'fly_fishing': {
         'name': 'Нахлыст',
@@ -398,7 +403,8 @@ class AIBitePredictionService {
         'temp_optimal_min': 10.0,
         'temp_optimal_max': 22.0,
         'pressure_sensitivity': 0.6,
-        'base_score_modifier': 0.0,
+        'season_bonus': _getSeasonBonus('fly_fishing', _getSeason(targetDate)),
+        'base_score': 35.0,
       },
       'trolling': {
         'name': 'Троллинг',
@@ -406,9 +412,12 @@ class AIBitePredictionService {
         'temp_optimal_min': 5.0,
         'temp_optimal_max': 30.0,
         'pressure_sensitivity': 0.5,
-        'base_score_modifier': 5.0,
+        'season_bonus': _getSeasonBonus('trolling', _getSeason(targetDate)),
+        'base_score': 42.0,
       },
     };
+
+    debugPrint('🎣 Генерируем прогнозы для ${fishingTypes.length} типов рыбалки...');
 
     for (final entry in fishingTypes.entries) {
       final type = entry.key;
@@ -420,12 +429,63 @@ class AIBitePredictionService {
         weather,
         userData,
         weatherAnalysis,
-        baseSuitability,
         useAI,
       );
+
+      debugPrint('📊 $type: ${predictions[type]!.overallScore} баллов');
     }
 
     return predictions;
+  }
+
+  /// Получаем сезонный бонус для типа рыбалки
+  double _getSeasonBonus(String fishingType, String season) {
+    const seasonBonuses = {
+      'spinning': {
+        'spring': 15.0,
+        'summer': 10.0,
+        'autumn': 20.0,
+        'winter': -10.0,
+      },
+      'feeder': {
+        'spring': 10.0,
+        'summer': 15.0,
+        'autumn': 10.0,
+        'winter': -15.0,
+      },
+      'carp_fishing': {
+        'spring': 5.0,
+        'summer': 20.0,
+        'autumn': 10.0,
+        'winter': -25.0,
+      },
+      'float_fishing': {
+        'spring': 20.0,
+        'summer': 15.0,
+        'autumn': 10.0,
+        'winter': -5.0,
+      },
+      'ice_fishing': {
+        'spring': -30.0,
+        'summer': -40.0,
+        'autumn': -20.0,
+        'winter': 30.0,
+      },
+      'fly_fishing': {
+        'spring': 20.0,
+        'summer': 10.0,
+        'autumn': 15.0,
+        'winter': -20.0,
+      },
+      'trolling': {
+        'spring': 10.0,
+        'summer': 15.0,
+        'autumn': 5.0,
+        'winter': -10.0,
+      },
+    };
+
+    return seasonBonuses[fishingType]?[season] ?? 0.0;
   }
 
   /// Генерация прогноза для конкретного типа рыбалки
@@ -435,36 +495,51 @@ class AIBitePredictionService {
       WeatherApiResponse weather,
       Map<String, dynamic> userData,
       Map<String, dynamic> weatherAnalysis,
-      double baseSuitability,
       bool useAI,
       ) {
-    double score = baseSuitability;
+    // Начинаем с базового скора для типа
+    double score = config['base_score'] as double;
     final factors = <BiteFactorAnalysis>[];
     final tips = <String>[];
 
-    // Применяем модификатор базового скора
-    score += config['base_score_modifier'] as double;
+    debugPrint('🎯 Анализируем $fishingType, базовый скор: $score');
 
-    // Анализ ветра
+    // Применяем сезонный бонус
+    final seasonBonus = config['season_bonus'] as double;
+    score += seasonBonus;
+    if (seasonBonus != 0) {
+      factors.add(BiteFactorAnalysis(
+        name: 'Сезон',
+        value: _getSeason(DateTime.now()),
+        impact: seasonBonus.round(),
+        weight: 0.9,
+        description: seasonBonus > 0 ? 'Благоприятный сезон для ${config['name']}' : 'Неблагоприятный сезон',
+        isPositive: seasonBonus > 0,
+      ));
+    }
+
+    // Анализ ветра с конкретными штрафами
     final windKph = weather.current.windKph;
     final windTolerance = config['wind_tolerance'] as double;
     if (windKph <= windTolerance) {
-      score += 15;
+      final windBonus = windKph <= windTolerance * 0.5 ? 15.0 : 10.0;
+      score += windBonus;
       factors.add(BiteFactorAnalysis(
         name: 'Ветер',
         value: '${windKph.round()} км/ч',
-        impact: 15,
+        impact: windBonus.round(),
         weight: 0.8,
-        description: 'Благоприятный ветер для ${config['name']}',
+        description: 'Подходящий ветер для ${config['name']}',
         isPositive: true,
       ));
     } else {
-      final penalty = ((windKph - windTolerance) / 5) * -10;
-      score += penalty;
+      final excess = windKph - windTolerance;
+      final windPenalty = -math.min(excess * 2, 30.0); // Максимальный штраф 30 баллов
+      score += windPenalty;
       factors.add(BiteFactorAnalysis(
         name: 'Ветер',
         value: '${windKph.round()} км/ч',
-        impact: penalty.round(),
+        impact: windPenalty.round(),
         weight: 0.8,
         description: 'Слишком сильный ветер для ${config['name']}',
         isPositive: false,
@@ -472,56 +547,71 @@ class AIBitePredictionService {
       tips.add('При сильном ветре ищите защищенные места');
     }
 
-    // Анализ температуры
+    // Анализ температуры с четкими границами
     final temp = weather.current.tempC;
     final tempMin = config['temp_optimal_min'] as double;
     final tempMax = config['temp_optimal_max'] as double;
+
     if (temp >= tempMin && temp <= tempMax) {
-      score += 10;
+      final tempBonus = 15.0;
+      score += tempBonus;
       factors.add(BiteFactorAnalysis(
         name: 'Температура',
         value: '${temp.round()}°C',
-        impact: 10,
+        impact: tempBonus.round(),
         weight: 0.7,
         description: 'Оптимальная температура для ${config['name']}',
         isPositive: true,
       ));
     } else {
-      final tempPenalty = (temp < tempMin) ? (tempMin - temp) * -2 : (temp - tempMax) * -1.5;
+      double tempPenalty;
+      if (temp < tempMin) {
+        tempPenalty = -math.min((tempMin - temp) * 3, 25.0);
+      } else {
+        tempPenalty = -math.min((temp - tempMax) * 2, 20.0);
+      }
       score += tempPenalty;
       factors.add(BiteFactorAnalysis(
         name: 'Температура',
         value: '${temp.round()}°C',
         impact: tempPenalty.round(),
         weight: 0.7,
-        description: temp < tempMin ? 'Слишком холодно' : 'Слишком жарко',
+        description: temp < tempMin ? 'Слишком холодно для ${config['name']}' : 'Слишком жарко',
         isPositive: false,
       ));
+
+      if (temp < tempMin) {
+        tips.add('В холодную погоду рыба менее активна - замедлите проводку');
+      } else {
+        tips.add('В жаркую погоду рыба уходит на глубину');
+      }
     }
 
     // Анализ давления
     final pressure = weather.current.pressureMb;
     final pressureSensitivity = config['pressure_sensitivity'] as double;
     if (pressure >= 1010 && pressure <= 1025) {
-      final bonus = 10 * pressureSensitivity;
-      score += bonus;
+      final pressureBonus = 12 * pressureSensitivity;
+      score += pressureBonus;
       factors.add(BiteFactorAnalysis(
         name: 'Атмосферное давление',
         value: '${pressure.round()} мб',
-        impact: bonus.round(),
+        impact: pressureBonus.round(),
         weight: pressureSensitivity,
         description: 'Стабильное давление способствует клеву',
         isPositive: true,
       ));
     } else {
-      final penalty = pressure < 1000 ? -15 * pressureSensitivity : -10 * pressureSensitivity;
-      score += penalty;
+      final pressurePenalty = pressure < 1000
+          ? -18 * pressureSensitivity
+          : -12 * pressureSensitivity;
+      score += pressurePenalty;
       factors.add(BiteFactorAnalysis(
         name: 'Атмосферное давление',
         value: '${pressure.round()} мб',
-        impact: penalty.round(),
+        impact: pressurePenalty.round(),
         weight: pressureSensitivity,
-        description: pressure < 1000 ? 'Низкое давление снижает активность' : 'Высокое давление',
+        description: pressure < 1000 ? 'Низкое давление снижает активность' : 'Высокое давление неблагоприятно',
         isPositive: false,
       ));
       tips.add('При изменении давления рыба может быть пассивной');
@@ -531,15 +621,23 @@ class AIBitePredictionService {
     if (userData['has_data'] == true) {
       final preferredTypes = userData['preferred_types'] as List<dynamic>;
       if (preferredTypes.contains(fishingType)) {
-        score += 5;
+        score += 8;
         factors.add(BiteFactorAnalysis(
           name: 'Персональная история',
           value: 'Предпочитаемый тип',
-          impact: 5,
+          impact: 8,
           weight: 0.6,
           description: 'Вы часто используете этот тип рыбалки',
           isPositive: true,
         ));
+      }
+    }
+
+    // Специальные условия для зимней рыбалки
+    if (fishingType == 'ice_fishing') {
+      if (temp > 5) {
+        score = math.min(score, 15.0); // Максимум 15 баллов летом
+        tips.add('Зимняя рыбалка невозможна при плюсовой температуре');
       }
     }
 
@@ -549,16 +647,21 @@ class AIBitePredictionService {
     // Генерируем дополнительные советы
     tips.addAll(_generateTipsForType(fishingType, weather));
 
+    // Ограничиваем скор
+    score = score.clamp(0.0, 100.0);
+
     // Определяем уровень активности
     final activityLevel = _determineActivityLevel(score);
 
     // Генерируем рекомендацию
     final recommendation = _generateRecommendation(fishingType, score, factors);
 
+    debugPrint('✅ $fishingType: финальный скор $score');
+
     return AIBitePrediction(
-      overallScore: score.round().clamp(0, 100),
+      overallScore: score.round(),
       activityLevel: activityLevel,
-      confidence: useAI ? 0.9 : 0.8, // Больше уверенности при использовании AI
+      confidence: useAI ? 0.9 : 0.8,
       recommendation: recommendation,
       detailedAnalysis: _generateDetailedAnalysis(fishingType, factors, weather),
       factors: factors,
@@ -716,6 +819,8 @@ class AIBitePredictionService {
     // Генерируем общие рекомендации
     final generalRecommendations = _generateGeneralRecommendations(predictions, bestType, aiEnhanced);
 
+    debugPrint('🏆 Лучший тип рыбалки: $bestType (${predictions[bestType]!.overallScore} баллов)');
+
     return MultiFishingTypePrediction(
       bestFishingType: bestType,
       bestPrediction: predictions[bestType]!,
@@ -727,7 +832,7 @@ class AIBitePredictionService {
     );
   }
 
-  // Остальные вспомогательные методы остаются без изменений...
+  // Остальные методы остаются без изменений...
 
   String _getPressureImpact(double pressure) {
     if (pressure >= 1010 && pressure <= 1025) return 'positive';
@@ -803,6 +908,18 @@ class AIBitePredictionService {
         if (weather.current.windKph < 10) {
           tips.add('Отличные условия для точной проводки');
         }
+        break;
+      case 'ice_fishing':
+        tips.add('Используйте мормышки и блесны');
+        tips.add('Сверлите лунки на разной глубине');
+        break;
+      case 'fly_fishing':
+        tips.add('Следите за направлением ветра при забросе');
+        tips.add('Используйте сухие мушки в теплую погоду');
+        break;
+      case 'trolling':
+        tips.add('Меняйте скорость движения лодки');
+        tips.add('Используйте воблеры разных размеров');
         break;
     }
 
@@ -927,12 +1044,23 @@ class AIBitePredictionService {
       ) {
     final fallbackPredictions = <String, AIBitePrediction>{};
 
-    for (final type in ['spinning', 'feeder', 'carp_fishing', 'float_fishing']) {
-      fallbackPredictions[type] = AIBitePrediction(
-        overallScore: 50,
-        activityLevel: ActivityLevel.moderate,
+    // Создаем простые fallback прогнозы с разными скорами
+    final fallbackScores = {
+      'spinning': 55,
+      'feeder': 50,
+      'carp_fishing': 45,
+      'float_fishing': 60,
+      'ice_fishing': weather.current.tempC <= 0 ? 40 : 5,
+      'fly_fishing': 35,
+      'trolling': 42,
+    };
+
+    for (final entry in fallbackScores.entries) {
+      fallbackPredictions[entry.key] = AIBitePrediction(
+        overallScore: entry.value,
+        activityLevel: _determineActivityLevel(entry.value.toDouble()),
         confidence: 0.3,
-        recommendation: 'Базовые условия для рыбалки',
+        recommendation: 'Базовые условия для ${_getFishingTypeName(entry.key)}',
         detailedAnalysis: 'Анализ основан на базовых алгоритмах',
         factors: [],
         bestTimeWindows: [],
@@ -943,18 +1071,22 @@ class AIBitePredictionService {
       );
     }
 
+    final bestType = fallbackScores.entries
+        .reduce((a, b) => a.value > b.value ? a : b)
+        .key;
+
     return MultiFishingTypePrediction(
-      bestFishingType: 'spinning',
-      bestPrediction: fallbackPredictions['spinning']!,
+      bestFishingType: bestType,
+      bestPrediction: fallbackPredictions[bestType]!,
       allPredictions: fallbackPredictions,
       comparison: ComparisonAnalysis(
         rankings: [],
         bestOverall: FishingTypeRanking(
-          fishingType: 'spinning',
-          typeName: 'Спиннинг',
-          icon: '🎯',
-          score: 50,
-          activityLevel: ActivityLevel.moderate,
+          fishingType: bestType,
+          typeName: _getFishingTypeName(bestType),
+          icon: _getFishingTypeIcon(bestType),
+          score: fallbackScores[bestType]!,
+          activityLevel: _determineActivityLevel(fallbackScores[bestType]!.toDouble()),
           shortRecommendation: 'Базовые условия',
           keyFactors: [],
         ),
