@@ -27,11 +27,13 @@ class WeatherHeader extends StatefulWidget {
 }
 
 class _WeatherHeaderState extends State<WeatherHeader>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _effectsController; // Отдельный контроллер для эффектов
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _effectsAnimation;
 
   @override
   void initState() {
@@ -42,6 +44,12 @@ class _WeatherHeaderState extends State<WeatherHeader>
   void _initAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    // Отдельный контроллер для погодных эффектов
+    _effectsController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
@@ -66,12 +74,21 @@ class _WeatherHeaderState extends State<WeatherHeader>
       ),
     );
 
+    _effectsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _effectsController,
+        curve: Curves.linear,
+      ),
+    );
+
     _animationController.forward();
+    _effectsController.repeat(); // Запускаем эффекты в цикле
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _effectsController.dispose();
     super.dispose();
   }
 
@@ -82,9 +99,9 @@ class _WeatherHeaderState extends State<WeatherHeader>
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.all(16), // Отступы для закругленных краев
+      margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24), // Закругленные края
+        borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -103,7 +120,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24), // Обрезаем содержимое по радиусу
+        borderRadius: BorderRadius.circular(24),
         child: SafeArea(
           bottom: false,
           child: AnimatedBuilder(
@@ -202,7 +219,6 @@ class _WeatherHeaderState extends State<WeatherHeader>
             ],
           ),
         ),
-        // Индикатор качества сигнала
         _buildSignalIndicator(),
       ],
     );
@@ -352,13 +368,14 @@ class _WeatherHeaderState extends State<WeatherHeader>
   Widget _buildWeatherIconWithEffects(Current current) {
     final icon = _getWeatherIcon(current.condition.code);
     final color = _getWeatherIconColor(current.condition.code);
+    final conditionText = current.condition.text.toLowerCase();
 
     // Добавляем эффекты для разных типов погоды
-    if (current.condition.text.toLowerCase().contains('rain')) {
+    if (conditionText.contains('rain') || conditionText.contains('drizzle')) {
       return _buildRainyEffect(icon, color);
-    } else if (current.condition.text.toLowerCase().contains('snow')) {
+    } else if (conditionText.contains('snow') || conditionText.contains('blizzard')) {
       return _buildSnowyEffect(icon, color);
-    } else if (current.condition.text.toLowerCase().contains('thunder')) {
+    } else if (conditionText.contains('thunder') || conditionText.contains('storm')) {
       return _buildThunderEffect(icon, color);
     } else {
       return Icon(
@@ -370,81 +387,135 @@ class _WeatherHeaderState extends State<WeatherHeader>
   }
 
   Widget _buildRainyEffect(IconData icon, Color color) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Основная иконка
-        Icon(icon, size: 60, color: color),
-        // Анимированные капли
-        Positioned(
-          top: 45,
-          left: 35,
-          child: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, math.sin(_animationController.value * math.pi * 4) * 3),
-                child: Icon(
-                  Icons.water_drop,
-                  size: 8,
-                  color: Colors.blue.withValues(alpha: 0.7),
-                ),
-              );
-            },
+    return AnimatedBuilder(
+      animation: _effectsController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 80,
+          height: 80,
+          child: Stack(
+            children: [
+              // Основная иконка
+              Center(
+                child: Icon(icon, size: 50, color: color),
+              ),
+              // Анимированные капли дождя
+              ...List.generate(5, (index) {
+                final delay = index * 0.2;
+                final animValue = (_effectsAnimation.value + delay) % 1.0;
+                return Positioned(
+                  left: 15 + (index * 12.0),
+                  top: 10 + (animValue * 50),
+                  child: Opacity(
+                    opacity: (1.0 - animValue) * 0.8,
+                    child: Container(
+                      width: 3,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.lightBlue,
+                        borderRadius: BorderRadius.circular(1.5),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildSnowyEffect(IconData icon, Color color) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Icon(icon, size: 60, color: color),
-        ...List.generate(3, (index) {
-          return Positioned(
-            top: 20 + index * 15.0,
-            left: 20 + index * 20.0,
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(
-                    math.sin(_animationController.value * math.pi * 2 + index) * 2,
-                    math.cos(_animationController.value * math.pi * 2 + index) * 2,
-                  ),
-                  child: Icon(
-                    Icons.ac_unit,
-                    size: 6,
-                    color: Colors.white.withValues(alpha: 0.8),
+    return AnimatedBuilder(
+      animation: _effectsController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 80,
+          height: 80,
+          child: Stack(
+            children: [
+              // Основная иконка
+              Center(
+                child: Icon(icon, size: 50, color: color),
+              ),
+              // Анимированные снежинки
+              ...List.generate(8, (index) {
+                final delay = index * 0.15;
+                final animValue = (_effectsAnimation.value + delay) % 1.0;
+                final horizontalOffset = math.sin(animValue * math.pi * 4) * 10;
+                return Positioned(
+                  left: 20 + (index * 8.0) + horizontalOffset,
+                  top: 5 + (animValue * 60),
+                  child: Opacity(
+                    opacity: (1.0 - animValue) * 0.9,
+                    child: Icon(
+                      Icons.ac_unit,
+                      size: 8,
+                      color: Colors.white,
+                    ),
                   ),
                 );
-              },
-            ),
-          );
-        }),
-      ],
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildThunderEffect(IconData icon, Color color) {
     return AnimatedBuilder(
-      animation: _animationController,
+      animation: _effectsController,
       builder: (context, child) {
-        final flash = math.sin(_animationController.value * math.pi * 8) > 0.7;
+        // Создаём эффект вспышки каждые 0.5 секунды
+        final flashPhase = (_effectsAnimation.value * 4) % 1.0;
+        final isFlashing = flashPhase < 0.1; // Короткая вспышка
+
         return Container(
-          decoration: flash ? BoxDecoration(
+          decoration: isFlashing ? BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.yellow.withValues(alpha: 0.5),
-                blurRadius: 20,
-                spreadRadius: 10,
+                color: Colors.yellow.withValues(alpha: 0.8),
+                blurRadius: 30,
+                spreadRadius: 15,
               ),
             ],
           ) : null,
-          child: Icon(icon, size: 60, color: color),
+          child: Stack(
+            children: [
+              // Основная иконка
+              Center(
+                child: Icon(
+                  icon,
+                  size: 50,
+                  color: isFlashing ? Colors.yellow[100] : color,
+                ),
+              ),
+              // Дополнительные молнии
+              if (isFlashing) ...[
+                Positioned(
+                  top: 15,
+                  left: 35,
+                  child: Icon(
+                    Icons.flash_on,
+                    size: 12,
+                    color: Colors.yellow[300],
+                  ),
+                ),
+                Positioned(
+                  top: 45,
+                  right: 25,
+                  child: Icon(
+                    Icons.flash_on,
+                    size: 8,
+                    color: Colors.yellow[400],
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -571,17 +642,13 @@ class _WeatherHeaderState extends State<WeatherHeader>
     if (isDay) {
       final hour = DateTime.now().hour;
       if (hour >= 6 && hour < 10) {
-        // Утро
         return Colors.orange[300]!.withValues(alpha: 0.8);
       } else if (hour >= 10 && hour < 16) {
-        // День
         return Colors.blue[400]!.withValues(alpha: 0.8);
       } else if (hour >= 16 && hour < 20) {
-        // Вечер
         return Colors.orange[400]!.withValues(alpha: 0.8);
       }
     }
-    // Ночь
     return Colors.indigo[800]!.withValues(alpha: 0.8);
   }
 
@@ -604,8 +671,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
       case 1000: return Icons.wb_sunny;
       case 1003: case 1006: case 1009: return Icons.cloud;
       case 1030: case 1135: case 1147: return Icons.cloud;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: return Icons.grain;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: return Icons.ac_unit;
+      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
+      case 1198: case 1201: return Icons.grain;
+      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
+      case 1237: case 1255: case 1258: case 1261: case 1264: return Icons.ac_unit;
       case 1087: case 1273: case 1276: case 1279: case 1282: return Icons.flash_on;
       default: return Icons.wb_sunny;
     }
@@ -616,8 +685,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
       case 1000: return Colors.yellow[300]!;
       case 1003: case 1006: case 1009: return Colors.grey[300]!;
       case 1030: case 1135: case 1147: return Colors.grey[400]!;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: return Colors.blue[300]!;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: return Colors.white;
+      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
+      case 1198: case 1201: return Colors.blue[300]!;
+      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
+      case 1237: case 1255: case 1258: case 1261: case 1264: return Colors.white;
       case 1087: case 1273: case 1276: case 1279: case 1282: return Colors.yellow[400]!;
       default: return Colors.yellow[300]!;
     }
