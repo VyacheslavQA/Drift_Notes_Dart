@@ -310,12 +310,10 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 children: [
                   const SizedBox(height: 16),
 
-                  // Ключевые показатели (4 карточки)
+                  /// Ключевые показатели (4 карточки)
                   WeatherMetricsGrid(
                     weather: _currentWeather!,
                     weatherSettings: _weatherSettings,
-                    onPressureCardTap: () => _navigateToPressureDetail(),
-                    onWindCardTap: () => _navigateToWindDetail(),
                   ),
 
                   const SizedBox(height: 24),
@@ -605,14 +603,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  // Обработчики событий
-  void _navigateToPressureDetail() {
-    debugPrint('🔍 Открываем детали давления');
-  }
-
-  void _navigateToWindDetail() {
-    debugPrint('🔍 Открываем детали ветра');
-  }
 
   void _showCompareTypesDialog() {
     if (_aiPrediction == null) return;

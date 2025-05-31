@@ -60,10 +60,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       vsync: this,
     );
 
+    // ИСПРАВЛЕНИЕ: Используем безопасные кривые без превышения [0,1]
     _meterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _meterController,
-        curve: Curves.elasticOut,
+        curve: Curves.easeOutCubic, // Заменил elasticOut на безопасную кривую
       ),
     );
 
@@ -77,7 +78,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     _factorsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _factorsController,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOutCubic, // Заменил easeOutBack на безопасную кривую
       ),
     );
 
@@ -289,11 +290,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                     // ИИ прогресс
                     CustomPaint(
                       size: const Size(160, 160),
-                      painter: AIBiteMeterPainter(
-                        progress: (score / 100.0) * _meterAnimation.value,
+                      painter: FixedAIBiteMeterPainter(
+                        progress: (score / 100.0) * _meterAnimation.value.clamp(0.0, 1.0), // ИСПРАВЛЕНИЕ: clamp
                         color: prediction.scoreColor,
                         showSpark: score >= 80,
-                        animationValue: _meterAnimation.value,
+                        animationValue: _meterAnimation.value.clamp(0.0, 1.0), // ИСПРАВЛЕНИЕ: clamp
                       ),
                     ),
                     // Центральный контент
@@ -302,7 +303,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '${(score * _meterAnimation.value).round()}',
+                            '${(score * _meterAnimation.value.clamp(0.0, 1.0)).round()}', // ИСПРАВЛЕНИЕ: clamp
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 36,
@@ -556,23 +557,16 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               final index = entry.key;
               final factor = entry.value;
               final delay = index * 0.2;
-              final animation = Tween<double>(
-                begin: 0.0,
-                end: 1.0,
-              ).animate(
-                CurvedAnimation(
-                  parent: _factorsAnimation,
-                  curve: Interval(delay, 1.0, curve: Curves.easeOutBack),
-                ),
-              );
+              final animationValue = _factorsAnimation.value.clamp(0.0, 1.0); // ИСПРАВЛЕНИЕ: clamp
+              final delayedValue = (animationValue - delay).clamp(0.0, 1.0); // ИСПРАВЛЕНИЕ: clamp
 
               return FadeTransition(
-                opacity: animation,
+                opacity: AlwaysStoppedAnimation(delayedValue),
                 child: SlideTransition(
                   position: Tween<Offset>(
                     begin: const Offset(0.5, 0),
                     end: Offset.zero,
-                  ).animate(animation),
+                  ).animate(AlwaysStoppedAnimation(delayedValue)),
                   child: _buildFactorItem(factor),
                 ),
               );
@@ -862,14 +856,14 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 }
 
-// Кастомный painter для ИИ клевометра
-class AIBiteMeterPainter extends CustomPainter {
+// ИСПРАВЛЕННЫЙ Кастомный painter для ИИ клевометра
+class FixedAIBiteMeterPainter extends CustomPainter {
   final double progress;
   final Color color;
   final bool showSpark;
   final double animationValue;
 
-  AIBiteMeterPainter({
+  FixedAIBiteMeterPainter({
     required this.progress,
     required this.color,
     required this.showSpark,
@@ -889,15 +883,18 @@ class AIBiteMeterPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // Создаем градиент для прогресса
+    // ИСПРАВЛЕНИЕ: Создаем безопасный градиент без выхода за пределы [0,1]
+    final safeProgress = progress.clamp(0.0, 1.0);
     final progressGradient = SweepGradient(
       startAngle: -math.pi / 2,
-      endAngle: -math.pi / 2 + (2 * math.pi * progress),
+      endAngle: -math.pi / 2 + (2 * math.pi * safeProgress),
       colors: [
         color.withValues(alpha: 0.5),
         color,
         color.withValues(alpha: 0.8),
       ],
+      // ИСПРАВЛЕНИЕ: Обеспечиваем, что все stops находятся в диапазоне [0,1]
+      stops: [0.0, 0.5, 1.0],
     );
 
     progressPaint.shader = progressGradient.createShader(
@@ -912,7 +909,7 @@ class AIBiteMeterPainter extends CustomPainter {
 
     const double startAngle = -math.pi / 2;
     const double maxSweepAngle = 2 * math.pi;
-    final double sweepAngle = maxSweepAngle * progress;
+    final double sweepAngle = maxSweepAngle * safeProgress;
 
     // Рисуем фоновую окружность
     canvas.drawCircle(center, radius, backgroundPaint);
@@ -927,12 +924,12 @@ class AIBiteMeterPainter extends CustomPainter {
     );
 
     // Добавляем искры для отличных условий
-    if (showSpark && progress > 0.8) {
+    if (showSpark && safeProgress > 0.8) {
       _drawSparks(canvas, center, radius, sweepAngle, color);
     }
 
     // Добавляем ИИ эффект
-    _drawAIEffect(canvas, center, radius, animationValue, color);
+    _drawAIEffect(canvas, center, radius, animationValue.clamp(0.0, 1.0), color);
   }
 
   void _drawSparks(Canvas canvas, Offset center, double radius, double sweepAngle, Color color) {
@@ -943,14 +940,14 @@ class AIBiteMeterPainter extends CustomPainter {
     // Рисуем несколько искр вдоль прогресса
     for (int i = 0; i < 3; i++) {
       final angle = (-math.pi / 2) + (sweepAngle * (0.3 + i * 0.2));
-      final sparkRadius = radius + 8 + (math.sin(animationValue * math.pi * 4) * 3);
+      final sparkRadius = radius + 8 + (math.sin(animationValue.clamp(0.0, 1.0) * math.pi * 4) * 3);
 
       final sparkX = center.dx + sparkRadius * math.cos(angle);
       final sparkY = center.dy + sparkRadius * math.sin(angle);
 
       canvas.drawCircle(
         Offset(sparkX, sparkY),
-        2 + math.sin(animationValue * math.pi * 6) * 1,
+        2 + math.sin(animationValue.clamp(0.0, 1.0) * math.pi * 6) * 1,
         sparkPaint,
       );
     }
@@ -958,7 +955,7 @@ class AIBiteMeterPainter extends CustomPainter {
 
   void _drawAIEffect(Canvas canvas, Offset center, double radius, double animation, Color color) {
     final Paint aiPaint = Paint()
-      ..color = color.withValues(alpha: 0.3 * (1 - animation) + 0.1)
+      ..color = color.withValues(alpha: (0.3 * (1 - animation) + 0.1).clamp(0.0, 1.0))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
