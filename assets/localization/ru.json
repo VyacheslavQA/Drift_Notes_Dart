@@ -1050,5 +1050,18 @@
   "pressure_rec_high_2": "Используйте мелкие приманки",
   "pressure_rec_high_3": "Рыбачьте в утренние и вечерние часы",
   "pressure_rec_moderate_1": "Экспериментируйте с разными приманками",
-  "pressure_rec_moderate_2": "Меняйте глубину ловли"
+  "pressure_rec_moderate_2": "Меняйте глубину ловли",
+
+  "pull_to_refresh": "Потяните для обновления",
+  "ai_analyzing_fishing": "ИИ анализирует лучший тип рыбалки",
+  "fishing_types_comparison": "Сравнение типов рыбалки",
+  "select_best": "Выбрать лучший",
+
+  "hot": "Жарко",
+  "cold": "Холодно",
+  "windy": "Ветрено",
+  "humid": "Влажно",
+  "comfortable": "Комфортно",
+  "pleasant": "Приятно",
+  "clouds": "Облачность"
 }

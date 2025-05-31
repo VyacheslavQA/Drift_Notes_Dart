@@ -1120,5 +1120,18 @@
   "pressure_rec_high_2": "Use smaller lures",
   "pressure_rec_high_3": "Fish during morning and evening hours",
   "pressure_rec_moderate_1": "Experiment with different lures",
-  "pressure_rec_moderate_2": "Vary fishing depth"
+  "pressure_rec_moderate_2": "Vary fishing depth",
+
+  "pull_to_refresh": "Pull to refresh",
+  "ai_analyzing_fishing": "AI analyzing best fishing type",
+  "fishing_types_comparison": "Fishing Types Comparison",
+  "select_best": "Select Best",
+
+  "hot": "Hot",
+  "cold": "Cold",
+  "windy": "Windy",
+  "humid": "Humid",
+  "comfortable": "Comfortable",
+  "pleasant": "Pleasant",
+  "clouds": "Clouds"
 }

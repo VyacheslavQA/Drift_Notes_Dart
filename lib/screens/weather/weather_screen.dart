@@ -195,7 +195,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Ошибка загрузки: $e';
+          _errorMessage = AppLocalizations.of(context).translate('weather_error');
           _isLoading = false;
         });
         _loadingController.stop();
@@ -214,19 +214,19 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Службы геолокации отключены');
+        throw Exception(AppLocalizations.of(context).translate('location_services_disabled'));
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Разрешение на геолокацию отклонено');
+          throw Exception(AppLocalizations.of(context).translate('location_permission_denied'));
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Разрешение на геолокацию отклонено навсегда');
+        throw Exception(AppLocalizations.of(context).translate('location_permission_denied_forever'));
       }
 
       return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
@@ -384,6 +384,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildAnimatedPullHint() {
+    final localizations = AppLocalizations.of(context);
+
     return AnimatedBuilder(
       animation: _pullHintController,
       builder: (context, child) {
@@ -421,7 +423,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                       stops: const [0.0, 0.5, 1.0],
                     ).createShader(bounds),
                     child: Text(
-                      'Потяните для обновления',
+                      localizations.translate('pull_to_refresh') ?? 'Потяните для обновления',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -454,6 +456,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildLoadingState() {
+    final localizations = AppLocalizations.of(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -480,7 +484,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ),
           const SizedBox(height: 24),
           Text(
-            'Загрузка умного прогноза...',
+            localizations.translate('loading_weather'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 18,
@@ -489,7 +493,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           ),
           const SizedBox(height: 8),
           Text(
-            'ИИ анализирует лучший тип рыбалки',
+            localizations.translate('ai_analyzing_fishing') ?? 'ИИ анализирует лучший тип рыбалки',
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,
@@ -501,6 +505,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildErrorState() {
+    final localizations = AppLocalizations.of(context);
+
     return RefreshIndicator(
       onRefresh: _loadWeather,
       color: AppConstants.primaryColor,
@@ -528,7 +534,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Ошибка загрузки погоды',
+                      localizations.translate('weather_error'),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 20,
@@ -549,7 +555,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                     ElevatedButton.icon(
                       onPressed: _loadWeather,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Попробовать снова'),
+                      label: Text(localizations.translate('try_again')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppConstants.primaryColor,
                         foregroundColor: AppConstants.textColor,
@@ -570,6 +576,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildNoDataState() {
+    final localizations = AppLocalizations.of(context);
+
     return RefreshIndicator(
       onRefresh: _loadWeather,
       color: AppConstants.primaryColor,
@@ -588,7 +596,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Нет данных для отображения',
+                    localizations.translate('no_data_to_display'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 18,
@@ -618,6 +626,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   void _showHourDetails(int hour, double activity) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -631,7 +641,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Активность клева: ${(activity * 100).round()}%',
+              '${localizations.translate('bite_activity')}: ${(activity * 100).round()}%',
               style: TextStyle(
                 color: _getActivityColor(activity),
                 fontSize: 16,
@@ -649,7 +659,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Закрыть',
+              localizations.translate('close'),
               style: TextStyle(color: AppConstants.primaryColor),
             ),
           ),
@@ -659,6 +669,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildCompareTypesDialog() {
+    final localizations = AppLocalizations.of(context);
+
     return Dialog(
       backgroundColor: AppConstants.surfaceColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -669,7 +681,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '🎣 Сравнение типов рыбалки',
+              '🎣 ${localizations.translate('fishing_types_comparison') ?? 'Сравнение типов рыбалки'}',
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 20,
@@ -694,7 +706,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Закрыть',
+                      localizations.translate('close'),
                       style: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                     ),
                   ),
@@ -712,7 +724,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Выбрать лучший'),
+                    child: Text(localizations.translate('select_best') ?? 'Выбрать лучший'),
                   ),
                 ),
               ],
@@ -794,10 +806,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   String _getActivityText(double activity) {
-    if (activity >= 0.8) return 'Отличная активность';
-    if (activity >= 0.6) return 'Хорошая активность';
-    if (activity >= 0.4) return 'Умеренная активность';
-    return 'Слабая активность';
+    final localizations = AppLocalizations.of(context);
+
+    if (activity >= 0.8) return localizations.translate('excellent_activity');
+    if (activity >= 0.6) return localizations.translate('good_activity');
+    if (activity >= 0.4) return localizations.translate('moderate_activity');
+    return localizations.translate('poor_activity');
   }
 }
 

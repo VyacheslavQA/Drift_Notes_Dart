@@ -82,7 +82,9 @@ class _WeatherHeaderState extends State<WeatherHeader>
 
     return Container(
       width: double.infinity,
+      margin: const EdgeInsets.all(16), // Отступы для закругленных краев
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24), // Закругленные края
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -91,45 +93,56 @@ class _WeatherHeaderState extends State<WeatherHeader>
             _getTimeBasedGradientEnd(current.isDay == 1),
           ],
         ),
+        boxShadow: [
+          BoxShadow(
+            color: _getTimeBasedGradientStart(current.isDay == 1).withValues(alpha: 0.3),
+            blurRadius: 20,
+            spreadRadius: 5,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Локация и обновление
-                    Transform.translate(
-                      offset: Offset(0, _slideAnimation.value),
-                      child: _buildLocationInfo(localizations),
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24), // Обрезаем содержимое по радиусу
+        child: SafeArea(
+          bottom: false,
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _fadeAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Локация и обновление
+                      Transform.translate(
+                        offset: Offset(0, _slideAnimation.value),
+                        child: _buildLocationInfo(localizations),
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // Основная информация о погоде
-                    Transform.translate(
-                      offset: Offset(0, _slideAnimation.value * 0.7),
-                      child: _buildMainWeatherInfo(current, localizations),
-                    ),
+                      // Основная информация о погоде
+                      Transform.translate(
+                        offset: Offset(0, _slideAnimation.value * 0.7),
+                        child: _buildMainWeatherInfo(current, localizations),
+                      ),
 
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    // Дополнительная краткая информация
-                    Transform.translate(
-                      offset: Offset(0, _slideAnimation.value * 0.5),
-                      child: _buildAdditionalInfo(current, localizations),
-                    ),
-                  ],
+                      // Дополнительная краткая информация
+                      Transform.translate(
+                        offset: Offset(0, _slideAnimation.value * 0.5),
+                        child: _buildAdditionalInfo(current, localizations),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -454,7 +467,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
       badgeText = '💧 ${localizations.translate('humid')}';
       badgeColor = Colors.blue;
     } else {
-      badgeText = '✨ ${localizations.translate('pleasant')}';
+      badgeText = '✨ ${localizations.translate('comfortable')}';
       badgeColor = Colors.green;
     }
 
@@ -489,7 +502,6 @@ class _WeatherHeaderState extends State<WeatherHeader>
           color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
-
       ),
       child: Row(
         children: [
@@ -626,6 +638,8 @@ class _WeatherHeaderState extends State<WeatherHeader>
       'heavy rain': 'weather_heavy_rain',
       'light snow': 'weather_light_snow',
       'thunderstorm': 'weather_thundery_outbreaks_possible',
+      'thundery outbreaks in nearby': 'weather_thundery_outbreaks_possible',
+      'thundery outbreaks possible': 'weather_thundery_outbreaks_possible',
     };
 
     final localizationKey = descriptionToKey[cleanDescription];
