@@ -19,15 +19,26 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
   final AIBitePredictionService _aiService = AIBitePredictionService();
 
   bool _isLoading = false;
-  Map<String, dynamic>? _testResult;
-  String? _directTestResult;
+  String _predictionSource = 'Неизвестно';
+  String _statusMessage = '';
+  Color _statusColor = Colors.grey;
+  String _detailsMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPredictionSource();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('Тест OpenAI интеграции'),
+        title: const Text(
+          'Источник прогнозов',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -36,149 +47,165 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Статус конфигурации
-            _buildConfigurationStatus(),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
+            // Главная карточка с источником прогноза
+            _buildMainSourceCard(),
 
-            // Кнопки тестирования
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _runDirectTest,
-                    icon: const Icon(Icons.science),
-                    label: const Text('ПРЯМОЙ ТЕСТ'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _runIntegrationTest,
-                    icon: const Icon(Icons.psychology),
-                    label: const Text('ТЕСТ ИНТЕГРАЦИИ'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 30),
 
-            const SizedBox(height: 16),
-
-            // Кнопка очистки кэша
+            // Кнопка проверки
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _clearCache,
-                icon: const Icon(Icons.clear_all),
-                label: const Text('ОЧИСТИТЬ КЭШ'),
+                onPressed: _isLoading ? null : _runSourceCheck,
+                icon: _isLoading
+                    ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+                    : const Icon(Icons.refresh, size: 24),
+                label: Text(
+                  _isLoading ? 'ПРОВЕРЯЕМ...' : 'ПРОВЕРИТЬ ИСТОЧНИК',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppConstants.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 30),
 
-            // Результаты тестов
-            if (_isLoading) _buildLoadingIndicator(),
-            if (_testResult != null) _buildTestResults(),
-            if (_directTestResult != null) _buildDirectTestResults(),
+            // Объяснение
+            _buildExplanationCard(),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Диагностика
-            _buildDiagnostics(),
+            // Дополнительные детали (если есть)
+            if (_detailsMessage.isNotEmpty) _buildDetailsCard(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildConfigurationStatus() {
-    final apiKey = ApiKeys.openAIKey;
-    final isConfigured = apiKey.isNotEmpty &&
-        apiKey != 'YOUR_OPENAI_API_KEY_HERE' &&
-        apiKey.startsWith('sk-') &&
-        apiKey.length > 20;
+  Widget _buildMainSourceCard() {
+    IconData sourceIcon;
+    String sourceTitle;
+    String sourceDescription;
+
+    if (_predictionSource == 'ИИ (OpenAI)') {
+      sourceIcon = Icons.psychology;
+      sourceTitle = '🧠 Искусственный Интеллект';
+      sourceDescription = 'Ваши прогнозы создаёт настоящий ИИ от OpenAI';
+    } else if (_predictionSource == 'Алгоритм') {
+      sourceIcon = Icons.calculate;
+      sourceTitle = '🔢 Математический алгоритм';
+      sourceDescription = 'Прогнозы создаются локальным алгоритмом';
+    } else {
+      sourceIcon = Icons.help_outline;
+      sourceTitle = '❓ Проверяем...';
+      sourceDescription = 'Определяем источник ваших прогнозов';
+    }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isConfigured ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isConfigured ? Colors.green : Colors.red,
+          color: _statusColor.withValues(alpha: 0.3),
           width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: _statusColor.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 5,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Статус конфигурации',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          // Иконка источника
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _statusColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              sourceIcon,
+              size: 48,
+              color: _statusColor,
             ),
           ),
-          const SizedBox(height: 12),
 
-          Row(
-            children: [
-              Icon(
-                isConfigured ? Icons.check_circle : Icons.error,
-                color: isConfigured ? Colors.green : Colors.red,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isConfigured
-                      ? 'OpenAI API ключ настроен (${apiKey.length} символов)'
-                      : 'OpenAI API ключ НЕ настроен',
-                  style: TextStyle(
-                    color: isConfigured ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 16),
+
+          // Заголовок
+          Text(
+            sourceTitle,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
           ),
 
           const SizedBox(height: 8),
 
-          // Детали ключа
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppConstants.backgroundColor.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
+          // Описание
+          Text(
+            sourceDescription,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.8),
+              fontSize: 16,
+              height: 1.5,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Детали ключа:', style: TextStyle(color: AppConstants.textColor, fontWeight: FontWeight.bold)),
-                Text('• Длина: ${apiKey.length} символов', style: TextStyle(color: AppConstants.textColor)),
-                Text('• Начинается с "sk-": ${apiKey.startsWith('sk-') ? 'Да' : 'Нет'}', style: TextStyle(color: AppConstants.textColor)),
-                Text('• Первые 10 символов: ${apiKey.length > 10 ? apiKey.substring(0, 10) : apiKey}...', style: TextStyle(color: AppConstants.textColor)),
-                Text('• Не является заглушкой: ${apiKey != 'YOUR_OPENAI_API_KEY_HERE' ? 'Да' : 'Нет'}', style: TextStyle(color: AppConstants.textColor)),
-              ],
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Статус
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _statusColor.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              _statusMessage,
+              style: TextStyle(
+                color: _statusColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -186,36 +213,15 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
     );
   }
 
-  Widget _buildLoadingIndicator() {
+  Widget _buildExplanationCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Column(
-          children: [
-            CircularProgressIndicator(color: AppConstants.primaryColor),
-            const SizedBox(height: 16),
-            Text(
-              'Тестируем соединение с OpenAI...',
-              style: TextStyle(color: AppConstants.textColor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTestResults() {
-    final result = _testResult!;
-    final isSuccess = result['success'] == true;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isSuccess ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSuccess ? Colors.green : Colors.red,
-          width: 2,
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
         ),
       ),
       child: Column(
@@ -224,135 +230,178 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
           Row(
             children: [
               Icon(
-                isSuccess ? Icons.check_circle : Icons.error,
-                color: isSuccess ? Colors.green : Colors.red,
+                Icons.info_outline,
+                color: AppConstants.primaryColor,
+                size: 24,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
-                'РЕЗУЛЬТАТ ИНТЕГРАЦИОННОГО ТЕСТА:',
+                'Как это работает?',
                 style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: isSuccess ? Colors.green : Colors.red,
                 ),
               ),
             ],
           ),
 
+          const SizedBox(height: 16),
+
+          _buildExplanationItem(
+            '🧠',
+            'ИИ от OpenAI',
+            'Анализирует погоду с помощью искусственного интеллекта. Даёт самые точные прогнозы.',
+          ),
+
           const SizedBox(height: 12),
 
-          if (isSuccess) ...[
-            Text('✅ OpenAI интеграция РАБОТАЕТ',
-                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-            if (result['model'] != null)
-              Text('📱 Модель: ${result['model']}', style: TextStyle(color: AppConstants.textColor)),
-            if (result['response'] != null)
-              Text('💬 Ответ: ${result['response']}', style: TextStyle(color: AppConstants.textColor)),
-            if (result['response_time'] != null)
-              Text('⏱️ Время ответа: ${result['response_time']}мс', style: TextStyle(color: AppConstants.textColor)),
-          ] else ...[
-            Text('❌ OpenAI интеграция НЕ РАБОТАЕТ',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            if (result['error'] != null)
-              Text('❌ Ошибка: ${result['error']}',
-                  style: TextStyle(color: Colors.red)),
-            if (result['status'] != null)
-              Text('📊 HTTP статус: ${result['status']}', style: TextStyle(color: AppConstants.textColor)),
-          ],
+          _buildExplanationItem(
+            '🔢',
+            'Локальный алгоритм',
+            'Использует математические формулы. Работает всегда, даже без интернета.',
+          ),
 
-          // Дополнительная диагностика
-          const SizedBox(height: 12),
-          Text('🔧 Настроен: ${result['configured'] ?? 'unknown'}', style: TextStyle(color: AppConstants.textColor)),
+          const SizedBox(height: 16),
 
-          if (result['key_length'] != null)
-            Text('🔑 Длина ключа: ${result['key_length']}', style: TextStyle(color: AppConstants.textColor)),
-          if (result['key_format'] != null)
-            Text('🔑 Формат ключа: ${result['key_format']}', style: TextStyle(color: AppConstants.textColor)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDirectTestResults() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '🧪 РЕЗУЛЬТАТ ПРЯМОГО ТЕСТА:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '💡 Приложение автоматически выбирает лучший доступный источник для ваших прогнозов.',
+              style: TextStyle(
+                color: AppConstants.primaryColor,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            _directTestResult!,
-            style: TextStyle(color: AppConstants.textColor),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildDiagnostics() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _buildExplanationItem(String emoji, String title, String description) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          emoji,
+          style: const TextStyle(fontSize: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.lightbulb, color: Colors.amber),
-              const SizedBox(width: 8),
               Text(
-                'Диагностика:',
+                title,
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: 14,
+                  height: 1.3,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+        ),
+      ],
+    );
+  }
 
-          Text('1. Сначала запустите ПРЯМОЙ ТЕСТ', style: TextStyle(color: AppConstants.textColor)),
-          Text('2. Если прямой тест прошел - запустите ТЕСТ ИНТЕГРАЦИИ', style: TextStyle(color: AppConstants.textColor)),
-          Text('3. Если прямой тест не прошел - проверьте баланс на platform.openai.com', style: TextStyle(color: AppConstants.textColor)),
-          Text('4. Очищайте кэш перед каждым новым тестом', style: TextStyle(color: AppConstants.textColor)),
+  Widget _buildDetailsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Детали проверки:',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _detailsMessage,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.8),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _runIntegrationTest() async {
+  void _checkPredictionSource() async {
     setState(() {
       _isLoading = true;
-      _testResult = null;
+      _statusMessage = 'Проверяем...';
+      _statusColor = Colors.orange;
     });
 
     try {
-      final result = await _aiService.testOpenAIConnection();
-      setState(() {
-        _testResult = result;
-      });
+      final isAIAvailable = _aiService.isAIAvailable;
+
+      if (isAIAvailable) {
+        // Проверяем, действительно ли AI работает
+        final testResult = await _aiService.testOpenAIConnection();
+
+        if (testResult['success'] == true) {
+          setState(() {
+            _predictionSource = 'ИИ (OpenAI)';
+            _statusMessage = 'ИИ работает ✨';
+            _statusColor = Colors.green;
+            _detailsMessage = 'Модель: ${testResult['model'] ?? 'gpt-3.5-turbo'}\n'
+                'Время ответа: ${testResult['response_time'] ?? 'н/д'}мс';
+          });
+        } else {
+          setState(() {
+            _predictionSource = 'Алгоритм';
+            _statusMessage = 'ИИ недоступен';
+            _statusColor = Colors.blue;
+            _detailsMessage = 'Причина: ${testResult['error'] ?? 'Неизвестная ошибка'}';
+          });
+        }
+      } else {
+        setState(() {
+          _predictionSource = 'Алгоритм';
+          _statusMessage = 'ИИ не настроен';
+          _statusColor = Colors.blue;
+          _detailsMessage = 'OpenAI API ключ не найден или неверно настроен';
+        });
+      }
     } catch (e) {
       setState(() {
-        _testResult = {
-          'success': false,
-          'error': e.toString(),
-          'configured': false,
-        };
+        _predictionSource = 'Алгоритм';
+        _statusMessage = 'Ошибка проверки';
+        _statusColor = Colors.orange;
+        _detailsMessage = 'Ошибка: $e';
       });
     } finally {
       setState(() {
@@ -361,71 +410,7 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
     }
   }
 
-  void _runDirectTest() async {
-    setState(() {
-      _isLoading = true;
-      _directTestResult = null;
-    });
-
-    try {
-      const prompt = 'Скажи "Тест пройден" если получил это сообщение';
-
-      final result = await _makeDirectOpenAIRequest(prompt);
-
-      setState(() {
-        _directTestResult = 'Успех: $result';
-      });
-    } catch (e) {
-      setState(() {
-        _directTestResult = 'Ошибка: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<String> _makeDirectOpenAIRequest(String prompt) async {
-    final apiKey = ApiKeys.openAIKey;
-
-    if (apiKey.isEmpty || apiKey == 'YOUR_OPENAI_API_KEY_HERE') {
-      throw Exception('API ключ не настроен');
-    }
-
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/chat/completions'),
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: json.encode({
-        'model': 'gpt-3.5-turbo',
-        'messages': [
-          {'role': 'user', 'content': prompt}
-        ],
-        'max_tokens': 50,
-        'temperature': 0.0,
-      }),
-    ).timeout(const Duration(seconds: 15));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['choices'][0]['message']['content'];
-    } else {
-      final errorBody = response.body;
-      throw Exception('HTTP ${response.statusCode}: $errorBody');
-    }
-  }
-
-  void _clearCache() {
-    _aiService.clearOldCache();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Кэш очищен'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _runSourceCheck() {
+    _checkPredictionSource();
   }
 }

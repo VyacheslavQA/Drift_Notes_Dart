@@ -141,30 +141,43 @@ class AIBitePredictionService {
     try {
       debugPrint('🧪 Тестируем OpenAI соединение...');
 
+      final requestBody = {
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+          {
+            'role': 'user',
+            'content': 'Ответь одним словом на русском: работает',
+          },
+        ],
+        'max_tokens': 10,
+        'temperature': 0.0,
+      };
+
+      debugPrint('🔍 Request body: ${json.encode(requestBody)}');
+
       final response = await http.post(
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+          'Accept-Charset': 'utf-8',
         },
-        body: json.encode({
-          'model': 'gpt-3.5-turbo',
-          'messages': [
-            {
-              'role': 'user',
-              'content': 'Ответь одним словом: работает',
-            },
-          ],
-          'max_tokens': 10,
-          'temperature': 0.0,
-        }),
+        body: json.encode(requestBody),
       ).timeout(const Duration(seconds: 15));
 
-      debugPrint('📡 OpenAI ответ: статус ${response.statusCode}');
+      debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
+      debugPrint('🔍 Response headers: ${response.headers}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // Правильно декодируем ответ
+        final decodedBody = utf8.decode(response.bodyBytes);
+        debugPrint('🔍 Decoded response body: $decodedBody');
+
+        final data = json.decode(decodedBody);
         final answer = data['choices'][0]['message']['content'].toString().trim();
+
+        debugPrint('🔍 Final answer: $answer');
 
         _lastAIRequestSuccessful = true;
         _lastAIError = '';
@@ -178,7 +191,8 @@ class AIBitePredictionService {
           'response_time': DateTime.now().difference(_lastAIRequestTime!).inMilliseconds,
         };
       } else {
-        final errorData = json.decode(response.body);
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final errorData = json.decode(decodedBody);
         _lastAIRequestSuccessful = false;
         _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
 
@@ -691,34 +705,44 @@ class AIBitePredictionService {
 
       final prompt = _buildOpenAIPrompt(predictions, weather, userData);
 
+      final requestBody = {
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+          {
+            'role': 'system',
+            'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай краткие советы на русском языке.',
+          },
+          {
+            'role': 'user',
+            'content': prompt,
+          },
+        ],
+        'max_tokens': 200,
+        'temperature': 0.3,
+      };
+
+      debugPrint('🔍 Request body: ${json.encode(requestBody)}');
+
       final response = await http.post(
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+          'Accept-Charset': 'utf-8',
         },
-        body: json.encode({
-          'model': 'gpt-3.5-turbo',
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай краткие советы в формате JSON.',
-            },
-            {
-              'role': 'user',
-              'content': prompt,
-            },
-          ],
-          'max_tokens': 800,
-          'temperature': 0.3,
-        }),
+        body: json.encode(requestBody),
       ).timeout(const Duration(seconds: 15));
 
       debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // Правильно декодируем ответ
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedBody);
         final aiResponse = data['choices'][0]['message']['content'] as String;
+
+        debugPrint('🔍 AI response: $aiResponse');
 
         // Обрабатываем ответ AI и улучшаем прогнозы
         _processAIResponse(predictions, aiResponse, weather);
@@ -730,7 +754,8 @@ class AIBitePredictionService {
         return true;
 
       } else {
-        final errorData = json.decode(response.body);
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final errorData = json.decode(decodedBody);
         _lastAIRequestSuccessful = false;
         _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
 
@@ -753,6 +778,8 @@ class AIBitePredictionService {
       WeatherApiResponse weather,
       ) {
     try {
+      debugPrint('🔍 Processing AI response: $aiResponse');
+
       // Добавляем AI советы к лучшему прогнозу
       final bestType = predictions.entries
           .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b)
@@ -761,14 +788,9 @@ class AIBitePredictionService {
       if (predictions[bestType] != null) {
         final enhanced = predictions[bestType]!;
 
-        // Добавляем AI совет
-        enhanced.tips.insert(0, '🧠 AI Совет: ${aiResponse.trim()}');
-
-        // Немного повышаем уверенность
-        final newConfidence = (enhanced.confidence + 0.1).clamp(0.0, 1.0);
-
-        // Обновляем детальный анализ
-        final enhancedAnalysis = enhanced.detailedAnalysis + ' AI анализ показывает: ${aiResponse.trim()}';
+        // Добавляем AI совет (убираем потенциально поврежденные символы)
+        final cleanResponse = aiResponse.replaceAll(RegExp(r'[^\u0000-\u007F\u0400-\u04FF]'), '');
+        enhanced.tips.insert(0, '🧠 AI Совет: $cleanResponse');
 
         debugPrint('✨ AI улучшения добавлены к прогнозу $bestType');
       }
@@ -1026,12 +1048,12 @@ class AIBitePredictionService {
         .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b);
 
     return '''
-Анализ условий рыбалки:
+Условия рыбалки:
 - Погода: ${weather.current.tempC}°C, давление ${weather.current.pressureMb} мб, ветер ${weather.current.windKph} км/ч
 - Лучший тип: ${bestType.key} (${bestType.value.overallScore} баллов)
 - Фаза луны: ${weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'неизвестно'}
 
-Дай 1-2 кратких совета для успешной рыбалки в этих условиях (максимум 100 слов).
+Дай 1 краткий совет для успешной рыбалки в этих условиях на русском языке (максимум 50 слов).
 ''';
   }
 

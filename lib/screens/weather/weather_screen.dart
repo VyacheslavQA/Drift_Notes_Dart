@@ -381,22 +381,40 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 fontWeight: FontWeight.bold,
               ),
             ),
-            // Убрали кнопку обновления - теперь только Spacer
-            if (kDebugMode) ...[
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const OpenAITestScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.psychology),
-                tooltip: 'Тест OpenAI',
-              ),
-            ],
             const Spacer(),
+            // Кнопка ИИ-тестирования в правом углу
+            if (kDebugMode)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OpenAITestScreen(),
+                      ),
+                    );
+                  },
+                  icon: Icon(
+                    Icons.smart_toy, // ИИ-робот иконка
+                    color: AppConstants.primaryColor,
+                    size: 24,
+                  ),
+                  tooltip: 'Источник прогнозов ИИ',
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
