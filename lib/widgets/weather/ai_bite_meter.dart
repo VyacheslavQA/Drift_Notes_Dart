@@ -567,13 +567,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
               return FadeTransition(
                 opacity: AlwaysStoppedAnimation(delayedValue),
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.5, 0),
-                    end: Offset.zero,
-                  ).animate(AlwaysStoppedAnimation(delayedValue)),
-                  child: _buildFactorItem(factor),
-                ),
+                child: _buildFactorItem(factor),
               );
             }).toList(),
           ],
