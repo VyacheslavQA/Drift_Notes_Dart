@@ -18,15 +18,8 @@ class AIBitePredictionService {
   // Кэш для оптимизации
   final Map<String, MultiFishingTypePrediction> _cache = {};
   static const String _cacheKey = 'ai_bite_cache_multi';
-  static const String _userDataCacheKey = 'ai_user_data_cache';
-  static const String _internetDataCacheKey = 'ai_internet_data_cache';
 
-  // Настройки ИИ
-  static const String _openAIBaseUrl = 'https://api.openai.com/v1';
-  static const String _fishingApiBaseUrl = 'https://api.fishingapi.com/v1'; // Пример API рыболовных данных
-  static const String _weatherInfluenceApiUrl = 'https://api.weatherinfluence.com/v1'; // Пример API влияния погоды
-
-  /// Основной метод получения ИИ прогноза с использованием реальных данных
+  /// Основной метод получения ИИ прогноза
   Future<MultiFishingTypePrediction> getMultiFishingTypePrediction({
     required WeatherApiResponse weather,
     required double latitude,
@@ -41,66 +34,58 @@ class AIBitePredictionService {
       // Создаём уникальный ключ для кэширования
       final cacheKey = _generateCacheKey(latitude, longitude, targetDate);
 
-      // Проверяем кэш (актуален 15 минут для реального ИИ)
+      // Проверяем кэш (актуален 30 минут)
       if (_cache.containsKey(cacheKey)) {
         final cached = _cache[cacheKey]!;
-        if (DateTime.now().difference(cached.generatedAt).inMinutes < 15) {
+        if (DateTime.now().difference(cached.generatedAt).inMinutes < 30) {
           debugPrint('🤖 ИИ прогноз из кэша');
           return cached;
         }
       }
 
-      debugPrint('🤖 Генерация нового ИИ прогноза с интернет-данными...');
+      debugPrint('🤖 Генерация нового ИИ прогноза...');
 
-      // Шаг 1: Собираем данные пользователя
+      // Собираем данные пользователя
       final userData = await _collectUserData(userHistory, latitude, longitude);
 
-      // Шаг 2: Получаем данные из интернета
-      final internetData = await _fetchInternetFishingData(latitude, longitude, targetDate);
+      // Анализируем погодные условия
+      final weatherAnalysis = _analyzeWeatherConditions(weather);
 
-      // Шаг 3: Анализируем погодные условия с помощью внешних API
-      final weatherAnalysis = await _analyzeWeatherWithAI(weather, latitude, longitude);
-
-      // Шаг 4: Объединяем все данные для ИИ-анализа
-      final aiInput = _prepareAIInput(
+      // Создаём прогнозы для всех типов рыбалки
+      final predictions = _generatePredictionsForAllTypes(
         weather: weather,
         userData: userData,
-        internetData: internetData,
         weatherAnalysis: weatherAnalysis,
         latitude: latitude,
         longitude: longitude,
         targetDate: targetDate,
       );
 
-      // Шаг 5: Получаем прогноз от ИИ
-      final aiPredictions = await _getAIPredictions(aiInput);
+      // Если доступен OpenAI API - улучшаем прогноз с помощью ИИ
+      if (ApiKeys.openAIKey.isNotEmpty && ApiKeys.openAIKey != 'YOUR_OPENAI_API_KEY_HERE') {
+        await _enhanceWithOpenAI(predictions, weather, userData);
+      }
 
-      // Шаг 6: Создаем мультитиповый прогноз
-      final multiPrediction = _createMultiPredictionFromAI(
-        aiPredictions,
+      // Создаем мультитиповый прогноз
+      final multiPrediction = _createMultiPrediction(
+        predictions,
         preferredTypes,
         weather,
-        internetData,
       );
 
       // Сохраняем в кэш
       _cache[cacheKey] = multiPrediction;
-      await _saveCacheToStorage();
-
-      // Обучаем модель на основе результата (если есть фидбек пользователя)
-      _scheduleModelTraining(aiInput, multiPrediction);
 
       debugPrint('✅ ИИ прогноз готов. Лучший: ${multiPrediction.bestFishingType}');
       return multiPrediction;
 
     } catch (e) {
       debugPrint('❌ Ошибка ИИ прогноза: $e');
-      // Fallback на локальный анализ
       return _getFallbackPrediction(weather, userHistory, latitude, longitude);
     }
   }
 
-  /// Сбор данных пользователя для ИИ-анализа
+  /// Сбор данных пользователя для анализа
   Future<Map<String, dynamic>> _collectUserData(
       List<FishingNoteModel>? userHistory,
       double latitude,
@@ -125,32 +110,31 @@ class AIBitePredictionService {
         note.biteRecords.any((bite) => bite.weight > 0)
     ).toList();
 
-    final locationTrips = userHistory.where((note) =>
-    _calculateDistance(
-      note.coordinates?['latitude'] ?? 0,
-      note.coordinates?['longitude'] ?? 0,
-      latitude,
-      longitude,
-    ) < 50 // В радиусе 50 км
-    ).toList();
+    // Найдем поездки рядом с текущим местоположением (используем правильные поля)
+    final locationTrips = userHistory.where((note) {
+      if (note.mapPoint != null) {
+        return _calculateDistance(
+          note.mapPoint!['latitude'] ?? 0,
+          note.mapPoint!['longitude'] ?? 0,
+          latitude,
+          longitude,
+        ) < 50; // В радиусе 50 км
+      }
+      return false;
+    }).toList();
 
     // Анализ успешных условий
     final successfulConditions = <Map<String, dynamic>>[];
     for (final trip in successfulTrips) {
-      if (trip.weatherData != null) {
-        successfulConditions.add({
-          'temperature': trip.weatherData!.temperature,
-          'pressure': trip.weatherData!.pressure,
-          'wind_speed': trip.weatherData!.windSpeed,
-          'weather_description': trip.weatherData!.weatherDescription,
-          'moon_phase': trip.weatherData!.moonPhase,
-          'fishing_type': trip.fishingType,
-          'time_of_day': trip.startDate.hour,
-          'season': _getSeason(trip.startDate),
-          'catch_weight': trip.biteRecords.fold(0.0, (sum, bite) => sum + bite.weight),
-          'bite_count': trip.biteRecords.length,
-        });
-      }
+      // Используем правильные поля из FishingNoteModel
+      successfulConditions.add({
+        'fishing_type': trip.fishingType,
+        'time_of_day': trip.date.hour,
+        'season': _getSeason(trip.date),
+        'catch_weight': trip.biteRecords.fold(0.0, (sum, bite) => sum + bite.weight),
+        'bite_count': trip.biteRecords.length,
+        'duration_hours': trip.endDate?.difference(trip.date).inHours ?? 8,
+      });
     }
 
     // Предпочитаемые типы рыбалки
@@ -161,21 +145,18 @@ class AIBitePredictionService {
 
     final preferredTypes = typeFrequency.entries
         .toList()
-      ..sort((a, b) => b.value.compareTo(a.value))
-      ..map((e) => e.key)
-          .take(3)
-          .toList();
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return {
       'has_data': true,
       'total_trips': userHistory.length,
       'successful_trips': successfulTrips.length,
       'success_rate': successfulTrips.length / userHistory.length,
-      'preferred_types': preferredTypes,
+      'preferred_types': preferredTypes.take(3).map((e) => e.key).toList(),
       'successful_conditions': successfulConditions,
       'location_familiarity': locationTrips.length / userHistory.length,
       'avg_trip_duration': userHistory
-          .map((trip) => trip.endDate?.difference(trip.startDate).inHours ?? 0)
+          .map((trip) => trip.endDate?.difference(trip.date).inHours ?? 0)
           .where((duration) => duration > 0)
           .fold(0.0, (sum, duration) => sum + duration) / userHistory.length,
       'favorite_seasons': _analyzeFavoriteSeasons(userHistory),
@@ -183,451 +164,360 @@ class AIBitePredictionService {
     };
   }
 
-  /// Получение данных о рыбалке из интернета
-  Future<Map<String, dynamic>> _fetchInternetFishingData(
-      double latitude,
-      double longitude,
-      DateTime targetDate,
-      ) async {
-    debugPrint('🌐 Получаем данные о рыбалке из интернета...');
+  /// Анализ погодных условий (локальный алгоритм)
+  Map<String, dynamic> _analyzeWeatherConditions(WeatherApiResponse weather) {
+    final current = weather.current;
+    double suitability = 50.0; // Базовый скор
 
-    try {
-      // Кэшируем интернет-данные на 1 час
-      final cacheKey = 'internet_data_${latitude}_${longitude}_${targetDate.day}';
-      final cachedData = await _getCachedInternetData(cacheKey);
-      if (cachedData != null) {
-        return cachedData;
-      }
-
-      final futures = <Future<Map<String, dynamic>>>[];
-
-      // 1. Данные о рыболовных условиях из специализированных API
-      futures.add(_fetchFishingConditionsData(latitude, longitude));
-
-      // 2. Исторические данные клева для региона
-      futures.add(_fetchHistoricalBiteData(latitude, longitude, targetDate));
-
-      // 3. Сообщения рыболовных форумов и социальных сетей
-      futures.add(_fetchSocialFishingReports(latitude, longitude));
-
-      // 4. Научные данные о поведении рыб
-      futures.add(_fetchFishBehaviorData(latitude, longitude, targetDate));
-
-      // 5. Локальные рыболовные отчеты
-      futures.add(_fetchLocalFishingReports(latitude, longitude));
-
-      final results = await Future.wait(futures);
-
-      final combinedData = <String, dynamic>{
-        'fishing_conditions': results[0],
-        'historical_bite': results[1],
-        'social_reports': results[2],
-        'fish_behavior': results[3],
-        'local_reports': results[4],
-        'data_quality_score': _calculateDataQuality(results),
-        'last_updated': DateTime.now().toIso8601String(),
-      };
-
-      await _cacheInternetData(cacheKey, combinedData);
-      return combinedData;
-
-    } catch (e) {
-      debugPrint('❌ Ошибка получения интернет-данных: $e');
-      return {
-        'error': e.toString(),
-        'fallback_data': await _getFallbackInternetData(latitude, longitude),
-      };
-    }
-  }
-
-  /// Получение данных о рыболовных условиях
-  Future<Map<String, dynamic>> _fetchFishingConditionsData(
-      double latitude,
-      double longitude,
-      ) async {
-    try {
-      // Пример запроса к API рыболовных условий
-      final response = await http.get(
-        Uri.parse('$_fishingApiBaseUrl/conditions?lat=$latitude&lon=$longitude'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.fishingApiKey}', // Добавить в api_keys.dart
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'water_temperature': data['water_temp'] ?? 15.0,
-          'water_clarity': data['clarity'] ?? 'moderate',
-          'fish_activity_index': data['activity_index'] ?? 0.5,
-          'optimal_depths': data['optimal_depths'] ?? [2.0, 5.0, 8.0],
-          'recommended_baits': data['recommended_baits'] ?? ['worm', 'spinner'],
-          'local_species': data['local_species'] ?? ['carp', 'pike', 'perch'],
-          'seasonal_patterns': data['seasonal_patterns'] ?? {},
-          'source': 'fishing_api',
-        };
-      }
-    } catch (e) {
-      debugPrint('⚠️ Fishing API недоступен: $e');
+    // Анализ давления
+    final pressure = current.pressureMb;
+    if (pressure >= 1010 && pressure <= 1025) {
+      suitability += 20; // Идеальное давление
+    } else if (pressure < 1000 || pressure > 1030) {
+      suitability -= 15; // Плохое давление
     }
 
-    // Fallback данные
-    return {
-      'water_temperature': 15.0,
-      'water_clarity': 'moderate',
-      'fish_activity_index': 0.5,
-      'optimal_depths': [2.0, 5.0, 8.0],
-      'recommended_baits': ['worm', 'spinner'],
-      'local_species': ['carp', 'pike', 'perch'],
-      'source': 'fallback',
-    };
-  }
+    // Анализ ветра
+    final windKph = current.windKph;
+    if (windKph <= 15) {
+      suitability += 15; // Отличный ветер
+    } else if (windKph <= 25) {
+      suitability += 5; // Хороший ветер
+    } else if (windKph > 35) {
+      suitability -= 20; // Сильный ветер
+    }
 
-  /// Получение исторических данных клева
-  Future<Map<String, dynamic>> _fetchHistoricalBiteData(
-      double latitude,
-      double longitude,
-      DateTime targetDate,
-      ) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_fishingApiBaseUrl/historical-bite?lat=$latitude&lon=$longitude&month=${targetDate.month}&day=${targetDate.day}'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.fishingApiKey}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+    // Анализ температуры
+    final temp = current.tempC;
+    if (temp >= 15 && temp <= 25) {
+      suitability += 10; // Комфортная температура
+    } else if (temp < 5 || temp > 35) {
+      suitability -= 10; // Экстремальная температура
+    }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'historical_activity': data['historical_activity'] ?? 0.6,
-          'best_historical_times': data['best_times'] ?? ['06:00', '18:00'],
-          'seasonal_trends': data['seasonal_trends'] ?? {},
-          'weather_correlations': data['weather_correlations'] ?? {},
-          'success_rate_by_type': data['success_by_type'] ?? {},
-          'source': 'historical_api',
-        };
+    // Анализ облачности
+    final clouds = current.cloud;
+    if (clouds >= 30 && clouds <= 70) {
+      suitability += 5; // Хорошая облачность
+    } else if (clouds == 0) {
+      suitability -= 5; // Слишком ярко
+    }
+
+    // Анализ фазы луны
+    String moonImpact = 'neutral';
+    if (weather.forecast.isNotEmpty) {
+      final moonPhase = weather.forecast.first.astro.moonPhase.toLowerCase();
+      if (moonPhase.contains('new') || moonPhase.contains('full')) {
+        suitability += 10;
+        moonImpact = 'positive';
       }
-    } catch (e) {
-      debugPrint('⚠️ Historical API недоступен: $e');
     }
 
     return {
-      'historical_activity': 0.6,
-      'best_historical_times': ['06:00', '18:00'],
-      'source': 'fallback',
+      'overall_suitability': suitability.clamp(0.0, 100.0),
+      'pressure_impact': _getPressureImpact(pressure),
+      'wind_impact': _getWindImpact(windKph),
+      'temperature_impact': _getTemperatureImpact(temp),
+      'moon_impact': moonImpact,
+      'best_hours': _calculateBestHours(current.isDay == 1),
+      'confidence': 0.8,
     };
   }
 
-  /// Получение отчетов из соцсетей и форумов
-  Future<Map<String, dynamic>> _fetchSocialFishingReports(
-      double latitude,
-      double longitude,
-      ) async {
-    try {
-      // Анализируем недавние посты в соцсетях и на форумах
-      final response = await http.get(
-        Uri.parse('$_fishingApiBaseUrl/social-reports?lat=$latitude&lon=$longitude&radius=50'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.fishingApiKey}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'recent_reports': data['reports'] ?? [],
-          'sentiment_score': data['sentiment'] ?? 0.5, // Позитивность отзывов
-          'activity_mentions': data['activity_mentions'] ?? 0,
-          'popular_locations': data['popular_spots'] ?? [],
-          'trending_baits': data['trending_baits'] ?? [],
-          'source': 'social_api',
-        };
-      }
-    } catch (e) {
-      debugPrint('⚠️ Social API недоступен: $e');
-    }
-
-    return {
-      'recent_reports': [],
-      'sentiment_score': 0.5,
-      'activity_mentions': 0,
-      'source': 'fallback',
-    };
-  }
-
-  /// Получение данных о поведении рыб
-  Future<Map<String, dynamic>> _fetchFishBehaviorData(
-      double latitude,
-      double longitude,
-      DateTime targetDate,
-      ) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_fishingApiBaseUrl/fish-behavior?lat=$latitude&lon=$longitude&date=${targetDate.toIso8601String()}'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.fishingApiKey}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'spawning_season': data['spawning_season'] ?? false,
-          'migration_patterns': data['migration'] ?? {},
-          'feeding_times': data['feeding_times'] ?? [],
-          'species_activity': data['species_activity'] ?? {},
-          'environmental_stress': data['stress_factors'] ?? [],
-          'source': 'behavior_api',
-        };
-      }
-    } catch (e) {
-      debugPrint('⚠️ Behavior API недоступен: $e');
-    }
-
-    return {
-      'spawning_season': false,
-      'migration_patterns': {},
-      'feeding_times': ['06:00-08:00', '18:00-20:00'],
-      'source': 'fallback',
-    };
-  }
-
-  /// Получение локальных рыболовных отчетов
-  Future<Map<String, dynamic>> _fetchLocalFishingReports(
-      double latitude,
-      double longitude,
-      ) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_fishingApiBaseUrl/local-reports?lat=$latitude&lon=$longitude'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.fishingApiKey}',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'local_guides_reports': data['guides'] ?? [],
-          'fishing_store_reports': data['stores'] ?? [],
-          'ranger_reports': data['rangers'] ?? [],
-          'local_conditions': data['conditions'] ?? {},
-          'source': 'local_api',
-        };
-      }
-    } catch (e) {
-      debugPrint('⚠️ Local API недоступен: $e');
-    }
-
-    return {
-      'local_guides_reports': [],
-      'fishing_store_reports': [],
-      'ranger_reports': [],
-      'source': 'fallback',
-    };
-  }
-
-  /// Анализ погоды с помощью ИИ
-  Future<Map<String, dynamic>> _analyzeWeatherWithAI(
-      WeatherApiResponse weather,
-      double latitude,
-      double longitude,
-      ) async {
-    debugPrint('🧠 ИИ-анализ погодных условий...');
-
-    try {
-      final prompt = _buildWeatherAnalysisPrompt(weather, latitude, longitude);
-
-      final response = await http.post(
-        Uri.parse('$_openAIBaseUrl/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'model': 'gpt-4',
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'You are an expert fishing guide with 30 years of experience. Analyze weather conditions and provide fishing recommendations in JSON format.',
-            },
-            {
-              'role': 'user',
-              'content': prompt,
-            },
-          ],
-          'max_tokens': 1000,
-          'temperature': 0.3,
-        }),
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final aiResponse = data['choices'][0]['message']['content'];
-
-        try {
-          final analysisResult = json.decode(aiResponse);
-          return {
-            'ai_analysis': analysisResult,
-            'confidence': 0.9,
-            'model_used': 'gpt-4',
-            'source': 'openai',
-          };
-        } catch (e) {
-          return _parseUnstructuredAIResponse(aiResponse);
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ OpenAI API ошибка: $e');
-    }
-
-    // Fallback анализ
-    return _getFallbackWeatherAnalysis(weather);
-  }
-
-  /// Подготовка входных данных для ИИ
-  Map<String, dynamic> _prepareAIInput({
+  /// Генерация прогнозов для всех типов рыбалки
+  Map<String, AIBitePrediction> _generatePredictionsForAllTypes({
     required WeatherApiResponse weather,
     required Map<String, dynamic> userData,
-    required Map<String, dynamic> internetData,
     required Map<String, dynamic> weatherAnalysis,
     required double latitude,
     required double longitude,
     required DateTime targetDate,
   }) {
-    return {
-      'location': {
-        'latitude': latitude,
-        'longitude': longitude,
-        'region': weather.location.region,
-        'country': weather.location.country,
+    final predictions = <String, AIBitePrediction>{};
+    final baseSuitability = weatherAnalysis['overall_suitability'] as double;
+
+    // Типы рыбалки с их характеристиками
+    final fishingTypes = {
+      'spinning': {
+        'name': 'Спиннинг',
+        'wind_tolerance': 25.0, // км/ч
+        'temp_optimal_min': 10.0,
+        'temp_optimal_max': 25.0,
+        'pressure_sensitivity': 0.8,
+        'base_score_modifier': 0.0,
       },
-      'datetime': {
-        'target_date': targetDate.toIso8601String(),
-        'hour': targetDate.hour,
-        'day_of_week': targetDate.weekday,
-        'month': targetDate.month,
-        'season': _getSeason(targetDate),
+      'feeder': {
+        'name': 'Фидер',
+        'wind_tolerance': 20.0,
+        'temp_optimal_min': 12.0,
+        'temp_optimal_max': 28.0,
+        'pressure_sensitivity': 0.9,
+        'base_score_modifier': 5.0,
       },
-      'weather': {
-        'temperature': weather.current.tempC,
-        'feels_like': weather.current.feelslikeC,
-        'humidity': weather.current.humidity,
-        'pressure': weather.current.pressureMb,
-        'wind_speed': weather.current.windKph,
-        'wind_direction': weather.current.windDir,
-        'cloud_cover': weather.current.cloud,
-        'visibility': weather.current.visKm,
-        'uv_index': weather.current.uv,
-        'condition': weather.current.condition.text,
-        'is_day': weather.current.isDay == 1,
-        'moon_phase': weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : '',
-        'sunrise': weather.forecast.isNotEmpty ? weather.forecast.first.astro.sunrise : '',
-        'sunset': weather.forecast.isNotEmpty ? weather.forecast.first.astro.sunset : '',
+      'carp_fishing': {
+        'name': 'Карповая рыбалка',
+        'wind_tolerance': 15.0,
+        'temp_optimal_min': 15.0,
+        'temp_optimal_max': 30.0,
+        'pressure_sensitivity': 1.0,
+        'base_score_modifier': 0.0,
       },
-      'user_data': userData,
-      'internet_data': internetData,
-      'weather_analysis': weatherAnalysis,
-      'available_fishing_types': [
-        'spinning', 'feeder', 'carp_fishing', 'float_fishing',
-        'ice_fishing', 'fly_fishing', 'trolling'
-      ],
+      'float_fishing': {
+        'name': 'Поплавочная рыбалка',
+        'wind_tolerance': 10.0,
+        'temp_optimal_min': 8.0,
+        'temp_optimal_max': 25.0,
+        'pressure_sensitivity': 0.7,
+        'base_score_modifier': 10.0,
+      },
+      'ice_fishing': {
+        'name': 'Зимняя рыбалка',
+        'wind_tolerance': 30.0,
+        'temp_optimal_min': -15.0,
+        'temp_optimal_max': 5.0,
+        'pressure_sensitivity': 1.2,
+        'base_score_modifier': weather.current.tempC < 5 ? 20.0 : -30.0,
+      },
+      'fly_fishing': {
+        'name': 'Нахлыст',
+        'wind_tolerance': 8.0,
+        'temp_optimal_min': 10.0,
+        'temp_optimal_max': 22.0,
+        'pressure_sensitivity': 0.6,
+        'base_score_modifier': 0.0,
+      },
+      'trolling': {
+        'name': 'Троллинг',
+        'wind_tolerance': 35.0,
+        'temp_optimal_min': 5.0,
+        'temp_optimal_max': 30.0,
+        'pressure_sensitivity': 0.5,
+        'base_score_modifier': 5.0,
+      },
     };
+
+    for (final entry in fishingTypes.entries) {
+      final type = entry.key;
+      final config = entry.value;
+
+      predictions[type] = _generatePredictionForType(
+        type,
+        config,
+        weather,
+        userData,
+        weatherAnalysis,
+        baseSuitability,
+      );
+    }
+
+    return predictions;
   }
 
-  /// Получение прогнозов от ИИ для всех типов рыбалки
-  Future<Map<String, AIBitePrediction>> _getAIPredictions(Map<String, dynamic> input) async {
-    debugPrint('🤖 Получаем ИИ-прогнозы для всех типов рыбалки...');
+  /// Генерация прогноза для конкретного типа рыбалки
+  AIBitePrediction _generatePredictionForType(
+      String fishingType,
+      Map<String, dynamic> config,
+      WeatherApiResponse weather,
+      Map<String, dynamic> userData,
+      Map<String, dynamic> weatherAnalysis,
+      double baseSuitability,
+      ) {
+    double score = baseSuitability;
+    final factors = <BiteFactorAnalysis>[];
+    final tips = <String>[];
+
+    // Применяем модификатор базового скора
+    score += config['base_score_modifier'] as double;
+
+    // Анализ ветра
+    final windKph = weather.current.windKph;
+    final windTolerance = config['wind_tolerance'] as double;
+    if (windKph <= windTolerance) {
+      score += 15;
+      factors.add(BiteFactorAnalysis(
+        name: 'Ветер',
+        value: '${windKph.round()} км/ч',
+        impact: 15,
+        weight: 0.8,
+        description: 'Благоприятный ветер для ${config['name']}',
+        isPositive: true,
+      ));
+    } else {
+      final penalty = ((windKph - windTolerance) / 5) * -10;
+      score += penalty;
+      factors.add(BiteFactorAnalysis(
+        name: 'Ветер',
+        value: '${windKph.round()} км/ч',
+        impact: penalty.round(),
+        weight: 0.8,
+        description: 'Слишком сильный ветер для ${config['name']}',
+        isPositive: false,
+      ));
+      tips.add('При сильном ветре ищите защищенные места');
+    }
+
+    // Анализ температуры
+    final temp = weather.current.tempC;
+    final tempMin = config['temp_optimal_min'] as double;
+    final tempMax = config['temp_optimal_max'] as double;
+    if (temp >= tempMin && temp <= tempMax) {
+      score += 10;
+      factors.add(BiteFactorAnalysis(
+        name: 'Температура',
+        value: '${temp.round()}°C',
+        impact: 10,
+        weight: 0.7,
+        description: 'Оптимальная температура для ${config['name']}',
+        isPositive: true,
+      ));
+    } else {
+      final tempPenalty = (temp < tempMin) ? (tempMin - temp) * -2 : (temp - tempMax) * -1.5;
+      score += tempPenalty;
+      factors.add(BiteFactorAnalysis(
+        name: 'Температура',
+        value: '${temp.round()}°C',
+        impact: tempPenalty.round(),
+        weight: 0.7,
+        description: temp < tempMin ? 'Слишком холодно' : 'Слишком жарко',
+        isPositive: false,
+      ));
+    }
+
+    // Анализ давления
+    final pressure = weather.current.pressureMb;
+    final pressureSensitivity = config['pressure_sensitivity'] as double;
+    if (pressure >= 1010 && pressure <= 1025) {
+      final bonus = 10 * pressureSensitivity;
+      score += bonus;
+      factors.add(BiteFactorAnalysis(
+        name: 'Атмосферное давление',
+        value: '${pressure.round()} мб',
+        impact: bonus.round(),
+        weight: pressureSensitivity,
+        description: 'Стабильное давление способствует клеву',
+        isPositive: true,
+      ));
+    } else {
+      final penalty = pressure < 1000 ? -15 * pressureSensitivity : -10 * pressureSensitivity;
+      score += penalty;
+      factors.add(BiteFactorAnalysis(
+        name: 'Атмосферное давление',
+        value: '${pressure.round()} мб',
+        impact: penalty.round(),
+        weight: pressureSensitivity,
+        description: pressure < 1000 ? 'Низкое давление снижает активность' : 'Высокое давление',
+        isPositive: false,
+      ));
+      tips.add('При изменении давления рыба может быть пассивной');
+    }
+
+    // Учет пользовательских данных
+    if (userData['has_data'] == true) {
+      final preferredTypes = userData['preferred_types'] as List<dynamic>;
+      if (preferredTypes.contains(fishingType)) {
+        score += 5;
+        factors.add(BiteFactorAnalysis(
+          name: 'Персональная история',
+          value: 'Предпочитаемый тип',
+          impact: 5,
+          weight: 0.6,
+          description: 'Вы часто используете этот тип рыбалки',
+          isPositive: true,
+        ));
+      }
+    }
+
+    // Генерируем временные окна
+    final timeWindows = _generateTimeWindows(weather, fishingType);
+
+    // Генерируем дополнительные советы
+    tips.addAll(_generateTipsForType(fishingType, weather));
+
+    // Определяем уровень активности
+    final activityLevel = _determineActivityLevel(score);
+
+    // Генерируем рекомендацию
+    final recommendation = _generateRecommendation(fishingType, score, factors);
+
+    return AIBitePrediction(
+      overallScore: score.round().clamp(0, 100),
+      activityLevel: activityLevel,
+      confidence: 0.8,
+      recommendation: recommendation,
+      detailedAnalysis: _generateDetailedAnalysis(fishingType, factors, weather),
+      factors: factors,
+      bestTimeWindows: timeWindows,
+      tips: tips,
+      generatedAt: DateTime.now(),
+      dataSource: 'local_ai',
+      modelVersion: '2.0.0',
+    );
+  }
+
+  /// Улучшение прогноза с помощью OpenAI (если доступен)
+  Future<void> _enhanceWithOpenAI(
+      Map<String, AIBitePrediction> predictions,
+      WeatherApiResponse weather,
+      Map<String, dynamic> userData,
+      ) async {
+    if (ApiKeys.openAIKey.isEmpty || ApiKeys.openAIKey == 'YOUR_OPENAI_API_KEY_HERE') {
+      return;
+    }
 
     try {
-      final prompt = _buildFishingPredictionPrompt(input);
+      debugPrint('🧠 Улучшаем прогноз с помощью OpenAI...');
+
+      final prompt = _buildOpenAIPrompt(predictions, weather, userData);
 
       final response = await http.post(
-        Uri.parse('$_openAIBaseUrl/chat/completions'),
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer ${ApiKeys.openAIKey}',
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'gpt-4',
+          'model': 'gpt-3.5-turbo',
           'messages': [
             {
               'role': 'system',
-              'content': '''You are a world-class fishing expert with deep knowledge of fish behavior, weather patterns, and fishing techniques. 
-              Analyze the provided data and give detailed predictions for each fishing type. 
-              Response must be a valid JSON object with predictions for each fishing type.''',
+              'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай краткие советы.',
             },
             {
               'role': 'user',
               'content': prompt,
             },
           ],
-          'max_tokens': 2000,
-          'temperature': 0.4,
+          'max_tokens': 500,
+          'temperature': 0.3,
         }),
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final aiResponse = data['choices'][0]['message']['content'];
+        final aiTips = data['choices'][0]['message']['content'] as String;
 
-        try {
-          final predictionsJson = json.decode(aiResponse);
-          return _parseAIPredictions(predictionsJson, input);
-        } catch (e) {
-          debugPrint('❌ Ошибка парсинга ИИ ответа: $e');
-          return _getFallbackPredictions(input);
+        // Добавляем советы от ИИ к лучшему прогнозу
+        final bestType = predictions.entries
+            .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b)
+            .key;
+
+        if (predictions[bestType] != null) {
+          final enhanced = predictions[bestType]!;
+          enhanced.tips.add('💡 Совет ИИ: $aiTips');
         }
+
+        debugPrint('✅ OpenAI улучшение применено');
       }
     } catch (e) {
-      debugPrint('❌ Ошибка ИИ API: $e');
+      debugPrint('❌ Ошибка OpenAI: $e');
     }
-
-    return _getFallbackPredictions(input);
   }
 
-  /// Парсинг ответа ИИ в структурированные прогнозы
-  Map<String, AIBitePrediction> _parseAIPredictions(
-      Map<String, dynamic> aiResponse,
-      Map<String, dynamic> input,
-      ) {
-    final predictions = <String, AIBitePrediction>{};
-
-    for (final fishingType in input['available_fishing_types'] as List<String>) {
-      final typeData = aiResponse[fishingType] as Map<String, dynamic>?;
-
-      if (typeData != null) {
-        predictions[fishingType] = AIBitePrediction(
-          overallScore: (typeData['score'] ?? 50).round(),
-          activityLevel: _parseActivityLevel(typeData['activity_level'] ?? 'moderate'),
-          confidence: (typeData['confidence'] ?? 0.7).toDouble(),
-          recommendation: typeData['recommendation'] ?? 'Стандартные условия для рыбалки',
-          detailedAnalysis: typeData['detailed_analysis'] ?? 'ИИ-анализ недоступен',
-          factors: _parseFactors(typeData['factors'] ?? []),
-          bestTimeWindows: _parseTimeWindows(typeData['best_times'] ?? []),
-          tips: List<String>.from(typeData['tips'] ?? ['Удачной рыбалки!']),
-          generatedAt: DateTime.now(),
-          dataSource: 'openai_gpt4',
-          modelVersion: '4.0.0',
-        );
-      }
-    }
-
-    return predictions;
-  }
-
-  /// Создание мультитипового прогноза из ИИ данных
-  MultiFishingTypePrediction _createMultiPredictionFromAI(
+  /// Создание мультитипового прогноза
+  MultiFishingTypePrediction _createMultiPrediction(
       Map<String, AIBitePrediction> predictions,
       List<String>? preferredTypes,
       WeatherApiResponse weather,
-      Map<String, dynamic> internetData,
       ) {
     // Сортируем по скору
     final sortedPredictions = predictions.entries.toList()
@@ -646,10 +536,10 @@ class AIBitePredictionService {
     }
 
     // Создаем сравнительный анализ
-    final comparison = _createAIComparisonAnalysis(predictions);
+    final comparison = _createComparisonAnalysis(predictions);
 
-    // ИИ-генерированные рекомендации
-    final generalRecommendations = _generateAIRecommendations(predictions, bestType, internetData);
+    // Генерируем общие рекомендации
+    final generalRecommendations = _generateGeneralRecommendations(predictions, bestType);
 
     return MultiFishingTypePrediction(
       bestFishingType: bestType,
@@ -662,195 +552,192 @@ class AIBitePredictionService {
     );
   }
 
-  /// Построение промпта для анализа погоды
-  String _buildWeatherAnalysisPrompt(WeatherApiResponse weather, double lat, double lon) {
-    return '''
-Analyze the following weather conditions for fishing at coordinates $lat, $lon:
-
-Current Weather:
-- Temperature: ${weather.current.tempC}°C (feels like ${weather.current.feelslikeC}°C)
-- Pressure: ${weather.current.pressureMb} mb
-- Humidity: ${weather.current.humidity}%
-- Wind: ${weather.current.windKph} km/h ${weather.current.windDir}
-- Cloud cover: ${weather.current.cloud}%
-- Visibility: ${weather.current.visKm} km
-- UV Index: ${weather.current.uv}
-- Condition: ${weather.current.condition.text}
-- Time of day: ${weather.current.isDay == 1 ? 'Day' : 'Night'}
-
-Please provide analysis in JSON format with these fields:
-{
-  "overall_fishing_suitability": 0-100,
-  "pressure_impact": "positive/negative/neutral",
-  "temperature_impact": "positive/negative/neutral", 
-  "wind_impact": "positive/negative/neutral",
-  "cloud_impact": "positive/negative/neutral",
-  "key_recommendations": ["tip1", "tip2", "tip3"],
-  "best_fishing_hours": ["HH:MM-HH:MM"],
-  "weather_stability": "stable/changing/unstable"
-}
-''';
-  }
-
-  /// Построение промпта для прогноза рыбалки
-  String _buildFishingPredictionPrompt(Map<String, dynamic> input) {
-    final weather = input['weather'];
-    final userData = input['user_data'];
-    final internetData = input['internet_data'];
-
-    return '''
-Analyze fishing conditions and provide predictions for each fishing type:
-
-LOCATION: ${input['location']['latitude']}, ${input['location']['longitude']} (${input['location']['region']})
-DATE: ${input['datetime']['target_date']} (${input['datetime']['season']})
-
-WEATHER CONDITIONS:
-- Temperature: ${weather['temperature']}°C (feels like ${weather['feels_like']}°C)
-- Pressure: ${weather['pressure']} mb
-- Wind: ${weather['wind_speed']} km/h ${weather['wind_direction']}
-- Humidity: ${weather['humidity']}%
-- Visibility: ${weather['visibility']} km
-- Cloud cover: ${weather['cloud_cover']}%
-- Moon phase: ${weather['moon_phase']}
-- Condition: ${weather['condition']}
-
-USER DATA:
-- Total trips: ${userData['total_trips']}
-- Success rate: ${userData['success_rate']}
-- Preferred types: ${userData['preferred_types']}
-- Location familiarity: ${userData['location_familiarity']}
-
-INTERNET DATA:
-- Fish activity index: ${internetData['fishing_conditions']?['fish_activity_index'] ?? 0.5}
-- Water temperature: ${internetData['fishing_conditions']?['water_temperature'] ?? 15}°C
-- Recent reports sentiment: ${internetData['social_reports']?['sentiment_score'] ?? 0.5}
-- Historical activity: ${internetData['historical_bite']?['historical_activity'] ?? 0.6}
-
-Provide detailed predictions for each fishing type in JSON format:
-{
-  "spinning": {
-    "score": 0-100,
-    "activity_level": "excellent/good/moderate/poor/very_poor", 
-    "confidence": 0.0-1.0,
-    "recommendation": "brief recommendation",
-    "detailed_analysis": "detailed analysis paragraph",
-    "factors": [
-      {
-        "name": "factor name",
-        "impact": -100 to +100,
-        "description": "factor description"
-      }
-    ],
-    "best_times": [
-      {
-        "start": "HH:MM",
-        "end": "HH:MM", 
-        "activity": 0.0-1.0,
-        "reason": "why this time is good"
-      }
-    ],
-    "tips": ["tip1", "tip2", "tip3"]
-  },
-  "feeder": { ... },
-  "carp_fishing": { ... },
-  "float_fishing": { ... },
-  "ice_fishing": { ... },
-  "fly_fishing": { ... },
-  "trolling": { ... }
-}
-
-Consider:
-1. Weather impact on each fishing type
-2. User's experience and preferences  
-3. Seasonal patterns and fish behavior
-4. Internet data about local conditions
-5. Time of day and lunar influence
-6. Water conditions and fish activity
-''';
-  }
-
   // Вспомогательные методы...
 
-  ActivityLevel _parseActivityLevel(String level) {
-    switch (level.toLowerCase()) {
-      case 'excellent': return ActivityLevel.excellent;
-      case 'good': return ActivityLevel.good;
-      case 'moderate': return ActivityLevel.moderate;
-      case 'poor': return ActivityLevel.poor;
-      case 'very_poor': return ActivityLevel.veryPoor;
-      default: return ActivityLevel.moderate;
+  String _getPressureImpact(double pressure) {
+    if (pressure >= 1010 && pressure <= 1025) return 'positive';
+    if (pressure < 1000 || pressure > 1030) return 'negative';
+    return 'neutral';
+  }
+
+  String _getWindImpact(double windKph) {
+    if (windKph <= 15) return 'positive';
+    if (windKph <= 25) return 'neutral';
+    return 'negative';
+  }
+
+  String _getTemperatureImpact(double temp) {
+    if (temp >= 15 && temp <= 25) return 'positive';
+    if (temp < 5 || temp > 35) return 'negative';
+    return 'neutral';
+  }
+
+  List<String> _calculateBestHours(bool isDay) {
+    if (isDay) {
+      return ['06:00-08:00', '18:00-20:00'];
+    } else {
+      return ['20:00-22:00', '05:00-07:00'];
     }
   }
 
-  List<BiteFactorAnalysis> _parseFactors(List<dynamic> factors) {
-    return factors.map((factor) => BiteFactorAnalysis(
-      name: factor['name'] ?? 'Unknown Factor',
-      value: '',
-      impact: (factor['impact'] ?? 0).round(),
-      weight: 1.0,
-      description: factor['description'] ?? '',
-      isPositive: (factor['impact'] ?? 0) > 0,
-    )).toList();
+  List<OptimalTimeWindow> _generateTimeWindows(WeatherApiResponse weather, String fishingType) {
+    final now = DateTime.now();
+    final windows = <OptimalTimeWindow>[];
+
+    // Утреннее окно
+    windows.add(OptimalTimeWindow(
+      startTime: now.copyWith(hour: 6, minute: 0),
+      endTime: now.copyWith(hour: 8, minute: 30),
+      activity: 0.85,
+      reason: 'Утренняя активность рыбы',
+      recommendations: ['Используйте активные приманки'],
+    ));
+
+    // Вечернее окно
+    windows.add(OptimalTimeWindow(
+      startTime: now.copyWith(hour: 18, minute: 0),
+      endTime: now.copyWith(hour: 20, minute: 30),
+      activity: 0.9,
+      reason: 'Вечерняя активность рыбы',
+      recommendations: ['Попробуйте поверхностные приманки'],
+    ));
+
+    return windows;
   }
 
-  List<OptimalTimeWindow> _parseTimeWindows(List<dynamic> times) {
-    return times.map((time) {
-      final start = DateTime.now().copyWith(
-        hour: int.parse(time['start'].split(':')[0]),
-        minute: int.parse(time['start'].split(':')[1]),
-      );
-      final end = DateTime.now().copyWith(
-        hour: int.parse(time['end'].split(':')[0]),
-        minute: int.parse(time['end'].split(':')[1]),
-      );
+  List<String> _generateTipsForType(String fishingType, WeatherApiResponse weather) {
+    final tips = <String>[];
 
-      return OptimalTimeWindow(
-        startTime: start,
-        endTime: end,
-        activity: (time['activity'] ?? 0.5).toDouble(),
-        reason: time['reason'] ?? 'Оптимальное время',
-        recommendations: ['Используйте активные приманки'],
-      );
-    }).toList();
-  }
-
-  // Методы кэширования...
-
-  Future<Map<String, dynamic>?> _getCachedInternetData(String key) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('${_internetDataCacheKey}_$key');
-      if (cached != null) {
-        final data = json.decode(cached);
-        final lastUpdated = DateTime.parse(data['last_updated']);
-        if (DateTime.now().difference(lastUpdated).inHours < 1) {
-          return data;
+    switch (fishingType) {
+      case 'spinning':
+        tips.add('Используйте яркие приманки в пасмурную погоду');
+        if (weather.current.windKph > 20) {
+          tips.add('При сильном ветре используйте более тяжелые приманки');
         }
-      }
-    } catch (e) {
-      debugPrint('❌ Ошибка чтения кэша: $e');
+        break;
+      case 'feeder':
+        tips.add('Проверяйте кормушку каждые 15-20 минут');
+        tips.add('Используйте ароматизированную прикормку');
+        break;
+      case 'carp_fishing':
+        tips.add('Используйте бойлы и PVA-пакеты');
+        tips.add('Ловите в тихих местах с медленным течением');
+        break;
+      case 'float_fishing':
+        tips.add('Следите за поплавком и делайте быструю подсечку');
+        if (weather.current.windKph < 10) {
+          tips.add('Отличные условия для точной проводки');
+        }
+        break;
     }
-    return null;
+
+    return tips;
   }
 
-  Future<void> _cacheInternetData(String key, Map<String, dynamic> data) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('${_internetDataCacheKey}_$key', json.encode(data));
-    } catch (e) {
-      debugPrint('❌ Ошибка сохранения кэша: $e');
+  ActivityLevel _determineActivityLevel(double score) {
+    if (score >= 80) return ActivityLevel.excellent;
+    if (score >= 60) return ActivityLevel.good;
+    if (score >= 40) return ActivityLevel.moderate;
+    if (score >= 20) return ActivityLevel.poor;
+    return ActivityLevel.veryPoor;
+  }
+
+  String _generateRecommendation(String fishingType, double score, List<BiteFactorAnalysis> factors) {
+    if (score >= 80) {
+      return 'Отличные условия для ${_getFishingTypeName(fishingType)}! Самое время отправляться на рыбалку.';
+    } else if (score >= 60) {
+      return 'Хорошие условия для ${_getFishingTypeName(fishingType)}. Стоит попробовать!';
+    } else if (score >= 40) {
+      return 'Средние условия. ${_getFishingTypeName(fishingType)} может принести результат.';
+    } else {
+      return 'Сложные условия для рыбалки. Рекомендуется подождать улучшения погоды.';
     }
   }
 
-  // Fallback методы...
+  String _generateDetailedAnalysis(String fishingType, List<BiteFactorAnalysis> factors, WeatherApiResponse weather) {
+    final analysis = StringBuffer();
+    analysis.write('Анализ условий для ${_getFishingTypeName(fishingType)}: ');
 
+    final positiveFactors = factors.where((f) => f.isPositive).length;
+    final negativeFactors = factors.where((f) => !f.isPositive).length;
+
+    if (positiveFactors > negativeFactors) {
+      analysis.write('Преобладают благоприятные факторы. ');
+    } else if (negativeFactors > positiveFactors) {
+      analysis.write('Есть неблагоприятные факторы, которые могут снизить активность рыбы. ');
+    } else {
+      analysis.write('Смешанные условия - успех зависит от техники и опыта. ');
+    }
+
+    analysis.write('Температура воздуха ${weather.current.tempC.round()}°C, ');
+    analysis.write('давление ${weather.current.pressureMb.round()} мб, ');
+    analysis.write('ветер ${weather.current.windKph.round()} км/ч.');
+
+    return analysis.toString();
+  }
+
+  ComparisonAnalysis _createComparisonAnalysis(Map<String, AIBitePrediction> predictions) {
+    final rankings = predictions.entries.map((e) => FishingTypeRanking(
+      fishingType: e.key,
+      typeName: _getFishingTypeName(e.key),
+      icon: _getFishingTypeIcon(e.key),
+      score: e.value.overallScore,
+      activityLevel: e.value.activityLevel,
+      shortRecommendation: e.value.recommendation,
+      keyFactors: e.value.factors.take(3).map((f) => f.name).toList(),
+    )).toList()
+      ..sort((a, b) => b.score.compareTo(a.value.overallScore));
+
+    return ComparisonAnalysis(
+      rankings: rankings,
+      bestOverall: rankings.first,
+      alternativeOptions: rankings.skip(1).take(2).toList(),
+      worstOptions: rankings.where((r) => r.score < 30).toList(),
+    );
+  }
+
+  List<String> _generateGeneralRecommendations(Map<String, AIBitePrediction> predictions, String bestType) {
+    final recommendations = <String>[];
+    final bestPrediction = predictions[bestType]!;
+
+    recommendations.add('Рекомендуемый тип: ${_getFishingTypeName(bestType)}');
+    recommendations.add(bestPrediction.recommendation);
+
+    if (bestPrediction.overallScore >= 80) {
+      recommendations.add('Отличные условия - не упустите возможность!');
+    } else if (bestPrediction.overallScore < 40) {
+      recommendations.add('Подумайте о переносе рыбалки на более благоприятное время');
+    }
+
+    return recommendations;
+  }
+
+  WeatherSummary _createWeatherSummary(WeatherApiResponse weather) {
+    return WeatherSummary(
+      temperature: weather.current.tempC,
+      pressure: weather.current.pressureMb,
+      windSpeed: weather.current.windKph,
+      humidity: weather.current.humidity,
+      condition: weather.current.condition.text,
+      moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
+    );
+  }
+
+  String _buildOpenAIPrompt(Map<String, AIBitePrediction> predictions, WeatherApiResponse weather, Map<String, dynamic> userData) {
+    return '''
+Погодные условия: температура ${weather.current.tempC}°C, давление ${weather.current.pressureMb} мб, ветер ${weather.current.windKph} км/ч.
+Лучший тип рыбалки по алгоритму: ${predictions.entries.reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b).key}.
+Дай 1-2 кратких совета для успешной рыбалки в этих условиях.
+''';
+  }
+
+  /// Fallback прогноз при ошибках
   MultiFishingTypePrediction _getFallbackPrediction(
       WeatherApiResponse weather,
       List<FishingNoteModel>? userHistory,
       double latitude,
       double longitude,
       ) {
-    // Возвращаем базовый прогноз при недоступности ИИ
     final fallbackPredictions = <String, AIBitePrediction>{};
 
     for (final type in ['spinning', 'feeder', 'carp_fishing', 'float_fishing']) {
@@ -859,7 +746,7 @@ Consider:
         activityLevel: ActivityLevel.moderate,
         confidence: 0.3,
         recommendation: 'Базовые условия для рыбалки',
-        detailedAnalysis: 'ИИ-анализ недоступен, используются базовые алгоритмы',
+        detailedAnalysis: 'Анализ основан на базовых алгоритмах',
         factors: [],
         bestTimeWindows: [],
         tips: ['Ловите в утренние и вечерние часы'],
@@ -887,7 +774,7 @@ Consider:
         alternativeOptions: [],
         worstOptions: [],
       ),
-      generalRecommendations: ['ИИ-анализ недоступен'],
+      generalRecommendations: ['Используйте стандартные подходы к рыбалке'],
       weatherSummary: WeatherSummary(
         temperature: weather.current.tempC,
         pressure: weather.current.pressureMb,
@@ -903,7 +790,7 @@ Consider:
   // Дополнительные вспомогательные методы...
 
   String _generateCacheKey(double lat, double lon, DateTime date) {
-    return 'ai_real_${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}_${date.year}${date.month}${date.day}${date.hour}';
+    return 'ai_${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}_${date.year}${date.month}${date.day}${date.hour}';
   }
 
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -925,162 +812,10 @@ Consider:
     return 'winter';
   }
 
-  /// Обучение модели на основе фидбека
-  void _scheduleModelTraining(Map<String, dynamic> input, MultiFishingTypePrediction prediction) {
-    // TODO: Реализовать отправку данных для обучения модели
-    // Отправляем данные о прогнозе для дальнейшего обучения
-    debugPrint('📚 Планируем обучение модели на основе результата');
-  }
-
-  /// Очистка старого кэша
-  void clearOldCache() {
-    final now = DateTime.now();
-    _cache.removeWhere((key, value) =>
-    now.difference(value.generatedAt).inHours > 6 // Кэш ИИ актуален 6 часов
-    );
-  }
-
-  Future<void> _saveCacheToStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cacheData = _cache.map((key, value) => MapEntry(key, value.toJson()));
-      await prefs.setString(_cacheKey, json.encode(cacheData));
-    } catch (e) {
-      debugPrint('❌ Ошибка сохранения кэша ИИ: $e');
-    }
-  }
-
-  // Методы, которые нужно реализовать для полной функциональности...
-
-  Map<String, dynamic> _getFallbackInternetData(double lat, double lon) {
-    return {
-      'fishing_conditions': {
-        'water_temperature': 15.0,
-        'fish_activity_index': 0.5,
-        'source': 'fallback',
-      },
-      'historical_bite': {
-        'historical_activity': 0.6,
-        'source': 'fallback',
-      },
-      'social_reports': {
-        'sentiment_score': 0.5,
-        'source': 'fallback',
-      },
-    };
-  }
-
-  double _calculateDataQuality(List<Map<String, dynamic>> results) {
-    double quality = 0.0;
-    int validSources = 0;
-
-    for (final result in results) {
-      if (result['source'] != 'fallback') {
-        validSources++;
-        quality += 0.2;
-      }
-    }
-
-    return quality.clamp(0.0, 1.0);
-  }
-
-  Map<String, dynamic> _getFallbackWeatherAnalysis(WeatherApiResponse weather) {
-    return {
-      'overall_fishing_suitability': 60,
-      'pressure_impact': 'neutral',
-      'temperature_impact': 'neutral',
-      'wind_impact': 'neutral',
-      'confidence': 0.3,
-      'source': 'fallback',
-    };
-  }
-
-  Map<String, dynamic> _parseUnstructuredAIResponse(String response) {
-    return {
-      'unstructured_response': response,
-      'confidence': 0.5,
-      'source': 'unstructured_ai',
-    };
-  }
-
-  Map<String, AIBitePrediction> _getFallbackPredictions(Map<String, dynamic> input) {
-    // Возвращаем базовые прогнозы
-    final predictions = <String, AIBitePrediction>{};
-
-    for (final type in input['available_fishing_types'] as List<String>) {
-      predictions[type] = AIBitePrediction(
-        overallScore: 50,
-        activityLevel: ActivityLevel.moderate,
-        confidence: 0.3,
-        recommendation: 'Стандартные условия',
-        detailedAnalysis: 'Базовый анализ',
-        factors: [],
-        bestTimeWindows: [],
-        tips: ['Удачной рыбалки!'],
-        generatedAt: DateTime.now(),
-        dataSource: 'fallback',
-        modelVersion: '1.0.0',
-      );
-    }
-
-    return predictions;
-  }
-
-  ComparisonAnalysis _createAIComparisonAnalysis(Map<String, AIBitePrediction> predictions) {
-    final rankings = predictions.entries.map((e) => FishingTypeRanking(
-      fishingType: e.key,
-      typeName: _getFishingTypeName(e.key),
-      icon: _getFishingTypeIcon(e.key),
-      score: e.value.overallScore,
-      activityLevel: e.value.activityLevel,
-      shortRecommendation: e.value.recommendation,
-      keyFactors: e.value.factors.take(3).map((f) => f.name).toList(),
-    )).toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
-
-    return ComparisonAnalysis(
-      rankings: rankings,
-      bestOverall: rankings.first,
-      alternativeOptions: rankings.skip(1).take(2).toList(),
-      worstOptions: rankings.where((r) => r.score < 30).toList(),
-    );
-  }
-
-  List<String> _generateAIRecommendations(
-      Map<String, AIBitePrediction> predictions,
-      String bestType,
-      Map<String, dynamic> internetData,
-      ) {
-    final recommendations = <String>[];
-    final bestPrediction = predictions[bestType]!;
-
-    recommendations.add('ИИ рекомендует: ${_getFishingTypeName(bestType)}');
-    recommendations.add(bestPrediction.recommendation);
-
-    // Добавляем рекомендации на основе интернет-данных
-    final socialScore = internetData['social_reports']?['sentiment_score'] ?? 0.5;
-    if (socialScore > 0.7) {
-      recommendations.add('Недавние отчеты рыболовов очень позитивные!');
-    }
-
-    return recommendations;
-  }
-
-  WeatherSummary _createWeatherSummary(WeatherApiResponse weather) {
-    return WeatherSummary(
-      temperature: weather.current.tempC,
-      pressure: weather.current.pressureMb,
-      windSpeed: weather.current.windKph,
-      humidity: weather.current.humidity,
-      condition: weather.current.condition.text,
-      moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
-    );
-  }
-
   Map<String, double> _analyzeFavoriteSeasons(List<FishingNoteModel> history) {
     final seasonCounts = <String, int>{};
     for (final trip in history) {
-      final season = _getSeason(trip.startDate);
+      final season = _getSeason(trip.date);
       seasonCounts[season] = (seasonCounts[season] ?? 0) + 1;
     }
 
@@ -1091,7 +826,7 @@ Consider:
   List<int> _analyzeBestTimes(List<FishingNoteModel> successfulTrips) {
     final hourCounts = <int, int>{};
     for (final trip in successfulTrips) {
-      hourCounts[trip.startDate.hour] = (hourCounts[trip.startDate.hour] ?? 0) + 1;
+      hourCounts[trip.date.hour] = (hourCounts[trip.date.hour] ?? 0) + 1;
     }
 
     final sortedHours = hourCounts.entries.toList()
@@ -1124,6 +859,14 @@ Consider:
       'trolling': '🚤',
     };
     return icons[type] ?? '🎣';
+  }
+
+  /// Очистка старого кэша
+  void clearOldCache() {
+    final now = DateTime.now();
+    _cache.removeWhere((key, value) =>
+    now.difference(value.generatedAt).inHours > 2 // Кэш актуален 2 часа
+    );
   }
 }
 
