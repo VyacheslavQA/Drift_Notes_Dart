@@ -17,6 +17,8 @@ import '../../widgets/weather/hourly_forecast.dart';
 import '../../widgets/weather/best_time_section.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
+import 'package:flutter/foundation.dart';
+import '../debug/openai_test_screen.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -380,6 +382,20 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             // Убрали кнопку обновления - теперь только Spacer
+            if (kDebugMode) ...[
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OpenAITestScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.psychology),
+                tooltip: 'Тест OpenAI',
+              ),
+            ],
             const Spacer(),
           ],
         ),
