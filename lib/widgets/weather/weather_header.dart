@@ -396,7 +396,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
     } else if (conditionText.contains('thunder') || conditionText.contains('storm')) {
       return _buildThunderEffect(icon, color);
     } else if (conditionText.contains('sun') || conditionText.contains('clear')) {
-      return _buildSunnyEffect(icon, color, current.isDay == 1);
+      return _buildSunnyEffect(icon, color);
     } else if (conditionText.contains('cloud')) {
       return _buildCloudyEffect(icon, color);
     } else if (conditionText.contains('wind')) {
@@ -406,25 +406,19 @@ class _WeatherHeaderState extends State<WeatherHeader>
     }
   }
 
-  // Новый эффект для солнечной погоды - мягкое свечение (с учетом времени суток)
-  Widget _buildSunnyEffect(IconData icon, Color color, bool isDay) {
+  // Новый эффект для солнечной погоды - мягкое свечение
+  Widget _buildSunnyEffect(IconData icon, Color color) {
     return AnimatedBuilder(
       animation: _breathingController,
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: isDay ? [
+            boxShadow: [
               BoxShadow(
                 color: Colors.yellow.withValues(alpha: 0.3 * _breathingAnimation.value),
                 blurRadius: 15 * _breathingAnimation.value,
                 spreadRadius: 8 * _breathingAnimation.value,
-              ),
-            ] : [
-              BoxShadow(
-                color: Colors.blue.withValues(alpha: 0.2 * _breathingAnimation.value),
-                blurRadius: 10 * _breathingAnimation.value,
-                spreadRadius: 5 * _breathingAnimation.value,
               ),
             ],
           ),
@@ -812,7 +806,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
     return Colors.purple[900]!.withValues(alpha: 0.6);
   }
 
-  // ИСПРАВЛЕННАЯ ФУНКЦИЯ: Учитывает время суток
+  // ИСПРАВЛЕННЫЙ МЕТОД - теперь учитывает день/ночь
   IconData _getWeatherIcon(int code, bool isDay) {
     switch (code) {
       case 1000: // Clear/Sunny
@@ -836,12 +830,14 @@ class _WeatherHeaderState extends State<WeatherHeader>
     }
   }
 
-  // ИСПРАВЛЕННАЯ ФУНКЦИЯ: Учитывает время суток
+  // ИСПРАВЛЕННЫЙ МЕТОД - теперь учитывает день/ночь
   Color _getWeatherIconColor(int code, bool isDay) {
     switch (code) {
       case 1000: // Clear/Sunny
         return isDay ? Colors.yellow[300]! : Colors.blue[200]!;
-      case 1003: case 1006: case 1009: // Cloudy
+      case 1003: // Partly cloudy
+        return isDay ? Colors.orange[300]! : Colors.grey[300]!;
+      case 1006: case 1009: // Cloudy
       return Colors.grey[300]!;
       case 1030: case 1135: case 1147: // Mist/Fog
       return Colors.grey[400]!;
