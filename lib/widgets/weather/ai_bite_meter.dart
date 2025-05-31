@@ -530,7 +530,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
-                          Icons.fishing,
+                          Icons.sports,
                           size: 20,
                           color: isBest
                               ? AppConstants.primaryColor
@@ -629,7 +629,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Icon(
-                    Icons.fishing,
+                    Icons.sports,
                     size: 24,
                     color: AppConstants.primaryColor,
                   );

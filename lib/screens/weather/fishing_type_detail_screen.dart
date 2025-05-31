@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/ai_bite_prediction_model.dart';
+import '../../services/ai_bite_prediction_service.dart'; // Добавил этот импорт
 import '../../localization/app_localizations.dart';
 
 class FishingTypeDetailScreen extends StatefulWidget {
@@ -212,7 +213,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return Icon(
-                        Icons.fishing,
+                        Icons.sports,
                         size: 32,
                         color: _getScoreColor(score),
                       );
@@ -291,7 +292,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
               ),
             ),
             child: Text(
-              widget.prediction.activityLevel.displayName,
+              _getActivityLevelName(widget.prediction.activityLevel),
               style: TextStyle(
                 color: _getScoreColor(score),
                 fontSize: 18,
@@ -704,6 +705,22 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
         ],
       ),
     );
+  }
+
+  // Функция для получения названия уровня активности
+  String _getActivityLevelName(ActivityLevel level) {
+    switch (level) {
+      case ActivityLevel.excellent:
+        return 'Отличная';
+      case ActivityLevel.good:
+        return 'Хорошая';
+      case ActivityLevel.moderate:
+        return 'Умеренная';
+      case ActivityLevel.poor:
+        return 'Слабая';
+      case ActivityLevel.veryPoor:
+        return 'Очень слабая';
+    }
   }
 
   Color _getScoreColor(int score) {

@@ -17,7 +17,6 @@ import '../../widgets/weather/hourly_forecast.dart';
 import '../../widgets/weather/best_time_section.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
-import '../../services/ai_preferences_service.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -31,8 +30,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   final WeatherApiService _weatherService = WeatherApiService();
   final AIBitePredictionService _aiService = AIBitePredictionService();
   final WeatherSettingsService _weatherSettings = WeatherSettingsService();
-  final AIPreferencesService _aiPreferencesService = AIPreferencesService();
-  List<String>? _preferredFishingTypes;
 
   // Данные
   WeatherApiResponse? _currentWeather;
@@ -148,8 +145,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   Future<void> _loadWeather() async {
     if (!mounted) return;
-
-    _preferredFishingTypes = await _aiPreferencesService.getPreferredFishingTypes();
 
     setState(() {
       _isLoading = true;
@@ -327,12 +322,11 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
                   const SizedBox(height: 24),
 
-                  // Замените существующий вызов AIBiteMeter на:
+                  // ИИ прогноз клева
                   AIBiteMeter(
                     aiPrediction: _aiPrediction,
                     onCompareTypes: () => _showCompareTypesDialog(),
                     onSelectType: (type) => _onFishingTypeSelected(type),
-                    preferredTypes: _preferredFishingTypes,
                   ),
 
                   const SizedBox(height: 24),
