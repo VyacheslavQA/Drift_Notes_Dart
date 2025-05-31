@@ -15,6 +15,8 @@ import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../widgets/weather/ai_bite_meter.dart';
 import '../../widgets/weather/hourly_forecast.dart';
 import '../../widgets/weather/best_time_section.dart';
+import '../../screens/weather/pressure_detail_screen.dart';
+import '../../screens/weather/wind_detail_screen.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -314,6 +316,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                   WeatherMetricsGrid(
                     weather: _currentWeather!,
                     weatherSettings: _weatherSettings,
+                    onPressureCardTap: () => _openPressureDetailScreen(),
+                    onWindCardTap: () => _openWindDetailScreen(),
                   ),
 
                   const SizedBox(height: 24),
@@ -611,6 +615,34 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
+  // Методы для открытия детальных экранов
+  void _openPressureDetailScreen() {
+    if (_currentWeather != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PressureDetailScreen(
+            weatherData: _currentWeather!,
+            locationName: _locationName,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _openWindDetailScreen() {
+    if (_currentWeather != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WindDetailScreen(
+            weatherData: _currentWeather!,
+            locationName: _locationName,
+          ),
+        ),
+      );
+    }
+  }
 
   void _showCompareTypesDialog() {
     if (_aiPrediction == null) return;
