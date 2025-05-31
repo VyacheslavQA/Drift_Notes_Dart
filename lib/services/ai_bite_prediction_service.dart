@@ -6,10 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/weather_api_model.dart';
-import '../models/fishing_note_model.dart';
 import '../models/ai_bite_prediction_model.dart';
-import '../config/api_keys.dart';
 import '../models/fishing_note_model.dart';
+import '../config/api_keys.dart';
 
 class AIBitePredictionService {
   static final AIBitePredictionService _instance = AIBitePredictionService._internal();
@@ -120,7 +119,7 @@ class AIBitePredictionService {
     required WeatherApiResponse weather,
     required double latitude,
     required double longitude,
-    List<FishingNote>? userHistory,
+    List<FishingNoteModel>? userHistory,
     DateTime? targetDate,
     List<String>? preferredTypes,
   }) async {
@@ -195,7 +194,7 @@ class AIBitePredictionService {
     required String fishingType,
     required FishingTypeConfig config,
     required Map<String, dynamic> analysisData,
-    List<FishingNote>? userHistory,
+    List<FishingNoteModel>? userHistory,
   }) async {
     double score = 50.0; // Базовый скор
     final factors = <String, Map<String, dynamic>>{};
@@ -533,7 +532,7 @@ class AIBitePredictionService {
   }
 
   Map<String, dynamic> _analyzePersonalHistoryForType(
-      List<FishingNote>? history,
+      List<FishingNoteModel>? history,
       String fishingType,
       Map<String, dynamic> analysisData,
       ) {
@@ -549,7 +548,7 @@ class AIBitePredictionService {
     // Анализируем историю для данного типа рыбалки
     final relevantNotes = history.where((note) =>
     note.fishingType == fishingType &&
-        DateTime.now().difference(note.startDate).inDays <= 365
+        DateTime.now().difference(note.date).inDays <= 365
     ).toList();
 
     if (relevantNotes.isEmpty) {
@@ -698,7 +697,7 @@ class AIBitePredictionService {
     required WeatherApiResponse weather,
     required double latitude,
     required double longitude,
-    List<FishingNote>? userHistory,
+    List<FishingNoteModel>? userHistory,
     required DateTime targetDate,
   }) async {
     final current = weather.current;

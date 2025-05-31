@@ -40,11 +40,15 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   String _locationName = '';
   DateTime _lastUpdated = DateTime.now();
 
+  // Навигация
+  int _selectedTabIndex = 0; // 0 - сегодня, 1 - 3 дня, 2 - 7 дней, 3 - 14 дней
+
   // Анимации
-  late TabController _tabController;
   late AnimationController _loadingController;
   late AnimationController _fadeController;
-  int _selectedTabIndex = 0;
+  late AnimationController _pullHintController;
+  late Animation<double> _pullHintAnimation;
+  bool _showPullHint = true;
 
   @override
   void initState() {
@@ -71,16 +75,26 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       vsync: this,
     );
 
-    _tabController = TabController(
-      length: 4,
+    _pullHintController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
-      initialIndex: _selectedTabIndex,
     );
 
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
+    _pullHintAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pullHintController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Запускаем анимацию подсказки
+    _pullHintController.repeat(reverse: true);
+
+    // Скрываем подсказку через 10 секунд
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted) {
         setState(() {
-          _selectedTabIndex = _tabController.index;
+          _showPullHint = false;
         });
       }
     });
@@ -90,7 +104,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   void dispose() {
     _loadingController.dispose();
     _fadeController.dispose();
-    _tabController.dispose();
+    _pullHintController.dispose();
     super.dispose();
   }
 
@@ -100,6 +114,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _showPullHint = false; // Скрываем подсказку при загрузке
     });
 
     _loadingController.repeat();
@@ -120,9 +135,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           weather: weather,
           latitude: position.latitude,
           longitude: position.longitude,
-          // userHistory: null, // TODO: Добавить историю пользователя
           targetDate: DateTime.now(),
-          // preferredTypes: null, // TODO: Добавить предпочтения
         );
 
         if (mounted) {
@@ -193,119 +206,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
-      body: Column(
-        children: [
-          _buildAppBarWithTabs(),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadWeather,
-              color: AppConstants.primaryColor,
-              child: _buildContent(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppBarWithTabs() {
-    final localizations = AppLocalizations.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: AppConstants.textColor.withValues(alpha: 0.1),
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Заголовок экрана
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.cloud,
-                    color: AppConstants.primaryColor,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    localizations.translate('weather'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Кнопка обновления
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      onPressed: _loadWeather,
-                      icon: Icon(
-                        Icons.refresh,
-                        color: AppConstants.primaryColor,
-                        size: 24,
-                      ),
-                      tooltip: 'Обновить',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Табы периодов
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppConstants.surfaceColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: AppConstants.primaryColor,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding: const EdgeInsets.all(4),
-                labelColor: Colors.white,
-                unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.7),
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                dividerColor: Colors.transparent,
-                tabs: [
-                  Tab(text: localizations.translate('today')),
-                  Tab(text: '3 ${localizations.translate('days_many')}'),
-                  Tab(text: '7 ${localizations.translate('days_many')}'),
-                  Tab(text: '14 ${localizations.translate('days_many')}'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: _buildContent(),
+      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
@@ -324,7 +226,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
     switch (_selectedTabIndex) {
       case 0:
-        return _buildTodayTab();
+        return _buildTodayContent();
       case 1:
         return Weather3DaysTab(
           weatherData: _currentWeather!,
@@ -347,72 +249,245 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           onRefresh: _loadWeather,
         );
       default:
-        return _buildTodayTab();
+        return _buildTodayContent();
     }
   }
 
-  Widget _buildTodayTab() {
-    return FadeTransition(
-      opacity: _fadeController,
+  Widget _buildTodayContent() {
+    return RefreshIndicator(
+      onRefresh: _loadWeather,
+      color: AppConstants.primaryColor,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          // Заголовок экрана
+          SliverToBoxAdapter(
+            child: _buildScreenHeader(),
+          ),
+
+          // Подсказка о pull-to-refresh
+          if (_showPullHint)
+            SliverToBoxAdapter(
+              child: _buildPullToRefreshHint(),
+            ),
+
           // Заголовок с температурой
           SliverToBoxAdapter(
-            child: WeatherHeader(
-              weather: _currentWeather!,
-              locationName: _locationName,
-              lastUpdated: _lastUpdated,
-              weatherSettings: _weatherSettings,
+            child: FadeTransition(
+              opacity: _fadeController,
+              child: WeatherHeader(
+                weather: _currentWeather!,
+                locationName: _locationName,
+                lastUpdated: _lastUpdated,
+                weatherSettings: _weatherSettings,
+              ),
             ),
           ),
 
           SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
+            child: FadeTransition(
+              opacity: _fadeController,
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
 
-                // Ключевые показатели (4 карточки)
-                WeatherMetricsGrid(
-                  weather: _currentWeather!,
-                  weatherSettings: _weatherSettings,
-                  onPressureCardTap: () => _navigateToPressureDetail(),
-                  onWindCardTap: () => _navigateToWindDetail(),
-                ),
+                  // Ключевые показатели (4 карточки)
+                  WeatherMetricsGrid(
+                    weather: _currentWeather!,
+                    weatherSettings: _weatherSettings,
+                    onPressureCardTap: () => _navigateToPressureDetail(),
+                    onWindCardTap: () => _navigateToWindDetail(),
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Умный клевометр с ИИ 🧠
-                AIBiteMeter(
-                  aiPrediction: _aiPrediction,
-                  onCompareTypes: () => _showCompareTypesDialog(),
-                  onSelectType: (type) => _onFishingTypeSelected(type),
-                ),
+                  // Умный клевометр с ИИ 🧠
+                  AIBiteMeter(
+                    aiPrediction: _aiPrediction,
+                    onCompareTypes: () => _showCompareTypesDialog(),
+                    onSelectType: (type) => _onFishingTypeSelected(type),
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Почасовой прогноз
-                HourlyForecast(
-                  weather: _currentWeather!,
-                  weatherSettings: _weatherSettings,
-                  onHourTapped: (hour, activity) => _showHourDetails(hour, activity),
-                ),
+                  // Почасовой прогноз
+                  HourlyForecast(
+                    weather: _currentWeather!,
+                    weatherSettings: _weatherSettings,
+                    onHourTapped: (hour, activity) => _showHourDetails(hour, activity),
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Лучшее время для рыбалки
-                BestTimeSection(
-                  weather: _currentWeather!,
-                  aiPrediction: _aiPrediction,
-                ),
+                  // Лучшее время для рыбалки
+                  BestTimeSection(
+                    weather: _currentWeather!,
+                    aiPrediction: _aiPrediction,
+                  ),
 
-                const SizedBox(height: 100),
-              ],
+                  const SizedBox(height: 100), // Отступ для bottom navigation
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildScreenHeader() {
+    final localizations = AppLocalizations.of(context);
+
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.cloud,
+              color: AppConstants.primaryColor,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              localizations.translate('weather'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPullToRefreshHint() {
+    final localizations = AppLocalizations.of(context);
+
+    return AnimatedBuilder(
+      animation: _pullHintAnimation,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Opacity(
+                opacity: _pullHintAnimation.value,
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Потяните для обновления',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Opacity(
+                opacity: _pullHintAnimation.value,
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppConstants.textColor.withValues(alpha: 0.1),
+            offset: const Offset(0, -2),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(
+                label: '3 ${localizations.translate('days_many')}',
+                isSelected: _selectedTabIndex == 1,
+                onTap: () => _switchTab(1),
+              ),
+              _buildNavItem(
+                label: '7 ${localizations.translate('days_many')}',
+                isSelected: _selectedTabIndex == 2,
+                onTap: () => _switchTab(2),
+              ),
+              _buildNavItem(
+                label: '14 ${localizations.translate('days_many')}',
+                isSelected: _selectedTabIndex == 3,
+                onTap: () => _switchTab(3),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppConstants.primaryColor
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.white
+                : AppConstants.textColor.withValues(alpha: 0.7),
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _switchTab(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+    });
   }
 
   Widget _buildLoadingState() {
@@ -463,79 +538,101 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.cloud_off,
-                size: 64,
-                color: Colors.red[400],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Ошибка загрузки погоды',
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: _loadWeather,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Попробовать снова'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return RefreshIndicator(
+      onRefresh: _loadWeather,
+      color: AppConstants.primaryColor,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.cloud_off,
+                        size: 64,
+                        color: Colors.red[400],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Ошибка загрузки погоды',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _loadWeather,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Попробовать снова'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: AppConstants.textColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildNoDataState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.cloud_queue,
-            size: 64,
-            color: AppConstants.textColor.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Нет данных для отображения',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
+    return RefreshIndicator(
+      onRefresh: _loadWeather,
+      color: AppConstants.primaryColor,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.cloud_queue,
+                    size: 64,
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Нет данных для отображения',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -545,12 +642,10 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   // Обработчики событий
   void _navigateToPressureDetail() {
-    // TODO: Реализовать навигацию к детальному экрану давления
     debugPrint('🔍 Открываем детали давления');
   }
 
   void _navigateToWindDetail() {
-    // TODO: Реализовать навигацию к детальному экрану ветра
     debugPrint('🔍 Открываем детали ветра');
   }
 
@@ -565,7 +660,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
 
   void _onFishingTypeSelected(String fishingType) {
     debugPrint('🎣 Выбран тип рыбалки: $fishingType');
-    // TODO: Сохранить предпочтения пользователя
   }
 
   void _showHourDetails(int hour, double activity) {
