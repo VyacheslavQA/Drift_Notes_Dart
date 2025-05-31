@@ -9,6 +9,7 @@ import '../models/weather_api_model.dart';
 import '../models/fishing_note_model.dart';
 import '../models/ai_bite_prediction_model.dart';
 import '../config/api_keys.dart';
+import '../models/fishing_note_model.dart';
 
 class AIBitePredictionService {
   static final AIBitePredictionService _instance = AIBitePredictionService._internal();

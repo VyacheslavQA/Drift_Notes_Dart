@@ -489,7 +489,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
           color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
-        backdropFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+
       ),
       child: Row(
         children: [

@@ -1,6 +1,7 @@
 // Путь: lib/models/ai_bite_prediction_model.dart
 
 import '../services/ai_bite_prediction_service.dart';
+import 'package:flutter/material.dart';
 
 /// Мультитиповый прогноз для всех видов рыбалки
 class MultiFishingTypePrediction {
