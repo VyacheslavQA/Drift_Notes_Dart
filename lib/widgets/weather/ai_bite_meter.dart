@@ -160,6 +160,31 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     return prediction?.overallScore ?? 50;
   }
 
+  /// Перевод фазы луны с английского на локализованный язык
+  String _translateMoonPhase(String englishPhase, AppLocalizations localizations) {
+    final cleanPhase = englishPhase.trim().toLowerCase();
+
+    final Map<String, String> phaseToKey = {
+      'new moon': 'moon_new_moon',
+      'waxing crescent': 'moon_waxing_crescent',
+      'first quarter': 'moon_first_quarter',
+      'waxing gibbous': 'moon_waxing_gibbous',
+      'full moon': 'moon_full_moon',
+      'waning gibbous': 'moon_waning_gibbous',
+      'last quarter': 'moon_last_quarter',
+      'third quarter': 'moon_third_quarter',
+      'waning crescent': 'moon_waning_crescent',
+    };
+
+    final localizationKey = phaseToKey[cleanPhase];
+    if (localizationKey != null) {
+      return localizations.translate(localizationKey);
+    }
+
+    // Если перевод не найден, возвращаем оригинал
+    return englishPhase;
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -359,7 +384,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'КЛЁВ: ${_getScoreText(score, localizations).toUpperCase()}',
+                    '${localizations.translate('bite_activity').toUpperCase()}: ${_getScoreText(score, localizations).toUpperCase()}',
                     style: TextStyle(
                       color: _getScoreTextColor(score),
                       fontSize: 14,
@@ -385,7 +410,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
-            'Типы рыбалки',
+            localizations.translate('fishing_types_comparison'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 16,
@@ -504,26 +529,53 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           const SizedBox(height: 16),
 
           // Параметры в столбик с описаниями
-          _buildWeatherMetricRow('🌡️', '${(weatherSummary.pressure / 1.333).round()} мм', 'Атмосферное давление'),
+          _buildWeatherMetricRow(
+              '🌡️',
+              '${(weatherSummary.pressure / 1.333).round()} мм',
+              localizations.translate('pressure')
+          ),
           const SizedBox(height: 8),
-          _buildWeatherMetricRow('💨', '${(weatherSummary.windSpeed / 3.6).round()} м/с', 'Скорость ветра'),
+          _buildWeatherMetricRow(
+              '💨',
+              '${(weatherSummary.windSpeed / 3.6).round()} м/с',
+              localizations.translate('wind')
+          ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
               '🌙',
-              weatherSummary.moonPhase.length > 12
-                  ? '${weatherSummary.moonPhase.substring(0, 12)}...'
-                  : weatherSummary.moonPhase,
-              'Фаза луны'
+              _translateMoonPhase(weatherSummary.moonPhase, localizations),
+              localizations.translate('moon_phase')
           ),
           const SizedBox(height: 8),
-          _buildWeatherMetricRow('💧', '${weatherSummary.humidity}%', 'Влажность воздуха'),
+          _buildWeatherMetricRow(
+              '💧',
+              '${weatherSummary.humidity}%',
+              localizations.translate('humidity')
+          ),
           const SizedBox(height: 8),
-          _buildWeatherMetricRow('🕐', '05:00-06:30', 'Лучшее время'),
+          _buildWeatherMetricRow(
+              '🕐',
+              _getBestTimeString(),
+              localizations.translate('best_time')
+          ),
           const SizedBox(height: 8),
-          _buildWeatherMetricRow('⭐', '${_getBestFilteredScore()}/100', 'Общий балл клёва'),
+          _buildWeatherMetricRow(
+              '⭐',
+              '${_getBestFilteredScore()}/100',
+              localizations.translate('bite_activity')
+          ),
         ],
       ),
     );
+  }
+
+  String _getBestTimeString() {
+    final prediction = widget.aiPrediction?.bestPrediction;
+    if (prediction?.bestTimeWindows.isNotEmpty == true) {
+      final window = prediction!.bestTimeWindows.first;
+      return window.timeRange;
+    }
+    return '05:00-06:30'; // Fallback
   }
 
   Widget _buildWeatherMetricRow(String icon, String value, String description) {
@@ -618,11 +670,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   String _getScoreText(int score, AppLocalizations localizations) {
-    if (score >= 80) return 'отличный';
-    if (score >= 60) return 'хороший';
-    if (score >= 40) return 'средний';
-    if (score >= 20) return 'слабый';
-    return 'очень слабый';
+    if (score >= 80) return localizations.translate('excellent_activity');
+    if (score >= 60) return localizations.translate('good_activity');
+    if (score >= 40) return localizations.translate('moderate_activity');
+    if (score >= 20) return localizations.translate('poor_activity');
+    return localizations.translate('very_poor_activity');
   }
 }
 

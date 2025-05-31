@@ -37,7 +37,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
         physics: const NeverScrollableScrollPhysics(),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.9, // Еще больше высоты
+        childAspectRatio: 0.9,
         children: [
           _buildPressureCard(),
           _buildWindCard(),
@@ -53,7 +53,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final pressure = widget.weather.current.pressureMb;
     final formattedPressure = widget.weatherSettings.formatPressure(pressure);
     final pressureTrend = _getPressureTrend();
-    final pressureStatus = _getPressureStatus(pressure);
+    final pressureStatus = _getPressureStatus(pressure, localizations);
 
     return AnimatedBorderWidget(
       borderRadius: 16.0,
@@ -116,7 +116,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
                 formattedPressure,
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -143,7 +143,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final windSpeed = widget.weather.current.windKph;
     final windDirection = widget.weather.current.windDir;
     final formattedWind = widget.weatherSettings.formatWindSpeed(windSpeed);
-    final windStatus = _getWindStatus(windSpeed);
+    final windStatus = _getWindStatus(windSpeed, localizations);
 
     return AnimatedBorderWidget(
       borderRadius: 16.0,
@@ -209,7 +209,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
                 formattedWind,
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -237,7 +237,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
         ? widget.weather.forecast.first.astro.moonPhase
         : 'Unknown';
 
-    final moonInfo = _getMoonPhaseInfo(moonPhase);
+    final moonInfo = _getMoonPhaseInfo(moonPhase, localizations);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -297,13 +297,14 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
           ),
           const SizedBox(height: 6),
           Text(
-            _translateMoonPhase(moonPhase),
+            _translateMoonPhase(moonPhase, localizations),
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
+              height: 1.2,
             ),
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const Spacer(),
@@ -321,12 +322,13 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   }
 
   Widget _buildHumidityCard() {
+    final localizations = AppLocalizations.of(context);
     final humidity = widget.weather.current.humidity;
     final dewPoint = _calculateDewPoint(
       widget.weather.current.tempC,
       humidity,
     );
-    final humidityStatus = _getHumidityStatus(humidity);
+    final humidityStatus = _getHumidityStatus(humidity, localizations);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -378,7 +380,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Влажность',
+            localizations.translate('humidity'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,
@@ -390,7 +392,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
             '$humidity%',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -408,7 +410,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Точка росы: ${dewPoint.round()}°',
+                '${localizations.translate('dew_point')}: ${dewPoint.round()}°',
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontSize: 11,
@@ -430,26 +432,26 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     return 'falling';
   }
 
-  Map<String, dynamic> _getPressureStatus(double pressure) {
+  Map<String, dynamic> _getPressureStatus(double pressure, AppLocalizations localizations) {
     if (pressure >= 1010 && pressure <= 1025) {
       return {
         'color': Colors.green,
-        'description': 'Нормальное',
+        'description': localizations.translate('normal_pressure'),
       };
     } else if (pressure < 1000) {
       return {
         'color': Colors.red,
-        'description': 'Низкое давление',
+        'description': localizations.translate('low_pressure'),
       };
     } else if (pressure > 1030) {
       return {
         'color': Colors.orange,
-        'description': 'Высокое давление',
+        'description': localizations.translate('high_pressure'),
       };
     } else {
       return {
         'color': Colors.orange,
-        'description': 'Умеренное',
+        'description': localizations.translate('moderate_pressure'),
       };
     }
   }
@@ -476,148 +478,161 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     }
   }
 
-  Map<String, dynamic> _getWindStatus(double windKph) {
+  Map<String, dynamic> _getWindStatus(double windKph, AppLocalizations localizations) {
     if (windKph < 10) {
       return {
         'color': Colors.green,
-        'description': 'Отлично для рыбалки',
+        'description': localizations.translate('excellent_for_fishing'),
       };
     } else if (windKph < 20) {
       return {
         'color': Colors.lightGreen,
-        'description': 'Хорошо для рыбалки',
+        'description': localizations.translate('good_for_fishing'),
       };
     } else if (windKph < 30) {
       return {
         'color': Colors.orange,
-        'description': 'Умеренно для рыбалки',
+        'description': localizations.translate('moderate_for_fishing'),
       };
     } else {
       return {
         'color': Colors.red,
-        'description': 'Сложно для рыбалки',
+        'description': localizations.translate('difficult_for_fishing'),
       };
     }
   }
 
   String _translateWindDirection(String direction) {
+    final localizations = AppLocalizations.of(context);
     final Map<String, String> translations = {
-      'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
-      'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
-      'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
-      'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
+      'N': localizations.translate('wind_n'),
+      'NNE': localizations.translate('wind_nne'),
+      'NE': localizations.translate('wind_ne'),
+      'ENE': localizations.translate('wind_ene'),
+      'E': localizations.translate('wind_e'),
+      'ESE': localizations.translate('wind_ese'),
+      'SE': localizations.translate('wind_se'),
+      'SSE': localizations.translate('wind_sse'),
+      'S': localizations.translate('wind_s'),
+      'SSW': localizations.translate('wind_ssw'),
+      'SW': localizations.translate('wind_sw'),
+      'WSW': localizations.translate('wind_wsw'),
+      'W': localizations.translate('wind_w'),
+      'WNW': localizations.translate('wind_wnw'),
+      'NW': localizations.translate('wind_nw'),
+      'NNW': localizations.translate('wind_nnw'),
     };
     return translations[direction] ?? direction;
   }
 
-  Map<String, dynamic> _getMoonPhaseInfo(String moonPhase) {
+  Map<String, dynamic> _getMoonPhaseInfo(String moonPhase, AppLocalizations localizations) {
     final phase = moonPhase.toLowerCase();
 
     if (phase.contains('new')) {
       return {
         'icon': '🌑',
         'color': Colors.purple,
-        'impact': 'АКТИВ',
-        'description': 'Активная фаза',
+        'impact': localizations.translate('excellent').toUpperCase(),
+        'description': localizations.translate('excellent_activity'),
       };
     } else if (phase.contains('full')) {
       return {
         'icon': '🌕',
         'color': Colors.orange,
-        'impact': 'АКТИВ',
-        'description': 'Активная фаза',
+        'impact': localizations.translate('excellent').toUpperCase(),
+        'description': localizations.translate('excellent_activity'),
       };
     } else if (phase.contains('first quarter')) {
       return {
         'icon': '🌓',
         'color': Colors.blue,
-        'impact': 'НОРМА',
-        'description': 'Умеренная активность',
+        'impact': localizations.translate('normal').toUpperCase(),
+        'description': localizations.translate('moderate_activity'),
       };
     } else if (phase.contains('third quarter') || phase.contains('last quarter')) {
       return {
         'icon': '🌗',
         'color': Colors.blue,
-        'impact': 'НОРМА',
-        'description': 'Умеренная активность',
+        'impact': localizations.translate('normal').toUpperCase(),
+        'description': localizations.translate('moderate_activity'),
       };
     } else if (phase.contains('waxing crescent')) {
       return {
         'icon': '🌒',
         'color': Colors.grey,
-        'impact': 'СЛАБО',
-        'description': 'Слабая активность',
+        'impact': localizations.translate('poor').toUpperCase(),
+        'description': localizations.translate('poor_activity'),
       };
     } else if (phase.contains('waning crescent')) {
       return {
         'icon': '🌘',
         'color': Colors.orange,
-        'impact': 'СРЕДНЕ',
-        'description': 'Умеренная активность',
+        'impact': localizations.translate('moderate').toUpperCase(),
+        'description': localizations.translate('moderate_activity'),
       };
     } else if (phase.contains('waxing gibbous')) {
       return {
         'icon': '🌔',
         'color': Colors.green,
-        'impact': 'ХОРОШО',
-        'description': 'Хорошая активность',
+        'impact': localizations.translate('good').toUpperCase(),
+        'description': localizations.translate('good_activity'),
       };
     } else if (phase.contains('waning gibbous')) {
       return {
         'icon': '🌖',
         'color': Colors.green,
-        'impact': 'ХОРОШО',
-        'description': 'Хорошая активность',
+        'impact': localizations.translate('good').toUpperCase(),
+        'description': localizations.translate('good_activity'),
       };
     } else {
       return {
         'icon': '🌙',
         'color': Colors.grey,
         'impact': 'Н/Д',
-        'description': 'Нет данных',
+        'description': localizations.translate('no_data_to_display'),
       };
     }
   }
 
-  String _translateMoonPhase(String moonPhase) {
+  String _translateMoonPhase(String moonPhase, AppLocalizations localizations) {
     final phase = moonPhase.toLowerCase();
 
-    if (phase.contains('new')) return 'Новолуние';
-    if (phase.contains('full')) return 'Полнолуние';
-    if (phase.contains('first quarter')) return 'Первая четверть';
-    if (phase.contains('third quarter') || phase.contains('last quarter')) return 'Последняя четверть';
-    if (phase.contains('waxing crescent')) return 'Растущий серп';
-    if (phase.contains('waning crescent')) return 'Растущая луна';
-    if (phase.contains('waxing gibbous')) return 'Растущая луна';
-    if (phase.contains('waning gibbous')) return 'Убывающая луна';
+    if (phase.contains('new')) return localizations.translate('moon_new_moon');
+    if (phase.contains('full')) return localizations.translate('moon_full_moon');
+    if (phase.contains('first quarter')) return localizations.translate('moon_first_quarter');
+    if (phase.contains('third quarter') || phase.contains('last quarter')) return localizations.translate('moon_last_quarter');
+    if (phase.contains('waxing crescent')) return localizations.translate('moon_waxing_crescent');
+    if (phase.contains('waning crescent')) return localizations.translate('moon_waning_crescent');
+    if (phase.contains('waxing gibbous')) return localizations.translate('moon_waxing_gibbous');
+    if (phase.contains('waning gibbous')) return localizations.translate('moon_waning_gibbous');
 
-    return 'Неизвестно';
+    return localizations.translate('unknown_weather');
   }
 
-  Map<String, dynamic> _getHumidityStatus(int humidity) {
+  Map<String, dynamic> _getHumidityStatus(int humidity, AppLocalizations localizations) {
     if (humidity >= 40 && humidity <= 60) {
       return {
         'color': Colors.green,
-        'description': 'Комфортно',
-        'badge': 'НОРМА',
+        'description': localizations.translate('comfortable'),
+        'badge': localizations.translate('normal').toUpperCase(),
       };
     } else if (humidity < 30) {
       return {
         'color': Colors.orange,
-        'description': 'Сухо',
-        'badge': 'СУХО',
+        'description': localizations.translate('dry'),
+        'badge': localizations.translate('dry').toUpperCase(),
       };
     } else if (humidity > 80) {
       return {
         'color': Colors.blue,
-        'description': 'Влажно',
-        'badge': 'ВЛАЖНО',
+        'description': localizations.translate('humid'),
+        'badge': localizations.translate('humid').toUpperCase(),
       };
     } else {
       return {
         'color': Colors.lightGreen,
-        'description': 'Приемлемо',
-        'badge': 'ОК',
+        'description': localizations.translate('moderate'),
+        'badge': 'OK',
       };
     }
   }

@@ -1077,6 +1077,13 @@
   "analysis_unavailable": "Анализ недоступен",
   "detailed_ai_analysis": "📊 Детальный анализ ИИ",
   "detailed_analysis": "Подробный анализ:",
-  "ai_tips": "Советы ИИ:"
+  "ai_tips": "Советы ИИ:",
+
+  "pressure_unit_mmhg": "мм рт.ст.",
+  "wind_unit_ms": "м/с",
+  "excellent_activity": "отличный",
+  "good_activity": "хороший",
+  "poor_activity": "слабый",
+  "very_poor_activity": "очень слабый"
 
 }

@@ -1146,5 +1146,12 @@
   "analysis_unavailable": "Analysis unavailable",
   "detailed_ai_analysis": "📊 Detailed AI Analysis",
   "detailed_analysis": "Detailed analysis:",
-  "ai_tips": "AI Tips:"
+  "ai_tips": "AI Tips:",
+
+  "pressure_unit_mmhg": "mmHg",
+  "wind_unit_ms": "m/s",
+  "excellent_activity": "excellent",
+  "good_activity": "good",
+  "poor_activity": "poor",
+  "very_poor_activity": "very poor"
 }
