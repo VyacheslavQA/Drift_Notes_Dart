@@ -110,17 +110,14 @@ class AIBitePredictionService {
         note.biteRecords.any((bite) => bite.weight > 0)
     ).toList();
 
-    // Найдем поездки рядом с текущим местоположением (используем правильные поля)
+    // Найдем поездки рядом с текущим местоположением (используем отдельные поля latitude/longitude)
     final locationTrips = userHistory.where((note) {
-      if (note.mapPoint != null) {
-        return _calculateDistance(
-          note.mapPoint!['latitude'] ?? 0,
-          note.mapPoint!['longitude'] ?? 0,
-          latitude,
-          longitude,
-        ) < 50; // В радиусе 50 км
-      }
-      return false;
+      return _calculateDistance(
+        note.latitude,
+        note.longitude,
+        latitude,
+        longitude,
+      ) < 50; // В радиусе 50 км
     }).toList();
 
     // Анализ успешных условий
@@ -686,7 +683,7 @@ class AIBitePredictionService {
       shortRecommendation: e.value.recommendation,
       keyFactors: e.value.factors.take(3).map((f) => f.name).toList(),
     )).toList()
-      ..sort((a, b) => b.score.compareTo(a.value.overallScore));
+      ..sort((a, b) => b.score.compareTo(a.score));
 
     return ComparisonAnalysis(
       rankings: rankings,
