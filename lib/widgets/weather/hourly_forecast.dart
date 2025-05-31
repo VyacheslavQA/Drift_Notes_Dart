@@ -101,7 +101,7 @@ class HourlyForecast extends StatelessWidget {
                           ),
                         ),
                         Icon(
-                          _getWeatherIcon(hour.condition.code),
+                          _getWeatherIcon(hour.condition.code, time.hour),
                           color: AppConstants.textColor,
                           size: 20,
                         ),
@@ -168,15 +168,28 @@ class HourlyForecast extends StatelessWidget {
     return activity.clamp(0.0, 1.0);
   }
 
-  IconData _getWeatherIcon(int code) {
+  // ИСПРАВЛЕННЫЙ МЕТОД - теперь учитывает время суток
+  IconData _getWeatherIcon(int code, int hour) {
+    // Определяем, день это или ночь по часу
+    final isDay = hour >= 6 && hour < 20; // День с 6:00 до 19:59
+
     switch (code) {
-      case 1000: return Icons.wb_sunny;
-      case 1003: case 1006: case 1009: return Icons.cloud;
-      case 1030: case 1135: case 1147: return Icons.cloud;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: case 1198: case 1201: return Icons.grain;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: return Icons.ac_unit;
-      case 1087: case 1273: case 1276: case 1279: case 1282: return Icons.flash_on;
-      default: return Icons.wb_sunny;
+      case 1000: // Clear/Sunny
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
+      case 1003: // Partly cloudy
+        return isDay ? Icons.wb_cloudy : Icons.cloud;
+      case 1006: case 1009: // Cloudy/Overcast
+      return Icons.cloud;
+      case 1030: case 1135: case 1147: // Mist/Fog
+      return Icons.cloud;
+      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: case 1198: case 1201: // Rain
+      return Icons.grain;
+      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: // Snow
+      return Icons.ac_unit;
+      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
+      return Icons.flash_on;
+      default:
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }
   }
 

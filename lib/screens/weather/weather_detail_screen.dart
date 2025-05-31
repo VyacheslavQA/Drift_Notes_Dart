@@ -408,7 +408,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                     ),
                     const SizedBox(width: 16),
                     Icon(
-                      _getWeatherIcon(hour.condition.code),
+                      _getWeatherIcon(hour.condition.code, time.hour >= 6 && time.hour < 20),
                       color: AppConstants.textColor,
                       size: 24,
                     ),
@@ -533,7 +533,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               Row(
                 children: [
                   Icon(
-                    _getWeatherIcon(day.day.condition.code),
+                    _getWeatherIcon(day.day.condition.code, true), // Для дневного прогноза используем дневную иконку
                     color: AppConstants.textColor,
                     size: 32,
                   ),
@@ -801,44 +801,27 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
     return (b * alpha) / (a - alpha);
   }
 
-  IconData _getWeatherIcon(int code) {
+  // ИСПРАВЛЕННЫЙ МЕТОД - теперь учитывает время суток
+  IconData _getWeatherIcon(int code, bool isDay) {
     switch (code) {
-      case 1000: // Clear
-        return Icons.wb_sunny;
+      case 1000: // Clear/Sunny
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
       case 1003: // Partly cloudy
-      case 1006: // Cloudy
-      case 1009: // Overcast
-        return Icons.cloud;
-      case 1030: // Mist
-      case 1135: // Fog
-      case 1147: // Freezing fog
-        return Icons.cloud;
-      case 1063: // Patchy rain possible
-      case 1180: // Patchy light rain
-      case 1183: // Light rain
-      case 1186: // Moderate rain at times
-      case 1189: // Moderate rain
-      case 1192: // Heavy rain at times
-      case 1195: // Heavy rain
-      case 1198: // Light freezing rain
-      case 1201: // Moderate or heavy freezing rain
-        return Icons.grain;
-      case 1066: // Patchy snow possible
-      case 1210: // Patchy light snow
-      case 1213: // Light snow
-      case 1216: // Patchy moderate snow
-      case 1219: // Moderate snow
-      case 1222: // Patchy heavy snow
-      case 1225: // Heavy snow
-        return Icons.ac_unit;
-      case 1087: // Thundery outbreaks possible
-      case 1273: // Patchy light rain with thunder
-      case 1276: // Moderate or heavy rain with thunder
-      case 1279: // Patchy light snow with thunder
-      case 1282: // Moderate or heavy snow with thunder
-        return Icons.flash_on;
+        return isDay ? Icons.wb_cloudy : Icons.cloud;
+      case 1006: case 1009: // Cloudy/Overcast
+      return Icons.cloud;
+      case 1030: case 1135: case 1147: // Mist/Fog
+      return Icons.cloud;
+      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
+      case 1198: case 1201: // Rain
+      return Icons.grain;
+      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
+      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
+      return Icons.ac_unit;
+      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
+      return Icons.flash_on;
       default:
-        return Icons.wb_sunny;
+        return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }
   }
 

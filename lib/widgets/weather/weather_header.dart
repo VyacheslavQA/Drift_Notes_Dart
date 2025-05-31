@@ -812,7 +812,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
       case 1000: // Clear/Sunny
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
       case 1003: // Partly cloudy
-        return isDay ? Icons.partly_sunny : Icons.cloud;
+        return isDay ? Icons.wb_cloudy : Icons.cloud;
       case 1006: case 1009: // Cloudy/Overcast
       return Icons.cloud;
       case 1030: case 1135: case 1147: // Mist/Fog
