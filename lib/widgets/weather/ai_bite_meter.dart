@@ -1,316 +1,487 @@
-// Путь: lib/widgets/weather/weather_metrics_grid.dart
+// Путь: lib/widgets/weather/ai_bite_meter.dart
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
-import '../../models/weather_api_model.dart';
-import '../../services/weather_settings_service.dart';
+import '../../models/ai_bite_prediction_model.dart';
 import '../../localization/app_localizations.dart';
 import '../animated_border_widget.dart';
 
-class WeatherMetricsGrid extends StatefulWidget {
-  final WeatherApiResponse weather;
-  final WeatherSettingsService weatherSettings;
-  final VoidCallback? onPressureCardTap;
-  final VoidCallback? onWindCardTap;
+class AIBiteMeter extends StatefulWidget {
+  final MultiFishingTypePrediction? aiPrediction;
+  final VoidCallback? onCompareTypes;
+  final Function(String)? onSelectType;
 
-  const WeatherMetricsGrid({
+  const AIBiteMeter({
     super.key,
-    required this.weather,
-    required this.weatherSettings,
-    this.onPressureCardTap,
-    this.onWindCardTap,
+    this.aiPrediction,
+    this.onCompareTypes,
+    this.onSelectType,
   });
 
   @override
-  State<WeatherMetricsGrid> createState() => _WeatherMetricsGridState();
+  State<AIBiteMeter> createState() => _AIBiteMeterState();
 }
 
-class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
+class _AIBiteMeterState extends State<AIBiteMeter>
+    with TickerProviderStateMixin {
+  late AnimationController _gaugeController;
+  late AnimationController _pulseController;
+  late Animation<double> _gaugeAnimation;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    _gaugeController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _gaugeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _gaugeController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _gaugeController.forward();
+    _pulseController.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _gaugeController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9, // Еще больше высоты
-        children: [
-          _buildPressureCard(),
-          _buildWindCard(),
-          _buildMoonPhaseCard(),
-          _buildHumidityCard(),
-        ],
-      ),
-    );
+    final localizations = AppLocalizations.of(context);
+
+    if (widget.aiPrediction == null) {
+      return _buildLoadingState(localizations);
+    }
+
+    return _buildAIPredictionContent(localizations);
   }
 
-  Widget _buildPressureCard() {
-    final localizations = AppLocalizations.of(context);
-    final pressure = widget.weather.current.pressureMb;
-    final formattedPressure = widget.weatherSettings.formatPressure(pressure);
-    final pressureTrend = _getPressureTrend();
-    final pressureStatus = _getPressureStatus(pressure);
-
-    return AnimatedBorderWidget(
-      borderRadius: 16.0,
-      glowColor: Colors.green,
-      baseColor: Colors.green.withValues(alpha: 0.3),
-      animationDuration: const Duration(seconds: 6),
-      glowSize: 25.0,
-      glowIntensity: 0.9,
-      onTap: widget.onPressureCardTap, // ← ИСПРАВЛЕНИЕ: Добавлен onTap
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: pressureStatus['color'].withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.speed,
-                      color: pressureStatus['color'],
-                      size: 20,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _getPressureTrendIcon(pressureTrend),
-                    color: _getPressureTrendColor(pressureTrend),
-                    size: 16,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                localizations.translate('pressure'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                formattedPressure,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                pressureStatus['description'],
-                style: TextStyle(
-                  color: pressureStatus['color'],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWindCard() {
-    final localizations = AppLocalizations.of(context);
-    final windSpeed = widget.weather.current.windKph;
-    final windDirection = widget.weather.current.windDir;
-    final formattedWind = widget.weatherSettings.formatWindSpeed(windSpeed);
-    final windStatus = _getWindStatus(windSpeed);
-
-    return AnimatedBorderWidget(
-      borderRadius: 16.0,
-      glowColor: Colors.blue,
-      baseColor: Colors.blue.withValues(alpha: 0.3),
-      animationDuration: const Duration(seconds: 6),
-      glowSize: 30.0,
-      glowIntensity: 0.8,
-      onTap: widget.onWindCardTap, // ← ИСПРАВЛЕНИЕ: Добавлен onTap
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: windStatus['color'].withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.air,
-                      color: windStatus['color'],
-                      size: 20,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _translateWindDirection(windDirection),
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                localizations.translate('wind'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                formattedWind,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                windStatus['description'],
-                style: TextStyle(
-                  color: windStatus['color'],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMoonPhaseCard() {
-    final localizations = AppLocalizations.of(context);
-    final moonPhase = widget.weather.forecast.isNotEmpty
-        ? widget.weather.forecast.first.astro.moonPhase
-        : 'Unknown';
-
-    final moonInfo = _getMoonPhaseInfo(moonPhase);
-
+  Widget _buildLoadingState(AppLocalizations localizations) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppConstants.textColor.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: moonInfo['color'].withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  moonInfo['icon'],
-                  style: const TextStyle(fontSize: 20),
-                ),
+                child: Text('🧠', style: const TextStyle(fontSize: 20)),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: moonInfo['color'].withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  moonInfo['impact'],
-                  style: TextStyle(
-                    color: moonInfo['color'],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(width: 12),
+              Text(
+                localizations.translate('ai_bite_forecast'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 20),
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+          ),
           const SizedBox(height: 12),
           Text(
-            localizations.translate('moon_phase'),
+            localizations.translate('ai_analyzing_fishing'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,
-              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            _translateMoonPhase(moonPhase),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIPredictionContent(AppLocalizations localizations) {
+    final prediction = widget.aiPrediction!;
+    final bestType = prediction.bestPrediction;
+    final score = bestType.overallScore;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppConstants.textColor.withValues(alpha: 0.08),
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
-          const Spacer(),
-          Text(
-            moonInfo['description'],
+        ],
+      ),
+      child: Column(
+        children: [
+          // Заголовок с иконкой ИИ
+          _buildHeader(localizations),
+
+          const SizedBox(height: 20),
+
+          // Главный блок со счетчиком
+          _buildMainScoreSection(score, localizations),
+
+          const SizedBox(height: 20),
+
+          // Информация о лучшем типе рыбалки
+          _buildBestTypeInfo(prediction, localizations),
+
+          const SizedBox(height: 16),
+
+          // Ключевые факторы
+          _buildKeyFactors(bestType, localizations),
+
+          const SizedBox(height: 16),
+
+          // Кнопки действий
+          _buildActionButtons(localizations),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(AppLocalizations localizations) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppConstants.primaryColor.withValues(alpha: 0.8),
+                AppConstants.primaryColor.withValues(alpha: 0.6),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                blurRadius: 8,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: const Text('🧠', style: TextStyle(fontSize: 24)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.translate('ai_bite_forecast'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${localizations.translate('confidence')}: ${widget.aiPrediction!.bestPrediction.confidencePercent}%',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppConstants.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            localizations.translate('all_types'),
             style: TextStyle(
-              color: moonInfo['color'],
+              color: AppConstants.primaryColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainScoreSection(int score, AppLocalizations localizations) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _getScoreColor(score).withValues(alpha: 0.1),
+            _getScoreColor(score).withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _getScoreColor(score).withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Анимированный счетчик
+          Expanded(
+            flex: 2,
+            child: AnimatedBuilder(
+              animation: _gaugeAnimation,
+              builder: (context, child) {
+                final animatedScore = (_gaugeAnimation.value * score).round();
+                return Column(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: score >= 80 ? _pulseAnimation.value : 1.0,
+                          child: Text(
+                            '$animatedScore',
+                            style: TextStyle(
+                              color: _getScoreColor(score),
+                              fontSize: 56,
+                              fontWeight: FontWeight.w200,
+                              height: 1.0,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    Text(
+                      localizations.translate('points'),
+                      style: TextStyle(
+                        color: _getScoreColor(score),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
+          // Вертикальный разделитель
+          Container(
+            height: 80,
+            width: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  _getScoreColor(score).withValues(alpha: 0.3),
+                  _getScoreColor(score).withValues(alpha: 0.1),
+                ],
+              ),
+            ),
+          ),
+
+          // Описание уровня активности
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getScoreDescription(score, localizations),
+                  style: TextStyle(
+                    color: _getScoreColor(score),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _getScoreRecommendation(score, localizations),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBestTypeInfo(MultiFishingTypePrediction prediction, AppLocalizations localizations) {
+    final bestType = prediction.comparison.bestOverall;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              bestType.icon,
+              style: const TextStyle(fontSize: 24),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${localizations.translate('ai_recommendation')} ${bestType.typeName}',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  bestType.shortRecommendation,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: bestType.scoreColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${bestType.score}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyFactors(AIBitePrediction prediction, AppLocalizations localizations) {
+    final topFactors = prediction.topPositiveFactors.take(3).toList();
+
+    if (topFactors.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          localizations.translate('key_factors'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: topFactors.map((factor) => _buildFactorChip(factor)).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFactorChip(BiteFactorAnalysis factor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: factor.impactColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: factor.impactColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            factor.icon,
+            style: const TextStyle(fontSize: 12),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            factor.name,
+            style: TextStyle(
+              color: factor.impactColor,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -320,313 +491,117 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     );
   }
 
-  Widget _buildHumidityCard() {
-    final humidity = widget.weather.current.humidity;
-    final dewPoint = _calculateDewPoint(
-      widget.weather.current.tempC,
-      humidity,
-    );
-    final humidityStatus = _getHumidityStatus(humidity);
+  Widget _buildActionButtons(AppLocalizations localizations) {
+    final nextWindow = widget.aiPrediction!.bestPrediction.nextBestTimeWindow;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppConstants.textColor.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: humidityStatus['color'].withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.water_drop,
-                  color: humidityStatus['color'],
-                  size: 20,
+    return Row(
+      children: [
+        if (nextWindow != null) ...[
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.3),
+                  width: 1,
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: humidityStatus['color'].withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  humidityStatus['badge'],
-                  style: TextStyle(
-                    color: humidityStatus['color'],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        nextWindow.timeIcon,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        localizations.translate('best_time'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    nextWindow.timeRange,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (nextWindow.timeUntilStartText != null)
+                    Text(
+                      nextWindow.timeUntilStartText!,
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Влажность',
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '$humidity%',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                humidityStatus['description'],
-                style: TextStyle(
-                  color: humidityStatus['color'],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Точка росы: ${dewPoint.round()}°',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(width: 12),
         ],
-      ),
+
+        // Кнопка "Подробнее"
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: widget.onCompareTypes,
+            icon: const Icon(Icons.compare_arrows, size: 18),
+            label: Text(
+              localizations.translate('more_details'),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  // Вспомогательные методы для анализа данных
-
-  String _getPressureTrend() {
-    final pressure = widget.weather.current.pressureMb;
-    if (pressure > 1020) return 'stable';
-    if (pressure > 1010) return 'rising';
-    return 'falling';
+  // Вспомогательные методы
+  Color _getScoreColor(int score) {
+    if (score >= 80) return const Color(0xFF4CAF50); // Зеленый
+    if (score >= 60) return const Color(0xFF8BC34A); // Светло-зеленый
+    if (score >= 40) return const Color(0xFFFFC107); // Желтый
+    if (score >= 20) return const Color(0xFFFF9800); // Оранжевый
+    return const Color(0xFFF44336); // Красный
   }
 
-  Map<String, dynamic> _getPressureStatus(double pressure) {
-    if (pressure >= 1010 && pressure <= 1025) {
-      return {
-        'color': Colors.green,
-        'description': 'Нормальное',
-      };
-    } else if (pressure < 1000) {
-      return {
-        'color': Colors.red,
-        'description': 'Низкое давление',
-      };
-    } else if (pressure > 1030) {
-      return {
-        'color': Colors.orange,
-        'description': 'Высокое давление',
-      };
-    } else {
-      return {
-        'color': Colors.orange,
-        'description': 'Умеренное',
-      };
-    }
+  String _getScoreDescription(int score, AppLocalizations localizations) {
+    if (score >= 80) return localizations.translate('excellent');
+    if (score >= 60) return localizations.translate('good');
+    if (score >= 40) return localizations.translate('moderate');
+    if (score >= 20) return localizations.translate('poor');
+    return localizations.translate('very_poor_activity');
   }
 
-  IconData _getPressureTrendIcon(String trend) {
-    switch (trend) {
-      case 'rising':
-        return Icons.trending_up;
-      case 'falling':
-        return Icons.trending_down;
-      default:
-        return Icons.trending_flat;
-    }
-  }
-
-  Color _getPressureTrendColor(String trend) {
-    switch (trend) {
-      case 'rising':
-        return Colors.green;
-      case 'falling':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
-  Map<String, dynamic> _getWindStatus(double windKph) {
-    if (windKph < 10) {
-      return {
-        'color': Colors.green,
-        'description': 'Отлично для рыбалки',
-      };
-    } else if (windKph < 20) {
-      return {
-        'color': Colors.lightGreen,
-        'description': 'Хорошо для рыбалки',
-      };
-    } else if (windKph < 30) {
-      return {
-        'color': Colors.orange,
-        'description': 'Умеренно для рыбалки',
-      };
-    } else {
-      return {
-        'color': Colors.red,
-        'description': 'Сложно для рыбалки',
-      };
-    }
-  }
-
-  String _translateWindDirection(String direction) {
-    final Map<String, String> translations = {
-      'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
-      'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
-      'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
-      'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
-    };
-    return translations[direction] ?? direction;
-  }
-
-  Map<String, dynamic> _getMoonPhaseInfo(String moonPhase) {
-    final phase = moonPhase.toLowerCase();
-
-    if (phase.contains('new')) {
-      return {
-        'icon': '🌑',
-        'color': Colors.purple,
-        'impact': 'АКТИВ',
-        'description': 'Активная фаза',
-      };
-    } else if (phase.contains('full')) {
-      return {
-        'icon': '🌕',
-        'color': Colors.orange,
-        'impact': 'АКТИВ',
-        'description': 'Активная фаза',
-      };
-    } else if (phase.contains('first quarter')) {
-      return {
-        'icon': '🌓',
-        'color': Colors.blue,
-        'impact': 'НОРМА',
-        'description': 'Умеренная активность',
-      };
-    } else if (phase.contains('third quarter') || phase.contains('last quarter')) {
-      return {
-        'icon': '🌗',
-        'color': Colors.blue,
-        'impact': 'НОРМА',
-        'description': 'Умеренная активность',
-      };
-    } else if (phase.contains('waxing crescent')) {
-      return {
-        'icon': '🌒',
-        'color': Colors.grey,
-        'impact': 'СЛАБО',
-        'description': 'Слабая активность',
-      };
-    } else if (phase.contains('waning crescent')) {
-      return {
-        'icon': '🌘',
-        'color': Colors.orange,
-        'impact': 'СРЕДНЕ',
-        'description': 'Умеренная активность',
-      };
-    } else if (phase.contains('waxing gibbous')) {
-      return {
-        'icon': '🌔',
-        'color': Colors.green,
-        'impact': 'ХОРОШО',
-        'description': 'Хорошая активность',
-      };
-    } else if (phase.contains('waning gibbous')) {
-      return {
-        'icon': '🌖',
-        'color': Colors.green,
-        'impact': 'ХОРОШО',
-        'description': 'Хорошая активность',
-      };
-    } else {
-      return {
-        'icon': '🌙',
-        'color': Colors.grey,
-        'impact': 'Н/Д',
-        'description': 'Нет данных',
-      };
-    }
-  }
-
-  String _translateMoonPhase(String moonPhase) {
-    final phase = moonPhase.toLowerCase();
-
-    if (phase.contains('new')) return 'Новолуние';
-    if (phase.contains('full')) return 'Полнолуние';
-    if (phase.contains('first quarter')) return 'Первая четверть';
-    if (phase.contains('third quarter') || phase.contains('last quarter')) return 'Последняя четверть';
-    if (phase.contains('waxing crescent')) return 'Растущий серп';
-    if (phase.contains('waning crescent')) return 'Растущая луна';
-    if (phase.contains('waxing gibbous')) return 'Растущая луна';
-    if (phase.contains('waning gibbous')) return 'Убывающая луна';
-
-    return 'Неизвестно';
-  }
-
-  Map<String, dynamic> _getHumidityStatus(int humidity) {
-    if (humidity >= 40 && humidity <= 60) {
-      return {
-        'color': Colors.green,
-        'description': 'Комфортно',
-        'badge': 'НОРМА',
-      };
-    } else if (humidity < 30) {
-      return {
-        'color': Colors.orange,
-        'description': 'Сухо',
-        'badge': 'СУХО',
-      };
-    } else if (humidity > 80) {
-      return {
-        'color': Colors.blue,
-        'description': 'Влажно',
-        'badge': 'ВЛАЖНО',
-      };
-    } else {
-      return {
-        'color': Colors.lightGreen,
-        'description': 'Приемлемо',
-        'badge': 'ОК',
-      };
-    }
-  }
-
-  double _calculateDewPoint(double tempC, int humidity) {
-    // Упрощенная формула расчета точки росы
-    final a = 17.27;
-    final b = 237.7;
-    final alpha = ((a * tempC) / (b + tempC)) + math.log(humidity / 100.0);
-    return (b * alpha) / (a - alpha);
+  String _getScoreRecommendation(int score, AppLocalizations localizations) {
+    if (score >= 80) return localizations.translate('excellent_conditions_recommendation');
+    if (score >= 60) return localizations.translate('good_conditions_recommendation');
+    if (score >= 40) return localizations.translate('moderate_conditions_recommendation');
+    if (score >= 20) return localizations.translate('poor_conditions_recommendation');
+    return localizations.translate('very_poor_conditions_recommendation');
   }
 }
