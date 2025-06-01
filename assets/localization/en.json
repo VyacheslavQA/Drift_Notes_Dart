@@ -1176,6 +1176,23 @@
   "ai_enhanced": "AI Enhanced",
   "local_analysis": "Local analysis",
   "ai_processing": "AI processing...",
-  "generating_forecast": "Generating forecast..."
+  "generating_forecast": "Generating forecast...",
+
+  "pressure_trend_24h": "24h Trend",
+  "pressure_history_24h": "Pressure History (24h)",
+  "pressure_history_extended": "Pressure History & Forecast",
+  "historical_data": "Historical Data",
+  "forecast_data": "Forecast Data",
+  "pressure_change_rate": "Rate of Change",
+  "pressure_analysis_extended": "Extended Pressure Analysis",
+  "last_24_hours": "Last 24 Hours",
+  "next_days": "Next Days",
+  "pressure_pattern": "Pressure Pattern",
+  "barometric_trend": "Barometric Trend",
+  "fishing_window": "Fishing Window",
+  "pressure_stable_period": "Stable Pressure Period",
+  "rapid_change_warning": "Rapid Pressure Change",
+  "optimal_pressure_zone": "Optimal Pressure Zone",
+  "hours": "hours"
 
 }

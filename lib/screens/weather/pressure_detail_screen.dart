@@ -31,34 +31,23 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   late Animation<double> _slideAnimation;
 
   final WeatherSettingsService _weatherSettings = WeatherSettingsService();
-  final WeatherApiService _weatherApiService = WeatherApiService();
+  final WeatherApiService _weatherService = WeatherApiService();
 
-  // Переключатель между режимами графика
-  int _selectedChartMode = 0; // 0 = 24 часа, 1 = 3 дня
-  // TODO: Добавить режим "7 дней" (индекс 2) при переходе на платный план WeatherAPI
-
-  // Данные для 24-часового графика
-  List<FlSpot> _hourlyPressureSpots = [];
-  List<String> _hourlyTimeLabels = [];
-  double _hourlyMinPressure = 0;
-  double _hourlyMaxPressure = 0;
-  String _hourlyPressureTrend = 'stable';
-  double _hourly24hChange = 0;
-
-  // Данные для 3-дневного графика
-  List<FlSpot> _dailyPressureSpots = [];
-  List<String> _dailyTimeLabels = [];
-  List<String> _dailyDateLabels = [];
-  double _dailyMinPressure = 0;
-  double _dailyMaxPressure = 0;
-  bool _isLoadingDailyData = false;
+  List<FlSpot> _pressureSpots = [];
+  List<String> _timeLabels = [];
+  List<Color> _dotColors = [];
+  double _minPressure = 0;
+  double _maxPressure = 0;
+  String _pressureTrend = 'stable';
+  double _pressure24hChange = 0;
+  bool _isLoadingExtended = false;
+  Map<String, dynamic>? _extendedData;
 
   @override
   void initState() {
     super.initState();
     _initAnimations();
-    _generateHourlyPressureData();
-    _generateDailyPressureData();
+    _loadExtendedPressureData();
   }
 
   void _initAnimations() {
@@ -90,181 +79,187 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     super.dispose();
   }
 
-  // Генерация данных для 24-часового графика
-  void _generateHourlyPressureData() {
-    _hourlyPressureSpots.clear();
-    _hourlyTimeLabels.clear();
+  Future<void> _loadExtendedPressureData() async {
+    if (!mounted) return;
 
-    final basePressure = widget.weatherData.current.pressureMb;
-    final now = DateTime.now();
-
-    // Генерируем данные за последние 24 часа с реалистичными изменениями
-    for (int i = -24; i <= 0; i++) {
-      final time = now.add(Duration(hours: i));
-
-      // Имитируем естественные колебания давления
-      final timeOfDay = time.hour;
-      final dailyVariation = math.sin((timeOfDay - 6) * math.pi / 12) * 3;
-      final randomVariation = (math.Random().nextDouble() - 0.5) * 4;
-      final trendVariation = i * 0.2;
-
-      final pressureMb = basePressure + dailyVariation + randomVariation + trendVariation;
-      final convertedPressure = _weatherSettings.convertPressure(pressureMb);
-
-      _hourlyPressureSpots.add(FlSpot(i.toDouble() + 24, convertedPressure));
-
-      // Добавляем временные метки каждые 6 часов для читаемости
-      if (i % 6 == 0) {
-        _hourlyTimeLabels.add(DateFormat('HH:mm').format(time));
-      } else {
-        _hourlyTimeLabels.add('');
-      }
-    }
-
-    if (_hourlyPressureSpots.isNotEmpty) {
-      _hourlyMinPressure = _hourlyPressureSpots.map((spot) => spot.y).reduce(math.min) - 5;
-      _hourlyMaxPressure = _hourlyPressureSpots.map((spot) => spot.y).reduce(math.max) + 5;
-
-      // Определяем тренд за 24 часа
-      final firstPressure = _hourlyPressureSpots.first.y;
-      final lastPressure = _hourlyPressureSpots.last.y;
-      _hourly24hChange = lastPressure - firstPressure;
-
-      final threshold = _weatherSettings.pressureUnit == PressureUnit.mmhg ? 1.5 : 2.0;
-
-      if (_hourly24hChange > threshold) {
-        _hourlyPressureTrend = 'rising';
-      } else if (_hourly24hChange < -threshold) {
-        _hourlyPressureTrend = 'falling';
-      } else {
-        _hourlyPressureTrend = 'stable';
-      }
-    }
-  }
-
-  // Генерация данных для 3-дневного графика
-  Future<void> _generateDailyPressureData() async {
     setState(() {
-      _isLoadingDailyData = true;
+      _isLoadingExtended = true;
     });
 
-    _dailyPressureSpots.clear();
-    _dailyTimeLabels.clear();
-    _dailyDateLabels.clear();
-
     try {
-      final now = DateTime.now();
-      final yesterday = now.subtract(const Duration(days: 1));
-      final tomorrow = now.add(const Duration(days: 1));
-
-      // Получаем исторические данные за вчера
-      // TODO: PAID_API - при платном плане можно получить данные за больший период
-      WeatherApiResponse? yesterdayData;
-      try {
-        // В реальном приложении здесь будет запрос к History API
-        // Пока используем имитацию данных
-        yesterdayData = await _getHistoricalWeatherData(yesterday);
-      } catch (e) {
-        debugPrint('Не удалось загрузить исторические данные: $e');
-      }
-
-      // Данные за сегодня у нас уже есть
-      final todayData = widget.weatherData;
-
-      // Прогноз на завтра
-      WeatherApiResponse? tomorrowData;
-      try {
-        tomorrowData = await _weatherApiService.getForecast(
-          latitude: widget.weatherData.location.lat,
-          longitude: widget.weatherData.location.lon,
-          days: 2, // Получаем сегодня + завтра
+      final position = await _getCurrentPosition();
+      if (position != null) {
+        final extendedData = await _weatherService.getExtendedPressureData(
+          latitude: position.latitude,
+          longitude: position.longitude,
         );
-      } catch (e) {
-        debugPrint('Не удалось загрузить прогноз: $e');
+
+        if (mounted) {
+          setState(() {
+            _extendedData = extendedData;
+            _generateRealPressureData();
+            _isLoadingExtended = false;
+          });
+        }
       }
-
-      int spotIndex = 0;
-
-      // Добавляем данные за вчера (если есть)
-      if (yesterdayData != null) {
-        _addDayDataToChart(yesterdayData, yesterday, spotIndex);
-        spotIndex += 4; // 4 точки в день
-      }
-
-      // Добавляем данные за сегодня
-      _addDayDataToChart(todayData, now, spotIndex);
-      spotIndex += 4;
-
-      // Добавляем данные за завтра (если есть прогноз)
-      if (tomorrowData != null && tomorrowData.forecast.length > 1) {
-        _addDayDataToChart(tomorrowData, tomorrow, spotIndex, dayIndex: 1);
-      }
-
-      if (_dailyPressureSpots.isNotEmpty) {
-        _dailyMinPressure = _dailyPressureSpots.map((spot) => spot.y).reduce(math.min) - 5;
-        _dailyMaxPressure = _dailyPressureSpots.map((spot) => spot.y).reduce(math.max) + 5;
-      }
-
     } catch (e) {
-      debugPrint('Ошибка при генерации данных 3-дневного графика: $e');
-    } finally {
+      debugPrint('❌ Ошибка загрузки расширенных данных: $e');
       if (mounted) {
         setState(() {
-          _isLoadingDailyData = false;
+          _isLoadingExtended = false;
+          _generateFallbackPressureData();
         });
       }
     }
   }
 
-  // Добавляем данные дня в график (4 точки: 00:00, 06:00, 12:00, 18:00)
-  void _addDayDataToChart(WeatherApiResponse weatherData, DateTime date, int startIndex, {int dayIndex = 0}) {
-    if (weatherData.forecast.isEmpty) return;
-
-    final dayForecast = weatherData.forecast.length > dayIndex
-        ? weatherData.forecast[dayIndex]
-        : weatherData.forecast.first;
-
-    final hours = dayForecast.hour;
-    final timePoints = [0, 6, 12, 18]; // Часы для отображения
-
-    for (int i = 0; i < timePoints.length; i++) {
-      final targetHour = timePoints[i];
-
-      // Ищем ближайший час в данных
-      Hour? targetHourData;
-      for (final hour in hours) {
-        final hourTime = DateTime.parse(hour.time);
-        if (hourTime.hour == targetHour) {
-          targetHourData = hour;
-          break;
-        }
-      }
-
-      // Если не нашли точное время, используем текущие данные или интерполируем
-      double pressure;
-      if (targetHourData != null) {
-        pressure = _weatherSettings.convertPressure(targetHourData.windKph); // Тут нужно правильное поле для давления
-      } else {
-        // Используем текущее давление как fallback
-        pressure = _weatherSettings.convertPressure(weatherData.current.pressureMb);
-      }
-
-      _dailyPressureSpots.add(FlSpot((startIndex + i).toDouble(), pressure));
-
-      // Метки времени
-      _dailyTimeLabels.add('${targetHour.toString().padLeft(2, '0')}:00');
-    }
-
-    // Добавляем метку даты (только один раз на день)
-    _dailyDateLabels.add(DateFormat('d MMM').format(date));
+  Future<Position?> _getCurrentPosition() async {
+    // Возвращаем координаты из текущих данных о погоде
+    return Position(
+      latitude: widget.weatherData.location.lat,
+      longitude: widget.weatherData.location.lon,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
   }
 
-  // Имитация получения исторических данных
-  // TODO: PAID_API - заменить на реальный History API запрос
-  Future<WeatherApiResponse?> _getHistoricalWeatherData(DateTime date) async {
-    // В реальном приложении здесь будет запрос к WeatherAPI History
-    // Пока возвращаем null, чтобы использовать только текущие данные + прогноз
-    return null;
+  void _generateRealPressureData() {
+    _pressureSpots.clear();
+    _timeLabels.clear();
+    _dotColors.clear();
+
+    if (_extendedData == null) {
+      _generateFallbackPressureData();
+      return;
+    }
+
+    final allData = _extendedData!['allData'] as List<WeatherApiResponse>;
+    final now = DateTime.now();
+    int spotIndex = 0;
+    List<double> allPressures = [];
+
+    // Обрабатываем все данные: исторические + прогноз
+    for (int dataIndex = 0; dataIndex < allData.length; dataIndex++) {
+      final weatherData = allData[dataIndex];
+      final isHistorical = dataIndex < allData.length - 1;
+      final isCurrentDay = dataIndex == allData.length - 1;
+
+      for (final day in weatherData.forecast) {
+        for (final hour in day.hour) {
+          final hourTime = DateTime.parse(hour.time);
+
+          // Показываем данные от вчера до +7 дней
+          if (hourTime.isAfter(now.subtract(const Duration(hours: 48))) &&
+              hourTime.isBefore(now.add(const Duration(days: 7)))) {
+
+            final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb ?? 0);
+            _pressureSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+            allPressures.add(convertedPressure);
+
+            // Определяем цвет точки
+            Color dotColor;
+            if (hourTime.isBefore(now)) {
+              dotColor = Colors.grey; // Исторические данные
+            } else if (hourTime.difference(now).inHours <= 24) {
+              dotColor = AppConstants.primaryColor; // Ближайшие 24 часа
+            } else {
+              dotColor = Colors.blue; // Прогноз
+            }
+            _dotColors.add(dotColor);
+
+            // Добавляем временные метки каждые 6 часов
+            if (spotIndex % 6 == 0) {
+              if (hourTime.day == now.day && hourTime.month == now.month) {
+                _timeLabels.add('${DateFormat('HH:mm').format(hourTime)}\nСегодня');
+              } else if (hourTime.difference(now).inDays == 1) {
+                _timeLabels.add('${DateFormat('HH:mm').format(hourTime)}\nЗавтра');
+              } else {
+                _timeLabels.add(DateFormat('dd.MM\nHH:mm').format(hourTime));
+              }
+            } else {
+              _timeLabels.add('');
+            }
+
+            spotIndex++;
+          }
+        }
+      }
+    }
+
+    if (allPressures.isNotEmpty) {
+      _minPressure = allPressures.reduce(math.min) - 2;
+      _maxPressure = allPressures.reduce(math.max) + 2;
+
+      // Определяем тренд за последние 24 часа
+      final recentPressures = allPressures.length >= 24
+          ? allPressures.sublist(allPressures.length - 24)
+          : allPressures;
+
+      if (recentPressures.length >= 2) {
+        _pressure24hChange = recentPressures.last - recentPressures.first;
+        final threshold = _weatherSettings.pressureUnit == PressureUnit.mmhg ? 1.5 : 2.0;
+
+        if (_pressure24hChange > threshold) {
+          _pressureTrend = 'rising';
+        } else if (_pressure24hChange < -threshold) {
+          _pressureTrend = 'falling';
+        } else {
+          _pressureTrend = 'stable';
+        }
+      }
+    }
+  }
+
+  void _generateFallbackPressureData() {
+    // Fallback данные на основе текущего прогноза
+    _pressureSpots.clear();
+    _timeLabels.clear();
+    _dotColors.clear();
+
+    if (widget.weatherData.forecast.isEmpty) return;
+
+    final now = DateTime.now();
+    int spotIndex = 0;
+    List<double> allPressures = [];
+
+    // Используем данные из прогноза
+    for (final day in widget.weatherData.forecast) {
+      for (final hour in day.hour) {
+        final hourTime = DateTime.parse(hour.time);
+
+        if (hourTime.isAfter(now.subtract(const Duration(hours: 12)))) {
+          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb ?? 0);
+          _pressureSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+          allPressures.add(convertedPressure);
+          _dotColors.add(AppConstants.primaryColor);
+
+          if (spotIndex % 4 == 0) {
+            _timeLabels.add(DateFormat('HH:mm').format(hourTime));
+          } else {
+            _timeLabels.add('');
+          }
+
+          spotIndex++;
+        }
+      }
+    }
+
+    if (allPressures.isNotEmpty) {
+      _minPressure = allPressures.reduce(math.min) - 2;
+      _maxPressure = allPressures.reduce(math.max) + 2;
+
+      if (allPressures.length >= 2) {
+        _pressure24hChange = allPressures.last - allPressures.first;
+        _pressureTrend = _pressure24hChange > 1 ? 'rising' :
+        _pressure24hChange < -1 ? 'falling' : 'stable';
+      }
+    }
   }
 
   @override
@@ -289,6 +284,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppConstants.textColor),
+            onPressed: _loadExtendedPressureData,
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
@@ -310,43 +311,29 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
               const SizedBox(height: 24),
 
-              // Переключатель режимов графика
-              AnimatedBuilder(
-                animation: _slideAnimation,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, _slideAnimation.value * 1.2),
-                    child: _buildChartModeSelector(localizations),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Адаптивный график давления
+              // Тренд за 24 часа
               AnimatedBuilder(
                 animation: _slideAnimation,
                 builder: (context, child) {
                   return Transform.translate(
                     offset: Offset(0, _slideAnimation.value * 1.5),
-                    child: _buildAdaptivePressureChart(localizations),
+                    child: _buildTrendCard(),
                   );
                 },
               ),
 
               const SizedBox(height: 24),
 
-              // Тренд (только для 24-часового режима)
-              if (_selectedChartMode == 0)
-                AnimatedBuilder(
-                  animation: _slideAnimation,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, _slideAnimation.value * 1.8),
-                      child: _buildTrendCard(localizations),
-                    );
-                  },
-                ),
+              // График давления
+              AnimatedBuilder(
+                animation: _slideAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _slideAnimation.value * 2),
+                    child: _buildPressureChart(),
+                  );
+                },
+              ),
 
               const SizedBox(height: 24),
 
@@ -355,8 +342,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 animation: _slideAnimation,
                 builder: (context, child) {
                   return Transform.translate(
-                    offset: Offset(0, _slideAnimation.value * 2),
-                    child: _buildFishingImpactCard(currentPressure, localizations),
+                    offset: Offset(0, _slideAnimation.value * 2.5),
+                    child: _buildFishingImpactCard(currentPressure),
                   );
                 },
               ),
@@ -368,8 +355,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 animation: _slideAnimation,
                 builder: (context, child) {
                   return Transform.translate(
-                    offset: Offset(0, _slideAnimation.value * 2.5),
-                    child: _buildRecommendationsCard(currentPressure, localizations),
+                    offset: Offset(0, _slideAnimation.value * 3),
+                    child: _buildRecommendationsCard(currentPressure),
                   );
                 },
               ),
@@ -445,6 +432,15 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                   ],
                 ),
               ),
+              if (_isLoadingExtended)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                  ),
+                ),
             ],
           ),
 
@@ -492,7 +488,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               ),
             ),
             child: Text(
-              _getPressureStatus(pressureMb, localizations),
+              _getPressureStatus(pressureMb),
               style: TextStyle(
                 color: _getPressureStatusColor(pressureMb),
                 fontSize: 16,
@@ -505,338 +501,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildChartModeSelector(AppLocalizations localizations) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppConstants.primaryColor.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildModeButton(
-              localizations.translate('24_hours') ?? '24 часа',
-              0,
-              Icons.schedule,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _buildModeButton(
-              localizations.translate('3_days') ?? '3 дня',
-              1,
-              Icons.calendar_view_week,
-            ),
-          ),
-          // TODO: PAID_API - Раскомментировать при переходе на платный план
-          // const SizedBox(width: 4),
-          // Expanded(
-          //   child: _buildModeButton(
-          //     localizations.translate('7_days') ?? '7 дней',
-          //     2,
-          //     Icons.calendar_month,
-          //   ),
-          // ),
-        ],
-      ),
-    );
-  }
+  Widget _buildTrendCard() {
+    final localizations = AppLocalizations.of(context);
 
-  Widget _buildModeButton(String title, int index, IconData icon) {
-    final isSelected = _selectedChartMode == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedChartMode = index;
-        });
-
-        // Если переключились на 3-дневный режим и данные еще не загружены
-        if (index == 1 && _dailyPressureSpots.isEmpty) {
-          _generateDailyPressureData();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : AppConstants.textColor.withValues(alpha: 0.7),
-              size: 16,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdaptivePressureChart(AppLocalizations localizations) {
-    if (_selectedChartMode == 1 && _isLoadingDailyData) {
-      return Container(
-        height: 300,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                localizations.translate('loading_daily_data') ?? 'Загрузка данных за 3 дня...',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final spots = _selectedChartMode == 0 ? _hourlyPressureSpots : _dailyPressureSpots;
-    final timeLabels = _selectedChartMode == 0 ? _hourlyTimeLabels : _dailyTimeLabels;
-    final minY = _selectedChartMode == 0 ? _hourlyMinPressure : _dailyMinPressure;
-    final maxY = _selectedChartMode == 0 ? _hourlyMaxPressure : _dailyMaxPressure;
-
-    if (spots.isEmpty) {
-      return Container(
-        height: 300,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            localizations.translate('no_data_to_display'),
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 16,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      height: 320,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppConstants.primaryColor.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.analytics,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _selectedChartMode == 0
-                    ? localizations.translate('pressure_history_24h')
-                    : localizations.translate('pressure_history_3d') ?? 'История давления (3 дня)',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // График с горизонтальным скроллом
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: _selectedChartMode == 0
-                    ? math.max(MediaQuery.of(context).size.width - 32, spots.length * 30.0)
-                    : math.max(MediaQuery.of(context).size.width - 32, spots.length * 60.0),
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: _getGridInterval(),
-                      getDrawingHorizontalLine: (value) {
-                        return FlLine(
-                          color: AppConstants.textColor.withValues(alpha: 0.1),
-                          strokeWidth: 1,
-                        );
-                      },
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 50,
-                          interval: _getGridInterval(),
-                          getTitlesWidget: (value, meta) {
-                            return Text(
-                              value.toInt().toString(),
-                              style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
-                                fontSize: 10,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: _selectedChartMode == 0 ? 6 : 4,
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index >= 0 && index < timeLabels.length && timeLabels[index].isNotEmpty) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      timeLabels[index],
-                                      style: TextStyle(
-                                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                    // Для 3-дневного режима добавляем дату
-                                    if (_selectedChartMode == 1 && index % 4 == 0) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _dailyDateLabels[index ~/ 4],
-                                        style: TextStyle(
-                                          color: AppConstants.textColor.withValues(alpha: 0.5),
-                                          fontSize: 8,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            }
-                            return const Text('');
-                          },
-                        ),
-                      ),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        color: AppConstants.primaryColor,
-                        barWidth: 3,
-                        isStrokeCapRound: true,
-                        dotData: FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) {
-                            return FlDotCirclePainter(
-                              radius: 3,
-                              color: AppConstants.primaryColor,
-                              strokeWidth: 2,
-                              strokeColor: Colors.white,
-                            );
-                          },
-                        ),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              AppConstants.primaryColor.withValues(alpha: 0.3),
-                              AppConstants.primaryColor.withValues(alpha: 0.1),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    lineTouchData: LineTouchData(
-                      enabled: true,
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
-                        tooltipBorder: BorderSide(
-                          color: AppConstants.primaryColor.withValues(alpha: 0.5),
-                          width: 1,
-                        ),
-                        tooltipRoundedRadius: 8,
-                        getTooltipItems: (touchedSpots) {
-                          return touchedSpots.map((spot) {
-                            final pressure = spot.y;
-                            return LineTooltipItem(
-                              '${pressure.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
-                              TextStyle(
-                                color: AppConstants.textColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ),
-                    minY: minY,
-                    maxY: maxY,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrendCard(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -851,7 +518,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            localizations.translate('pressure_trend_24h'),
+            _extendedData != null
+                ? localizations.translate('pressure_history_extended')
+                : localizations.translate('pressure_trend_24h'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 18,
@@ -864,24 +533,24 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               Expanded(
                 child: _buildTrendItem(
                   localizations.translate('trend'),
-                  _getTrendText(_hourlyPressureTrend, localizations),
-                  _getTrendIcon(_hourlyPressureTrend),
-                  _getTrendColor(_hourlyPressureTrend),
+                  _getTrendText(_pressureTrend),
+                  _getTrendIcon(_pressureTrend),
+                  _getTrendColor(_pressureTrend),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _buildTrendItem(
                   localizations.translate('change'),
-                  '${_hourly24hChange >= 0 ? '+' : ''}${_hourly24hChange.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
-                  _hourly24hChange >= 0 ? Icons.trending_up : Icons.trending_down,
-                  _hourly24hChange >= 0 ? Colors.green : Colors.red,
+                  '${_pressure24hChange >= 0 ? '+' : ''}${_pressure24hChange.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
+                  _pressure24hChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                  _pressure24hChange >= 0 ? Colors.green : Colors.red,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildTrendDescription(localizations),
+          _buildTrendDescription(),
         ],
       ),
     );
@@ -921,11 +590,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildTrendDescription(AppLocalizations localizations) {
+  Widget _buildTrendDescription() {
+    final localizations = AppLocalizations.of(context);
     String description;
     Color color;
 
-    switch (_hourlyPressureTrend) {
+    switch (_pressureTrend) {
       case 'rising':
         description = localizations.translate('pressure_rising_description');
         color = Colors.green;
@@ -972,8 +642,258 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildFishingImpactCard(double pressure, AppLocalizations localizations) {
-    final impact = _getFishingImpact(pressure, localizations);
+  Widget _buildPressureChart() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      height: 320,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics,
+                color: AppConstants.primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _extendedData != null
+                    ? localizations.translate('pressure_history_extended')
+                    : localizations.translate('pressure_history_24h'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              if (_extendedData != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'LIVE DATA',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (_pressureSpots.isEmpty)
+            Expanded(
+              child: Center(
+                child: _isLoadingExtended
+                    ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Загрузка расширенных данных...',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                )
+                    : Text(
+                  localizations.translate('no_data_to_display'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: _getGridInterval(),
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: AppConstants.textColor.withValues(alpha: 0.1),
+                        strokeWidth: 1,
+                      );
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        interval: _getGridInterval(),
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            value.toInt().toString(),
+                            style: TextStyle(
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              fontSize: 10,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        interval: 6,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index >= 0 && index < _timeLabels.length && _timeLabels[index].isNotEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                _timeLabels[index],
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 9,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: _pressureSpots,
+                      isCurved: true,
+                      color: AppConstants.primaryColor,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          final color = index < _dotColors.length
+                              ? _dotColors[index]
+                              : AppConstants.primaryColor;
+                          return FlDotCirclePainter(
+                            radius: 3,
+                            color: color,
+                            strokeWidth: 2,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppConstants.primaryColor.withValues(alpha: 0.3),
+                            AppConstants.primaryColor.withValues(alpha: 0.1),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                      tooltipBorder: BorderSide(
+                        color: AppConstants.primaryColor.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                      tooltipRoundedRadius: 8,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final pressure = spot.y;
+                          return LineTooltipItem(
+                            '${pressure.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
+                            TextStyle(
+                              color: AppConstants.textColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  minY: _minPressure,
+                  maxY: _maxPressure,
+                ),
+              ),
+            ),
+
+          // Легенда для расширенных данных
+          if (_extendedData != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildLegendItem(Colors.grey, 'История'),
+                _buildLegendItem(AppConstants.primaryColor, 'Сейчас'),
+                _buildLegendItem(Colors.blue, 'Прогноз'),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFishingImpactCard(double pressure) {
+    final localizations = AppLocalizations.of(context);
+    final impact = _getFishingImpact(pressure);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1045,8 +965,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildRecommendationsCard(double pressure, AppLocalizations localizations) {
-    final recommendations = _getPressureRecommendations(pressure, localizations);
+  Widget _buildRecommendationsCard(double pressure) {
+    final localizations = AppLocalizations.of(context);
+    final recommendations = _getPressureRecommendations(pressure);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1141,7 +1062,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     return Colors.orange;
   }
 
-  String _getPressureStatus(double pressure, AppLocalizations localizations) {
+  String _getPressureStatus(double pressure) {
+    final localizations = AppLocalizations.of(context);
     final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
     if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
@@ -1156,7 +1078,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     return localizations.translate('moderate_pressure');
   }
 
-  String _getTrendText(String trend, AppLocalizations localizations) {
+  String _getTrendText(String trend) {
+    final localizations = AppLocalizations.of(context);
     switch (trend) {
       case 'rising': return localizations.translate('rising');
       case 'falling': return localizations.translate('falling');
@@ -1180,7 +1103,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     }
   }
 
-  Map<String, dynamic> _getFishingImpact(double pressure, AppLocalizations localizations) {
+  Map<String, dynamic> _getFishingImpact(double pressure) {
+    final localizations = AppLocalizations.of(context);
     final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
     if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
@@ -1210,7 +1134,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     }
   }
 
-  List<String> _getPressureRecommendations(double pressure, AppLocalizations localizations) {
+  List<String> _getPressureRecommendations(double pressure) {
+    final localizations = AppLocalizations.of(context);
     final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
     if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
@@ -1238,4 +1163,31 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
       ];
     }
   }
+}
+
+// Заглушка для Position (если нет geolocator)
+class Position {
+  final double latitude;
+  final double longitude;
+  final DateTime timestamp;
+  final double accuracy;
+  final double altitude;
+  final double altitudeAccuracy;
+  final double heading;
+  final double headingAccuracy;
+  final double speed;
+  final double speedAccuracy;
+
+  Position({
+    required this.latitude,
+    required this.longitude,
+    required this.timestamp,
+    required this.accuracy,
+    required this.altitude,
+    required this.altitudeAccuracy,
+    required this.heading,
+    required this.headingAccuracy,
+    required this.speed,
+    required this.speedAccuracy,
+  });
 }

@@ -1107,7 +1107,24 @@
   "ai_enhanced": "Улучшено ИИ",
   "local_analysis": "Локальный анализ",
   "ai_processing": "Обработка ИИ...",
-  "generating_forecast": "Генерация прогноза..."
+  "generating_forecast": "Генерация прогноза...",
+
+  "pressure_trend_24h": "Тренд за 24 часа",
+  "pressure_history_24h": "История давления (24ч)",
+  "pressure_history_extended": "История и прогноз давления",
+  "historical_data": "Исторические данные",
+  "forecast_data": "Прогнозные данные",
+  "pressure_change_rate": "Скорость изменения",
+  "pressure_analysis_extended": "Расширенный анализ давления",
+  "last_24_hours": "Последние 24 часа",
+  "next_days": "Следующие дни",
+  "pressure_pattern": "Паттерн давления",
+  "barometric_trend": "Барометрический тренд",
+  "fishing_window": "Окно для рыбалки",
+  "pressure_stable_period": "Период стабильного давления",
+  "rapid_change_warning": "Быстрое изменение давления",
+  "optimal_pressure_zone": "Оптимальная зона давления",
+  "hours": "часов"
 
 }
 
