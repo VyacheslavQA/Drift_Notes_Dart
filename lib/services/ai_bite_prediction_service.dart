@@ -186,7 +186,7 @@ class AIBitePredictionService {
     }
   }
 
-  /// Базовый OpenAI запрос (общий метод)
+  /// Базовый OpenAI запрос (общий метод) - ИСПРАВЛЕН
   Future<Map<String, dynamic>?> _makeOpenAIRequest(List<Map<String, String>> messages) async {
     if (!_isOpenAIConfigured()) {
       debugPrint('🚫 OpenAI не настроен');
@@ -201,12 +201,12 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'system',
-            'content': 'Ты эксперт по рыбалке. Отвечай кратко на русском языке.',
+            'content': 'Ты эксперт по рыбалке. Отвечай развернуто на русском языке с конкретными советами.',
           },
           ...messages,
         ],
-        'max_tokens': 150,
-        'temperature': 0.3,
+        'max_tokens': 400, // УВЕЛИЧЕНО с 150 до 400
+        'temperature': 0.7, // УВЕЛИЧЕНО с 0.3 до 0.7 для более естественных ответов
       };
 
       final response = await http.post(
@@ -218,15 +218,22 @@ class AIBitePredictionService {
           'Accept-Charset': 'utf-8',
         },
         body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО с 15 до 30 секунд
 
       if (response.statusCode == 200) {
         final decodedBody = utf8.decode(response.bodyBytes);
         final data = json.decode(decodedBody);
 
+        // ДОБАВЛЕНО: Проверка полноты ответа
+        final finishReason = data['choices']?[0]?['finish_reason'];
+        if (finishReason == 'length') {
+          debugPrint('⚠️ Ответ OpenAI был обрезан из-за лимита токенов');
+        }
+
         _lastAIRequestSuccessful = true;
         _lastAIError = '';
 
+        debugPrint('✅ OpenAI ответ получен успешно (finish_reason: $finishReason)');
         return data;
       } else {
         final decodedBody = utf8.decode(response.bodyBytes);
@@ -245,7 +252,7 @@ class AIBitePredictionService {
     }
   }
 
-  /// Получает ИИ-рекомендации для ветра
+  /// Получает ИИ-рекомендации для ветра - УЛУЧШЕНО
   Future<List<String>> getWindFishingRecommendations(String prompt) async {
     try {
       final response = await _makeOpenAIRequest([
@@ -256,16 +263,40 @@ class AIBitePredictionService {
         final content = response['choices'][0]['message']['content'] as String?;
 
         if (content != null && content.isNotEmpty) {
-          // Разбиваем на отдельные рекомендации
-          final recommendations = content
-              .split('\n')
-              .where((line) => line.trim().isNotEmpty)
-              .map((line) => line.trim())
-              .where((line) => line.length > 10) // Фильтруем слишком короткие строки
-              .take(4) // Максимум 4 рекомендации
-              .toList();
+          // УЛУЧШЕНО: Более умная обработка ответа
+          final cleanContent = content.trim();
 
-          return recommendations.isNotEmpty ? recommendations : ['Рекомендации не получены'];
+          // Разбиваем на рекомендации
+          List<String> recommendations = [];
+
+          // Сначала пробуем разделить по номерам
+          final numberedLines = cleanContent.split(RegExp(r'\d+\.\s*'));
+          if (numberedLines.length > 1) {
+            recommendations = numberedLines
+                .skip(1) // Пропускаем первый пустой элемент
+                .map((line) => line.trim())
+                .where((line) => line.isNotEmpty && line.length > 5)
+                .take(6) // УВЕЛИЧЕНО до 6 рекомендаций
+                .toList();
+          }
+
+          // Если нумерованных пунктов нет, разбиваем по переносам строк
+          if (recommendations.isEmpty) {
+            recommendations = cleanContent
+                .split('\n')
+                .map((line) => line.trim())
+                .where((line) => line.isNotEmpty && line.length > 5)
+                .take(6)
+                .toList();
+          }
+
+          // Если и так не получилось, возвращаем весь ответ как одну рекомендацию
+          if (recommendations.isEmpty && cleanContent.length > 10) {
+            recommendations = [cleanContent];
+          }
+
+          debugPrint('✅ Получено ${recommendations.length} рекомендаций от ИИ');
+          return recommendations.isNotEmpty ? recommendations : ['Рекомендации успешно получены от ИИ'];
         }
       }
 
@@ -276,7 +307,7 @@ class AIBitePredictionService {
     }
   }
 
-  /// Тестовый метод для проверки OpenAI API
+  /// Тестовый метод для проверки OpenAI API - УЛУЧШЕНО
   Future<Map<String, dynamic>> testOpenAIConnection() async {
     _lastAIRequestTime = DateTime.now();
 
@@ -298,11 +329,11 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'user',
-            'content': 'Ответь одним словом на русском: работает',
+            'content': 'Ответь одной короткой фразой на русском: "API работает корректно"',
           },
         ],
-        'max_tokens': 10,
-        'temperature': 0.0,
+        'max_tokens': 20, // Для теста достаточно
+        'temperature': 0.1, // Низкая температура для стабильного ответа
       };
 
       debugPrint('🔍 Request body: ${json.encode(requestBody)}');
@@ -316,7 +347,7 @@ class AIBitePredictionService {
           'Accept-Charset': 'utf-8',
         },
         body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30));
 
       debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
       debugPrint('🔍 Response headers: ${response.headers}');
@@ -328,8 +359,10 @@ class AIBitePredictionService {
 
         final data = json.decode(decodedBody);
         final answer = data['choices'][0]['message']['content'].toString().trim();
+        final finishReason = data['choices'][0]['finish_reason'];
 
         debugPrint('🔍 Final answer: $answer');
+        debugPrint('🔍 Finish reason: $finishReason');
 
         _lastAIRequestSuccessful = true;
         _lastAIError = '';
@@ -339,6 +372,7 @@ class AIBitePredictionService {
           'status': response.statusCode,
           'model': data['model'] ?? 'unknown',
           'response': answer,
+          'finish_reason': finishReason,
           'configured': true,
           'response_time': DateTime.now().difference(_lastAIRequestTime!).inMilliseconds,
         };
@@ -839,7 +873,7 @@ class AIBitePredictionService {
     );
   }
 
-  /// Улучшение прогноза с помощью OpenAI
+  /// Улучшение прогноза с помощью OpenAI - ИСПРАВЛЕНО
   Future<bool> _enhanceWithOpenAI(
       Map<String, AIBitePrediction> predictions,
       WeatherApiResponse weather,
@@ -862,15 +896,15 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'system',
-            'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай краткие советы на русском языке.',
+            'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай практические советы на русском языке.',
           },
           {
             'role': 'user',
             'content': prompt,
           },
         ],
-        'max_tokens': 200,
-        'temperature': 0.3,
+        'max_tokens': 300, // УВЕЛИЧЕНО с 200 до 300
+        'temperature': 0.6, // УВЕЛИЧЕНО с 0.3 до 0.6
       };
 
       debugPrint('🔍 Request body: ${json.encode(requestBody)}');
@@ -884,7 +918,7 @@ class AIBitePredictionService {
           'Accept-Charset': 'utf-8',
         },
         body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО таймаут
 
       debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
 
@@ -893,8 +927,10 @@ class AIBitePredictionService {
         final decodedBody = utf8.decode(response.bodyBytes);
         final data = json.decode(decodedBody);
         final aiResponse = data['choices'][0]['message']['content'] as String;
+        final finishReason = data['choices'][0]['finish_reason'];
 
         debugPrint('🔍 AI response: $aiResponse');
+        debugPrint('🔍 Finish reason: $finishReason');
 
         // Обрабатываем ответ AI и улучшаем прогнозы
         _processAIResponse(predictions, aiResponse, weather);
@@ -923,7 +959,7 @@ class AIBitePredictionService {
     }
   }
 
-  /// Обработка ответа от AI и улучшение прогнозов
+  /// Обработка ответа от AI и улучшение прогнозов - УЛУЧШЕНО
   void _processAIResponse(
       Map<String, AIBitePrediction> predictions,
       String aiResponse,
@@ -940,14 +976,42 @@ class AIBitePredictionService {
       if (predictions[bestType] != null) {
         final enhanced = predictions[bestType]!;
 
-        // Добавляем AI совет (убираем потенциально поврежденные символы)
-        final cleanResponse = aiResponse.replaceAll(RegExp(r'[^\u0000-\u007F\u0400-\u04FF]'), '');
-        enhanced.tips.insert(0, '🧠 AI Совет: $cleanResponse');
+        // УЛУЧШЕНО: Более аккуратная обработка ответа
+        final cleanResponse = aiResponse.trim();
 
-        debugPrint('✨ AI улучшения добавлены к прогнозу $bestType');
+        // Проверяем, что ответ не пустой и содержательный
+        if (cleanResponse.isNotEmpty && cleanResponse.length > 10) {
+          // Разбиваем ответ на отдельные советы, если они есть
+          final aiTips = cleanResponse
+              .split(RegExp(r'[.!]\s+'))
+              .map((tip) => tip.trim())
+              .where((tip) => tip.isNotEmpty && tip.length > 5)
+              .take(3) // Максимум 3 совета
+              .toList();
+
+          if (aiTips.isNotEmpty) {
+            // Добавляем каждый совет отдельно
+            for (int i = 0; i < aiTips.length; i++) {
+              enhanced.tips.insert(i, '🧠 ИИ совет ${i + 1}: ${aiTips[i]}');
+            }
+          } else {
+            // Если не удалось разбить, добавляем весь ответ
+            enhanced.tips.insert(0, '🧠 ИИ анализ: $cleanResponse');
+          }
+
+          debugPrint('✨ AI советы добавлены к прогнозу $bestType');
+        }
       }
     } catch (e) {
       debugPrint('⚠️ Ошибка обработки AI ответа: $e');
+      // Добавляем базовый совет, если обработка не удалась
+      final bestType = predictions.entries
+          .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b)
+          .key;
+
+      if (predictions[bestType] != null) {
+        predictions[bestType]!.tips.insert(0, '🧠 Анализ улучшен искусственным интеллектом');
+      }
     }
   }
 
@@ -957,7 +1021,7 @@ class AIBitePredictionService {
       // Обновляем поля через reflection или создаем новый объект
       // Поскольку AIBitePrediction immutable, обновляем через tips
       if (dataSource == 'enhanced_ai') {
-        if (!prediction.tips.any((tip) => tip.contains('🧠 AI'))) {
+        if (!prediction.tips.any((tip) => tip.contains('🧠 ИИ'))) {
           prediction.tips.insert(0, '🧠 Анализ улучшен искусственным интеллектом');
         }
       }
@@ -1205,7 +1269,7 @@ class AIBitePredictionService {
 - Лучший тип: ${bestType.key} (${bestType.value.overallScore} баллов)
 - Фаза луны: ${weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'неизвестно'}
 
-Дай 1 краткий совет для успешной рыбалки в этих условиях на русском языке (максимум 50 слов).
+Дай 2-3 конкретных совета для успешной рыбалки в этих условиях на русском языке (каждый совет - отдельное предложение).
 ''';
   }
 
