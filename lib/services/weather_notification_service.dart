@@ -9,7 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/weather_alert_model.dart';
 import '../models/weather_api_model.dart';
 import '../models/notification_model.dart';
-import '../services/weather/weather_api_service.dart';
+import 'weather/weather_api_service.dart';
 import '../services/fishing_forecast_service.dart';
 import '../services/notification_service.dart';
 import '../localization/app_localizations.dart';

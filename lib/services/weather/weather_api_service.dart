@@ -1,307 +1,187 @@
-// Путь: lib/models/weather_api_model.dart
+// Путь: lib/services/weather/weather_api_service.dart
 
-class WeatherApiResponse {
-  final Location location;
-  final Current current;
-  final List<ForecastDay> forecast;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import '../../models/weather_api_model.dart';
+import '../../models/fishing_note_model.dart';
 
-  WeatherApiResponse({
-    required this.location,
-    required this.current,
-    required this.forecast,
-  });
+class WeatherApiService {
+  static const String _baseUrl = 'https://api.weatherapi.com/v1';
+  static const String _apiKey = 'your_api_key_here'; // Замените на реальный ключ
 
-  factory WeatherApiResponse.fromJson(Map<String, dynamic> json) {
-    return WeatherApiResponse(
-      location: Location.fromJson(json['location'] ?? {}),
-      current: Current.fromJson(json['current'] ?? {}),
-      forecast: (json['forecast']?['forecastday'] as List<dynamic>?)
-          ?.map((item) => ForecastDay.fromJson(item))
-          .toList() ?? [],
-    );
+  /// Получение текущей погоды
+  Future<WeatherApiResponse> getCurrentWeather({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/current.json?key=$_apiKey&q=$latitude,$longitude&aqi=no'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return WeatherApiResponse.fromJson(data);
+      } else {
+        throw Exception('Weather API error: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения текущей погоды: $e');
+      rethrow;
+    }
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'location': location.toJson(),
-      'current': current.toJson(),
-      'forecast': {
-        'forecastday': forecast.map((day) => day.toJson()).toList(),
-      },
+  /// Получение прогноза погоды
+  Future<WeatherApiResponse> getForecast({
+    required double latitude,
+    required double longitude,
+    required int days,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=$days&aqi=no&alerts=no'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return WeatherApiResponse.fromJson(data);
+      } else {
+        throw Exception('Weather API error: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения прогноза погоды: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение расширенных данных о давлении
+  Future<Map<String, dynamic>> getExtendedPressureData({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      List<WeatherApiResponse> allData = [];
+
+      // Получаем данные за последние 3 дня + прогноз на 7 дней
+      for (int i = -3; i <= 7; i++) {
+        final date = DateTime.now().add(Duration(days: i));
+        final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+        try {
+          late http.Response response;
+
+          if (i <= 0) {
+            // Исторические данные
+            response = await http.get(
+              Uri.parse('$_baseUrl/history.json?key=$_apiKey&q=$latitude,$longitude&dt=$dateStr'),
+              headers: {'Content-Type': 'application/json'},
+            );
+          } else {
+            // Прогнозные данные
+            response = await http.get(
+              Uri.parse('$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=1&dt=$dateStr'),
+              headers: {'Content-Type': 'application/json'},
+            );
+          }
+
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            allData.add(WeatherApiResponse.fromJson(data));
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка получения данных за $dateStr: $e');
+          // Продолжаем с доступными данными
+        }
+      }
+
+      return {'allData': allData};
+    } catch (e) {
+      debugPrint('❌ Ошибка получения расширенных данных: $e');
+      rethrow;
+    }
+  }
+
+  /// Конвертация в модель FishingWeather для совместимости
+  static FishingWeather convertToFishingWeather(WeatherApiResponse weatherData) {
+    try {
+      final current = weatherData.current;
+      final astro = weatherData.forecast.isNotEmpty
+          ? weatherData.forecast.first.astro
+          : null;
+
+      return FishingWeather(
+        temperature: current.tempC,
+        feelsLike: current.feelslikeC,
+        humidity: current.humidity,
+        pressure: current.pressureMb,
+        windSpeed: current.windKph,
+        windDirection: _translateWindDirection(current.windDir),
+        weatherDescription: _generateDescription(current),
+        cloudCover: current.cloud,
+        moonPhase: astro?.moonPhase ?? 'Unknown',
+        observationTime: DateTime.now(),
+        sunrise: astro?.sunrise ?? '',
+        sunset: astro?.sunset ?? '',
+        isDay: current.isDay == 1,
+      );
+    } catch (e) {
+      debugPrint('❌ Ошибка конвертации погодных данных: $e');
+      // Возвращаем данные по умолчанию
+      return FishingWeather(
+        temperature: 15.0,
+        feelsLike: 15.0,
+        humidity: 50,
+        pressure: 1013.0,
+        windSpeed: 5.0,
+        windDirection: 'С',
+        weatherDescription: 'Данные недоступны',
+        cloudCover: 50,
+        moonPhase: 'Unknown',
+        observationTime: DateTime.now(),
+        sunrise: '06:00',
+        sunset: '18:00',
+        isDay: true,
+      );
+    }
+  }
+
+  /// Перевод направления ветра
+  static String _translateWindDirection(String direction) {
+    const Map<String, String> directions = {
+      'N': 'С',
+      'NNE': 'ССВ',
+      'NE': 'СВ',
+      'ENE': 'ВСВ',
+      'E': 'В',
+      'ESE': 'ВЮВ',
+      'SE': 'ЮВ',
+      'SSE': 'ЮЮВ',
+      'S': 'Ю',
+      'SSW': 'ЮЮЗ',
+      'SW': 'ЮЗ',
+      'WSW': 'ЗЮЗ',
+      'W': 'З',
+      'WNW': 'ЗСЗ',
+      'NW': 'СЗ',
+      'NNW': 'ССЗ',
     };
-  }
-}
-
-class Location {
-  final String name;
-  final String region;
-  final String country;
-  final double lat;
-  final double lon;
-  final String tzId;
-
-  Location({
-    required this.name,
-    required this.region,
-    required this.country,
-    required this.lat,
-    required this.lon,
-    required this.tzId,
-  });
-
-  factory Location.fromJson(Map<String, dynamic> json) {
-    return Location(
-      name: json['name']?.toString() ?? '',
-      region: json['region']?.toString() ?? '',
-      country: json['country']?.toString() ?? '',
-      lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
-      lon: (json['lon'] as num?)?.toDouble() ?? 0.0,
-      tzId: json['tz_id']?.toString() ?? '',
-    );
+    return directions[direction] ?? direction;
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'region': region,
-      'country': country,
-      'lat': lat,
-      'lon': lon,
-      'tz_id': tzId,
-    };
-  }
-}
+  /// Генерация описания погоды
+  static String _generateDescription(Current current) {
+    final temp = current.tempC.round();
+    final feelsLike = current.feelslikeC.round();
+    final wind = (current.windKph / 3.6).round();
+    final humidity = current.humidity;
+    final pressure = (current.pressureMb / 1.333).round();
 
-class Current {
-  final double tempC;
-  final double feelslikeC;
-  final int humidity;
-  final double pressureMb;
-  final double windKph;
-  final String windDir;
-  final Condition condition;
-  final int cloud;
-  final int isDay;
-  final double visKm;
-  final double uv;
-
-  Current({
-    required this.tempC,
-    required this.feelslikeC,
-    required this.humidity,
-    required this.pressureMb,
-    required this.windKph,
-    required this.windDir,
-    required this.condition,
-    required this.cloud,
-    required this.isDay,
-    required this.visKm,
-    required this.uv,
-  });
-
-  factory Current.fromJson(Map<String, dynamic> json) {
-    return Current(
-      tempC: (json['temp_c'] as num?)?.toDouble() ?? 0.0,
-      feelslikeC: (json['feelslike_c'] as num?)?.toDouble() ?? 0.0,
-      humidity: (json['humidity'] as num?)?.toInt() ?? 0,
-      pressureMb: (json['pressure_mb'] as num?)?.toDouble() ?? 0.0,
-      windKph: (json['wind_kph'] as num?)?.toDouble() ?? 0.0,
-      windDir: json['wind_dir']?.toString() ?? '',
-      condition: Condition.fromJson(json['condition'] ?? {}),
-      cloud: (json['cloud'] as num?)?.toInt() ?? 0,
-      isDay: (json['is_day'] as num?)?.toInt() ?? 0,
-      visKm: (json['vis_km'] as num?)?.toDouble() ?? 0.0,
-      uv: (json['uv'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'temp_c': tempC,
-      'feelslike_c': feelslikeC,
-      'humidity': humidity,
-      'pressure_mb': pressureMb,
-      'wind_kph': windKph,
-      'wind_dir': windDir,
-      'condition': condition.toJson(),
-      'cloud': cloud,
-      'is_day': isDay,
-      'vis_km': visKm,
-      'uv': uv,
-    };
-  }
-}
-
-class Condition {
-  final String text;
-  final String icon;
-  final int code;
-
-  Condition({
-    required this.text,
-    required this.icon,
-    required this.code,
-  });
-
-  factory Condition.fromJson(Map<String, dynamic> json) {
-    return Condition(
-      text: json['text']?.toString() ?? '',
-      icon: json['icon']?.toString() ?? '',
-      code: (json['code'] as num?)?.toInt() ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'icon': icon,
-      'code': code,
-    };
-  }
-}
-
-class ForecastDay {
-  final String date;
-  final Day day;
-  final Astro astro;
-  final List<Hour> hour;
-
-  ForecastDay({
-    required this.date,
-    required this.day,
-    required this.astro,
-    required this.hour,
-  });
-
-  factory ForecastDay.fromJson(Map<String, dynamic> json) {
-    return ForecastDay(
-      date: json['date']?.toString() ?? '',
-      day: Day.fromJson(json['day'] ?? {}),
-      astro: Astro.fromJson(json['astro'] ?? {}),
-      hour: (json['hour'] as List<dynamic>?)
-          ?.map((item) => Hour.fromJson(item))
-          .toList() ?? [],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'date': date,
-      'day': day.toJson(),
-      'astro': astro.toJson(),
-      'hour': hour.map((h) => h.toJson()).toList(),
-    };
-  }
-}
-
-class Day {
-  final double maxtempC;
-  final double mintempC;
-  final Condition condition;
-
-  Day({
-    required this.maxtempC,
-    required this.mintempC,
-    required this.condition,
-  });
-
-  factory Day.fromJson(Map<String, dynamic> json) {
-    return Day(
-      maxtempC: (json['maxtemp_c'] as num?)?.toDouble() ?? 0.0,
-      mintempC: (json['mintemp_c'] as num?)?.toDouble() ?? 0.0,
-      condition: Condition.fromJson(json['condition'] ?? {}),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'maxtemp_c': maxtempC,
-      'mintemp_c': mintempC,
-      'condition': condition.toJson(),
-    };
-  }
-}
-
-class Hour {
-  final String time;
-  final double tempC;
-  final Condition condition;
-  final double windKph;
-  final String windDir;
-  final int humidity;
-  final double chanceOfRain;
-  final double pressureMb;  // Добавляем поле давления
-
-  Hour({
-    required this.time,
-    required this.tempC,
-    required this.condition,
-    required this.windKph,
-    required this.windDir,
-    required this.humidity,
-    required this.chanceOfRain,
-    required this.pressureMb,  // Добавляем в конструктор
-  });
-
-  factory Hour.fromJson(Map<String, dynamic> json) {
-    return Hour(
-      time: json['time']?.toString() ?? '',
-      tempC: (json['temp_c'] as num?)?.toDouble() ?? 0.0,
-      condition: Condition.fromJson(json['condition'] ?? {}),
-      windKph: (json['wind_kph'] as num?)?.toDouble() ?? 0.0,
-      windDir: json['wind_dir']?.toString() ?? '',
-      humidity: (json['humidity'] as num?)?.toInt() ?? 0,
-      chanceOfRain: (json['chance_of_rain'] as num?)?.toDouble() ?? 0.0,
-      pressureMb: (json['pressure_mb'] as num?)?.toDouble() ?? 0.0,  // Добавляем парсинг
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'time': time,
-      'temp_c': tempC,
-      'condition': condition.toJson(),
-      'wind_kph': windKph,
-      'wind_dir': windDir,
-      'humidity': humidity,
-      'chance_of_rain': chanceOfRain,
-      'pressure_mb': pressureMb,  // Добавляем в JSON
-    };
-  }
-}
-
-class Astro {
-  final String sunrise;
-  final String sunset;
-  final String moonrise;
-  final String moonset;
-  final String moonPhase;
-
-  Astro({
-    required this.sunrise,
-    required this.sunset,
-    required this.moonrise,
-    required this.moonset,
-    required this.moonPhase,
-  });
-
-  factory Astro.fromJson(Map<String, dynamic> json) {
-    return Astro(
-      sunrise: json['sunrise']?.toString() ?? '',
-      sunset: json['sunset']?.toString() ?? '',
-      moonrise: json['moonrise']?.toString() ?? '',
-      moonset: json['moonset']?.toString() ?? '',
-      moonPhase: json['moon_phase']?.toString() ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'sunrise': sunrise,
-      'sunset': sunset,
-      'moonrise': moonrise,
-      'moonset': moonset,
-      'moon_phase': moonPhase,
-    };
+    return '${current.condition.text}, $temp°C, ощущается как $feelsLike°C\n'
+        'Ветер: ${_translateWindDirection(current.windDir)}, $wind м/с\n'
+        'Влажность: $humidity%, Давление: $pressure мм рт.ст.\n'
+        'Облачность: ${current.cloud}%';
   }
 }

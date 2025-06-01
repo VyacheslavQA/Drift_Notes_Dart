@@ -230,6 +230,7 @@ class Hour {
   final String windDir;
   final int humidity;
   final double chanceOfRain;
+  final double pressureMb;  // ДОБАВИЛИ ЭТО ПОЛЕ
 
   Hour({
     required this.time,
@@ -239,6 +240,7 @@ class Hour {
     required this.windDir,
     required this.humidity,
     required this.chanceOfRain,
+    required this.pressureMb,  // ДОБАВИЛИ В КОНСТРУКТОР
   });
 
   factory Hour.fromJson(Map<String, dynamic> json) {
@@ -250,6 +252,7 @@ class Hour {
       windDir: json['wind_dir']?.toString() ?? '',
       humidity: (json['humidity'] as num?)?.toInt() ?? 0,
       chanceOfRain: (json['chance_of_rain'] as num?)?.toDouble() ?? 0.0,
+      pressureMb: (json['pressure_mb'] as num?)?.toDouble() ?? 1013.0,  // ДОБАВИЛИ ПАРСИНГ С ДЕФОЛТНЫМ ЗНАЧЕНИЕМ
     );
   }
 
@@ -262,6 +265,7 @@ class Hour {
       'wind_dir': windDir,
       'humidity': humidity,
       'chance_of_rain': chanceOfRain,
+      'pressure_mb': pressureMb,  // ДОБАВИЛИ В JSON
     };
   }
 }
