@@ -16,6 +16,9 @@ import 'cover_photo_selection_screen.dart';
 import '../../screens/fishing_note/edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
+import '../../models/ai_bite_prediction_model.dart';
+import '../../services/ai_bite_prediction_service.dart';
+import '../../services/weather_settings_service.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -32,6 +35,7 @@ class FishingNoteDetailScreen extends StatefulWidget {
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   final _fishingNoteRepository = FishingNoteRepository();
   final _markerMapRepository = MarkerMapRepository();
+  final _weatherSettings = WeatherSettingsService();
 
   FishingNoteModel? _note;
   bool _isLoading = true;
@@ -41,6 +45,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   // Список маркерных карт, привязанных к этой заметке
   List<MarkerMapModel> _linkedMarkerMaps = [];
   bool _isLoadingMarkerMaps = false;
+
+  // ИИ-анализ
+  AIBitePrediction? _aiPrediction;
 
   @override
   void initState() {
@@ -63,6 +70,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           _isLoading = false;
         });
 
+        // Загружаем ИИ-анализ из заметки, если он есть
+        _loadAIFromNote();
+
         // После загрузки заметки загружаем связанные маркерные карты
         _loadLinkedMarkerMaps();
       }
@@ -74,6 +84,48 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Загрузка ИИ-анализа из сохраненных данных
+  void _loadAIFromNote() {
+    if (_note?.aiPrediction == null) return;
+
+    try {
+      final aiMap = _note!.aiPrediction!;
+      final activityLevelString = aiMap['activityLevel'] as String? ?? 'moderate';
+      ActivityLevel activityLevel = ActivityLevel.moderate;
+
+      switch (activityLevelString.split('.').last) {
+        case 'excellent':
+          activityLevel = ActivityLevel.excellent;
+          break;
+        case 'good':
+          activityLevel = ActivityLevel.good;
+          break;
+        case 'moderate':
+          activityLevel = ActivityLevel.moderate;
+          break;
+        case 'poor':
+          activityLevel = ActivityLevel.poor;
+          break;
+        case 'veryPoor':
+          activityLevel = ActivityLevel.veryPoor;
+          break;
+      }
+
+      _aiPrediction = AIBitePrediction(
+        overallScore: aiMap['overallScore'] as int? ?? 50,
+        activityLevel: activityLevel,
+        confidence: (aiMap['confidencePercent'] as int? ?? 50) / 100.0,
+        recommendation: aiMap['recommendation'] as String? ?? '',
+        tips: List<String>.from(aiMap['tips'] ?? []),
+        fishingType: aiMap['fishingType'] as String? ?? _note!.fishingType,
+      );
+
+      debugPrint('🧠 ИИ-анализ загружен из заметки: ${_aiPrediction!.overallScore} баллов');
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки ИИ-анализа: $e');
     }
   }
 
@@ -454,6 +506,78 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // Метод для форматирования температуры согласно настройкам
+  String _formatTemperature(double celsius) {
+    final unit = _weatherSettings.temperatureUnit;
+    switch (unit) {
+      case TemperatureUnit.celsius:
+        return '${celsius.toStringAsFixed(1)}°C';
+      case TemperatureUnit.fahrenheit:
+        final fahrenheit = (celsius * 9 / 5) + 32;
+        return '${fahrenheit.toStringAsFixed(1)}°F';
+    }
+  }
+
+  // Метод для форматирования скорости ветра согласно настройкам
+  String _formatWindSpeed(double meterPerSecond) {
+    final unit = _weatherSettings.windSpeedUnit;
+    switch (unit) {
+      case WindSpeedUnit.ms:
+        return '${meterPerSecond.toStringAsFixed(1)} м/с';
+      case WindSpeedUnit.kmh:
+        final kmh = meterPerSecond * 3.6;
+        return '${kmh.toStringAsFixed(1)} км/ч';
+      case WindSpeedUnit.mph:
+        final mph = meterPerSecond * 2.237;
+        return '${mph.toStringAsFixed(1)} mph';
+    }
+  }
+
+  // Метод для форматирования давления согласно настройкам
+  String _formatPressure(double hpa) {
+    final unit = _weatherSettings.pressureUnit;
+    final calibration = _weatherSettings.barometerCalibration;
+
+    // Применяем калибровку (калибровка хранится в гПа)
+    final calibratedHpa = hpa + calibration;
+
+    switch (unit) {
+      case PressureUnit.hpa:
+        return '${calibratedHpa.toStringAsFixed(0)} гПа';
+      case PressureUnit.mmhg:
+        final mmhg = calibratedHpa / 1.333;
+        return '${mmhg.toStringAsFixed(0)} мм рт.ст.';
+      case PressureUnit.inhg:
+        final inhg = calibratedHpa / 33.8639;
+        return '${inhg.toStringAsFixed(2)} inHg';
+    }
+  }
+
+  // Получение цвета по скору ИИ
+  Color _getScoreColor(int score) {
+    if (score >= 80) return const Color(0xFF4CAF50);
+    if (score >= 60) return const Color(0xFF8BC34A);
+    if (score >= 40) return const Color(0xFFFFC107);
+    if (score >= 20) return const Color(0xFFFF9800);
+    return const Color(0xFFF44336);
+  }
+
+  // Получение текста уровня активности
+  String _getActivityLevelText(ActivityLevel level, AppLocalizations localizations) {
+    switch (level) {
+      case ActivityLevel.excellent:
+        return localizations.translate('excellent_activity');
+      case ActivityLevel.good:
+        return localizations.translate('good_activity');
+      case ActivityLevel.moderate:
+        return localizations.translate('moderate_activity');
+      case ActivityLevel.poor:
+        return localizations.translate('poor_activity');
+      case ActivityLevel.veryPoor:
+        return localizations.translate('very_poor_activity');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -601,6 +725,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
+          // НОВОЕ: Отображение ИИ-анализа
+          if (_aiPrediction != null) ...[
+            _buildAIAnalysisCard(),
+            const SizedBox(height: 20),
+          ],
+
           // Маркерные карты
           if (_linkedMarkerMaps.isNotEmpty || _isLoadingMarkerMaps) ...[
             _buildMarkerMapsSection(),
@@ -634,6 +764,137 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Построение карточки ИИ-анализа
+  Widget _buildAIAnalysisCard() {
+    final localizations = AppLocalizations.of(context);
+
+    if (_aiPrediction == null) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(localizations.translate('ai_bite_forecast')),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF12332E),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppConstants.primaryColor.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.psychology,
+                      color: _getScoreColor(_aiPrediction!.overallScore),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
+                          style: TextStyle(
+                            color: _getScoreColor(_aiPrediction!.overallScore),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_aiPrediction!.confidencePercent}%',
+                      style: TextStyle(
+                        color: _getScoreColor(_aiPrediction!.overallScore),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _aiPrediction!.recommendation,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              if (_aiPrediction!.tips.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  localizations.translate('recommendations'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...(_aiPrediction!.tips.take(3).map((tip) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          tip,
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.9),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ))),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1142,6 +1403,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // ИСПРАВЛЕННЫЙ МЕТОД: Построение карточки погоды в современном стиле
   Widget _buildWeatherCard() {
     final localizations = AppLocalizations.of(context);
     final weather = _note!.weather;
@@ -1151,105 +1413,134 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(localizations.translate('weather')),
-        Card(
-          color: const Color(0xFF12332E),
-          shape: RoundedRectangleBorder(
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF12332E),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        weather.isDay
-                            ? Icons.wb_sunny
-                            : Icons.nightlight_round,
-                        color: weather.isDay
-                            ? Colors.amber
-                            : Colors.indigo[300],
-                        size: 30,
-                      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ВЕРХНЯЯ ЧАСТЬ: температура и ощущается как
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${weather.temperature.toStringAsFixed(1)}°C, ${weather.weatherDescription}',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    child: Icon(
+                      weather.isDay
+                          ? Icons.wb_sunny
+                          : Icons.nightlight_round,
+                      color: weather.isDay
+                          ? Colors.amber
+                          : Colors.indigo[300],
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatTemperature(weather.temperature),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${localizations.translate('clear')} ${weather.feelsLike.toStringAsFixed(1)}°C',
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
-                              fontSize: 14,
-                            ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${localizations.translate('feels_like_short')}: ${_formatTemperature(weather.feelsLike)}',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 14,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildWeatherInfoItem(
-                      icon: Icons.air,
-                      label: localizations.translate('wind'),
-                      value: '${weather.windDirection}, ${weather.windSpeed} м/с',
-                    ),
-                    _buildWeatherInfoItem(
-                      icon: Icons.water_drop,
-                      label: localizations.translate('humidity'),
-                      value: '${weather.humidity}%',
-                    ),
-                    _buildWeatherInfoItem(
-                      icon: Icons.speed,
-                      label: localizations.translate('pressure'),
-                      value: '${(weather.pressure / 1.333).toInt()} мм',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildWeatherInfoItem(
-                      icon: Icons.cloud,
-                      label: localizations.translate('cloudiness'),
-                      value: '${weather.cloudCover}%',
-                    ),
-                    _buildWeatherInfoItem(
-                      icon: Icons.wb_twilight,
-                      label: localizations.translate('sunrise'),
-                      value: weather.sunrise,
-                    ),
-                    _buildWeatherInfoItem(
-                      icon: Icons.nights_stay,
-                      label: localizations.translate('sunset'),
-                      value: weather.sunset,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // НИЖНЯЯ ЧАСТЬ: сетка 2x3 с остальными данными
+              _buildWeatherGrid(localizations, weather),
+            ],
           ),
+        ),
+      ],
+    );
+  }
+
+  // Новый метод для построения сетки погоды 2x3
+  Widget _buildWeatherGrid(AppLocalizations localizations, FishingWeather weather) {
+    return Column(
+      children: [
+        // Первая строка
+        Row(
+          children: [
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.air,
+                label: localizations.translate('wind_short'),
+                value: '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.water_drop,
+                label: localizations.translate('humidity_short'),
+                value: '${weather.humidity}%',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.speed,
+                label: localizations.translate('pressure_short'),
+                value: _formatPressure(weather.pressure),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Вторая строка
+        Row(
+          children: [
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.cloud,
+                label: localizations.translate('cloudiness_short'),
+                value: '${weather.cloudCover}%',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.wb_twilight,
+                label: localizations.translate('sunrise'),
+                value: weather.sunrise,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
+                icon: Icons.nights_stay,
+                label: localizations.translate('sunset'),
+                value: weather.sunset,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1260,31 +1551,40 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     required String label,
     required String value,
   }) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: AppConstants.textColor.withValues(alpha: 0.8),
-          size: 20,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: AppConstants.textColor.withValues(alpha: 0.8),
+            size: 20,
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
