@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart';
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/weather_settings_service.dart';
 import '../../services/weather/weather_api_service.dart';
-import 'package:geolocator/geolocator.dart';
 
 class PressureDetailScreen extends StatefulWidget {
   final WeatherApiResponse weatherData;
@@ -88,7 +88,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     });
 
     try {
-      final position = await _getCurrentPosition();
+      final position = _getLocationFromWeatherData();
       if (position != null) {
         final extendedData = await _weatherService.getExtendedPressureData(
           latitude: position.latitude,
@@ -114,7 +114,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     }
   }
 
-  Future<Position?> _getCurrentPosition() async {
+  Position? _getLocationFromWeatherData() {
     // Возвращаем координаты из текущих данных о погоде
     return Position(
       latitude: widget.weatherData.location.lat,
@@ -148,8 +148,6 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     // Обрабатываем все данные: исторические + прогноз
     for (int dataIndex = 0; dataIndex < allData.length; dataIndex++) {
       final weatherData = allData[dataIndex];
-      final isHistorical = dataIndex < allData.length - 1;
-      final isCurrentDay = dataIndex == allData.length - 1;
 
       for (final day in weatherData.forecast) {
         for (final hour in day.hour) {
@@ -159,7 +157,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           if (hourTime.isAfter(now.subtract(const Duration(hours: 48))) &&
               hourTime.isBefore(now.add(const Duration(days: 7)))) {
 
-            final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb ?? 0);
+            final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
             _pressureSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
             allPressures.add(convertedPressure);
 
@@ -235,7 +233,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         final hourTime = DateTime.parse(hour.time);
 
         if (hourTime.isAfter(now.subtract(const Duration(hours: 12)))) {
-          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb ?? 0);
+          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
           _pressureSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
           allPressures.add(convertedPressure);
           _dotColors.add(AppConstants.primaryColor);
@@ -1165,5 +1163,3 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     }
   }
 }
-
-
