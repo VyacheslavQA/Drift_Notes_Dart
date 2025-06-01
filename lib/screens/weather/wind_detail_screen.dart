@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
-import 'dart:ui' as ui; // Добавляем импорт для TextDirection
+import 'dart:ui' as ui;
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
+import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
 
 class WindDetailScreen extends StatefulWidget {
@@ -31,9 +32,11 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   late Animation<double> _slideAnimation;
   late Animation<double> _compassAnimation;
 
+  final WeatherSettingsService _weatherSettings = WeatherSettingsService();
+
   List<FlSpot> _windSpeedSpots = [];
   List<String> _timeLabels = [];
-  List<String> _windDirections = [];
+  List<String> _dayLabels = [];
 
   @override
   void initState() {
@@ -88,30 +91,60 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   void _generateWindData() {
     _windSpeedSpots.clear();
     _timeLabels.clear();
-    _windDirections.clear();
+    _dayLabels.clear();
 
-    final baseWindSpeed = widget.weatherData.current.windKph;
-    final baseDirection = widget.weatherData.current.windDir;
     final now = DateTime.now();
+    int spotIndex = 0;
 
-    // Генерируем данные за последние 12 часов и следующие 12 часов
-    for (int i = -12; i <= 12; i++) {
-      final time = now.add(Duration(hours: i));
+    // Данные за сегодня и 3 дня вперед
+    for (int dayOffset = 0; dayOffset <= 3; dayOffset++) {
+      final targetDate = now.add(Duration(days: dayOffset));
 
-      // Имитируем изменения скорости ветра
-      final timeVariation = math.sin(i * math.pi / 6) * 3; // Циклическое изменение
-      final randomVariation = (math.Random().nextDouble() - 0.5) * 4;
-      final windSpeed = math.max(0.0, baseWindSpeed + timeVariation + randomVariation);
+      // Найти соответствующий день в прогнозе
+      ForecastDay? forecastDay;
+      for (final day in widget.weatherData.forecast) {
+        final dayDate = DateTime.parse(day.date);
+        if (dayDate.day == targetDate.day &&
+            dayDate.month == targetDate.month &&
+            dayDate.year == targetDate.year) {
+          forecastDay = day;
+          break;
+        }
+      }
 
-      _windSpeedSpots.add(FlSpot(i.toDouble() + 12, windSpeed.toDouble())); // Исправлено: добавлен .toDouble()
+      if (forecastDay != null) {
+        // Берем данные по часам
+        for (int i = 0; i < forecastDay.hour.length; i++) {
+          final hour = forecastDay.hour[i];
+          final hourTime = DateTime.parse(hour.time);
 
-      // Имитируем изменения направления ветра
-      _windDirections.add(baseDirection);
+          // Для сегодняшнего дня показываем только с текущего часа
+          if (dayOffset == 0 && hourTime.hour < now.hour) {
+            continue;
+          }
 
-      if (i % 3 == 0) {
-        _timeLabels.add(DateFormat('HH:mm').format(time));
-      } else {
-        _timeLabels.add('');
+          final windSpeed = _weatherSettings.convertWindSpeed(hour.windKph);
+          _windSpeedSpots.add(FlSpot(spotIndex.toDouble(), windSpeed));
+
+          // Временные метки каждые 3 часа
+          if (spotIndex % 3 == 0) {
+            _timeLabels.add(DateFormat('HH:mm').format(hourTime));
+
+            // Метки дней
+            if (dayOffset == 0) {
+              _dayLabels.add('Сегодня');
+            } else if (dayOffset == 1) {
+              _dayLabels.add('Завтра');
+            } else {
+              _dayLabels.add(DateFormat('dd.MM').format(hourTime));
+            }
+          } else {
+            _timeLabels.add('');
+            _dayLabels.add('');
+          }
+
+          spotIndex++;
+        }
       }
     }
   }
@@ -219,7 +252,8 @@ class _WindDetailScreenState extends State<WindDetailScreen>
 
   Widget _buildCurrentWindCard(Current currentWind) {
     final localizations = AppLocalizations.of(context);
-    final windSpeedMs = (currentWind.windKph / 3.6).round();
+    final windSpeed = _weatherSettings.convertWindSpeed(currentWind.windKph);
+    final windSpeedFormatted = _weatherSettings.formatWindSpeed(currentWind.windKph, showUnit: false);
 
     return Container(
       width: double.infinity,
@@ -306,7 +340,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        windSpeedMs.toString(),
+                        windSpeedFormatted,
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 40,
@@ -317,7 +351,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6, left: 4),
                         child: Text(
-                          'м/с',
+                          _weatherSettings.getWindSpeedUnitSymbol(),
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 16,
@@ -326,14 +360,6 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${currentWind.windKph.round()} км/ч',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.6),
-                      fontSize: 12,
-                    ),
                   ),
                 ],
               ),
@@ -449,13 +475,13 @@ class _WindDetailScreenState extends State<WindDetailScreen>
           ),
           const SizedBox(height: 24),
 
-          // Компас
+          // Компас - увеличенный размер
           AnimatedBuilder(
             animation: _compassAnimation,
             builder: (context, child) {
               return SizedBox(
-                width: 200,
-                height: 200,
+                width: 250, // Увеличили с 200 до 250
+                height: 250, // Увеличили с 200 до 250
                 child: Stack(
                   children: [
                     // Основной круг компаса
@@ -477,7 +503,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
 
                     // Направления света
                     CustomPaint(
-                      size: const Size(200, 200),
+                      size: const Size(250, 250), // Увеличили размер
                       painter: CompassPainter(
                         animation: _compassAnimation.value,
                         textColor: AppConstants.textColor,
@@ -548,28 +574,30 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   }
 
   Widget _buildCompassInfo(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -577,7 +605,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
     final localizations = AppLocalizations.of(context);
 
     return Container(
-      height: 280,
+      height: 350, // Увеличили высоту для удобства скролла
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
@@ -609,100 +637,155 @@ class _WindDetailScreenState extends State<WindDetailScreen>
             ],
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 5,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: AppConstants.textColor.withValues(alpha: 0.1),
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      interval: 5,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${value.toInt()}',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
-                            fontSize: 10,
-                          ),
-                        );
-                      },
-                    ),
+
+          if (_windSpeedSpots.isEmpty)
+            Expanded(
+              child: Center(
+                child: Text(
+                  localizations.translate('no_data_to_display'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 25,
-                      interval: 3,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < _timeLabels.length && _timeLabels[index].isNotEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              _timeLabels[index],
-                              style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
-                                fontSize: 10,
-                              ),
-                            ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: _windSpeedSpots.length * 30.0, // Динамическая ширина
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 2,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: AppConstants.textColor.withValues(alpha: 0.1),
+                            strokeWidth: 1,
                           );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _windSpeedSpots,
-                    isCurved: true,
-                    color: Colors.blue,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 3,
-                          color: Colors.blue,
-                          strokeWidth: 2,
-                          strokeColor: Colors.white,
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.blue.withValues(alpha: 0.3),
-                          Colors.blue.withValues(alpha: 0.1),
-                        ],
+                        },
                       ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 50,
+                            interval: 2,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '${value.toInt()} ${_weatherSettings.getWindSpeedUnitSymbol()}',
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 50,
+                            interval: 6, // Каждые 6 точек (18 часов)
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < _timeLabels.length && _timeLabels[index].isNotEmpty) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        _timeLabels[index],
+                                        style: TextStyle(
+                                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                      if (index < _dayLabels.length && _dayLabels[index].isNotEmpty)
+                                        Text(
+                                          _dayLabels[index],
+                                          style: TextStyle(
+                                            color: AppConstants.textColor.withValues(alpha: 0.5),
+                                            fontSize: 8,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: _windSpeedSpots,
+                          isCurved: true,
+                          color: Colors.blue,
+                          barWidth: 3,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(
+                                radius: 3,
+                                color: Colors.blue,
+                                strokeWidth: 2,
+                                strokeColor: Colors.white,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.blue.withValues(alpha: 0.3),
+                                Colors.blue.withValues(alpha: 0.1),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                          tooltipBorder: BorderSide(
+                            color: AppConstants.primaryColor.withValues(alpha: 0.5),
+                            width: 1,
+                          ),
+                          tooltipRoundedRadius: 8,
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots.map((spot) {
+                              final windSpeed = spot.y;
+                              return LineTooltipItem(
+                                '${windSpeed.toStringAsFixed(1)} ${_weatherSettings.getWindSpeedUnitSymbol()}',
+                                TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
+                      minY: 0,
+                      maxY: _windSpeedSpots.map((spot) => spot.y).reduce(math.max) + 2,
                     ),
                   ),
-                ],
-                minY: 0,
-                maxY: _windSpeedSpots.map((spot) => spot.y).reduce(math.max) + 5,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1118,7 +1201,7 @@ class CompassPainter extends CustomPainter {
       ..strokeWidth = 2;
 
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 20;
+    final radius = size.width / 2 - 30; // Увеличили отступ
 
     // Рисуем основные направления
     final directions = ['N', 'E', 'S', 'W'];
@@ -1142,18 +1225,18 @@ class CompassPainter extends CustomPainter {
         text: directions[i],
         style: TextStyle(
           color: textColor,
-          fontSize: 16 * animation,
+          fontSize: 18 * animation, // Увеличили размер шрифта
           fontWeight: FontWeight.bold,
         ),
       );
       final textPainter = TextPainter(
         text: textSpan,
-        textDirection: ui.TextDirection.ltr, // Исправлено: добавлен ui. префикс
+        textDirection: ui.TextDirection.ltr,
       );
       textPainter.layout();
 
-      final textX = center.dx + (radius + 15) * math.cos(angle - math.pi / 2) - textPainter.width / 2;
-      final textY = center.dy + (radius + 15) * math.sin(angle - math.pi / 2) - textPainter.height / 2;
+      final textX = center.dx + (radius + 20) * math.cos(angle - math.pi / 2) - textPainter.width / 2;
+      final textY = center.dy + (radius + 20) * math.sin(angle - math.pi / 2) - textPainter.height / 2;
 
       textPainter.paint(canvas, Offset(textX, textY));
     }
