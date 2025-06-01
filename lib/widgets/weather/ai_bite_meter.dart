@@ -35,7 +35,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   late Animation<double> _pulseAnimation;
   late Animation<double> _needleAnimation;
 
-  // Конфигурация типов рыбалки с иконками
+  // ОБНОВЛЕНО: Конфигурация типов рыбалки с реальными иконками
   static const Map<String, Map<String, String>> fishingTypes = {
     'carp_fishing': {
       'name': 'Карповая рыбалка',
@@ -453,11 +453,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Увеличенная иконка
+                        // ОБНОВЛЕНО: Увеличенная иконка из assets
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            typeInfo['icon']!,
+                            fishingTypes[type]!['icon']!,
                             width: 36,
                             height: 36,
                             fit: BoxFit.contain,

@@ -1405,17 +1405,32 @@ class AIBitePredictionService {
     return names[type] ?? type;
   }
 
+  // Вместо старого _getFishingTypeIcon() добавь эти два метода:
+
   String _getFishingTypeIcon(String type) {
     const icons = {
       'spinning': '🎯',
       'feeder': '🐟',
-      'carp_fishing': '🦎',
+      'carp_fishing': '🎣', // Заменили ящерицу на удочку
       'float_fishing': '🎣',
       'ice_fishing': '❄️',
       'fly_fishing': '🦋',
-      'trolling': '🚤',
+      'trolling': '⛵', // Заменили лодку на парусник
     };
     return icons[type] ?? '🎣';
+  }
+
+  String _getFishingTypeImagePath(String type) {
+    const imagePaths = {
+      'spinning': 'assets/images/fishing_types/spinning.png',
+      'feeder': 'assets/images/fishing_types/feeder.png',
+      'carp_fishing': 'assets/images/fishing_types/carp_fishing.png',
+      'float_fishing': 'assets/images/fishing_types/float_fishing.png',
+      'ice_fishing': 'assets/images/fishing_types/ice_fishing.png',
+      'fly_fishing': 'assets/images/fishing_types/fly_fishing.png',
+      'trolling': 'assets/images/fishing_types/trolling.png',
+    };
+    return imagePaths[type] ?? 'assets/images/fishing_types/spinning.png';
   }
 
   /// Очистка старого кэша

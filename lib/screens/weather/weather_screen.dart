@@ -808,9 +808,20 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       ),
       child: Row(
         children: [
-          Text(
-            ranking.icon,
-            style: const TextStyle(fontSize: 24),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/fishing_types/${ranking.fishingType}.png',
+              width: 24,
+              height: 24,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Text(
+                  ranking.icon,
+                  style: const TextStyle(fontSize: 24),
+                );
+              },
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
