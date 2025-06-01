@@ -237,14 +237,14 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           _pressureForecastSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
           allPressures.add(convertedPressure);
 
-          // Цвета: серый (прошлое), синий (настоящее), зеленый (будущее)
+          // Цвета: желтый (прошлое), зеленый (настоящее), синий (будущее)
           Color dotColor;
           if (hourTime.isBefore(now.subtract(const Duration(hours: 1)))) {
-            dotColor = Colors.grey; // Прошлое
+            dotColor = Colors.yellow; // История
           } else if (hourTime.difference(now).inHours.abs() <= 1) {
-            dotColor = AppConstants.primaryColor; // Сейчас
+            dotColor = Colors.green; // Текущие данные
           } else {
-            dotColor = Colors.green; // Будущее
+            dotColor = Colors.blue; // Прогноз
           }
           _dotColorsForecast.add(dotColor);
 
@@ -342,11 +342,11 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           // Цвета для fallback данных
           Color dotColor;
           if (hourTime.isBefore(now.subtract(const Duration(hours: 1)))) {
-            dotColor = Colors.grey;
+            dotColor = Colors.yellow; // История
           } else if (hourTime.difference(now).inHours.abs() <= 1) {
-            dotColor = AppConstants.primaryColor;
+            dotColor = Colors.green; // Текущие данные
           } else {
-            dotColor = Colors.green;
+            dotColor = Colors.blue; // Прогноз
           }
           _dotColorsForecast.add(dotColor);
 
@@ -854,7 +854,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 title,
                 style: TextStyle(
                   color: AppConstants.textColor,
-                  fontSize: 16,
+                  fontSize: 14, // Уменьшили с 16 до 14
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1046,9 +1046,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildLegendItem(Colors.grey, 'История'),
-                _buildLegendItem(AppConstants.primaryColor, 'Сейчас'),
-                _buildLegendItem(Colors.green, 'Прогноз'),
+                _buildLegendItem(Colors.yellow, 'История'),
+                _buildLegendItem(Colors.green, 'Сейчас'),
+                _buildLegendItem(Colors.blue, 'Прогноз'),
               ],
             ),
           ],
