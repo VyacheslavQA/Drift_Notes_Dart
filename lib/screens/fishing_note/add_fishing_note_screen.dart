@@ -15,6 +15,8 @@ import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
 import '../map/map_location_screen.dart';
 import 'bite_record_screen.dart';
+import '../../models/ai_bite_prediction_model.dart';
+import '../../services/ai_bite_prediction_service.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -38,6 +40,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   final _fishingNoteRepository = FishingNoteRepository();
   final _weatherService = WeatherService();
+  final _aiService = AIBitePredictionService();
 
   late DateTime _startDate;
   late DateTime _endDate;
@@ -53,6 +56,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
   FishingWeather? _weather;
   bool _isLoadingWeather = false;
+
+  // Новые переменные для ИИ-анализа
+  AIBitePrediction? _aiPrediction;
+  bool _isLoadingAI = false;
 
   final List<BiteRecord> _biteRecords = [];
   String _selectedFishingType = '';
@@ -218,11 +225,15 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         _latitude = result['latitude'];
         _longitude = result['longitude'];
         _hasLocation = true;
+        // Сбрасываем старые данные при смене локации
+        _weather = null;
+        _aiPrediction = null;
       });
     }
   }
 
-  Future<void> _fetchWeather() async {
+  // НОВЫЙ МЕТОД: Загрузка погоды и ИИ-анализа одновременно
+  Future<void> _fetchWeatherAndAI() async {
     final localizations = AppLocalizations.of(context);
 
     if (!_hasLocation) {
@@ -239,9 +250,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
     setState(() {
       _isLoadingWeather = true;
+      _isLoadingAI = true;
     });
 
     try {
+      debugPrint('🌤️ Загружаем погоду и ИИ-анализ...');
+
+      // Загружаем погоду
       final weatherData = await _weatherService.getWeatherForLocation(
         _latitude,
         _longitude,
@@ -251,18 +266,43 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       if (mounted) {
         setState(() {
           _weather = weatherData;
+          _isLoadingWeather = false;
         });
       }
+
+      // Загружаем ИИ-анализ для выбранного типа рыбалки
+      try {
+        final aiResult = await _aiService.getPredictionForFishingType(
+          fishingType: _selectedFishingType,
+          latitude: _latitude,
+          longitude: _longitude,
+          date: _startDate,
+        );
+
+        if (mounted) {
+          setState(() {
+            _aiPrediction = aiResult;
+            _isLoadingAI = false;
+          });
+          debugPrint('🧠 ИИ-анализ загружен: ${aiResult.overallScore} баллов');
+        }
+      } catch (aiError) {
+        debugPrint('❌ Ошибка ИИ-анализа: $aiError');
+        if (mounted) {
+          setState(() {
+            _isLoadingAI = false;
+          });
+        }
+      }
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${localizations.translate('error_loading')}: $e')),
         );
-      }
-    } finally {
-      if (mounted) {
         setState(() {
           _isLoadingWeather = false;
+          _isLoadingAI = false;
         });
       }
     }
@@ -327,6 +367,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         weather: _weather,
         biteRecords: _biteRecords,
         mapMarkers: [], // Пустой список маркеров
+        // TODO: Добавить поле aiPrediction в модель FishingNoteModel, если нужно сохранять ИИ-анализ
       );
 
       final isOnline = await NetworkUtils.isNetworkAvailable();
@@ -423,6 +464,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                       onTap: () {
                         setState(() {
                           _selectedFishingType = typeKey;
+                          // Сбрасываем ИИ-анализ при смене типа рыбалки
+                          _aiPrediction = null;
                         });
                         Navigator.pop(context);
                       },
@@ -525,6 +568,157 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         ),
       ),
     );
+  }
+
+  // НОВЫЙ МЕТОД: Построение карточки ИИ-анализа
+  Widget _buildAIAnalysisCard() {
+    final localizations = AppLocalizations.of(context);
+
+    if (_aiPrediction == null) return const SizedBox();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12332E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppConstants.primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.psychology,
+                  color: _getScoreColor(_aiPrediction!.overallScore),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
+                      style: TextStyle(
+                        color: _getScoreColor(_aiPrediction!.overallScore),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${localizations.translate('confidence')}: ${_aiPrediction!.confidencePercent}%',
+                  style: TextStyle(
+                    color: _getScoreColor(_aiPrediction!.overallScore),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${localizations.translate('ai_recommendation')}: ${_aiPrediction!.recommendation}',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          if (_aiPrediction!.tips.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              localizations.translate('ai_tips'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...(_aiPrediction!.tips.take(3).map((tip) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: TextStyle(
+                      color: AppConstants.primaryColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      tip,
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.9),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ))),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Получение цвета по скору
+  Color _getScoreColor(int score) {
+    if (score >= 80) return const Color(0xFF4CAF50); // Зеленый
+    if (score >= 60) return const Color(0xFF8BC34A); // Светло-зеленый
+    if (score >= 40) return const Color(0xFFFFC107); // Желтый
+    if (score >= 20) return const Color(0xFFFF9800); // Оранжевый
+    return const Color(0xFFF44336); // Красный
+  }
+
+  // Получение текста уровня активности
+  String _getActivityLevelText(ActivityLevel level, AppLocalizations localizations) {
+    switch (level) {
+      case ActivityLevel.excellent:
+        return localizations.translate('excellent_activity');
+      case ActivityLevel.good:
+        return localizations.translate('good_activity');
+      case ActivityLevel.moderate:
+        return localizations.translate('moderate_activity');
+      case ActivityLevel.poor:
+        return localizations.translate('poor_activity');
+      case ActivityLevel.veryPoor:
+        return localizations.translate('very_poor_activity');
+    }
   }
 
   @override
@@ -723,17 +917,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
                 const SizedBox(height: 20),
 
-                // Погода
-                _buildSectionHeader(localizations.translate('weather')),
+                // ОБНОВЛЕННАЯ СЕКЦИЯ: Погода + ИИ-анализ
+                _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
                 ElevatedButton.icon(
                   icon: Icon(
-                    Icons.cloud,
+                    Icons.psychology,
                     color: AppConstants.textColor,
                   ),
                   label: Text(
-                    _weather != null
-                        ? localizations.translate('update_weather_data')
-                        : localizations.translate('load_weather_data'),
+                    _weather != null || _aiPrediction != null
+                        ? localizations.translate('update_weather_and_ai')
+                        : localizations.translate('load_weather_ai'),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -746,15 +940,27 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: _isLoadingWeather ? null : _fetchWeather,
+                  onPressed: (_isLoadingWeather || _isLoadingAI) ? null : _fetchWeatherAndAI,
                 ),
 
-                if (_isLoadingWeather)
+                if (_isLoadingWeather || _isLoadingAI)
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _isLoadingAI ? localizations.translate('ai_analyzing') : localizations.translate('loading_weather'),
+                            style: TextStyle(
+                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -763,6 +969,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   const SizedBox(height: 12),
                   _buildWeatherCard(),
                 ],
+
+                // НОВОЕ: Отображение ИИ-анализа после погоды
+                if (_aiPrediction != null)
+                  _buildAIAnalysisCard(),
 
                 const SizedBox(height: 20),
 
