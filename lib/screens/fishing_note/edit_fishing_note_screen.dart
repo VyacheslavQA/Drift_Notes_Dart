@@ -149,10 +149,11 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
           break;
       }
 
+      // ИСПРАВЛЕНО: Используем правильный конструктор
       _aiPrediction = AIBitePrediction(
         overallScore: aiMap['overallScore'] as int? ?? 50,
         activityLevel: activityLevel,
-        confidencePercent: aiMap['confidencePercent'] as int? ?? 50,
+        confidence: (aiMap['confidencePercent'] as int? ?? 50) / 100.0, // Конвертируем в double
         recommendation: aiMap['recommendation'] as String? ?? '',
         tips: List<String>.from(aiMap['tips'] ?? []),
         fishingType: aiMap['fishingType'] as String? ?? _selectedFishingType,
@@ -1773,7 +1774,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
   }
 }
 
-// Внутренний класс для рисования графика поклевок
+// Внутренний класс для рисования графика поклевок (ИСПРАВЛЕН)
 class _BiteRecordsTimelinePainter extends CustomPainter {
   final List<BiteRecord> biteRecords;
   final int divisions;
@@ -1824,4 +1825,40 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         ..color = dotColor
         ..style = PaintingStyle.fill;
 
-    //
+      // Рисуем кружок для поклевки
+      canvas.drawCircle(
+        Offset(position, size.height / 2),
+        7,
+        dotPaint,
+      );
+
+      // Для пойманных рыб рисуем обводку, размер которой зависит от веса
+      if (isCaught) {
+        final weightPaint = Paint()
+          ..color = Colors.orange
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
+
+        // Максимальный вес для отображения (15 кг)
+        const maxWeight = 15.0;
+        // Минимальный и максимальный радиус
+        const minRadius = 8.0;
+        const maxRadius = 18.0;
+
+        final weight = record.weight.clamp(0.1, maxWeight);
+        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
+
+        canvas.drawCircle(
+          Offset(position, size.height / 2),
+          radius,
+          weightPaint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}

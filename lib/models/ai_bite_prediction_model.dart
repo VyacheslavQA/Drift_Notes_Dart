@@ -283,15 +283,15 @@ class AIBitePrediction {
     required this.activityLevel,
     required this.confidence,
     required this.recommendation,
-    required this.detailedAnalysis,
-    required this.factors,
-    required this.bestTimeWindows,
+    this.detailedAnalysis = '',
+    this.factors = const [],
+    this.bestTimeWindows = const [],
     required this.tips,
-    required this.generatedAt,
-    required this.dataSource,
-    required this.modelVersion,
+    DateTime? generatedAt,
+    this.dataSource = 'local_ai',
+    this.modelVersion = '1.0.0',
     this.fishingType = '', // ДОБАВЛЕНО
-  });
+  }) : generatedAt = generatedAt ?? DateTime.now();
 
   // ДОБАВЛЕНО: геттер для обратной совместимости
   int get confidencePercent => (confidence * 100).round();
@@ -394,12 +394,11 @@ class AIBitePrediction {
 
   /// Получить цветовую схему для скора
   Color get scoreColor {
-    return activityLevel.color;
-  }
-
-  /// Получить процент уверенности для отображения
-  int get confidencePercent2 {
-    return (confidence * 100).round();
+    if (overallScore >= 80) return const Color(0xFF4CAF50);
+    if (overallScore >= 60) return const Color(0xFF8BC34A);
+    if (overallScore >= 40) return const Color(0xFFFFC107);
+    if (overallScore >= 20) return const Color(0xFFFF9800);
+    return const Color(0xFFF44336);
   }
 }
 
@@ -725,23 +724,5 @@ class AIUserPreferences {
     newWeights[fishingType] = weight;
 
     return copyWith(typeWeights: newWeights);
-  }
-}
-
-// ДОБАВЛЕНО: расширение для ActivityLevel
-extension ActivityLevelExtension on ActivityLevel {
-  Color get color {
-    switch (this) {
-      case ActivityLevel.excellent:
-        return const Color(0xFF4CAF50);
-      case ActivityLevel.good:
-        return const Color(0xFF8BC34A);
-      case ActivityLevel.moderate:
-        return const Color(0xFFFFC107);
-      case ActivityLevel.poor:
-        return const Color(0xFFFF9800);
-      case ActivityLevel.veryPoor:
-        return const Color(0xFFF44336);
-    }
   }
 }
