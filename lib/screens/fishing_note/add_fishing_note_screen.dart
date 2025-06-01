@@ -17,6 +17,7 @@ import '../map/map_location_screen.dart';
 import 'bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
+import '../../services/weather_settings_service.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -41,6 +42,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   final _fishingNoteRepository = FishingNoteRepository();
   final _weatherService = WeatherService();
   final _aiService = AIBitePredictionService();
+  final _weatherSettings = WeatherSettingsService();
 
   late DateTime _startDate;
   late DateTime _endDate;
@@ -1283,7 +1285,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_weather!.temperature.toStringAsFixed(1)}°C, ${_weather!.weatherDescription}',
+                      '${_formatTemperature(_weather!.temperature)}, ${_weather!.weatherDescription}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 18,
@@ -1292,7 +1294,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${localizations.translate('feels_like')} ${_weather!.feelsLike.toStringAsFixed(1)}°C',
+                      '${localizations.translate('feels_like')} ${_formatTemperature(_weather!.feelsLike)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -1310,7 +1312,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               _buildWeatherInfoItem(
                 icon: Icons.air,
                 label: localizations.translate('wind'),
-                value: '${_weather!.windDirection}, ${_weather!.windSpeed} м/с',
+                value: '${_weather!.windDirection}, ${_formatWindSpeed(_weather!.windSpeed)}',
               ),
               _buildWeatherInfoItem(
                 icon: Icons.water_drop,
@@ -1320,7 +1322,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               _buildWeatherInfoItem(
                 icon: Icons.speed,
                 label: localizations.translate('pressure'),
-                value: '${(_weather!.pressure / 1.333).toInt()} мм',
+                value: _formatPressure(_weather!.pressure),
               ),
             ],
           ),
@@ -1381,6 +1383,53 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         ),
       ],
     );
+  }
+
+  // Метод для форматирования температуры согласно настройкам
+  String _formatTemperature(double celsius) {
+    final unit = _weatherSettings.temperatureUnit;
+    switch (unit) {
+      case TemperatureUnit.celsius:
+        return '${celsius.toStringAsFixed(1)}°C';
+      case TemperatureUnit.fahrenheit:
+        final fahrenheit = (celsius * 9 / 5) + 32;
+        return '${fahrenheit.toStringAsFixed(1)}°F';
+    }
+  }
+
+  // Метод для форматирования скорости ветра согласно настройкам
+  String _formatWindSpeed(double meterPerSecond) {
+    final unit = _weatherSettings.windSpeedUnit;
+    switch (unit) {
+      case WindSpeedUnit.ms:
+        return '${meterPerSecond.toStringAsFixed(1)} м/с';
+      case WindSpeedUnit.kmh:
+        final kmh = meterPerSecond * 3.6;
+        return '${kmh.toStringAsFixed(1)} км/ч';
+      case WindSpeedUnit.mph:
+        final mph = meterPerSecond * 2.237;
+        return '${mph.toStringAsFixed(1)} mph';
+    }
+  }
+
+  // Метод для форматирования давления согласно настройкам
+  String _formatPressure(double hpa) {
+    final unit = _weatherSettings.pressureUnit;
+    final calibration = _weatherSettings.barometerCalibration;
+
+    // Применяем калибровку (калибровка хранится в гПа)
+    final calibratedHpa = hpa + calibration;
+
+    switch (unit) {
+      case PressureUnit.hpa:
+        return '${calibratedHpa.toStringAsFixed(0)} гПа';
+      case PressureUnit.mmhg:
+        final mmhg = calibratedHpa / 1.333;
+        return '${mmhg.toStringAsFixed(0)} мм рт.ст.';
+      case PressureUnit.inhg:
+        final inhg = calibratedHpa / 33.8639;
+        return '${inhg.toStringAsFixed(2)} inHg';
+    }
   }
 
   Widget _buildBiteRecordsSection() {
