@@ -1124,7 +1124,35 @@
   "pressure_stable_period": "Период стабильного давления",
   "rapid_change_warning": "Быстрое изменение давления",
   "optimal_pressure_zone": "Оптимальная зона давления",
-  "hours": "часов"
+  "hours": "часов",
+
+  "weather_api_key_not_configured": "WeatherAPI ключ не настроен. Замените \"тут мой ключ\" на реальный ключ в config/api_keys.dart",
+  "weather_api_invalid_key": "Неверный API ключ WeatherAPI. Проверьте ключ в config/api_keys.dart",
+  "weather_api_access_denied": "Доступ к WeatherAPI запрещен. Проверьте ваш план подписки",
+  "weather_api_key_not_set": "WeatherAPI ключ не настроен",
+  "current_weather_request": "Запрос текущей погоды для координат",
+  "forecast_request": "Запрос прогноза погоды на",
+  "days_for_coordinates": "дней для координат",
+  "weather_api_response": "Ответ Weather API",
+  "weather_received_successfully": "Погода успешно получена",
+  "forecast_received_successfully": "Прогноз погоды успешно получен",
+  "days_received": "дней",
+  "getting_extended_pressure_data": "Получение расширенных данных о давлении...",
+  "extended_data_received": "Расширенные данные получены",
+  "feels_like_short": "ощущается как",
+  "wind_short": "Ветер",
+  "humidity_short": "Влажность",
+  "pressure_short": "Давление",
+  "cloudiness_short": "Облачность",
+  "data_unavailable": "Данные недоступны",
+  "weather_api_key_not_configured_debug": "WeatherAPI ключ не настроен в config/api_keys.dart",
+  "current_key": "Текущий ключ",
+  "weather_api_error": "Ошибка Weather API",
+  "error_body": "Тело ошибки",
+  "error_getting_current_weather": "Ошибка получения текущей погоды",
+  "error_getting_forecast": "Ошибка получения прогноза погоды",
+  "error_getting_extended_data": "Ошибка получения расширенных данных",
+  "error_converting_weather_data": "Ошибка конвертации погодных данных"
 
 }
 

@@ -5,30 +5,60 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../models/weather_api_model.dart';
 import '../../models/fishing_note_model.dart';
+import '../../config/api_keys.dart';
+import '../../localization/app_localizations.dart';
 
 class WeatherApiService {
   static const String _baseUrl = 'https://api.weatherapi.com/v1';
-  static const String _apiKey = 'your_api_key_here'; // Замените на реальный ключ
+
+  // Используем API ключ из конфигурационного файла
+  static String get _apiKey => ApiKeys.weatherApiKey;
+
+  /// Проверка валидности API ключа
+  bool get hasValidApiKey => ApiKeys.hasWeatherKey;
 
   /// Получение текущей погоды
   Future<WeatherApiResponse> getCurrentWeather({
     required double latitude,
     required double longitude,
+    BuildContext? context,
   }) async {
+    if (!hasValidApiKey) {
+      debugPrint('❌ ${_getDebugText(context, 'weather_api_key_not_configured_debug')}');
+      debugPrint('📝 ${_getDebugText(context, 'current_key')}: ${ApiKeys.getMaskedKey(_apiKey)}');
+      throw Exception(_getErrorText(context, 'weather_api_key_not_configured'));
+    }
+
     try {
+      final url = '$_baseUrl/current.json?key=$_apiKey&q=$latitude,$longitude&aqi=no';
+      debugPrint('🌤️ ${_getDebugText(context, 'current_weather_request')}: $latitude, $longitude');
+
       final response = await http.get(
-        Uri.parse('$_baseUrl/current.json?key=$_apiKey&q=$latitude,$longitude&aqi=no'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-      );
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint('🌤️ ${_getDebugText(context, 'weather_api_response')}: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('✅ ${_getDebugText(context, 'weather_received_successfully')}: ${data['location']['name']}');
         return WeatherApiResponse.fromJson(data);
       } else {
-        throw Exception('Weather API error: ${response.statusCode}');
+        final errorBody = response.body;
+        debugPrint('❌ ${_getDebugText(context, 'weather_api_error')}: ${response.statusCode}');
+        debugPrint('❌ ${_getDebugText(context, 'error_body')}: $errorBody');
+
+        if (response.statusCode == 401) {
+          throw Exception(_getErrorText(context, 'weather_api_invalid_key'));
+        } else if (response.statusCode == 403) {
+          throw Exception(_getErrorText(context, 'weather_api_access_denied'));
+        } else {
+          throw Exception('Weather API error: ${response.statusCode} - $errorBody');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка получения текущей погоды: $e');
+      debugPrint('❌ ${_getDebugText(context, 'error_getting_current_weather')}: $e');
       rethrow;
     }
   }
@@ -38,21 +68,47 @@ class WeatherApiService {
     required double latitude,
     required double longitude,
     required int days,
+    BuildContext? context,
   }) async {
+    if (!hasValidApiKey) {
+      debugPrint('❌ ${_getDebugText(context, 'weather_api_key_not_configured_debug')}');
+      debugPrint('📝 ${_getDebugText(context, 'current_key')}: ${ApiKeys.getMaskedKey(_apiKey)}');
+      throw Exception(_getErrorText(context, 'weather_api_key_not_configured'));
+    }
+
     try {
+      // Ограничиваем количество дней для бесплатного плана
+      final limitedDays = days > 10 ? 10 : days;
+
+      final url = '$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=$limitedDays&aqi=no&alerts=no';
+      debugPrint('🌤️ ${_getDebugText(context, 'forecast_request')} $limitedDays ${_getDebugText(context, 'days_for_coordinates')}: $latitude, $longitude');
+
       final response = await http.get(
-        Uri.parse('$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=$days&aqi=no&alerts=no'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-      );
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('🌤️ ${_getDebugText(context, 'weather_api_response')}: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('✅ ${_getDebugText(context, 'forecast_received_successfully')}: ${data['forecast']['forecastday'].length} ${_getDebugText(context, 'days_received')}');
         return WeatherApiResponse.fromJson(data);
       } else {
-        throw Exception('Weather API error: ${response.statusCode}');
+        final errorBody = response.body;
+        debugPrint('❌ ${_getDebugText(context, 'weather_api_error')}: ${response.statusCode}');
+        debugPrint('❌ ${_getDebugText(context, 'error_body')}: $errorBody');
+
+        if (response.statusCode == 401) {
+          throw Exception(_getErrorText(context, 'weather_api_invalid_key'));
+        } else if (response.statusCode == 403) {
+          throw Exception(_getErrorText(context, 'weather_api_access_denied'));
+        } else {
+          throw Exception('Weather API error: ${response.statusCode} - $errorBody');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка получения прогноза погоды: $e');
+      debugPrint('❌ ${_getDebugText(context, 'error_getting_forecast')}: $e');
       rethrow;
     }
   }
@@ -61,51 +117,35 @@ class WeatherApiService {
   Future<Map<String, dynamic>> getExtendedPressureData({
     required double latitude,
     required double longitude,
+    BuildContext? context,
   }) async {
+    if (!hasValidApiKey) {
+      throw Exception(_getErrorText(context, 'weather_api_key_not_set'));
+    }
+
     try {
-      List<WeatherApiResponse> allData = [];
+      debugPrint('🔄 ${_getDebugText(context, 'getting_extended_pressure_data')}');
 
-      // Получаем данные за последние 3 дня + прогноз на 7 дней
-      for (int i = -3; i <= 7; i++) {
-        final date = DateTime.now().add(Duration(days: i));
-        final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      // Получаем расширенный прогноз на 7 дней
+      final forecast = await getForecast(
+        latitude: latitude,
+        longitude: longitude,
+        days: 7,
+        context: context,
+      );
 
-        try {
-          late http.Response response;
+      List<WeatherApiResponse> allData = [forecast];
 
-          if (i <= 0) {
-            // Исторические данные
-            response = await http.get(
-              Uri.parse('$_baseUrl/history.json?key=$_apiKey&q=$latitude,$longitude&dt=$dateStr'),
-              headers: {'Content-Type': 'application/json'},
-            );
-          } else {
-            // Прогнозные данные
-            response = await http.get(
-              Uri.parse('$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=1&dt=$dateStr'),
-              headers: {'Content-Type': 'application/json'},
-            );
-          }
-
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
-            allData.add(WeatherApiResponse.fromJson(data));
-          }
-        } catch (e) {
-          debugPrint('⚠️ Ошибка получения данных за $dateStr: $e');
-          // Продолжаем с доступными данными
-        }
-      }
-
+      debugPrint('✅ ${_getDebugText(context, 'extended_data_received')}: ${forecast.forecast.length} ${_getDebugText(context, 'days_received')}');
       return {'allData': allData};
     } catch (e) {
-      debugPrint('❌ Ошибка получения расширенных данных: $e');
+      debugPrint('❌ ${_getDebugText(context, 'error_getting_extended_data')}: $e');
       rethrow;
     }
   }
 
   /// Конвертация в модель FishingWeather для совместимости
-  static FishingWeather convertToFishingWeather(WeatherApiResponse weatherData) {
+  static FishingWeather convertToFishingWeather(WeatherApiResponse weatherData, [BuildContext? context]) {
     try {
       final current = weatherData.current;
       final astro = weatherData.forecast.isNotEmpty
@@ -119,7 +159,7 @@ class WeatherApiService {
         pressure: current.pressureMb,
         windSpeed: current.windKph,
         windDirection: _translateWindDirection(current.windDir),
-        weatherDescription: _generateDescription(current),
+        weatherDescription: _generateDescription(current, context),
         cloudCover: current.cloud,
         moonPhase: astro?.moonPhase ?? 'Unknown',
         observationTime: DateTime.now(),
@@ -128,7 +168,7 @@ class WeatherApiService {
         isDay: current.isDay == 1,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка конвертации погодных данных: $e');
+      debugPrint('❌ ${_getDebugText(context, 'error_converting_weather_data')}: $e');
       // Возвращаем данные по умолчанию
       return FishingWeather(
         temperature: 15.0,
@@ -137,7 +177,7 @@ class WeatherApiService {
         pressure: 1013.0,
         windSpeed: 5.0,
         windDirection: 'С',
-        weatherDescription: 'Данные недоступны',
+        weatherDescription: _getErrorText(context, 'data_unavailable'),
         cloudCover: 50,
         moonPhase: 'Unknown',
         observationTime: DateTime.now(),
@@ -151,37 +191,86 @@ class WeatherApiService {
   /// Перевод направления ветра
   static String _translateWindDirection(String direction) {
     const Map<String, String> directions = {
-      'N': 'С',
-      'NNE': 'ССВ',
-      'NE': 'СВ',
-      'ENE': 'ВСВ',
-      'E': 'В',
-      'ESE': 'ВЮВ',
-      'SE': 'ЮВ',
-      'SSE': 'ЮЮВ',
-      'S': 'Ю',
-      'SSW': 'ЮЮЗ',
-      'SW': 'ЮЗ',
-      'WSW': 'ЗЮЗ',
-      'W': 'З',
-      'WNW': 'ЗСЗ',
-      'NW': 'СЗ',
-      'NNW': 'ССЗ',
+      'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
+      'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
+      'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
+      'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
     };
     return directions[direction] ?? direction;
   }
 
-  /// Генерация описания погоды
-  static String _generateDescription(Current current) {
+  /// Генерация описания погоды с локализацией
+  static String _generateDescription(Current current, [BuildContext? context]) {
     final temp = current.tempC.round();
     final feelsLike = current.feelslikeC.round();
     final wind = (current.windKph / 3.6).round();
     final humidity = current.humidity;
     final pressure = (current.pressureMb / 1.333).round();
 
-    return '${current.condition.text}, $temp°C, ощущается как $feelsLike°C\n'
-        'Ветер: ${_translateWindDirection(current.windDir)}, $wind м/с\n'
-        'Влажность: $humidity%, Давление: $pressure мм рт.ст.\n'
-        'Облачность: ${current.cloud}%';
+    if (context != null) {
+      final localizations = AppLocalizations.of(context);
+      return '${current.condition.text}, $temp°C, ${localizations.translate('feels_like_short')} $feelsLike°C\n'
+          '${localizations.translate('wind_short')}: ${_translateWindDirection(current.windDir)}, $wind м/с\n'
+          '${localizations.translate('humidity_short')}: $humidity%, ${localizations.translate('pressure_short')}: $pressure мм рт.ст.\n'
+          '${localizations.translate('cloudiness_short')}: ${current.cloud}%';
+    } else {
+      // Fallback для случаев без контекста
+      return '${current.condition.text}, $temp°C, ощущается как $feelsLike°C\n'
+          'Ветер: ${_translateWindDirection(current.windDir)}, $wind м/с\n'
+          'Влажность: $humidity%, Давление: $pressure мм рт.ст.\n'
+          'Облачность: ${current.cloud}%';
+    }
+  }
+
+  /// Получение локализованного текста для ошибок
+  static String _getErrorText(BuildContext? context, String key) {
+    if (context != null) {
+      return AppLocalizations.of(context).translate(key);
+    }
+    // Fallback на русский для случаев без контекста
+    return _getRussianFallback(key);
+  }
+
+  /// Получение локализованного текста для debug сообщений
+  static String _getDebugText(BuildContext? context, String key) {
+    if (context != null) {
+      return AppLocalizations.of(context).translate(key);
+    }
+    // Fallback на русский для случаев без контекста
+    return _getRussianFallback(key);
+  }
+
+  /// Fallback переводы на русский язык
+  static String _getRussianFallback(String key) {
+    const Map<String, String> fallbacks = {
+      'weather_api_key_not_configured': 'WeatherAPI ключ не настроен. Замените "тут мой ключ" на реальный ключ в config/api_keys.dart',
+      'weather_api_invalid_key': 'Неверный API ключ WeatherAPI. Проверьте ключ в config/api_keys.dart',
+      'weather_api_access_denied': 'Доступ к WeatherAPI запрещен. Проверьте ваш план подписки',
+      'weather_api_key_not_set': 'WeatherAPI ключ не настроен',
+      'current_weather_request': 'Запрос текущей погоды для координат',
+      'forecast_request': 'Запрос прогноза погоды на',
+      'days_for_coordinates': 'дней для координат',
+      'weather_api_response': 'Ответ Weather API',
+      'weather_received_successfully': 'Погода успешно получена',
+      'forecast_received_successfully': 'Прогноз погоды успешно получен',
+      'days_received': 'дней',
+      'getting_extended_pressure_data': 'Получение расширенных данных о давлении...',
+      'extended_data_received': 'Расширенные данные получены',
+      'feels_like_short': 'ощущается как',
+      'wind_short': 'Ветер',
+      'humidity_short': 'Влажность',
+      'pressure_short': 'Давление',
+      'cloudiness_short': 'Облачность',
+      'data_unavailable': 'Данные недоступны',
+      'weather_api_key_not_configured_debug': 'WeatherAPI ключ не настроен в config/api_keys.dart',
+      'current_key': 'Текущий ключ',
+      'weather_api_error': 'Ошибка Weather API',
+      'error_body': 'Тело ошибки',
+      'error_getting_current_weather': 'Ошибка получения текущей погоды',
+      'error_getting_forecast': 'Ошибка получения прогноза погоды',
+      'error_getting_extended_data': 'Ошибка получения расширенных данных',
+      'error_converting_weather_data': 'Ошибка конвертации погодных данных',
+    };
+    return fallbacks[key] ?? key;
   }
 }
