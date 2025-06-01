@@ -50,11 +50,6 @@ class ShopDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Категории товаров
-            _buildCategoriesCard(localizations),
-
-            const SizedBox(height: 16),
-
             // Услуги (если есть)
             if (shop.services.isNotEmpty)
               _buildServicesCard(localizations),
@@ -146,27 +141,7 @@ class ShopDetailScreen extends StatelessWidget {
 
                     const SizedBox(height: 8),
 
-                    // Специализация
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        localizations.translate(shop.specialization.localizationKey),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 8),
 
                     // Статус
                     if (shop.status != ShopStatus.regular)
@@ -308,71 +283,12 @@ class ShopDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            localizations.translate(shop.description), // Теперь переводится
+            localizations.translate(shop.description), // вместо shop.description
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 16,
               height: 1.4,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoriesCard(AppLocalizations localizations) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.category, color: AppConstants.primaryColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                localizations.translate('product_categories'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: shop.categories.map((categoryKey) =>
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    localizations.translate(categoryKey), // Переводим категории
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-            ).toList(),
           ),
         ],
       ),
@@ -463,15 +379,16 @@ class ShopDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Веб-сайт
-          _buildContactItem(
-            icon: Icons.language,
-            label: localizations.translate('website'),
-            value: shop.website,
-            onTap: () => _launchWebsite(shop.website),
-          ),
+          // Адрес
+          if (shop.address != null)
+            _buildContactItem(
+              icon: Icons.location_on,
+              label: localizations.translate('address'),
+              value: shop.address!,
+              onTap: null,
+            ),
 
-          // Телефон (если есть)
+          // Телефоны
           if (shop.phone != null)
             _buildContactItem(
               icon: Icons.phone,
@@ -480,7 +397,24 @@ class ShopDetailScreen extends StatelessWidget {
               onTap: () => _launchPhone(shop.phone!),
             ),
 
-          // Email (если есть)
+          // Дополнительный телефон
+          _buildContactItem(
+            icon: Icons.phone,
+            label: localizations.translate('phone'),
+            value: '+7(705)111-18-88',
+            onTap: () => _launchPhone('+7(705)111-18-88'),
+          ),
+
+          // Время работы
+          if (shop.workingHours != null && shop.workingHours!.isNotEmpty)
+            _buildContactItem(
+              icon: Icons.access_time,
+              label: 'Время работы',
+              value: shop.workingHours!['monday'] ?? 'Пн-Вс 10.00 - 20.00',
+              onTap: null,
+            ),
+
+          // Email
           if (shop.email != null)
             _buildContactItem(
               icon: Icons.email,
@@ -489,14 +423,13 @@ class ShopDetailScreen extends StatelessWidget {
               onTap: () => _launchEmail(shop.email!),
             ),
 
-          // Адрес (если есть)
-          if (shop.address != null)
-            _buildContactItem(
-              icon: Icons.location_on,
-              label: localizations.translate('address'),
-              value: shop.address!,
-              onTap: null,
-            ),
+          // Веб-сайт
+          _buildContactItem(
+            icon: Icons.language,
+            label: localizations.translate('website'),
+            value: shop.website,
+            onTap: () => _launchWebsite(shop.website),
+          ),
         ],
       ),
     );
@@ -591,24 +524,23 @@ class ShopDetailScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Кнопка звонка (если есть телефон)
-          if (shop.phone != null)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _launchPhone(shop.phone!),
-                icon: const Icon(Icons.phone),
-                label: Text(localizations.translate('call_shop')),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppConstants.textColor,
-                  side: BorderSide(color: AppConstants.textColor),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+          // Кнопка звонка
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _launchPhone(shop.phone!),
+              icon: const Icon(Icons.phone),
+              label: Text(localizations.translate('call_shop')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppConstants.textColor,
+                side: BorderSide(color: AppConstants.textColor),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

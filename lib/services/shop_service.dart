@@ -15,20 +15,24 @@ class ShopService {
       ShopModel(
         id: 'mastercarp_1',
         name: 'MasterCarp',
-        description: 'specialized_store', // Ключ локализации
+        description: 'mastercarp_description', // вместо полного текста
         website: 'https://master-carp.kz',
         logoUrl: 'assets/shops/mastercarp_logo.png',
-        categories: [
-          'carp_rods',
-          'carp_reels',
-          'baits_and_boilies',
-          'bite_alarms',
-          'rod_pods',
-          'carp_accessories',
-          'keepnets_and_sacks',
-          'rigs_and_tackle',
-        ],
+        categories: [], // Убираем категории
         specialization: ShopSpecialization.carpFishing,
+        phone: '+7(777)162-10-01',
+        email: 'info@master-carp.kz',
+        address: 'г. Алматы, ул.Сатпаева 145а/2, заезд с Абая, территория "Car Service" 2 этаж',
+        city: 'Алматы',
+        workingHours: {
+          'monday': 'Пн-Вс 10.00 - 20.00',
+          'tuesday': 'Пн-Вс 10.00 - 20.00',
+          'wednesday': 'Пн-Вс 10.00 - 20.00',
+          'thursday': 'Пн-Вс 10.00 - 20.00',
+          'friday': 'Пн-Вс 10.00 - 20.00',
+          'saturday': 'Пн-Вс 10.00 - 20.00',
+          'sunday': 'Пн-Вс 10.00 - 20.00',
+        },
         services: [
           'consultation_on_tackle',
           'kit_selection',
@@ -37,10 +41,6 @@ class ShopService {
         hasDelivery: true,
         hasOnlineStore: true,
         status: ShopStatus.recommended,
-        // Контактные данные можно добавить позже
-        // phone: '+7 (XXX) XXX-XX-XX',
-        // email: 'info@master-carp.kz',
-        // city: 'Алматы',
       ),
 
       // Можно добавить еще магазины в будущем
@@ -68,13 +68,14 @@ class ShopService {
     }
   }
 
-  // Поиск магазинов по названию (теперь поиск только по имени, так как описание - ключ локализации)
+  // Поиск магазинов по названию
   List<ShopModel> searchShops(String query) {
     if (query.isEmpty) return getAllShops();
 
     final lowercaseQuery = query.toLowerCase();
     return getAllShops().where((shop) =>
-        shop.name.toLowerCase().contains(lowercaseQuery)
+    shop.name.toLowerCase().contains(lowercaseQuery) ||
+        shop.description.toLowerCase().contains(lowercaseQuery)
     ).toList();
   }
 

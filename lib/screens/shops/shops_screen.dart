@@ -21,7 +21,6 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
   List<ShopModel> _allShops = [];
   List<ShopModel> _filteredShops = [];
   String _searchQuery = '';
-  ShopSpecialization? _selectedSpecialization;
 
   @override
   void initState() {
@@ -42,7 +41,14 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
     });
   }
 
-  void _applyFilters() {
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _applySearch();
+  }
+
+  void _applySearch() {
     List<ShopModel> filtered = _allShops;
 
     // Применяем поиск
@@ -52,30 +58,9 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
       filtered = _allShops;
     }
 
-    // Применяем фильтр по специализации
-    if (_selectedSpecialization != null) {
-      filtered = filtered.where((shop) =>
-      shop.specialization == _selectedSpecialization
-      ).toList();
-    }
-
     setState(() {
       _filteredShops = filtered;
     });
-  }
-
-  void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query;
-    });
-    _applyFilters();
-  }
-
-  void _onSpecializationFilterChanged(ShopSpecialization? specialization) {
-    setState(() {
-      _selectedSpecialization = specialization;
-    });
-    _applyFilters();
   }
 
   @override
@@ -147,154 +132,12 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
             ),
           ),
 
-          // Фильтры по специализации
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                // Все магазины
-                _buildFilterChip(
-                  label: localizations.translate('all_shops'),
-                  isSelected: _selectedSpecialization == null,
-                  onTap: () => _onSpecializationFilterChanged(null),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Фильтры по специализациям
-                ...ShopSpecialization.values.map((spec) =>
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _buildFilterChip(
-                        label: localizations.translate(spec.localizationKey),
-                        icon: spec.icon,
-                        isSelected: _selectedSpecialization == spec,
-                        onTap: () => _onSpecializationFilterChanged(spec),
-                      ),
-                    ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Статистика
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppConstants.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  localizations.translate('total_shops'),
-                  _allShops.length.toString(),
-                  Icons.store,
-                ),
-                _buildStatItem(
-                  localizations.translate('with_delivery'),
-                  _shopService.getShopsWithDelivery().length.toString(),
-                  Icons.local_shipping,
-                ),
-                _buildStatItem(
-                  localizations.translate('online_stores'),
-                  _shopService.getOnlineShops().length.toString(),
-                  Icons.shopping_cart,
-                ),
-                _buildStatItem(
-                  localizations.translate('recommended'),
-                  _shopService.getRecommendedShops().length.toString(),
-                  Icons.star,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
           // Список магазинов
           Expanded(
             child: _buildShopsList(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFilterChip({
-    required String label,
-    String? icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor
-              : AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppConstants.primaryColor
-                : AppConstants.textColor.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Text(icon, style: const TextStyle(fontSize: 16)),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: AppConstants.primaryColor, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 10,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 
@@ -449,27 +292,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
 
                       const SizedBox(height: 8),
 
-                      // Специализация
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          localizations.translate(shop.specialization.localizationKey),
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
 
-                      const SizedBox(height: 8),
 
                       // Описание (теперь переводится)
                       Text(
