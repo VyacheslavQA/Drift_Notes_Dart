@@ -77,8 +77,8 @@ class WeatherApiService {
     }
 
     try {
-      // Ограничиваем количество дней для бесплатного плана
-      final limitedDays = days > 10 ? 10 : days;
+      // Ограничиваем количество дней для платного плана (до 14 дней)
+      final limitedDays = days > 14 ? 14 : days;
 
       final url = '$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=$limitedDays&aqi=no&alerts=no';
       debugPrint('🌤️ ${_getDebugText(context, 'forecast_request')} $limitedDays ${_getDebugText(context, 'days_for_coordinates')}: $latitude, $longitude');
@@ -113,7 +113,56 @@ class WeatherApiService {
     }
   }
 
-  /// Получение расширенных данных о давлении
+  /// Получение исторических данных о погоде
+  Future<WeatherApiResponse> getHistoricalWeather({
+    required double latitude,
+    required double longitude,
+    required DateTime date,
+    BuildContext? context,
+  }) async {
+    if (!hasValidApiKey) {
+      debugPrint('❌ ${_getDebugText(context, 'weather_api_key_not_configured_debug')}');
+      throw Exception(_getErrorText(context, 'weather_api_key_not_configured'));
+    }
+
+    try {
+      // Форматируем дату в формате YYYY-MM-DD
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      final url = '$_baseUrl/history.json?key=$_apiKey&q=$latitude,$longitude&dt=$dateString';
+      debugPrint('📅 Запрос исторических данных за $dateString для координат: $latitude, $longitude');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('📅 История погоды ответ: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        debugPrint('✅ Исторические данные получены за $dateString');
+        return WeatherApiResponse.fromJson(data);
+      } else {
+        final errorBody = response.body;
+        debugPrint('❌ Ошибка получения истории: ${response.statusCode}');
+        debugPrint('❌ Тело ошибки: $errorBody');
+
+        if (response.statusCode == 401) {
+          throw Exception(_getErrorText(context, 'weather_api_invalid_key'));
+        } else if (response.statusCode == 403) {
+          throw Exception(_getErrorText(context, 'weather_api_access_denied'));
+        } else {
+          throw Exception('Weather API History error: ${response.statusCode} - $errorBody');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения исторических данных: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение расширенных данных о давлении (история + прогноз)
   Future<Map<String, dynamic>> getExtendedPressureData({
     required double latitude,
     required double longitude,
@@ -126,18 +175,51 @@ class WeatherApiService {
     try {
       debugPrint('🔄 ${_getDebugText(context, 'getting_extended_pressure_data')}');
 
-      // Получаем расширенный прогноз на 7 дней
-      final forecast = await getForecast(
-        latitude: latitude,
-        longitude: longitude,
-        days: 7,
-        context: context,
-      );
+      List<WeatherApiResponse> allData = [];
+      final now = DateTime.now();
 
-      List<WeatherApiResponse> allData = [forecast];
+      // Получаем исторические данные за последние 7 дней
+      debugPrint('📅 Загрузка исторических данных за 7 дней...');
+      for (int i = 7; i >= 1; i--) {
+        try {
+          final historyDate = now.subtract(Duration(days: i));
+          final historicalData = await getHistoricalWeather(
+            latitude: latitude,
+            longitude: longitude,
+            date: historyDate,
+            context: context,
+          );
+          allData.add(historicalData);
 
-      debugPrint('✅ ${_getDebugText(context, 'extended_data_received')}: ${forecast.forecast.length} ${_getDebugText(context, 'days_received')}');
-      return {'allData': allData};
+          // Небольшая задержка между запросами, чтобы не превышать лимиты API
+          await Future.delayed(const Duration(milliseconds: 200));
+        } catch (e) {
+          debugPrint('⚠️ Не удалось получить данные за день -$i: $e');
+          // Продолжаем даже если один из дней не загрузился
+        }
+      }
+
+      // Получаем прогноз на 7 дней вперед
+      debugPrint('🔮 Загрузка прогноза на 7 дней...');
+      try {
+        final forecast = await getForecast(
+          latitude: latitude,
+          longitude: longitude,
+          days: 7,
+          context: context,
+        );
+        allData.add(forecast);
+      } catch (e) {
+        debugPrint('⚠️ Не удалось получить прогноз: $e');
+      }
+
+      debugPrint('✅ ${_getDebugText(context, 'extended_data_received')}: ${allData.length} источников данных');
+
+      return {
+        'allData': allData,
+        'historicalDays': allData.length - 1, // Количество исторических дней
+        'hasForecast': allData.isNotEmpty,
+      };
     } catch (e) {
       debugPrint('❌ ${_getDebugText(context, 'error_getting_extended_data')}: $e');
       rethrow;
