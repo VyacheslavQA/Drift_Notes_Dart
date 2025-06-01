@@ -13,7 +13,7 @@ import '../../localization/app_localizations.dart';
 import 'photo_gallery_screen.dart';
 import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
-import 'edit_fishing_note_screen.dart';
+import '../../screens/fishing_note/edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
 
