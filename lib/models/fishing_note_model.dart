@@ -21,7 +21,7 @@ class FishingNoteModel {
   final String coverPhotoUrl;
   final Map<String, dynamic>? coverCropSettings;
   final String title;
-
+  final Map<String, dynamic>? aiPrediction; // ДОБАВЛЕНО поле для ИИ-анализа
 
   FishingNoteModel({
     required this.id,
@@ -44,7 +44,7 @@ class FishingNoteModel {
     this.coverPhotoUrl = '',
     this.coverCropSettings,
     this.title = '',
-
+    this.aiPrediction, // ДОБАВЛЕНО в конструктор
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -83,6 +83,7 @@ class FishingNoteModel {
       coverPhotoUrl: json['coverPhotoUrl'] ?? '',
       coverCropSettings: json['coverCropSettings'],
       title: json['title'] ?? '',
+      aiPrediction: json['aiPrediction'], // ДОБАВЛЕНО в fromJson
     );
   }
 
@@ -107,6 +108,7 @@ class FishingNoteModel {
       'coverPhotoUrl': coverPhotoUrl,
       'coverCropSettings': coverCropSettings,
       'title': title,
+      'aiPrediction': aiPrediction, // ДОБАВЛЕНО в toJson
     };
   }
 
@@ -131,6 +133,7 @@ class FishingNoteModel {
     String? coverPhotoUrl,
     Map<String, dynamic>? coverCropSettings,
     String? title,
+    Map<String, dynamic>? aiPrediction, // ДОБАВЛЕНО в copyWith
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
@@ -153,6 +156,7 @@ class FishingNoteModel {
       coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl,
       coverCropSettings: coverCropSettings ?? this.coverCropSettings,
       title: title ?? this.title,
+      aiPrediction: aiPrediction ?? this.aiPrediction, // ДОБАВЛЕНО в copyWith
     );
   }
 

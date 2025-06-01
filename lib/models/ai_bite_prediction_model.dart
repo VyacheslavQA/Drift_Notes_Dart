@@ -261,7 +261,7 @@ class WeatherSummary {
   }
 }
 
-/// Оригинальная модель прогноза (без изменений, но с небольшими дополнениями)
+/// Оригинальная модель прогноза (ИСПРАВЛЕНА)
 class AIBitePrediction {
   final int overallScore; // 0-100
   final ActivityLevel activityLevel;
@@ -275,6 +275,9 @@ class AIBitePrediction {
   final String dataSource; // 'local_ai', 'cloud_ai', 'hybrid'
   final String modelVersion;
 
+  // ДОБАВЛЕНО: поля для обратной совместимости
+  final String fishingType;
+
   AIBitePrediction({
     required this.overallScore,
     required this.activityLevel,
@@ -287,7 +290,11 @@ class AIBitePrediction {
     required this.generatedAt,
     required this.dataSource,
     required this.modelVersion,
+    this.fishingType = '', // ДОБАВЛЕНО
   });
+
+  // ДОБАВЛЕНО: геттер для обратной совместимости
+  int get confidencePercent => (confidence * 100).round();
 
   factory AIBitePrediction.fromJson(Map<String, dynamic> json) {
     return AIBitePrediction(
@@ -309,6 +316,7 @@ class AIBitePrediction {
       generatedAt: DateTime.parse(json['generatedAt'] ?? DateTime.now().toIso8601String()),
       dataSource: json['dataSource'] ?? 'unknown',
       modelVersion: json['modelVersion'] ?? '1.0.0',
+      fishingType: json['fishingType'] ?? '', // ДОБАВЛЕНО
     );
   }
 
@@ -325,6 +333,7 @@ class AIBitePrediction {
       'generatedAt': generatedAt.toIso8601String(),
       'dataSource': dataSource,
       'modelVersion': modelVersion,
+      'fishingType': fishingType, // ДОБАВЛЕНО
     };
   }
 
@@ -389,7 +398,7 @@ class AIBitePrediction {
   }
 
   /// Получить процент уверенности для отображения
-  int get confidencePercent {
+  int get confidencePercent2 {
     return (confidence * 100).round();
   }
 }
@@ -716,5 +725,23 @@ class AIUserPreferences {
     newWeights[fishingType] = weight;
 
     return copyWith(typeWeights: newWeights);
+  }
+}
+
+// ДОБАВЛЕНО: расширение для ActivityLevel
+extension ActivityLevelExtension on ActivityLevel {
+  Color get color {
+    switch (this) {
+      case ActivityLevel.excellent:
+        return const Color(0xFF4CAF50);
+      case ActivityLevel.good:
+        return const Color(0xFF8BC34A);
+      case ActivityLevel.moderate:
+        return const Color(0xFFFFC107);
+      case ActivityLevel.poor:
+        return const Color(0xFFFF9800);
+      case ActivityLevel.veryPoor:
+        return const Color(0xFFF44336);
+    }
   }
 }
