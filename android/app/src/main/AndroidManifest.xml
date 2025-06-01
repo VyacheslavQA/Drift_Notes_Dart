@@ -25,7 +25,6 @@
     <!-- Для Android 14 -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
-
     <!-- ДОБАВЛЕНЫ: Объявление функций как необязательных -->
     <uses-feature
         android:name="android.hardware.camera"
@@ -47,7 +46,7 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
 
-
+        <!-- ЕДИНСТВЕННАЯ activity секция - объединяем обе -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -66,12 +65,24 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
-
-
+            <!-- Основной launcher intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Deep links для shortcuts -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="driftnotes" />
+            </intent-filter>
+
+            <!-- Добавляем shortcuts meta-data -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Don't delete the meta-data below.

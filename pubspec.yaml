@@ -64,7 +64,8 @@ dependencies:
   fl_chart: ^0.68.0
   flutter_local_notifications: ^17.2.2
 
-
+  quick_actions: ^1.0.7  # Добавь эту строку
+  app_links: ^6.3.2  # Добавь эту строку
 
 
 dev_dependencies:

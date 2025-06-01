@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:quick_actions/quick_actions.dart';
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -13,6 +14,8 @@ import 'screens/auth/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/help/help_contact_screen.dart';
+import 'screens/fishing_note/fishing_type_selection_screen.dart';
+import 'screens/fishing_note/fishing_notes_list_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'localization/app_localizations.dart';
@@ -25,6 +28,8 @@ import 'config/api_keys.dart';
 import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/weather_settings_service.dart';
+import 'services/firebase/firebase_service.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,12 +49,10 @@ void main() async {
   await WeatherNotificationService().initialize();
   await WeatherSettingsService().initialize();
 
-
   // Устанавливаем ориентацию экрана только на портретный режим
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
-
   ]);
 
   // Настройка системного UI (статус бар и навигационная панель)
@@ -105,14 +108,127 @@ void main() async {
   );
 }
 
-class DriftNotesApp extends StatelessWidget {
+class DriftNotesApp extends StatefulWidget {
   const DriftNotesApp({super.key});
+
+  @override
+  State<DriftNotesApp> createState() => _DriftNotesAppState();
+}
+
+class _DriftNotesAppState extends State<DriftNotesApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final _firebaseService = FirebaseService();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeQuickActions();
+  }
+
+  void _initializeQuickActions() {
+    try {
+      const QuickActions quickActions = QuickActions();
+
+      // Устанавливаем список быстрых действий (без иконок пока)
+      quickActions.setShortcutItems(<ShortcutItem>[
+        const ShortcutItem(
+          type: 'create_note',
+          localizedTitle: 'Создать заметку',
+        ),
+        const ShortcutItem(
+          type: 'view_notes',
+          localizedTitle: 'Мои заметки',
+        ),
+      ]);
+
+      // Обрабатываем нажатия на быстрые действия
+      quickActions.initialize((String shortcutType) {
+        _handleQuickAction(shortcutType);
+      });
+
+      debugPrint('Quick Actions успешно инициализированы');
+    } catch (e) {
+      debugPrint('Ошибка инициализации Quick Actions: $e');
+    }
+  }
+
+  void _handleQuickAction(String shortcutType) {
+    debugPrint('Quick Action нажат: $shortcutType');
+
+    // Ждем пока приложение полностью загрузится
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Даем время приложению загрузиться
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted || _navigatorKey.currentContext == null) {
+          debugPrint('Контекст недоступен для выполнения действия');
+          return;
+        }
+
+        debugPrint('Выполняем действие: $shortcutType');
+
+        // Если пользователь не авторизован, переходим к авторизации
+        if (!_firebaseService.isUserLoggedIn) {
+          debugPrint('Пользователь не авторизован, переходим на экран входа');
+          _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth_selection', (route) => false);
+          return;
+        }
+
+        switch (shortcutType) {
+          case 'create_note':
+            _navigateToCreateNote();
+            break;
+          case 'view_notes':
+            _navigateToViewNotes();
+            break;
+          default:
+            debugPrint('Неизвестный тип действия: $shortcutType');
+        }
+      });
+    });
+  }
+
+  void _navigateToCreateNote() {
+    debugPrint('Переход к созданию заметки через Quick Action');
+
+    // Переходим на главный экран
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+
+    // Небольшая задержка для завершения навигации
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (_navigatorKey.currentContext != null) {
+        Navigator.of(_navigatorKey.currentContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const FishingTypeSelectionScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  void _navigateToViewNotes() {
+    debugPrint('Переход к просмотру заметок через Quick Action');
+
+    // Переходим на главный экран
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+
+    // Небольшая задержка для завершения навигации
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (_navigatorKey.currentContext != null) {
+        Navigator.of(_navigatorKey.currentContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const FishingNotesListScreen(),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
         return MaterialApp(
+          navigatorKey: _navigatorKey,
           title: 'Drift Notes',
           debugShowCheckedModeBanner: false,
 
@@ -166,11 +282,9 @@ class DriftNotesApp extends StatelessWidget {
               primary: AppConstants.primaryColor,
               secondary: AppConstants.accentColor,
               surface: AppConstants.surfaceColor,
-              // Удалены устаревшие background и onBackground
               onPrimary: AppConstants.textColor,
               onSecondary: Colors.black,
               onSurface: AppConstants.textColor,
-              // Используем современные альтернативы
               surfaceContainerHighest: AppConstants.backgroundColor,
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(

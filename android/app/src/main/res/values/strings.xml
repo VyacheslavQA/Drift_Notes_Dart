@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Drift Notes</string>
+    <string name="create_note_short">Создать заметку</string>
+    <string name="create_note_long">Создать заметку</string>
+    <string name="view_notes_short">Заметки</string>
+    <string name="view_notes_long">Мои заметки</string>
+    <string name="shortcut_disabled">Ярлык недоступен</string>
+</resources>

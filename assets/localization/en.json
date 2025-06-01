@@ -1234,6 +1234,11 @@
   "current_pressure": "Current Pressure",
   "data_24_hours": "24 Hours",
 
-  "mastercarp_description": "Our store features products for Carp, Feeder and Spinning fishing from world-class manufacturers, more than 100 brands"
+  "mastercarp_description": "Our store features products for Carp, Feeder and Spinning fishing from world-class manufacturers, more than 100 brands",
+
+  "quick_action_create_note": "Create Note",
+  "quick_action_create_note_desc": "Quick creation of a new note",
+  "quick_action_view_notes": "My Notes",
+  "quick_action_view_notes_desc": "View all notes"
 
 }

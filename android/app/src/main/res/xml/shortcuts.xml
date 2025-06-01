@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="create_note"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/create_note_short"
+        android:shortcutLongLabel="@string/create_note_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.driftnotes.app"
+            android:targetClass="com.driftnotes.app.MainActivity"
+            android:data="driftnotes://create_note" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="view_notes"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/view_notes_short"
+        android:shortcutLongLabel="@string/view_notes_long"
+        android:shortcutDisabledMessage="@string/shortcut_disabled">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.driftnotes.app"
+            android:targetClass="com.driftnotes.app.MainActivity"
+            android:data="driftnotes://view_notes" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>
