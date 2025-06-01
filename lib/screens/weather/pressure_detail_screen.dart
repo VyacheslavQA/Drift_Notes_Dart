@@ -602,7 +602,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               children: [
                 const Icon(Icons.access_time, size: 18),
                 const SizedBox(width: 8),
-                Text('24 ${localizations.translate('hours')}'),
+                Text(localizations.translate('data_24_hours')),
               ],
             ),
           ),
@@ -636,7 +636,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             dotColors: _dotColors24h,
             minY: _minPressure24h,
             maxY: _maxPressure24h,
-            title: '24 ${localizations.translate('hours')}',
+            title: localizations.translate('data_24_hours'),
             chartWidth: MediaQuery.of(context).size.width * 3, // В 3 раза шире
           ),
           const SizedBox(height: 24),
@@ -662,7 +662,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             dotColors: _dotColorsForecast,
             minY: _minPressureForecast,
             maxY: _maxPressureForecast,
-            title: localizations.translate('pressure_history_extended'),
+            title: localizations.translate('pressure_analysis'),
             chartWidth: MediaQuery.of(context).size.width * 5, // В 5 раз шире для большего количества данных
             showLegend: true,
           ),

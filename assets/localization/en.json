@@ -1228,6 +1228,10 @@
   "loading_data": "Loading data...",
   "yesterday": "Yesterday",
   "tomorrow": "Tomorrow",
-  "day": "day"
+  "day": "day",
+
+  "pressure_analysis": "Pressure Analysis",
+  "current_pressure": "Current Pressure",
+  "data_24_hours": "24 Hours"
 
 }

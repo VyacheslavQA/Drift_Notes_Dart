@@ -1159,7 +1159,11 @@
   "loading_data": "Загрузка данных...",
   "yesterday": "Вчера",
   "tomorrow": "Завтра",
-  "day": "дня"
+  "day": "дня",
+
+  "pressure_analysis": "Анализ давления",
+  "current_pressure": "Текущее давление",
+  "data_24_hours": "24 часа"
 
 }
 
