@@ -59,7 +59,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   FishingWeather? _weather;
   bool _isLoadingWeather = false;
 
-  // Новые переменные для ИИ-анализа
+  // Переменные для ИИ-анализа
   AIBitePrediction? _aiPrediction;
   bool _isLoadingAI = false;
 
@@ -234,7 +234,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     }
   }
 
-  // НОВЫЙ МЕТОД: Загрузка погоды и ИИ-анализа одновременно
+  // Загрузка погоды и ИИ-анализа одновременно
   Future<void> _fetchWeatherAndAI() async {
     final localizations = AppLocalizations.of(context);
 
@@ -353,6 +353,20 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     });
 
     try {
+      // ИСПРАВЛЕНО: Сохраняем ИИ-анализ в заметку
+      Map<String, dynamic>? aiPredictionMap;
+      if (_aiPrediction != null) {
+        aiPredictionMap = {
+          'overallScore': _aiPrediction!.overallScore,
+          'activityLevel': _aiPrediction!.activityLevel.toString(),
+          'confidencePercent': _aiPrediction!.confidencePercent,
+          'recommendation': _aiPrediction!.recommendation,
+          'tips': _aiPrediction!.tips,
+          'fishingType': _aiPrediction!.fishingType,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+      }
+
       final note = FishingNoteModel(
         id: const Uuid().v4(),
         userId: '',
@@ -368,8 +382,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         fishingType: _selectedFishingType,
         weather: _weather,
         biteRecords: _biteRecords,
-        mapMarkers: [], // Пустой список маркеров
-        // TODO: Добавить поле aiPrediction в модель FishingNoteModel, если нужно сохранять ИИ-анализ
+        mapMarkers: [],
+        aiPrediction: aiPredictionMap, // ДОБАВЛЕНО сохранение ИИ-анализа
       );
 
       final isOnline = await NetworkUtils.isNetworkAvailable();
@@ -572,7 +586,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     );
   }
 
-  // НОВЫЙ МЕТОД: Построение карточки ИИ-анализа
+  // Построение карточки ИИ-анализа
   Widget _buildAIAnalysisCard() {
     final localizations = AppLocalizations.of(context);
 
@@ -919,7 +933,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
                 const SizedBox(height: 20),
 
-                // ОБНОВЛЕННАЯ СЕКЦИЯ: Погода + ИИ-анализ
+                // Погода + ИИ-анализ
                 _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
                 ElevatedButton.icon(
                   icon: Icon(
@@ -972,7 +986,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   _buildWeatherCard(),
                 ],
 
-                // НОВОЕ: Отображение ИИ-анализа после погоды
+                // Отображение ИИ-анализа после погоды
                 if (_aiPrediction != null)
                   _buildAIAnalysisCard(),
 
@@ -1248,6 +1262,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     );
   }
 
+  // ИСПРАВЛЕННАЯ карточка погоды - убрано дублирование
   Widget _buildWeatherCard() {
     final localizations = AppLocalizations.of(context);
     if (_weather == null) return const SizedBox();
@@ -1261,6 +1276,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ВЕРХНЯЯ ЧАСТЬ: только температура и ощущается как (без дублирования)
           Row(
             children: [
               Container(
@@ -1285,16 +1301,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_formatTemperature(_weather!.temperature)}, ${_weather!.weatherDescription}',
+                      _formatTemperature(_weather!.temperature),
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 18,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${localizations.translate('feels_like')} ${_formatTemperature(_weather!.feelsLike)}',
+                      '${localizations.translate('feels_like_short')}: ${_formatTemperature(_weather!.feelsLike)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -1305,50 +1321,80 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               ),
             ],
           ),
+
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildWeatherInfoItem(
+
+          // НИЖНЯЯ ЧАСТЬ: сетка 2x3 с остальными данными
+          _buildWeatherGrid(localizations),
+        ],
+      ),
+    );
+  }
+
+  // Новый метод для построения сетки погоды 2x3
+  Widget _buildWeatherGrid(AppLocalizations localizations) {
+    return Column(
+      children: [
+        // Первая строка
+        Row(
+          children: [
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.air,
-                label: localizations.translate('wind'),
-                value: '${_weather!.windDirection}, ${_formatWindSpeed(_weather!.windSpeed)}',
+                label: localizations.translate('wind_short'),
+                value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
               ),
-              _buildWeatherInfoItem(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.water_drop,
-                label: localizations.translate('humidity'),
+                label: localizations.translate('humidity_short'),
                 value: '${_weather!.humidity}%',
               ),
-              _buildWeatherInfoItem(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.speed,
-                label: localizations.translate('pressure'),
+                label: localizations.translate('pressure_short'),
                 value: _formatPressure(_weather!.pressure),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildWeatherInfoItem(
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Вторая строка
+        Row(
+          children: [
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.cloud,
-                label: localizations.translate('clouds'),
+                label: localizations.translate('cloudiness_short'),
                 value: '${_weather!.cloudCover}%',
               ),
-              _buildWeatherInfoItem(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.wb_twilight,
                 label: localizations.translate('sunrise'),
                 value: _weather!.sunrise,
               ),
-              _buildWeatherInfoItem(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildWeatherInfoItem(
                 icon: Icons.nights_stay,
                 label: localizations.translate('sunset'),
                 value: _weather!.sunset,
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1357,31 +1403,40 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     required String label,
     required String value,
   }) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: AppConstants.textColor.withValues(alpha: 0.8),
-          size: 20,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: AppConstants.textColor.withValues(alpha: 0.8),
+            size: 20,
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
