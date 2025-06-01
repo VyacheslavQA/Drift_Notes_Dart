@@ -14,7 +14,6 @@ import '../../widgets/weather/weather_header.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../widgets/weather/ai_bite_meter.dart';
 import '../../widgets/weather/hourly_forecast.dart';
-import '../../widgets/weather/best_time_section.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
 import 'package:flutter/foundation.dart';
@@ -315,6 +314,15 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                 children: [
                   const SizedBox(height: 16),
 
+                  // Почасовой прогноз (перемещен выше)
+                  HourlyForecast(
+                    weather: _currentWeather!,
+                    weatherSettings: _weatherSettings,
+                    onHourTapped: (hour, activity) => _showHourDetails(hour, activity),
+                  ),
+
+                  const SizedBox(height: 24),
+
                   /// Ключевые показатели (4 карточки)
                   WeatherMetricsGrid(
                     weather: _currentWeather!,
@@ -330,23 +338,6 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                     aiPrediction: _aiPrediction,
                     onCompareTypes: () => _showCompareTypesDialog(),
                     onSelectType: (type) => _onFishingTypeSelected(type),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Почасовой прогноз
-                  HourlyForecast(
-                    weather: _currentWeather!,
-                    weatherSettings: _weatherSettings,
-                    onHourTapped: (hour, activity) => _showHourDetails(hour, activity),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Лучшее время для рыбалки
-                  BestTimeSection(
-                    weather: _currentWeather!,
-                    aiPrediction: _aiPrediction,
                   ),
 
                   const SizedBox(height: 100), // Отступ для bottom navigation
