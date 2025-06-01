@@ -7,6 +7,7 @@ import '../../models/weather_api_model.dart';
 import '../../config/api_keys.dart';
 import '../../utils/network_utils.dart';
 import '../../models/fishing_note_model.dart';
+import 'package:intl/intl.dart';
 
 class WeatherApiService {
   static const String _baseUrl = 'https://api.weatherapi.com/v1';
@@ -79,10 +80,10 @@ class WeatherApiService {
       throw Exception('Нет подключения к интернету');
     }
 
-    // Бесплатный план поддерживает до 3 дней
-    if (days > 3) {
-      days = 3;
-      debugPrint('⚠️ Ограничено до 3 дней для бесплатного плана');
+    // Платный план поддерживает до 7 дней
+    if (days > 7) {
+      days = 7;
+      debugPrint('⚠️ Ограничено до 7 дней для платного плана');
     }
 
     final query = '$latitude,$longitude';

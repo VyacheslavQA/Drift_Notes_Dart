@@ -9,6 +9,7 @@ import '../../models/weather_api_model.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/weather_settings_service.dart';
 import '../../services/weather/weather_api_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PressureDetailScreen extends StatefulWidget {
   final WeatherApiResponse weatherData;
@@ -1165,29 +1166,4 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   }
 }
 
-// Заглушка для Position (если нет geolocator)
-class Position {
-  final double latitude;
-  final double longitude;
-  final DateTime timestamp;
-  final double accuracy;
-  final double altitude;
-  final double altitudeAccuracy;
-  final double heading;
-  final double headingAccuracy;
-  final double speed;
-  final double speedAccuracy;
 
-  Position({
-    required this.latitude,
-    required this.longitude,
-    required this.timestamp,
-    required this.accuracy,
-    required this.altitude,
-    required this.altitudeAccuracy,
-    required this.heading,
-    required this.headingAccuracy,
-    required this.speed,
-    required this.speedAccuracy,
-  });
-}
