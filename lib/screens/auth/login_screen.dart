@@ -10,7 +10,12 @@ import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final VoidCallback? onAuthSuccess;
+
+  const LoginScreen({
+    super.key,
+    this.onAuthSuccess,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -149,12 +154,23 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
 
-        // Добавляем небольшую задержку перед навигацией
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-        });
+        // Проверяем, есть ли коллбэк для выполнения отложенного действия
+        if (widget.onAuthSuccess != null) {
+          debugPrint('🎯 Вызываем коллбэк после успешной авторизации');
+          // Переходим на главный экран
+          Navigator.of(context).pushReplacementNamed('/home');
+          // Вызываем коллбэк через небольшую задержку
+          Future.delayed(const Duration(milliseconds: 500), () {
+            widget.onAuthSuccess!();
+          });
+        } else {
+          // Обычная навигация без коллбэка
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

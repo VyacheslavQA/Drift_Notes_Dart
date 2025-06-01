@@ -9,7 +9,12 @@ import '../../localization/app_localizations.dart';
 import '../help/privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final VoidCallback? onAuthSuccess;
+
+  const RegisterScreen({
+    super.key,
+    this.onAuthSuccess,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -154,12 +159,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         );
 
-        // Небольшая задержка перед навигацией
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-        });
+        // Проверяем, есть ли коллбэк для выполнения отложенного действия
+        if (widget.onAuthSuccess != null) {
+          debugPrint('🎯 Вызываем коллбэк после успешной регистрации');
+          // Переходим на главный экран
+          Navigator.of(context).pushReplacementNamed('/home');
+          // Вызываем коллбэк через небольшую задержку
+          Future.delayed(const Duration(milliseconds: 500), () {
+            widget.onAuthSuccess!();
+          });
+        } else {
+          // Обычная навигация без коллбэка
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/home');
+            }
+          });
+        }
       }
     } catch (e) {
       setState(() {

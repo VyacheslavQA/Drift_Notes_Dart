@@ -3,6 +3,7 @@
     <shortcut
         android:shortcutId="create_note"
         android:enabled="true"
+        android:icon="@drawable/ic_add"
         android:shortcutShortLabel="@string/create_note_short"
         android:shortcutLongLabel="@string/create_note_long"
         android:shortcutDisabledMessage="@string/shortcut_disabled">
@@ -17,6 +18,7 @@
     <shortcut
         android:shortcutId="view_notes"
         android:enabled="true"
+        android:icon="@drawable/ic_list"
         android:shortcutShortLabel="@string/view_notes_short"
         android:shortcutLongLabel="@string/view_notes_long"
         android:shortcutDisabledMessage="@string/shortcut_disabled">

@@ -3,9 +3,16 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
+import 'login_screen.dart';
+import 'register_screen.dart';
 
 class AuthSelectionScreen extends StatelessWidget {
-  const AuthSelectionScreen({super.key});
+  final VoidCallback? onAuthSuccess;
+
+  const AuthSelectionScreen({
+    super.key,
+    this.onAuthSuccess,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +79,13 @@ class AuthSelectionScreen extends StatelessWidget {
                 icon: Icons.email_outlined,
                 text: localizations.translate('login_with_email'),
                 onPressed: () {
-                  Navigator.pushNamed(context, '/login');
+                  // Переходим к экрану входа с передачей коллбэка
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LoginScreen(onAuthSuccess: onAuthSuccess),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 16),
@@ -128,7 +141,13 @@ class AuthSelectionScreen extends StatelessWidget {
               // Ссылка на регистрацию
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/register');
+                  // Переходим к экрану регистрации с передачей коллбэка
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RegisterScreen(onAuthSuccess: onAuthSuccess),
+                    ),
+                  );
                 },
                 child: Text(
                   localizations.translate('no_account_register'),

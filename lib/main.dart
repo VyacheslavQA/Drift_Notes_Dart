@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:quick_actions/quick_actions.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -29,7 +31,6 @@ import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
-import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,17 +120,28 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final _firebaseService = FirebaseService();
 
+  // Для отслеживания pending действий
+  String? _pendingAction;
+  StreamSubscription<Uri>? _linkSubscription;
+
   @override
   void initState() {
     super.initState();
     _initializeQuickActions();
+    _initializeDeepLinkHandling();
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
   }
 
   void _initializeQuickActions() {
     try {
       const QuickActions quickActions = QuickActions();
 
-      // Устанавливаем список быстрых действий (без иконок пока)
+      // Устанавливаем список быстрых действий
       quickActions.setShortcutItems(<ShortcutItem>[
         const ShortcutItem(
           type: 'create_note',
@@ -143,58 +155,112 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
 
       // Обрабатываем нажатия на быстрые действия
       quickActions.initialize((String shortcutType) {
-        _handleQuickAction(shortcutType);
+        debugPrint('🚀 Quick Action получен: $shortcutType');
+        _handleShortcutAction(shortcutType);
       });
 
-      debugPrint('Quick Actions успешно инициализированы');
+      debugPrint('✅ Quick Actions успешно инициализированы');
     } catch (e) {
-      debugPrint('Ошибка инициализации Quick Actions: $e');
+      debugPrint('❌ Ошибка инициализации Quick Actions: $e');
     }
   }
 
-  void _handleQuickAction(String shortcutType) {
-    debugPrint('Quick Action нажат: $shortcutType');
+  void _initializeDeepLinkHandling() {
+    final appLinks = AppLinks();
 
-    // Ждем пока приложение полностью загрузится
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Даем время приложению загрузиться
-      Future.delayed(const Duration(seconds: 3), () {
-        if (!mounted || _navigatorKey.currentContext == null) {
-          debugPrint('Контекст недоступен для выполнения действия');
-          return;
-        }
+    // Обработка deep links когда приложение уже запущено
+    appLinks.uriLinkStream.listen(
+          (Uri uri) {
+        debugPrint('🔗 Deep link получен: $uri');
+        _handleDeepLink(uri);
+      },
+      onError: (err) {
+        debugPrint('❌ Ошибка deep link: $err');
+      },
+    );
 
-        debugPrint('Выполняем действие: $shortcutType');
+    // Обработка deep link при запуске приложения
+    _handleInitialLink();
+  }
 
-        // Если пользователь не авторизован, переходим к авторизации
-        if (!_firebaseService.isUserLoggedIn) {
-          debugPrint('Пользователь не авторизован, переходим на экран входа');
-          _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth_selection', (route) => false);
-          return;
-        }
+  Future<void> _handleInitialLink() async {
+    try {
+      final appLinks = AppLinks();
+      final initialLink = await appLinks.getInitialLink();
+      if (initialLink != null) {
+        debugPrint('🚀 Начальный deep link: $initialLink');
+        _handleDeepLink(initialLink);
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка получения начального deep link: $e');
+    }
+  }
 
-        switch (shortcutType) {
-          case 'create_note':
-            _navigateToCreateNote();
-            break;
-          case 'view_notes':
-            _navigateToViewNotes();
-            break;
-          default:
-            debugPrint('Неизвестный тип действия: $shortcutType');
-        }
-      });
-    });
+  void _handleDeepLink(Uri uri) {
+    debugPrint('🔍 Обработка deep link: ${uri.scheme}://${uri.host}${uri.path}');
+
+    if (uri.scheme == 'driftnotes') {
+      switch (uri.host) {
+        case 'create_note':
+          _handleShortcutAction('create_note');
+          break;
+        case 'view_notes':
+          _handleShortcutAction('view_notes');
+          break;
+        default:
+          debugPrint('❓ Неизвестный deep link: ${uri.host}');
+      }
+    }
+  }
+
+  void _handleShortcutAction(String actionType) {
+    debugPrint('🎯 Обработка действия: $actionType');
+
+    // Проверяем, готово ли приложение для навигации
+    if (_navigatorKey.currentContext == null) {
+      debugPrint('⏳ Приложение не готово, сохраняем действие: $actionType');
+      _pendingAction = actionType;
+      return;
+    }
+
+    // Проверяем авторизацию
+    if (!_firebaseService.isUserLoggedIn) {
+      debugPrint('🔐 Пользователь не авторизован, сохраняем действие и переходим к авторизации');
+      _pendingAction = actionType;
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth_selection', (route) => false);
+      return;
+    }
+
+    // Выполняем действие
+    _executeAction(actionType);
+  }
+
+  void _executeAction(String actionType) {
+    debugPrint('⚡ Выполняем действие: $actionType');
+
+    switch (actionType) {
+      case 'create_note':
+        _navigateToCreateNote();
+        break;
+      case 'view_notes':
+        _navigateToViewNotes();
+        break;
+      default:
+        debugPrint('❓ Неизвестное действие: $actionType');
+    }
+
+    // Очищаем pending действие
+    _pendingAction = null;
   }
 
   void _navigateToCreateNote() {
-    debugPrint('Переход к созданию заметки через Quick Action');
+    debugPrint('📝 Переход к созданию заметки');
 
-    // Переходим на главный экран
+    // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
 
     // Небольшая задержка для завершения навигации
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (_navigatorKey.currentContext != null) {
         Navigator.of(_navigatorKey.currentContext!).push(
           MaterialPageRoute(
@@ -206,13 +272,13 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
   }
 
   void _navigateToViewNotes() {
-    debugPrint('Переход к просмотру заметок через Quick Action');
+    debugPrint('📋 Переход к просмотру заметок');
 
-    // Переходим на главный экран
+    // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
 
     // Небольшая задержка для завершения навигации
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (_navigatorKey.currentContext != null) {
         Navigator.of(_navigatorKey.currentContext!).push(
           MaterialPageRoute(
@@ -221,6 +287,20 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
         );
       }
     });
+  }
+
+  // Метод для выполнения отложенного действия после успешной авторизации
+  void executePendingAction() {
+    if (_pendingAction != null) {
+      debugPrint('🔄 Выполняем отложенное действие: $_pendingAction');
+      final action = _pendingAction!;
+      _pendingAction = null;
+
+      // Небольшая задержка, чтобы дать приложению время на переход к главному экрану
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _executeAction(action);
+      });
+    }
   }
 
   @override
@@ -333,14 +413,29 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
           ),
 
           // Начальный экран приложения
-          home: const SplashScreen(),
+          home: SplashScreenWithPendingAction(
+            onAppReady: () {
+              // Выполняем отложенное действие после загрузки приложения
+              if (_pendingAction != null) {
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  _handleShortcutAction(_pendingAction!);
+                });
+              }
+            },
+          ),
 
           // Определение маршрутов для навигации
           routes: {
             '/splash': (context) => const SplashScreen(),
-            '/auth_selection': (context) => const AuthSelectionScreen(),
-            '/login': (context) => const LoginScreen(),
-            '/register': (context) => const RegisterScreen(),
+            '/auth_selection': (context) => AuthSelectionScreenWithCallback(
+              onAuthSuccess: () => executePendingAction(),
+            ),
+            '/login': (context) => LoginScreenWithCallback(
+              onAuthSuccess: () => executePendingAction(),
+            ),
+            '/register': (context) => RegisterScreenWithCallback(
+              onAuthSuccess: () => executePendingAction(),
+            ),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
             '/help_contact': (context) => const HelpContactScreen(),
@@ -348,5 +443,77 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
         );
       },
     );
+  }
+}
+
+// Обертка для SplashScreen с коллбэком
+class SplashScreenWithPendingAction extends StatefulWidget {
+  final VoidCallback onAppReady;
+
+  const SplashScreenWithPendingAction({
+    super.key,
+    required this.onAppReady,
+  });
+
+  @override
+  State<SplashScreenWithPendingAction> createState() => _SplashScreenWithPendingActionState();
+}
+
+class _SplashScreenWithPendingActionState extends State<SplashScreenWithPendingAction> {
+  @override
+  void initState() {
+    super.initState();
+    // Вызываем коллбэк после инициализации
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onAppReady();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SplashScreen();
+  }
+}
+
+// Обертки для экранов авторизации с коллбэками
+class AuthSelectionScreenWithCallback extends StatelessWidget {
+  final VoidCallback onAuthSuccess;
+
+  const AuthSelectionScreenWithCallback({
+    super.key,
+    required this.onAuthSuccess,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthSelectionScreen(onAuthSuccess: onAuthSuccess);
+  }
+}
+
+class LoginScreenWithCallback extends StatelessWidget {
+  final VoidCallback onAuthSuccess;
+
+  const LoginScreenWithCallback({
+    super.key,
+    required this.onAuthSuccess,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LoginScreen(onAuthSuccess: onAuthSuccess);
+  }
+}
+
+class RegisterScreenWithCallback extends StatelessWidget {
+  final VoidCallback onAuthSuccess;
+
+  const RegisterScreenWithCallback({
+    super.key,
+    required this.onAuthSuccess,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RegisterScreen(onAuthSuccess: onAuthSuccess);
   }
 }

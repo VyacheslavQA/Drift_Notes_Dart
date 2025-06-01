@@ -68,6 +68,7 @@ dependencies:
   app_links: ^6.3.2  # Добавь эту строку
 
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
