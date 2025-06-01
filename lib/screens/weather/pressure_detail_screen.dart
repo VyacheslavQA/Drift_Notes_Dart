@@ -176,9 +176,11 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             // Все точки синие для 24h
             _dotColors24h.add(AppConstants.primaryColor);
 
-            // Временные метки каждые 3 часа
+            // Временные метки каждые 3 часа с добавлением даты
             if (spotIndex % 3 == 0) {
-              _timeLabels24h.add(DateFormat('HH:mm').format(hourTime));
+              final timeText = DateFormat('HH:mm').format(hourTime);
+              final dateText = _getDateLabel(hourTime, now);
+              _timeLabels24h.add('$timeText\n$dateText');
             } else {
               _timeLabels24h.add('');
             }
@@ -240,25 +242,26 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             _pressureForecastSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
             allPressures.add(convertedPressure);
 
-            // Цвета: серый (прошлое), синий (настоящее), зеленый (будущее)
+            // Новые цвета: желтый (прошлое), зеленый (настоящее), красный (будущее)
             Color dotColor;
             if (hourTime.isBefore(now.subtract(const Duration(hours: 1)))) {
-              dotColor = Colors.grey; // Прошлое
+              dotColor = Colors.yellow; // История - желтый
             } else if (hourTime.difference(now).inHours.abs() <= 1) {
-              dotColor = AppConstants.primaryColor; // Сейчас
+              dotColor = Colors.green; // Сейчас - зеленый
             } else {
-              dotColor = Colors.green; // Будущее
+              dotColor = Colors.red; // Прогноз - красный
             }
             _dotColorsForecast.add(dotColor);
 
             // Временные метки каждые 12 часов
             if (spotIndex % 12 == 0) {
+              final localizations = AppLocalizations.of(context);
               if (hourTime.day == now.day && hourTime.month == now.month) {
-                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nСегодня');
+                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\n${localizations.translate('today')}');
               } else if (hourTime.difference(now).inDays == 1) {
-                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nЗавтра');
+                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\n${localizations.translate('tomorrow')}');
               } else if (hourTime.difference(now).inDays == -1) {
-                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nВчера');
+                _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\n${localizations.translate('yesterday')}');
               } else {
                 _timeLabelsForecast.add(DateFormat('dd.MM\nHH:mm').format(hourTime));
               }
@@ -306,7 +309,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           _dotColors24h.add(AppConstants.primaryColor);
 
           if (spotIndex % 3 == 0) {
-            _timeLabels24h.add(DateFormat('HH:mm').format(hourTime));
+            final timeText = DateFormat('HH:mm').format(hourTime);
+            final dateText = _getDateLabel(hourTime, now);
+            _timeLabels24h.add('$timeText\n$dateText');
           } else {
             _timeLabels24h.add('');
           }
@@ -341,7 +346,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
           _pressureForecastSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
           allPressures.add(convertedPressure);
-          _dotColorsForecast.add(Colors.green);
+          _dotColorsForecast.add(Colors.red); // Красный для прогноза
 
           if (spotIndex % 6 == 0) {
             _timeLabelsForecast.add(DateFormat('dd.MM\nHH:mm').format(hourTime));
@@ -357,6 +362,20 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     if (allPressures.isNotEmpty) {
       _minPressureForecast = allPressures.reduce(math.min) - 2;
       _maxPressureForecast = allPressures.reduce(math.max) + 2;
+    }
+  }
+
+  String _getDateLabel(DateTime hourTime, DateTime now) {
+    final localizations = AppLocalizations.of(context);
+
+    if (hourTime.day == now.day && hourTime.month == now.month && hourTime.year == now.year) {
+      return localizations.translate('today');
+    } else if (hourTime.difference(now).inDays == 1) {
+      return localizations.translate('tomorrow');
+    } else if (hourTime.difference(now).inDays == -1) {
+      return localizations.translate('yesterday');
+    } else {
+      return DateFormat('dd.MM').format(hourTime);
     }
   }
 
@@ -842,15 +861,17 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 14, // Уменьшенный размер шрифта
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
               if (_extendedData != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -883,7 +904,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Загрузка данных...',
+                      localizations.translate('loading_data'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                       ),
@@ -940,7 +961,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 45,
+                                  reservedSize: 50, // Увеличиваем место для двух строк
                                   interval: math.max(1, spots.length / 8),
                                   getTitlesWidget: (value, meta) {
                                     final index = value.toInt();
@@ -1038,9 +1059,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildLegendItem(Colors.grey, 'История'),
-                _buildLegendItem(AppConstants.primaryColor, 'Сейчас'),
-                _buildLegendItem(Colors.green, 'Прогноз'),
+                _buildLegendItem(Colors.yellow, localizations.translate('history')),
+                _buildLegendItem(Colors.green, localizations.translate('now')),
+                _buildLegendItem(Colors.red, localizations.translate('forecast')),
               ],
             ),
           ],

@@ -1152,7 +1152,14 @@
   "error_getting_current_weather": "Ошибка получения текущей погоды",
   "error_getting_forecast": "Ошибка получения прогноза погоды",
   "error_getting_extended_data": "Ошибка получения расширенных данных",
-  "error_converting_weather_data": "Ошибка конвертации погодных данных"
+  "error_converting_weather_data": "Ошибка конвертации погодных данных",
+
+  "history": "История",
+  "now": "Сейчас",
+  "loading_data": "Загрузка данных...",
+  "yesterday": "Вчера",
+  "tomorrow": "Завтра",
+  "day": "дня"
 
 }
 

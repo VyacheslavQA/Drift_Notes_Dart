@@ -1221,6 +1221,13 @@
   "error_getting_current_weather": "Error getting current weather",
   "error_getting_forecast": "Error getting weather forecast",
   "error_getting_extended_data": "Error getting extended data",
-  "error_converting_weather_data": "Error converting weather data"
+  "error_converting_weather_data": "Error converting weather data",
+
+  "history": "History",
+  "now": "Now",
+  "loading_data": "Loading data...",
+  "yesterday": "Yesterday",
+  "tomorrow": "Tomorrow",
+  "day": "day"
 
 }
