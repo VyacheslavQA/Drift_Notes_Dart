@@ -99,8 +99,14 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     _biteRecords = List.from(widget.note.biteRecords);
     _selectedFishingType = widget.note.fishingType;
 
-    // TODO: Если в модели заметки будет поле для сохранения ИИ-анализа, инициализировать его здесь
+    // Инициализация ИИ-анализа из заметки (если будет добавлено в модель)
+    // TODO: Когда в модели FishingNoteModel появится поле aiPrediction, раскомментировать:
     // _aiPrediction = widget.note.aiPrediction;
+
+    // Если у заметки есть координаты и погода, попробуем получить ИИ-анализ
+    if (_hasLocation && _weather != null) {
+      _loadExistingAIAnalysis();
+    }
 
     // Настраиваем анимацию для плавного появления элементов
     _animationController = AnimationController(
@@ -125,6 +131,39 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     _notesController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Новый метод для загрузки существующего ИИ-анализа
+  Future<void> _loadExistingAIAnalysis() async {
+    if (!_hasLocation) return;
+
+    setState(() {
+      _isLoadingAI = true;
+    });
+
+    try {
+      final aiResult = await _aiService.getPredictionForFishingType(
+        fishingType: _selectedFishingType,
+        latitude: _latitude,
+        longitude: _longitude,
+        date: _startDate,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiPrediction = aiResult;
+          _isLoadingAI = false;
+        });
+        debugPrint('🧠 ИИ-анализ загружен для существующей заметки: ${aiResult.overallScore} баллов');
+      }
+    } catch (aiError) {
+      debugPrint('❌ Ошибка загрузки ИИ-анализа для существующей заметки: $aiError');
+      if (mounted) {
+        setState(() {
+          _isLoadingAI = false;
+        });
+      }
+    }
   }
 
   // Обновление количества дней рыбалки
@@ -691,7 +730,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${localizations.translate('ai_analysis')} (${_aiPrediction!.overallScore}/100)',
+                      '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -699,7 +738,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                       ),
                     ),
                     Text(
-                      _aiPrediction!.activityLevel.displayName,
+                      _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
                       style: TextStyle(
                         color: _getScoreColor(_aiPrediction!.overallScore),
                         fontSize: 14,
@@ -784,6 +823,22 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
     if (score >= 40) return const Color(0xFFFFC107);
     if (score >= 20) return const Color(0xFFFF9800);
     return const Color(0xFFF44336);
+  }
+
+  // Получение текста уровня активности с правильной локализацией
+  String _getActivityLevelText(ActivityLevel level, AppLocalizations localizations) {
+    switch (level) {
+      case ActivityLevel.excellent:
+        return localizations.translate('excellent_activity');
+      case ActivityLevel.good:
+        return localizations.translate('good_activity');
+      case ActivityLevel.moderate:
+        return localizations.translate('moderate_activity');
+      case ActivityLevel.poor:
+        return localizations.translate('poor_activity');
+      case ActivityLevel.veryPoor:
+        return localizations.translate('very_poor_activity');
+    }
   }
 
   // Метод для форматирования температуры согласно настройкам
@@ -1028,7 +1083,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                 const SizedBox(height: 20),
 
                 // Погода + ИИ-анализ
-                _buildSectionHeader(localizations.translate('weather_ai_analysis')),
+                _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
                 ElevatedButton.icon(
                   icon: Icon(
                     Icons.psychology,
@@ -1036,7 +1091,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   ),
                   label: Text(
                     _weather != null || _aiPrediction != null
-                        ? localizations.translate('update_weather_ai')
+                        ? localizations.translate('update_weather_and_ai')
                         : localizations.translate('load_weather_ai'),
                     style: TextStyle(
                       color: AppConstants.textColor,
@@ -1512,7 +1567,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen> with Sing
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Время: ${DateFormat('HH:mm').format(record.time)}',
+                      '${localizations.translate('bite_time')}: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                       ),
@@ -1701,24 +1756,29 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
     }
 
     // Рисуем точки поклевок
-    final bitePaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.fill;
-
     for (final record in biteRecords) {
       final timeInMinutes = record.time.hour * 60 + record.time.minute;
       final totalMinutes = 24 * 60;
       final position = timeInMinutes / totalMinutes * size.width;
 
+      final bool isCaught = record.fishType.isNotEmpty && record.weight > 0;
+
+      // Используем разные цвета для пойманных рыб и просто поклевок
+      final Color dotColor = isCaught ? Colors.green : Colors.red;
+
+      final dotPaint = Paint()
+        ..color = dotColor
+        ..style = PaintingStyle.fill;
+
       // Рисуем кружок для поклевки
       canvas.drawCircle(
         Offset(position, size.height / 2),
         7,
-        bitePaint,
+        dotPaint,
       );
 
-      // Если есть вес, рисуем размер круга в зависимости от веса
-      if (record.weight > 0) {
+      // Для пойманных рыб рисуем обводку, размер которой зависит от веса
+      if (isCaught) {
         final weightPaint = Paint()
           ..color = Colors.orange
           ..style = PaintingStyle.stroke
