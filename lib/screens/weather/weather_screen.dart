@@ -20,6 +20,7 @@ import '../../screens/weather/wind_detail_screen.dart';
 import 'package:flutter/foundation.dart';
 import '../debug/openai_test_screen.dart';
 
+
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
 

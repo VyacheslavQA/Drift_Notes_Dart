@@ -186,6 +186,96 @@ class AIBitePredictionService {
     }
   }
 
+  /// Базовый OpenAI запрос (общий метод)
+  Future<Map<String, dynamic>?> _makeOpenAIRequest(List<Map<String, String>> messages) async {
+    if (!_isOpenAIConfigured()) {
+      debugPrint('🚫 OpenAI не настроен');
+      return null;
+    }
+
+    _lastAIRequestTime = DateTime.now();
+
+    try {
+      final requestBody = {
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+          {
+            'role': 'system',
+            'content': 'Ты эксперт по рыбалке. Отвечай кратко на русском языке.',
+          },
+          ...messages,
+        ],
+        'max_tokens': 150,
+        'temperature': 0.3,
+      };
+
+      final response = await http.post(
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer ${ApiKeys.openAIKey}',
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+          'Accept-Charset': 'utf-8',
+        },
+        body: json.encode(requestBody),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedBody);
+
+        _lastAIRequestSuccessful = true;
+        _lastAIError = '';
+
+        return data;
+      } else {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final errorData = json.decode(decodedBody);
+        _lastAIRequestSuccessful = false;
+        _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
+
+        debugPrint('❌ OpenAI ошибка: $_lastAIError');
+        return null;
+      }
+    } catch (e) {
+      _lastAIRequestSuccessful = false;
+      _lastAIError = e.toString();
+      debugPrint('❌ OpenAI исключение: $e');
+      return null;
+    }
+  }
+
+  /// Получает ИИ-рекомендации для ветра
+  Future<List<String>> getWindFishingRecommendations(String prompt) async {
+    try {
+      final response = await _makeOpenAIRequest([
+        {'role': 'user', 'content': prompt}
+      ]);
+
+      if (response != null && response['choices'] != null && response['choices'].isNotEmpty) {
+        final content = response['choices'][0]['message']['content'] as String?;
+
+        if (content != null && content.isNotEmpty) {
+          // Разбиваем на отдельные рекомендации
+          final recommendations = content
+              .split('\n')
+              .where((line) => line.trim().isNotEmpty)
+              .map((line) => line.trim())
+              .where((line) => line.length > 10) // Фильтруем слишком короткие строки
+              .take(4) // Максимум 4 рекомендации
+              .toList();
+
+          return recommendations.isNotEmpty ? recommendations : ['Рекомендации не получены'];
+        }
+      }
+
+      return ['Не удалось получить рекомендации от ИИ'];
+    } catch (e) {
+      debugPrint('❌ Ошибка получения ИИ-рекомендаций для ветра: $e');
+      return ['Ошибка получения рекомендаций: $e'];
+    }
+  }
+
   /// Тестовый метод для проверки OpenAI API
   Future<Map<String, dynamic>> testOpenAIConnection() async {
     _lastAIRequestTime = DateTime.now();
