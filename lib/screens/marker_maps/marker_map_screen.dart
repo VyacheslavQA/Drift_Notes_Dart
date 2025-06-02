@@ -53,45 +53,45 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Типы дна для маркеров
   final List<String> _bottomTypes = [
-    'ил',
-    'глубокий_ил',
-    'ракушка',
-    'ровно_твердо',
-    'камни',
-    'трава_водоросли',
-    'зацеп',
-    'бугор',
-    'точка_кормления'
+    'silt',
+    'deep_silt',
+    'shell',
+    'firm_bottom',
+    'stones',
+    'grass_algae',
+    'snag',
+    'hill',
+    'feeding_spot'
   ];
 
   // Текущий тип дна для нового маркера
-  String _currentBottomType = 'ил';
+  String _currentBottomType = 'silt';
 
   // Константные цвета для типов дна маркеров
   final Map<String, Color> _bottomTypeColors = {
-    'ил': Colors.brown.shade400,
-    'глубокий_ил': Colors.brown.shade800,
-    'ракушка': Colors.cyan,
-    'ровно_твердо': Colors.amber,
-    'камни': Colors.grey,
-    'трава_водоросли': Colors.green,
-    'зацеп': Colors.red,
-    'бугор': Colors.orange,
-    'точка_кормления': Colors.deepPurple,
+    'silt': Colors.brown.shade400,
+    'deep_silt': Colors.brown.shade800,
+    'shell': Colors.cyan,
+    'firm_bottom': Colors.amber,
+    'stones': Colors.grey,
+    'grass_algae': Colors.green,
+    'snag': Colors.red,
+    'hill': Colors.orange,
+    'feeding_spot': Colors.deepPurple,
     'default': Colors.blue, // для обратной совместимости
   };
 
   // Иконки для типов дна
   final Map<String, IconData> _bottomTypeIcons = {
-    'ил': Icons.terrain,
-    'глубокий_ил': Icons.filter_hdr,
-    'ракушка': Icons.waves,
-    'ровно_твердо': Icons.view_agenda,
-    'камни': Icons.circle,
-    'трава_водоросли': Icons.grass,
-    'зацеп': Icons.warning,
-    'бугор': Icons.landscape,
-    'точка_кормления': Icons.room_service,
+    'silt': Icons.terrain,
+    'deep_silt': Icons.filter_hdr,
+    'shell': Icons.waves,
+    'firm_bottom': Icons.view_agenda,
+    'stones': Icons.circle,
+    'grass_algae': Icons.grass,
+    'snag': Icons.warning,
+    'hill': Icons.landscape,
+    'feeding_spot': Icons.room_service,
     'default': Icons.location_on, // для обратной совместимости
   };
 
@@ -136,27 +136,36 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     if (type == null) return localizations.translate('silt');
 
     switch (type) {
+      case 'silt':
       case 'ил':
         return localizations.translate('silt');
+      case 'deep_silt':
       case 'глубокий_ил':
         return localizations.translate('deep_silt');
+      case 'shell':
       case 'ракушка':
         return localizations.translate('shell');
+      case 'firm_bottom':
       case 'ровно_твердо':
         return localizations.translate('firm_bottom');
+      case 'stones':
       case 'камни':
         return localizations.translate('stones');
+      case 'grass_algae':
       case 'трава_водоросли':
         return localizations.translate('grass_algae');
+      case 'snag':
       case 'зацеп':
         return localizations.translate('snag');
+      case 'hill':
       case 'бугор':
         return localizations.translate('hill');
+      case 'feeding_spot':
       case 'точка_кормления':
         return localizations.translate('feeding_spot');
     // Для обратной совместимости со старыми типами
       case 'dropoff':
-        return 'Свал';
+        return localizations.translate('snag');
       case 'weed':
         return localizations.translate('grass_algae');
       case 'sandbar':
@@ -172,19 +181,37 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Конвертация старых типов в новые (для совместимости)
   String _convertLegacyTypeToNew(String? type) {
-    if (type == null) return 'ил';
+    if (type == null) return 'silt';
 
     switch (type) {
+      case 'ил':
+        return 'silt';
+      case 'глубокий_ил':
+        return 'deep_silt';
+      case 'ракушка':
+        return 'shell';
+      case 'ровно_твердо':
+        return 'firm_bottom';
+      case 'камни':
+        return 'stones';
+      case 'трава_водоросли':
+        return 'grass_algae';
+      case 'зацеп':
+        return 'snag';
+      case 'бугор':
+        return 'hill';
+      case 'точка_кормления':
+        return 'feeding_spot';
       case 'dropoff':
-        return 'свал';
+        return 'snag';
       case 'weed':
-        return 'трава_водоросли';
+        return 'grass_algae';
       case 'sandbar':
-        return 'ровно_твердо';
+        return 'firm_bottom';
       case 'structure':
-        return 'зацеп';
+        return 'snag';
       case 'default':
-        return 'ил';
+        return 'silt';
       default:
         return type; // Возвращаем как есть, если это новый тип
     }
@@ -232,7 +259,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                   Icon(Icons.straighten, color: AppConstants.textColor),
                   const SizedBox(width: 8),
                   Text(
-                    '${localizations.translate('ray')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('distance_m')}',
+                    '${localizations.translate('beam')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('distance_m')}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -250,7 +277,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Icon(Icons.waves, color: AppConstants.textColor),
                     const SizedBox(width: 8),
                     Text(
-                      '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('m')}',
+                      '${localizations.translate('depth_m')}: ${marker['depth']} м',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -271,7 +298,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${localizations.translate('marker_type')}: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
+                      '${localizations.translate('bottom_type')}: ${_getBottomTypeName(marker['bottomType'] ?? marker['type'])}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -392,7 +419,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                localizations.translate('add_marker_dialog_title'),
+                localizations.translate('add_marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -406,7 +433,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          '${localizations.translate('ray')}:',
+                          '${localizations.translate('beam')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
@@ -422,7 +449,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                               items: List.generate(_raysCount, (index) {
                                 return DropdownMenuItem<int>(
                                   value: index,
-                                  child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                  child: Text('${localizations.translate('beam')} ${index + 1}'),
                                 );
                               }),
                               onChanged: (value) {
@@ -479,7 +506,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Тип дна
                     Text(
-                      '${localizations.translate('marker_type')}:',
+                      '${localizations.translate('bottom_type')}:',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -523,7 +550,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: localizations.translate('notes'),
+                        labelText: localizations.translate('description'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
@@ -651,7 +678,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     _distanceController.text = marker['distance'].toString();
 
     // Определяем тип дна (с учетом обратной совместимости)
-    String selectedBottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
+    String selectedBottomType = marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'silt';
 
     // Сохраняем текущие значения луча
     int currentRayIndex = marker['rayIndex'].toInt();
@@ -678,7 +705,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Row(
                       children: [
                         Text(
-                          '${localizations.translate('ray')}:',
+                          '${localizations.translate('beam')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
@@ -694,7 +721,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                               items: List.generate(_raysCount, (index) {
                                 return DropdownMenuItem<int>(
                                   value: index,
-                                  child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                  child: Text('${localizations.translate('beam')} ${index + 1}'),
                                 );
                               }),
                               onChanged: (value) {
@@ -751,7 +778,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     // Тип дна маркера
                     Text(
-                      localizations.translate('marker_type'),
+                      localizations.translate('bottom_type'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -797,7 +824,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
-                        labelText: localizations.translate('notes'),
+                        labelText: localizations.translate('description'),
                         labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
@@ -1042,7 +1069,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('changes_saved')),
+            content: Text(localizations.translate('info_updated')),
             backgroundColor: Colors.green,
           ),
         );
@@ -1360,6 +1387,7 @@ class FullscreenMarkerMapPainter extends CustomPainter {
   }
 
   void _drawRayLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter, List<double> rayAngles) {
+    final localizations = AppLocalizations.of(context);
     final textPainter = TextPainter(
       textDirection: ui.TextDirection.ltr,
     );
@@ -1398,7 +1426,7 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       }
 
       textPainter.text = TextSpan(
-        text: 'Луч ${i + 1}',
+        text: '${localizations.translate('beam')} ${i + 1}',
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.8),
           fontSize: 12,
@@ -1447,13 +1475,22 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       // Определяем цвет по типу дна (с учетом обратной совместимости)
       String bottomType = marker['bottomType'] ?? 'default';
       if (bottomType == 'default' && marker['type'] != null) {
-        // Для обратной совместимости
+        // Для обратной совместимости конвертируем старые типы
         switch (marker['type']) {
-          case 'dropoff': bottomType = 'свал'; break;
-          case 'weed': bottomType = 'трава_водоросли'; break;
-          case 'sandbar': bottomType = 'ровно_твердо'; break;
-          case 'structure': bottomType = 'зацеп'; break;
-          default: bottomType = 'ил';
+          case 'ил': bottomType = 'silt'; break;
+          case 'глубокий_ил': bottomType = 'deep_silt'; break;
+          case 'ракушка': bottomType = 'shell'; break;
+          case 'ровно_твердо': bottomType = 'firm_bottom'; break;
+          case 'камни': bottomType = 'stones'; break;
+          case 'трава_водоросли': bottomType = 'grass_algae'; break;
+          case 'зацеп': bottomType = 'snag'; break;
+          case 'бугор': bottomType = 'hill'; break;
+          case 'точка_кормления': bottomType = 'feeding_spot'; break;
+          case 'dropoff': bottomType = 'snag'; break;
+          case 'weed': bottomType = 'grass_algae'; break;
+          case 'sandbar': bottomType = 'firm_bottom'; break;
+          case 'structure': bottomType = 'snag'; break;
+          default: bottomType = 'silt';
         }
       }
 

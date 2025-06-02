@@ -1267,6 +1267,11 @@
   "ai_processing": "AI processing...",
   "generating_forecast": "Generating forecast...",
   "for": "for",
-  "ai_analysis_complete": "AI analysis complete"
+  "ai_analysis_complete": "AI analysis complete",
+
+  "beam": "Beam",
+  "charts": "Charts",
+  "delete_marker": "Delete marker",
+  "delete_marker_confirmation": "Are you sure you want to delete this marker? This action cannot be undone."
 
 }

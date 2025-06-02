@@ -1134,6 +1134,11 @@
   "quick_action_create_note": "Создать заметку",
   "quick_action_create_note_desc": "Быстрое создание новой заметки",
   "quick_action_view_notes": "Мои заметки",
-  "quick_action_view_notes_desc": "Просмотр всех заметок"
+  "quick_action_view_notes_desc": "Просмотр всех заметок",
+
+  "beam": "Луч",
+  "charts": "Графики",
+  "delete_marker": "Удалить маркер",
+  "delete_marker_confirmation": "Вы уверены, что хотите удалить этот маркер? Это действие нельзя отменить."
 
 }
