@@ -42,12 +42,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   int _lastSelectedRayIndex = 0;
 
   // Настройки лучей
-  final int _raysCount = 7;
+  final int _raysCount = 5;
   final double _maxDistance = 200.0;
   final double _distanceStep = 10.0;
 
   // Параметры угла лучей (скорректированные)
-  // Изменено с 110-70 на 105-75 для лучшей видимости крайних лучей
   final double _leftAngle = 105.0;
   final double _rightAngle = 75.0;
 
@@ -1162,7 +1161,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       _hasChanges = true;
     });
 
-    // Обновляем UI чтобы кнопка сохранения стала активной
+    // Обновляем UI чтобы кнопка сохранения стала активная
     Future.microtask(() => setState(() {}));
   }
 
@@ -1748,6 +1747,28 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     }
   }
 
+  // Кнопка выхода с сохранением
+  Future<void> _exitWithSave() async {
+    if (_hasChanges || _markerMap.markers.isNotEmpty) {
+      await _saveChanges();
+    }
+    if (mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+
+  // Заглушка для кнопки графиков
+  void _showChartsComingSoon() {
+    final localizations = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${localizations.translate('charts')} ${localizations.translate('coming_soon')}'),
+        backgroundColor: AppConstants.primaryColor,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -1774,19 +1795,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             tooltip: localizations.translate('marker_info'),
             onPressed: _showMarkerInfo,
           ),
-          // Кнопка сохранения - всегда активна если есть маркеры или изменения
-          IconButton(
-            icon: Icon(
-              Icons.save,
-              color: (_hasChanges || _markerMap.markers.isNotEmpty)
-                  ? AppConstants.textColor
-                  : AppConstants.textColor.withValues(alpha: 0.3),
-            ),
-            tooltip: localizations.translate('save_changes'),
-            onPressed: (_hasChanges || _markerMap.markers.isNotEmpty)
-                ? _saveChanges
-                : null,
-          ),
           // Меню действий
           IconButton(
             icon: Icon(Icons.more_vert, color: AppConstants.textColor),
@@ -1809,13 +1817,42 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
           ),
         ),
       ),
-      // Кнопка добавления маркера
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddMarkerDialog,
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        child: const Icon(Icons.add_location),
+      // Три зеленые кнопки справа
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Кнопка выхода с сохранением (стрелка влево)
+          FloatingActionButton(
+            heroTag: "exit_button",
+            onPressed: _exitWithSave,
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: AppConstants.textColor,
+            child: const Icon(Icons.arrow_back),
+          ),
+          const SizedBox(height: 16),
+
+          // Кнопка графиков (заглушка)
+          FloatingActionButton(
+            heroTag: "charts_button",
+            onPressed: _showChartsComingSoon,
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: AppConstants.textColor,
+            child: const Icon(Icons.bar_chart),
+          ),
+          const SizedBox(height: 16),
+
+          // Кнопка добавления маркера
+          FloatingActionButton(
+            heroTag: "add_marker_button",
+            onPressed: _showAddMarkerDialog,
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: AppConstants.textColor,
+            child: const Icon(Icons.add_location),
+          ),
+        ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
       // Отображаем информацию о карте внизу экрана
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1901,7 +1938,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 // Лучи и отметки
                 CustomPaint(
                   size: Size(width, maxHeight),
-                  painter: RaysAndMarkersPainter(
+                  painter: NewRaysAndMarkersPainter(
                     rayCount: _raysCount,
                     maxDistance: _maxDistance,
                     distanceStep: _distanceStep,
@@ -1923,8 +1960,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   }
 }
 
-// Кастомная отрисовка лучей и маркеров
-class RaysAndMarkersPainter extends CustomPainter {
+// Новый кастомный painter с красивой сеткой
+class NewRaysAndMarkersPainter extends CustomPainter {
   final int rayCount;
   final double maxDistance;
   final double distanceStep;
@@ -1937,7 +1974,7 @@ class RaysAndMarkersPainter extends CustomPainter {
   final double leftAngle;
   final double rightAngle;
 
-  RaysAndMarkersPainter({
+  NewRaysAndMarkersPainter({
     required this.rayCount,
     required this.maxDistance,
     required this.distanceStep,
@@ -1955,144 +1992,183 @@ class RaysAndMarkersPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
     final centerX = size.width / 2;
-    final originY = size.height * 1.00; // Нижняя точка
+    final originY = size.height - 5; // Почти в самом низу
+    final pixelsPerMeter = (size.height * 0.9) / maxDistance;
 
     // Фон для маркерной карты
     paint.color = const Color(0xFF0B1F1D); // темно-зеленый фон
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
 
-    // Вычисляем масштаб для перевода метров в пиксели
-    final pixelsPerMeter = (size.height * 0.9) / maxDistance;
+    // Отрисовка полукругов (концентрических дуг)
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 1.0;
+    paint.color = Colors.white.withValues(alpha: 0.3);
 
-    // Отрисовка лучей
-    for (int i = 0; i < rayCount; i++) {
-      // Вычисляем угол для текущего луча
-      // Распределяем равномерно в диапазоне от leftAngle до rightAngle
-      final totalAngle = leftAngle - rightAngle; // общий угол охвата
-      final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = leftAngle - (i * angleStep);
-      final angleRadians = angleDegrees * (math.pi / 180);
-
-      // Конечная точка луча (максимальная дистанция)
-      final maxDy = originY - (maxDistance * pixelsPerMeter);
-      final maxDx = centerX + (originY - maxDy) * math.tan(math.pi/2 - angleRadians);
-
-      // Создаем кисть для луча
-      final rayPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.4)
-        ..strokeWidth = 1.0
-        ..style = PaintingStyle.stroke;
-
-      // Рисуем основной луч
-      canvas.drawLine(
-        Offset(centerX, originY),
-        Offset(maxDx, maxDy),
-        rayPaint,
-      );
-
-      // Рисуем отметки дистанции на луче
-      for (double d = distanceStep; d <= maxDistance; d += distanceStep) {
-        // Находим точку на луче
-        final ratio = d / maxDistance;
-        final dx = centerX + (maxDx - centerX) * ratio;
-        final dy = originY - (originY - maxDy) * ratio;
-
-        // Радиус точки зависит от шага
-        double radius;
-        if (d % (distanceStep * 5) == 0) {
-          // Каждые 50 метров - большая точка
-          radius = 4.0;
-        } else {
-          // Обычные точки
-          radius = 1.5;
-        }
-
-        // Рисуем точку
-        final pointPaint = Paint()
-          ..color = Colors.white.withValues(alpha: 0.4)
-          ..style = PaintingStyle.fill;
-
-        canvas.drawCircle(
-          Offset(dx, dy),
-          radius,
-          pointPaint,
-        );
-
-        // Для круглых отметок дистанции добавляем текст
-        if (d % (distanceStep * 5) == 0) {
-          // Текстовые метки (50м, 100м, 150м, 200м)
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: d.toInt().toString(),
-              style: TextStyle(
-                color: Colors.greenAccent, // Яркий зеленый
-                fontSize: 12,
-                fontWeight: FontWeight.bold, // Жирный шрифт
-              ),
-            ),
-            textDirection: ui.TextDirection.ltr,
-          );
-
-          textPainter.layout();
-
-          // Смещение текста в зависимости от положения луча
-          double textOffsetX;
-          if (i == 0) {
-            textOffsetX = -textPainter.width - 5; // Крайний левый луч
-          } else if (i == rayCount - 1) {
-            textOffsetX = 5; // Крайний правый луч
-          } else {
-            textOffsetX = -textPainter.width / 2; // Центрирование для остальных лучей
-          }
-
-          textPainter.paint(
-            canvas,
-            Offset(dx + textOffsetX, dy - textPainter.height / 2),
-          );
-        }
-      }
-
-      // Надпись с номером луча сверху
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: '${AppLocalizations.of(context).translate('ray')} ${i + 1}',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 14,
-          ),
-        ),
-        textDirection: ui.TextDirection.ltr,
-      );
-
-      textPainter.layout();
-      // Размещаем текст над лучом
-      final textDx = maxDx - textPainter.width / 2;
-      final textDy = maxDy - textPainter.height - 5;
-      textPainter.paint(
-        canvas,
-        Offset(textDx, textDy),
+    for (int distance = 10; distance <= maxDistance.toInt(); distance += 10) {
+      final radius = distance * pixelsPerMeter;
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(centerX, originY), radius: radius),
+        math.pi, // Начинаем с левой стороны (180°)
+        math.pi, // Рисуем полукруг (180°)
+        false,
+        paint,
       );
     }
 
-    // Отрисовка маркеров
-    for (final marker in markers) {
-      // Получаем координаты из сохраненных в маркере данных
-      final rayIndex = marker['rayIndex'] as double? ?? 0;
-      final distance = marker['distance'] as double? ?? 0;
+    // Отрисовка лучей
+    paint.color = Colors.white.withValues(alpha: 0.6);
+    paint.strokeWidth = 1.5;
 
-      // Вычисляем угол для луча
+    final rayAngles = <double>[];
+    for (int i = 0; i < rayCount; i++) {
       final totalAngle = leftAngle - rightAngle;
       final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = leftAngle - (rayIndex * angleStep);
+      final angleDegrees = leftAngle - (i * angleStep);
       final angleRadians = angleDegrees * (math.pi / 180);
+      rayAngles.add(angleRadians);
+    }
+
+    for (final angle in rayAngles) {
+      final rayLength = maxDistance * pixelsPerMeter;
+      final endX = centerX + rayLength * math.cos(angle);
+      final endY = originY - rayLength * math.sin(angle);
+
+      canvas.drawLine(
+        Offset(centerX, originY),
+        Offset(endX, endY),
+        paint,
+      );
+    }
+
+    // Отрисовка точек на пересечениях
+    paint.style = PaintingStyle.fill;
+    paint.color = Colors.white.withValues(alpha: 0.5);
+
+    for (final angle in rayAngles) {
+      for (int distance = 10; distance <= maxDistance.toInt(); distance += 10) {
+        final radius = distance * pixelsPerMeter;
+        final pointX = centerX + radius * math.cos(angle);
+        final pointY = originY - radius * math.sin(angle);
+
+        if (pointY > 30) { // Не рисуем точки слишком близко к верху
+          canvas.drawCircle(
+            Offset(pointX, pointY),
+            1.5,
+            paint,
+          );
+        }
+      }
+    }
+
+    // Отрисовка подписей дистанций
+    _drawDistanceLabels(canvas, size, centerX, originY, pixelsPerMeter);
+
+    // Отрисовка подписей лучей
+    _drawRayLabels(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
+
+    // Отрисовка маркеров
+    _drawMarkers(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
+  }
+
+  void _drawDistanceLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter) {
+    final textPainter = TextPainter(
+      textDirection: ui.TextDirection.ltr,
+    );
+
+    // Подписи 10-50м (поперек внизу с поворотом)
+    for (int distance = 10; distance <= 50; distance += 10) {
+      textPainter.text = TextSpan(
+        text: distance.toString(),
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+      textPainter.layout();
+
+      canvas.save();
+      canvas.translate(
+        centerX - distance * pixelsPerMeter - 4,
+        originY - 20,
+      );
+      canvas.rotate(-math.pi / 2); // Поворот на 270°
+      textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+      canvas.restore();
+    }
+
+    // Подписи 60-200м (по левому краю)
+    for (int distance = 60; distance <= 200; distance += 10) {
+      textPainter.text = TextSpan(
+        text: distance.toString(),
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+      textPainter.layout();
+
+      double offsetY;
+      if (distance <= 60) {
+        offsetY = 95;
+      } else if (distance <= 130) {
+        offsetY = 70 - (distance - 60) * 0.64; // Плавное уменьшение
+      } else {
+        offsetY = 15 + (distance - 130) * 0.1; // Небольшое увеличение
+      }
+
+      textPainter.paint(
+        canvas,
+        Offset(8, originY - distance * pixelsPerMeter + offsetY),
+      );
+    }
+  }
+
+  void _drawRayLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter, List<double> rayAngles) {
+    final textPainter = TextPainter(
+      textDirection: ui.TextDirection.ltr,
+    );
+
+    final rayPositions = [
+      {'text': 'Луч 1', 'x': 15.0, 'y': 50.0},
+      {'text': 'Луч 2', 'x': 95.0, 'y': 35.0},
+      {'text': 'Луч 3', 'x': centerX - 15, 'y': 32.0},
+      {'text': 'Луч 4', 'x': 235.0, 'y': 35.0},
+      {'text': 'Луч 5', 'x': 315.0, 'y': 50.0},
+    ];
+
+    for (int i = 0; i < rayPositions.length && i < rayCount; i++) {
+      textPainter.text = TextSpan(
+        text: rayPositions[i]['text'] as String,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.8),
+          fontSize: 12,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(rayPositions[i]['x'] as double, rayPositions[i]['y'] as double),
+      );
+    }
+  }
+
+  void _drawMarkers(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter, List<double> rayAngles) {
+    for (final marker in markers) {
+      // Получаем координаты из сохраненных в маркере данных
+      final rayIndex = (marker['rayIndex'] as double? ?? 0).toInt();
+      final distance = marker['distance'] as double? ?? 0;
+
+      if (rayIndex >= rayAngles.length) continue;
 
       // Вычисляем позицию маркера
+      final angle = rayAngles[rayIndex];
       final ratio = distance / maxDistance;
-      final maxDy = originY - (maxDistance * pixelsPerMeter);
-      final maxDx = centerX + (originY - maxDy) * math.tan(math.pi/2 - angleRadians);
+      final maxRayLength = maxDistance * pixelsPerMeter;
 
-      final dx = centerX + (maxDx - centerX) * ratio;
-      final dy = originY - (originY - maxDy) * ratio;
+      final dx = centerX + maxRayLength * ratio * math.cos(angle);
+      final dy = originY - maxRayLength * ratio * math.sin(angle);
 
       // Определяем цвет по типу дна (с учетом обратной совместимости)
       String bottomType = marker['bottomType'] ?? 'default';
