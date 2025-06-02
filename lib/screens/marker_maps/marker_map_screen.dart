@@ -1377,10 +1377,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
 
       // Индивидуальные корректировки для каждого луча
       switch (i) {
-        case 0: // Луч 1 - еще чутка в лево
+        case 0: // Луч 1 - еще немного левее
           labelY += 20.0; // Еще чуть ниже
-          labelX -= 40.0; // Еще чутка левее (было 35.0)
-          labelX = math.max(labelX, 40.0); // Минимальный отступ от левого края
+          labelX -= 50.0; // Еще немного левее (было 45.0)
+          labelX = math.max(labelX, 35.0); // Минимальный отступ от левого края
           break;
         case 1: // Луч 2 - чутка ниже
           labelY += 5.0; // Чутка ниже
@@ -1390,10 +1390,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         case 3: // Луч 4 - чутка ниже
           labelY += 5.0; // Чутка ниже
           break;
-        case 4: // Луч 5 - чутка в право
+        case 4: // Луч 5 - еще немного правее
           labelY += 20.0; // Чутка ниже
-          labelX += 40.0; // Еще чутка правее (было 35.0)
-          labelX = math.min(labelX, size.width - 40.0); // Максимальный отступ от правого края
+          labelX += 50.0; // Еще немного правее (было 45.0)
+          labelX = math.min(labelX, size.width - 35.0); // Максимальный отступ от правого края
           break;
       }
 
