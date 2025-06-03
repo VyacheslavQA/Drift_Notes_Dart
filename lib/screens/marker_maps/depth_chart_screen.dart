@@ -21,13 +21,20 @@ class DepthChartScreen extends StatefulWidget {
 
 class DepthChartScreenState extends State<DepthChartScreen> {
   int _selectedRayIndex = 0;
-  double _zoomLevel = 1.0;
+  double _zoomLevel = 0.5; // Начальное значение 50%
   final int _maxRays = 5;
 
   // Константы для графика
   static const double MAX_DISTANCE = 200.0; // Всегда полная шкала до 200м
-  static const double DISTANCE_STEP = 20.0; // Шаг в 20м
-  static const double BASE_PIXELS_PER_STEP = 40.0; // Базовое расстояние между отметками
+  static const double DISTANCE_STEP = 10.0; // Шаг в 10м
+
+  // Фиксированная высота графика - 5 см (примерно 190 пикселей при стандартной плотности)
+  static const double FIXED_CHART_HEIGHT = 190.0;
+
+  // ИСПРАВЛЕНО: Увеличенные значения для достижения 7мм и 14мм
+  // Экспериментально подобранные значения для нужных размеров
+  static const double MIN_PIXELS_PER_METER = 4.6; // Для получения 7мм между отметками
+  static const double MAX_PIXELS_PER_METER = 9.2; // Для получения 14мм между отметками
 
   // Цвета для типов дна (те же что и на карте)
   final Map<String, Color> _bottomTypeColors = {
@@ -77,6 +84,12 @@ class DepthChartScreenState extends State<DepthChartScreen> {
       DeviceOrientation.portraitDown,
     ]);
     super.dispose();
+  }
+
+  // ДОБАВЛЕНО: Функция для вычисления pixelsPerMeter на основе _zoomLevel
+  double get _pixelsPerMeterDistance {
+    // Интерполяция между минимальным и максимальным значением
+    return MIN_PIXELS_PER_METER + (_zoomLevel * (MAX_PIXELS_PER_METER - MIN_PIXELS_PER_METER));
   }
 
   // Получение маркеров для выбранного луча
@@ -355,13 +368,15 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               ),
             ),
 
-            // График с горизонтальной прокруткой
+            // График с горизонтальной прокруткой и центрированием
             Expanded(
               child: Container(
                 margin: EdgeInsets.all(isLandscape ? 8 : 16),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: _buildChart(isLandscape),
+                child: Center(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: _buildChart(isLandscape),
+                  ),
                 ),
               ),
             ),
@@ -391,8 +406,8 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       ),
                       child: Slider(
                         value: _zoomLevel,
-                        min: 0.5,
-                        max: 3.0,
+                        min: 0.0, // От 0%
+                        max: 1.0, // До 100%
                         divisions: 10,
                         onChanged: (value) {
                           setState(() {
@@ -422,35 +437,14 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     final localizations = AppLocalizations.of(context);
     final markersForRay = _getMarkersForRay(_selectedRayIndex);
 
-    // Пропорциональные размеры для реалистичного профиля
-    final pixelsPerMeterDistance = 4.0 * _zoomLevel; // Масштабируемые пиксели на метр дистанции
-    final pixelsPerMeterDepth = 40.0 * _zoomLevel; // Масштабируемые пиксели на метр глубины (больше чтобы профиль был видимым)
+    // ИСПРАВЛЕНО: Используем геттер вместо локального вычисления
+    final pixelsPerMeterDistance = _pixelsPerMeterDistance;
+
+    // Фиксированная высота графика 5 см = 190 пикселей
+    final chartHeight = FIXED_CHART_HEIGHT;
 
     // Вычисляем размеры графика
     final chartWidth = MAX_DISTANCE * pixelsPerMeterDistance;
-
-    // Высота зависит от диапазона глубин в данных
-    double minDepth = 0.0;
-    double maxDepth = 10.0;
-
-    if (markersForRay.isNotEmpty) {
-      final depths = markersForRay.map((m) => m['depth'] as double).toList();
-      minDepth = depths.reduce(math.min);
-      maxDepth = depths.reduce(math.max);
-
-      // Добавляем отступы к диапазону глубин
-      final depthRange = maxDepth - minDepth;
-      if (depthRange > 0) {
-        minDepth = math.max(0.0, minDepth - depthRange * 0.2);
-        maxDepth = maxDepth + depthRange * 0.2;
-      } else {
-        // Если все маркеры на одной глубине, создаем небольшой диапазон
-        minDepth = math.max(0.0, minDepth - 1.0);
-        maxDepth = maxDepth + 1.0;
-      }
-    }
-
-    final chartHeight = (maxDepth - minDepth) * pixelsPerMeterDepth;
 
     // Отступы для осей и подписей
     final leftPadding = 80.0;
@@ -461,54 +455,57 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     final totalWidth = chartWidth + leftPadding + rightPadding;
     final totalHeight = chartHeight + topPadding + bottomPadding;
 
-    return Container(
+    return SizedBox(
       width: totalWidth,
       height: totalHeight,
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: CustomPaint(
-        size: Size(totalWidth, totalHeight),
-        painter: DepthChartPainter(
-          markers: markersForRay,
-          zoomLevel: _zoomLevel,
-          bottomTypeColors: _bottomTypeColors,
-          bottomTypeIcons: _bottomTypeIcons,
-          onMarkerTap: _showMarkerDetails,
-          context: context,
-          isLandscape: isLandscape,
-          convertLegacyType: _convertLegacyTypeToNew,
-          minDepth: minDepth, // Передаем вычисленные диапазоны
-          maxDepth: maxDepth,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppConstants.backgroundColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: markersForRay.isEmpty ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.show_chart,
-                size: isLandscape ? 40 : 50,
-                color: AppConstants.textColor.withValues(alpha: 0.3),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                localizations.translate('no_data_to_display'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.5),
-                  fontSize: isLandscape ? 12 : 14,
-                ),
-              ),
-              Text(
-                '${localizations.translate('ray')} ${_selectedRayIndex + 1}',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.3),
-                  fontSize: isLandscape ? 10 : 12,
-                ),
-              ),
-            ],
+        child: CustomPaint(
+          key: ValueKey('${_zoomLevel}_${_selectedRayIndex}'), // ИСПРАВЛЕНО: уникальный ключ
+          size: Size(totalWidth, totalHeight),
+          painter: DepthChartPainter(
+            markers: markersForRay,
+            zoomLevel: _zoomLevel,
+            bottomTypeColors: _bottomTypeColors,
+            bottomTypeIcons: _bottomTypeIcons,
+            onMarkerTap: _showMarkerDetails,
+            context: context,
+            isLandscape: isLandscape,
+            convertLegacyType: _convertLegacyTypeToNew,
+            fixedChartHeight: chartHeight,
+            pixelsPerMeterDistance: pixelsPerMeterDistance,
           ),
-        ) : null,
+          child: markersForRay.isEmpty ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.show_chart,
+                  size: isLandscape ? 40 : 50,
+                  color: AppConstants.textColor.withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  localizations.translate('no_data_to_display'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                    fontSize: isLandscape ? 12 : 14,
+                  ),
+                ),
+                Text(
+                  '${localizations.translate('ray')} ${_selectedRayIndex + 1}',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.3),
+                    fontSize: isLandscape ? 10 : 12,
+                  ),
+                ),
+              ],
+            ),
+          ) : null,
+        ),
       ),
     );
   }
@@ -523,12 +520,12 @@ class DepthChartPainter extends CustomPainter {
   final BuildContext context;
   final bool isLandscape;
   final String Function(String?) convertLegacyType;
-  final double minDepth; // Добавлено
-  final double maxDepth; // Добавлено
+  final double fixedChartHeight;
+  final double pixelsPerMeterDistance;
 
   // Константы
   static const double MAX_DISTANCE = 200.0;
-  static const double DISTANCE_STEP = 20.0;
+  static const double DISTANCE_STEP = 10.0;
 
   DepthChartPainter({
     required this.markers,
@@ -539,8 +536,8 @@ class DepthChartPainter extends CustomPainter {
     required this.context,
     required this.isLandscape,
     required this.convertLegacyType,
-    required this.minDepth, // Добавлено
-    required this.maxDepth, // Добавлено
+    required this.fixedChartHeight,
+    required this.pixelsPerMeterDistance,
   });
 
   @override
@@ -552,11 +549,14 @@ class DepthChartPainter extends CustomPainter {
     final bottomPadding = 60.0;
 
     final chartWidth = size.width - leftPadding - rightPadding;
-    final chartHeight = size.height - topPadding - bottomPadding;
+    final chartHeight = fixedChartHeight;
 
     // Фиксированные диапазоны дистанций (ВСЕГДА 0-200м)
     final minDistance = 0.0;
     final maxDistance = MAX_DISTANCE;
+
+    // Используем переданный pixelsPerMeterDistance для расчета ширины
+    final actualChartWidth = maxDistance * pixelsPerMeterDistance;
 
     // Диапазон глубин определяем по маркерам
     double minDepth = 0.0;
@@ -572,21 +572,24 @@ class DepthChartPainter extends CustomPainter {
       if (depthRange > 0) {
         minDepth = math.max(0.0, minDepth - depthRange * 0.1);
         maxDepth = maxDepth + depthRange * 0.1;
+      } else {
+        // Если все маркеры на одной глубине, создаем небольшой диапазон
+        minDepth = math.max(0.0, minDepth - 1.0);
+        maxDepth = maxDepth + 1.0;
       }
     }
 
     // Функции преобразования координат
     double distanceToX(double distance) {
-      return leftPadding + (distance - minDistance) / (maxDistance - minDistance) * chartWidth;
+      return leftPadding + (distance * pixelsPerMeterDistance);
     }
 
     double depthToY(double depth) {
-      // ИСПРАВЛЕНО: теперь большая глубина = ниже на графике
       return topPadding + (depth - minDepth) / (maxDepth - minDepth) * chartHeight;
     }
 
     // Рисуем сетку
-    _drawGrid(canvas, size, leftPadding, topPadding, chartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
+    _drawGrid(canvas, size, leftPadding, topPadding, actualChartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
 
     // Рисуем линию профиля дна и маркеры (только если есть маркеры)
     if (markers.isNotEmpty) {
@@ -595,7 +598,7 @@ class DepthChartPainter extends CustomPainter {
     }
 
     // Рисуем подписи осей
-    _drawAxisLabels(canvas, size, leftPadding, topPadding, chartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
+    _drawAxisLabels(canvas, size, leftPadding, topPadding, actualChartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
   }
 
   void _drawGrid(Canvas canvas, Size size, double leftPadding, double topPadding,
@@ -605,9 +608,9 @@ class DepthChartPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.1)
       ..strokeWidth = 0.5;
 
-    // Вертикальные линии (дистанция) - каждые 20м от 0 до 200
+    // Вертикальные линии (дистанция) - каждые 10м от 0 до 200
     for (double d = 0; d <= maxDistance; d += DISTANCE_STEP) {
-      final x = leftPadding + (d - minDistance) / (maxDistance - minDistance) * chartWidth;
+      final x = leftPadding + (d * pixelsPerMeterDistance);
       canvas.drawLine(
         Offset(x, topPadding),
         Offset(x, topPadding + chartHeight),
@@ -618,7 +621,6 @@ class DepthChartPainter extends CustomPainter {
     // Горизонтальные линии (глубина)
     final depthStep = _calculateDepthStep(maxDepth - minDepth);
     for (double d = (minDepth / depthStep).ceil() * depthStep; d <= maxDepth; d += depthStep) {
-      // Большая глубина = ниже на графике
       final y = topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
       canvas.drawLine(
         Offset(leftPadding, y),
@@ -663,14 +665,14 @@ class DepthChartPainter extends CustomPainter {
       String bottomType = marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
       final markerColor = bottomTypeColors[bottomType] ?? Colors.blue;
 
-      // Рисуем точку маркера (меньше чем на карте)
+      // Рисуем точку маркера
       final markerPaint = Paint()
         ..color = markerColor
         ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), isLandscape ? 4 : 5, markerPaint);
 
-      // Рисуем подпись глубины (красным цветом)
+      // Рисуем подпись глубины (желтым цветом)
       _drawDepthLabel(canvas, x, y, marker['depth'] as double);
 
       // Рисуем символ типа дна
@@ -688,7 +690,7 @@ class DepthChartPainter extends CustomPainter {
       text: TextSpan(
         text: depth.toStringAsFixed(1),
         style: TextStyle(
-          color: Colors.yellow.shade300, // Желтый цвет как на референсе
+          color: Colors.yellow.shade300,
           fontSize: isLandscape ? 9 : 10,
           fontWeight: FontWeight.bold,
           shadows: [
@@ -704,7 +706,6 @@ class DepthChartPainter extends CustomPainter {
     );
 
     textPainter.layout();
-    // ИЗМЕНЕНО: теперь подпись глубины СНИЗУ от точки
     textPainter.paint(canvas, Offset(x + 8, y + 8));
   }
 
@@ -722,7 +723,6 @@ class DepthChartPainter extends CustomPainter {
     );
 
     textPainter.layout();
-    // ИЗМЕНЕНО: теперь символ типа дна СВЕРХУ от точки
     textPainter.paint(canvas, Offset(x + 8, y - 15));
   }
 
@@ -751,9 +751,9 @@ class DepthChartPainter extends CustomPainter {
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // Подписи дистанции (ось X) - каждые 20м от 0 до 200
+    // Подписи дистанции (ось X) - каждые 10м от 0 до 200
     for (double d = 0; d <= maxDistance; d += DISTANCE_STEP) {
-      final x = leftPadding + (d - minDistance) / (maxDistance - minDistance) * chartWidth;
+      final x = leftPadding + (d * pixelsPerMeterDistance);
 
       textPainter.text = TextSpan(text: '${d.toInt()}', style: textStyle);
       textPainter.layout();
@@ -763,7 +763,6 @@ class DepthChartPainter extends CustomPainter {
     // Подписи глубины (ось Y)
     final depthStep = _calculateDepthStep(maxDepth - minDepth);
     for (double d = (minDepth / depthStep).ceil() * depthStep; d <= maxDepth; d += depthStep) {
-      // Большая глубина = ниже на графике
       final y = topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
 
       textPainter.text = TextSpan(text: '${d.toStringAsFixed(1)}', style: textStyle);
