@@ -590,6 +590,7 @@ class DepthChartPainter extends CustomPainter {
 
     // Рисуем линию профиля дна и маркеры (только если есть маркеры)
     if (markers.isNotEmpty) {
+      _drawGradientFill(canvas, distanceToX, depthToY, topPadding, chartHeight); // Градиентная заливка под профилем
       _drawProfileLine(canvas, distanceToX, depthToY);
       _drawMarkers(canvas, distanceToX, depthToY);
       _drawBottomTypeIndicators(canvas, distanceToX, topPadding); // Новая функция для значков сверху
@@ -637,7 +638,55 @@ class DepthChartPainter extends CustomPainter {
     );
   }
 
-  // Функция для рисования пунктирной линии
+  // Функция для рисования градиентной заливки под профилем дна (как в эхолотах)
+  void _drawGradientFill(Canvas canvas, double Function(double) distanceToX, double Function(double) depthToY,
+      double topPadding, double chartHeight) {
+    if (markers.length < 2) return;
+
+    // Создаем путь для заливки под профилем
+    final path = Path();
+
+    // Начинаем от первой точки профиля
+    final firstMarker = markers.first;
+    final firstX = distanceToX(firstMarker['distance'] as double);
+    final firstY = depthToY(firstMarker['depth'] as double);
+    path.moveTo(firstX, firstY);
+
+    // Добавляем все точки профиля
+    for (final marker in markers) {
+      final x = distanceToX(marker['distance'] as double);
+      final y = depthToY(marker['depth'] as double);
+      path.lineTo(x, y);
+    }
+
+    // Замыкаем путь до нижней границы графика
+    final lastMarker = markers.last;
+    final lastX = distanceToX(lastMarker['distance'] as double);
+    final bottomY = topPadding + chartHeight;
+
+    path.lineTo(lastX, bottomY); // Вниз от последней точки
+    path.lineTo(firstX, bottomY); // Влево по дну
+    path.close(); // Замыкаем к первой точке
+
+    // Создаем вертикальный градиент (сверху-желтый, снизу-коричневый)
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Color(0xFFFFD700), // Ярко-желтый (сверху)
+        Color(0xFFFF8C00), // Оранжевый (середина)
+        Color(0xFF8B4513), // Темно-коричневый (снизу)
+      ],
+      stops: [0.0, 0.5, 1.0],
+    );
+
+    // Применяем градиент
+    final rect = Rect.fromLTWH(firstX, topPadding, lastX - firstX, chartHeight);
+    final paint = Paint()..shader = gradient.createShader(rect);
+
+    // Рисуем заливку
+    canvas.drawPath(path, paint);
+  }
   void _drawDashedLine(Canvas canvas, Offset start, Offset end) {
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.4)
