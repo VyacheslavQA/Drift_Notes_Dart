@@ -67,17 +67,17 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   // Текущий тип дна для нового маркера
   String _currentBottomType = 'ил';
 
-  // Константные цвета для типов дна маркеров
+  // Обновленные цвета для типов дна маркеров
   final Map<String, Color> _bottomTypeColors = {
-    'ил': Colors.brown.shade400,
-    'глубокий_ил': Colors.brown.shade800,
-    'ракушка': Colors.cyan,
-    'ровно_твердо': Colors.amber,
-    'камни': Colors.grey,
-    'трава_водоросли': Colors.green,
-    'зацеп': Colors.red,
-    'бугор': Colors.orange,
-    'точка_кормления': Colors.deepPurple,
+    'ил': Color(0xFFD4A574), // Светло ярко коричневый
+    'глубокий_ил': Color(0xFF8B4513), // Темно коричневый
+    'ракушка': Colors.white, // Белый
+    'ровно_твердо': Colors.yellow, // Желтый
+    'камни': Colors.grey, // Серый
+    'трава_водоросли': Color(0xFF90EE90), // Светло зеленый
+    'зацеп': Colors.red, // Красный
+    'бугор': Color(0xFFFF8C00), // Ярко оранжевый
+    'точка_кормления': Color(0xFF00BFFF), // Ярко голубой
     'default': Colors.blue, // для обратной совместимости
   };
 
@@ -197,6 +197,238 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     final totalAngle = _leftAngle - _rightAngle; // общий угол охвата в градусах
     final angleStep = totalAngle / (_raysCount - 1);
     return (_leftAngle - (rayIndex * angleStep)) * (math.pi / 180); // конвертируем в радианы
+  }
+
+  // Показ информации о маркерах
+  void _showMarkerInfo() {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: AppConstants.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Заголовок
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: AppConstants.primaryColor,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          localizations.translate('marker_info'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Содержимое
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Секция "Типы маркеров"
+                        Text(
+                          localizations.translate('marker_types'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Список типов маркеров с цветными точками
+                        ...(_bottomTypes.map((type) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                // Цветная точка
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: _bottomTypeColors[type] ?? Colors.blue,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Иконка
+                                Icon(
+                                  _bottomTypeIcons[type] ?? Icons.location_on,
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                // Название типа
+                                Expanded(
+                                  child: Text(
+                                    _getBottomTypeName(type),
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList()),
+
+                        const SizedBox(height: 24),
+
+                        // Секция "Как пользоваться"
+                        Text(
+                          localizations.translate('how_to_use'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Инструкции
+                        _buildInstructionItem(
+                          icon: Icons.add_location,
+                          title: localizations.translate('adding_marker'),
+                          description: localizations.translate('adding_marker_desc'),
+                        ),
+
+                        _buildInstructionItem(
+                          icon: Icons.visibility,
+                          title: localizations.translate('view_details'),
+                          description: localizations.translate('view_details_desc'),
+                        ),
+
+                        _buildInstructionItem(
+                          icon: Icons.edit,
+                          title: localizations.translate('editing'),
+                          description: localizations.translate('editing_desc'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Кнопка закрытия
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: AppConstants.textColor.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primaryColor,
+                        ),
+                        child: Text(
+                          localizations.translate('close'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Построение пункта инструкции
+  Widget _buildInstructionItem({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: AppConstants.primaryColor,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Показ диалога с деталями маркера
@@ -1113,6 +1345,19 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
+            // Информационная кнопка в правом верхнем углу
+            Positioned(
+              top: 50,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: "info_button",
+                onPressed: _showMarkerInfo,
+                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.info_outline),
+              ),
+            ),
+
             // Три кнопки справа (равномерное расстояние 75px между кнопками)
             Positioned(
               right: 16,
@@ -1274,8 +1519,8 @@ class FullscreenMarkerMapPainter extends CustomPainter {
     // Отрисовка подписей лучей
     _drawRayLabels(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
 
-    // Отрисовка маркеров
-    _drawMarkers(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
+    // Отрисовка маркеров с подписями
+    _drawMarkersWithLabels(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
   }
 
   void _drawDistanceLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter) {
@@ -1429,7 +1674,7 @@ class FullscreenMarkerMapPainter extends CustomPainter {
     }
   }
 
-  void _drawMarkers(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter, List<double> rayAngles) {
+  void _drawMarkersWithLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter, List<double> rayAngles) {
     for (final marker in markers) {
       // Получаем координаты из сохраненных в маркере данных
       final rayIndex = (marker['rayIndex'] as double? ?? 0).toInt();
@@ -1493,6 +1738,61 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         Offset(dx, dy),
         2,
         centerDotPaint,
+      );
+
+      // Отрисовка подписей глубины и дистанции
+      final textPainter = TextPainter(
+        textDirection: ui.TextDirection.ltr,
+      );
+
+      // Подпись глубины слева (желтый цвет)
+      if (marker['depth'] != null) {
+        textPainter.text = TextSpan(
+          text: '${marker['depth'].toStringAsFixed(1)}м',
+          style: TextStyle(
+            color: Colors.yellow.shade300,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            shadows: [
+              Shadow(
+                offset: const Offset(1, 1),
+                blurRadius: 2,
+                color: Colors.black.withValues(alpha: 0.8),
+              ),
+            ],
+          ),
+        );
+        textPainter.layout();
+
+        // Размещаем слева от маркера
+        textPainter.paint(
+          canvas,
+          Offset(dx - textPainter.width - 12, dy - textPainter.height / 2),
+        );
+      }
+
+      // Подпись дистанции справа (белый цвет)
+      textPainter.text = TextSpan(
+        text: '${distance.toInt()}м',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              offset: const Offset(1, 1),
+              blurRadius: 2,
+              color: Colors.black.withValues(alpha: 0.8),
+            ),
+          ],
+        ),
+      );
+      textPainter.layout();
+
+      // Размещаем справа от маркера
+      textPainter.paint(
+        canvas,
+        Offset(dx + 12, dy - textPainter.height / 2),
       );
 
       // Сохраняем позицию маркера для обработки тапов (хитбокс)

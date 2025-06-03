@@ -1279,6 +1279,17 @@
   "reset_filter": "Reset Filter",
   "try_different_period": "Try selecting a different period or view all statistics",
   "selected_period": "Selected Period",
-  "filter_applied": "Filter Applied"
+  "filter_applied": "Filter Applied",
+
+  "marker_info": "Marker Information",
+  "marker_types": "Marker Types",
+  "how_to_use": "How to Use",
+  "adding_marker": "Adding Marker",
+  "adding_marker_desc": "Press + to add a new marker",
+  "view_details": "View Details",
+  "view_details_desc": "Tap on a marker to view details",
+  "editing": "Editing",
+  "editing_desc": "In details mode you can edit or delete markers",
+  "close": "Close"
 
 }
