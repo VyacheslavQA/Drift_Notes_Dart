@@ -83,16 +83,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Иконки для типов дна
   final Map<String, IconData> _bottomTypeIcons = {
-    'ил': Icons.terrain,
-    'глубокий_ил': Icons.filter_hdr,
-    'ракушка': Icons.waves,
+    'ил': Icons.blur_linear,
+    'глубокий_ил': Icons.waves,
+    'ракушка': Icons.grain,
     'ровно_твердо': Icons.view_agenda,
     'камни': Icons.circle,
     'трава_водоросли': Icons.grass,
     'зацеп': Icons.warning,
     'бугор': Icons.landscape,
     'точка_кормления': Icons.room_service,
-    'default': Icons.location_on, // для обратной совместимости
+    'default': Icons.location_on,
   };
 
   @override
@@ -282,10 +282,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                                   decoration: BoxDecoration(
                                     color: _bottomTypeColors[type] ?? Colors.blue,
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 1,
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -726,16 +722,15 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor: _bottomTypeColors[type]?.withValues(alpha: 0.2) ?? Colors.grey.withValues(alpha: 0.2),
-                          selectedColor: _bottomTypeColors[type]?.withValues(alpha: 0.5) ?? Colors.grey.withValues(alpha: 0.5),
+                          backgroundColor: _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor: _bottomTypeColors[type] ?? Colors.grey,
                           labelStyle: TextStyle(
-                            color: AppConstants.textColor,
+                            color: Colors.black,
                             fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
                           ),
                           avatar: Icon(
                             _bottomTypeIcons[type],
-                            color: selectedBottomType == type ?
-                            AppConstants.textColor : AppConstants.textColor.withValues(alpha: 0.7),
+                            color: Colors.black,
                             size: 18,
                           ),
                           onSelected: (bool selected) {
@@ -998,16 +993,15 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor: _bottomTypeColors[type]?.withValues(alpha: 0.2) ?? Colors.grey.withValues(alpha: 0.2),
-                          selectedColor: _bottomTypeColors[type]?.withValues(alpha: 0.5) ?? Colors.grey.withValues(alpha: 0.5),
+                          backgroundColor: _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor: _bottomTypeColors[type] ?? Colors.grey,
                           labelStyle: TextStyle(
-                            color: AppConstants.textColor,
+                            color: Colors.black,
                             fontWeight: selectedBottomType == type ? FontWeight.bold : FontWeight.normal,
                           ),
                           avatar: Icon(
                             _bottomTypeIcons[type],
-                            color: selectedBottomType == type ?
-                            AppConstants.textColor : AppConstants.textColor.withValues(alpha: 0.7),
+                            color: Colors.black,
                             size: 18,
                           ),
                           onSelected: (bool selected) {
@@ -1345,10 +1339,10 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
-            // Информационная кнопка в правом верхнем углу
+            // Информационная кнопка в левом нижнем углу
             Positioned(
-              top: 50,
-              right: 16,
+              left: 16,
+              bottom: 55, // Выше кнопки добавления маркера
               child: FloatingActionButton(
                 heroTag: "info_button",
                 onPressed: _showMarkerInfo,
@@ -1710,23 +1704,11 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         ..color = markerColor
         ..style = PaintingStyle.fill;
 
-      // Рисуем кружок
+      // Рисуем кружок без обводки
       canvas.drawCircle(
         Offset(dx, dy),
         8,
         markerPaint,
-      );
-
-      // Добавляем обводку
-      final strokePaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5;
-
-      canvas.drawCircle(
-        Offset(dx, dy),
-        8,
-        strokePaint,
       );
 
       // Добавляем внутреннюю точку
@@ -1740,12 +1722,16 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         centerDotPaint,
       );
 
-      // Отрисовка подписей глубины и дистанции
+      // Отрисовка подписей справа от луча
       final textPainter = TextPainter(
         textDirection: ui.TextDirection.ltr,
       );
 
-      // Подпись глубины слева (желтый цвет)
+      // Вычисляем позицию справа от луча
+      final labelOffsetX = 15.0; // Отступ от маркера
+      final labelX = dx + labelOffsetX;
+
+      // Подпись глубины сверху (желтый цвет)
       if (marker['depth'] != null) {
         textPainter.text = TextSpan(
           text: '${marker['depth'].toStringAsFixed(1)}м',
@@ -1764,14 +1750,14 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         );
         textPainter.layout();
 
-        // Размещаем слева от маркера
+        // Размещаем глубину сверху
         textPainter.paint(
           canvas,
-          Offset(dx - textPainter.width - 12, dy - textPainter.height / 2),
+          Offset(labelX, dy - 10), // Выше маркера
         );
       }
 
-      // Подпись дистанции справа (белый цвет)
+      // Подпись дистанции снизу (белый цвет)
       textPainter.text = TextSpan(
         text: '${distance.toInt()}м',
         style: TextStyle(
@@ -1789,10 +1775,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       );
       textPainter.layout();
 
-      // Размещаем справа от маркера
+      // Размещаем дистанцию снизу
       textPainter.paint(
         canvas,
-        Offset(dx + 12, dy - textPainter.height / 2),
+        Offset(labelX, dy + 2), // Ниже маркера
       );
 
       // Сохраняем позицию маркера для обработки тапов (хитбокс)
