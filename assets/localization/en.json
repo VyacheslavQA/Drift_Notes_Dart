@@ -1269,7 +1269,7 @@
   "for": "for",
   "ai_analysis_complete": "AI analysis complete",
 
-  "beam": "Beam",
+  "ray": "Ray",
   "charts": "Charts",
   "delete_marker": "Delete marker",
   "delete_marker_confirmation": "Are you sure you want to delete this marker? This action cannot be undone."

@@ -318,7 +318,7 @@
   "select_city": "Выберите город",
   "select_experience": "Выберите уровень опыта",
   "change_avatar": "Изменить аватар",
-  "save_changes": "Сохранить изменения",
+  "save_changes": "Изменения сохранены",
   "profile_updated": "Профиль обновлен",
   "profile_update_error": "Ошибка обновления профиля",
   "first_select_country": "Сначала выберите страну",
@@ -493,7 +493,7 @@
   "feeding_spot": "Точка кормления",
 
   "bottom_type": "Тип дна",
-  "beam": "Луч",
+  "ray": "Луч",
   "marker_info": "Информация о маркерах",
   "map_name_required": "Введите название карты",
   "info_updated": "Информация обновлена",
