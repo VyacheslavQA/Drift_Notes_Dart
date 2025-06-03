@@ -14,6 +14,7 @@ import '../../widgets/loading_overlay.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
+import 'depth_chart_screen.dart';
 
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
@@ -849,6 +850,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       SnackBar(
                         content: Text(localizations.translate('marker_added')),
                         backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 1),
                       ),
                     );
 
@@ -1114,6 +1116,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       SnackBar(
                         content: Text(localizations.translate('marker_updated')),
                         backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 1),
                       ),
                     );
 
@@ -1192,6 +1195,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                   SnackBar(
                     content: Text(localizations.translate('marker_deleted')),
                     backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 1),
                   ),
                 );
               },
@@ -1222,14 +1226,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     Future.microtask(() => setState(() {}));
   }
 
-  // Заглушка для кнопки графиков
-  void _showChartsComingSoon() {
-    final localizations = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${localizations.translate('statistics')} ${localizations.translate('coming_soon')}'),
-        backgroundColor: AppConstants.primaryColor,
-        duration: const Duration(seconds: 2),
+  // Переход к экрану графиков глубин
+  void _showDepthCharts() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DepthChartScreen(markerMap: _markerMap),
       ),
     );
   }
@@ -1270,6 +1272,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
           SnackBar(
             content: Text(localizations.translate('save_changes')),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 1),
           ),
         );
       }
@@ -1370,7 +1373,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               bottom: 105, // Средняя кнопка (180 - 75 = 105)
               child: FloatingActionButton(
                 heroTag: "charts_button",
-                onPressed: _showChartsComingSoon,
+                onPressed: _showDepthCharts,
                 backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
                 child: const Icon(Icons.bar_chart),
