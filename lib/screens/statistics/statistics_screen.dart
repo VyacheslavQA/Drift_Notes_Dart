@@ -102,6 +102,11 @@ class StatisticsScreenState extends State<StatisticsScreen> {
     }
   }
 
+  // Метод для сброса фильтра на "Всё время"
+  void _resetToAllTime() {
+    _statisticsProvider.changePeriod(StatisticsPeriod.allTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -176,38 +181,137 @@ class StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildEmptyState() {
     final localizations = AppLocalizations.of(context);
+    final isFilterApplied = _statisticsProvider.selectedPeriod != StatisticsPeriod.allTime;
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.query_stats,
-            color: AppConstants.textColor.withValues(alpha: 0.3),
-            size: 80,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            localizations.translate('no_data_to_display'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              localizations.translate('create_fishing_notes_for_stats'),
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 16,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.query_stats,
+                color: AppConstants.textColor.withValues(alpha: 0.3),
+                size: 80,
               ),
-              textAlign: TextAlign.center,
-            ),
+              const SizedBox(height: 24),
+
+              // Показываем разный текст в зависимости от того, применён ли фильтр
+              Text(
+                isFilterApplied
+                    ? localizations.translate('no_data_for_selected_period')
+                    : localizations.translate('no_data_to_display'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Если фильтр применён, показываем информацию о текущем периоде
+              if (isFilterApplied) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.filter_alt,
+                        color: AppConstants.primaryColor,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${localizations.translate('selected_period')}: ${_getPeriodTitle()}',
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Подсказка
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  isFilterApplied
+                      ? localizations.translate('try_different_period')
+                      : localizations.translate('create_fishing_notes_for_stats'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Кнопки действий
+              if (isFilterApplied) ...[
+                // Кнопка "Показать все данные"
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _resetToAllTime,
+                    icon: const Icon(Icons.clear_all),
+                    label: Text(localizations.translate('show_all_data')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Селектор периодов (всегда показывать для быстрого переключения)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppConstants.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      localizations.translate('select_date_range'),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPeriodSelector(),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -226,13 +330,51 @@ class StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 24),
 
             // Заголовок с выбранным периодом
-            Text(
-              _getPeriodTitle(),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _getPeriodTitle(),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Показываем индикатор активного фильтра
+                if (_statisticsProvider.selectedPeriod != StatisticsPeriod.allTime)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.filter_alt,
+                          color: AppConstants.primaryColor,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppLocalizations.of(context).translate('filter_applied'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
 
             const SizedBox(height: 16),
@@ -307,6 +449,10 @@ class StatisticsScreenState extends State<StatisticsScreen> {
               ? AppConstants.primaryColor
               : AppConstants.primaryColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(25),
+          // Добавляем рамку для лучшего выделения активного фильтра
+          border: isSelected
+              ? Border.all(color: AppConstants.primaryColor, width: 2)
+              : Border.all(color: Colors.transparent, width: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -324,6 +470,7 @@ class StatisticsScreenState extends State<StatisticsScreen> {
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: isSelected ? 14 : 13,
               ),
             ),
           ],
