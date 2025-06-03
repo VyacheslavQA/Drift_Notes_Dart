@@ -449,6 +449,7 @@
   "add_marker": "Add Marker",
   "edit_marker": "Edit Marker",
   "marker_name": "Marker Name",
+  "depth": "Depth (m)",
   "depth_m": "Depth (m)",
   "description": "Description",
   "marker_type": "Marker Type",

@@ -588,45 +588,72 @@ class DepthChartPainter extends CustomPainter {
       return topPadding + (depth - minDepth) / (maxDepth - minDepth) * chartHeight;
     }
 
-    // Рисуем сетку
-    _drawGrid(canvas, size, leftPadding, topPadding, actualChartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
-
     // Рисуем линию профиля дна и маркеры (только если есть маркеры)
     if (markers.isNotEmpty) {
       _drawProfileLine(canvas, distanceToX, depthToY);
       _drawMarkers(canvas, distanceToX, depthToY);
+      _drawBottomTypeIndicators(canvas, distanceToX, topPadding); // Новая функция для значков сверху
     }
 
-    // Рисуем подписи осей
+    // Рисуем подписи осей (только глубина слева и дистанция снизу)
     _drawAxisLabels(canvas, size, leftPadding, topPadding, actualChartWidth, chartHeight, minDistance, maxDistance, minDepth, maxDepth);
   }
 
-  void _drawGrid(Canvas canvas, Size size, double leftPadding, double topPadding,
-      double chartWidth, double chartHeight, double minDistance, double maxDistance,
-      double minDepth, double maxDepth) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.1)
-      ..strokeWidth = 0.5;
+  // Новая функция для отрисовки иконок типа дна сверху с пунктирными линиями
+  void _drawBottomTypeIndicators(Canvas canvas, double Function(double) distanceToX, double topPadding) {
+    for (final marker in markers) {
+      final x = distanceToX(marker['distance'] as double);
+      final y = marker['_chartY'] as double; // Позиция точки маркера
 
-    // Вертикальные линии (дистанция) - каждые 10м от 0 до 200
-    for (double d = 0; d <= maxDistance; d += DISTANCE_STEP) {
-      final x = leftPadding + (d * pixelsPerMeterDistance);
-      canvas.drawLine(
-        Offset(x, topPadding),
-        Offset(x, topPadding + chartHeight),
-        paint,
-      );
+      // Определяем тип дна
+      String bottomType = marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
+
+      // Получаем Flutter иконку для типа дна
+      final iconData = bottomTypeIcons[bottomType] ?? Icons.location_on;
+
+      // Рисуем Flutter иконку в самом верху
+      _drawIcon(canvas, iconData, Offset(x, topPadding - 20), isLandscape ? 15.0 : 17.0);
+
+      // Рисуем тонкую пунктирную линию от иконки к точке
+      _drawDashedLine(canvas, Offset(x, topPadding - 5), Offset(x, y));
     }
+  }
 
-    // Горизонтальные линии (глубина)
-    final depthStep = _calculateDepthStep(maxDepth - minDepth);
-    for (double d = (minDepth / depthStep).ceil() * depthStep; d <= maxDepth; d += depthStep) {
-      final y = topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(leftPadding + chartWidth, y),
-        paint,
-      );
+  // Функция для рисования Flutter иконки
+  void _drawIcon(Canvas canvas, IconData iconData, Offset center, double size) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size,
+        fontFamily: iconData.fontFamily,
+        color: Colors.white,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
+    );
+  }
+
+  // Функция для рисования пунктирной линии
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.4)
+      ..strokeWidth = 1.0;
+
+    const dashWidth = 3.0;
+    const dashSpace = 3.0;
+
+    final distance = (end - start).distance;
+    final dashCount = (distance / (dashWidth + dashSpace)).floor();
+
+    for (int i = 0; i < dashCount; i++) {
+      final startOffset = start + (end - start) * (i * (dashWidth + dashSpace) / distance);
+      final endOffset = start + (end - start) * ((i * (dashWidth + dashSpace) + dashWidth) / distance);
+
+      canvas.drawLine(startOffset, endOffset, paint);
     }
   }
 
@@ -670,13 +697,12 @@ class DepthChartPainter extends CustomPainter {
         ..color = markerColor
         ..style = PaintingStyle.fill;
 
-      canvas.drawCircle(Offset(x, y), isLandscape ? 4 : 5, markerPaint);
+      canvas.drawCircle(Offset(x, y), isLandscape ? 2 : 2.5, markerPaint);
 
       // Рисуем подпись глубины (желтым цветом)
       _drawDepthLabel(canvas, x, y, marker['depth'] as double);
 
-      // Рисуем символ типа дна
-      _drawBottomTypeSymbol(canvas, x, y, bottomType);
+      // Убираем отрисовку символа типа дна здесь - теперь он рисуется сверху
 
       // Сохраняем позицию для обработки тапов
       marker['_chartX'] = x;
@@ -706,25 +732,11 @@ class DepthChartPainter extends CustomPainter {
     );
 
     textPainter.layout();
-    textPainter.paint(canvas, Offset(x + 8, y + 8));
+    // Глубина строго под точкой маркера (по центру)
+    textPainter.paint(canvas, Offset(x - textPainter.width / 2, y + 12));
   }
 
-  void _drawBottomTypeSymbol(Canvas canvas, double x, double y, String bottomType) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: _getBottomTypeSymbol(bottomType),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: isLandscape ? 8 : 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-
-    textPainter.layout();
-    textPainter.paint(canvas, Offset(x + 8, y - 15));
-  }
+  // Убираем функцию _drawBottomTypeSymbol - больше не нужна
 
   String _getBottomTypeSymbol(String bottomType) {
     switch (bottomType) {
@@ -751,16 +763,18 @@ class DepthChartPainter extends CustomPainter {
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // Подписи дистанции (ось X) - каждые 10м от 0 до 200
+    // Подписи дистанции только снизу графика
     for (double d = 0; d <= maxDistance; d += DISTANCE_STEP) {
       final x = leftPadding + (d * pixelsPerMeterDistance);
 
       textPainter.text = TextSpan(text: '${d.toInt()}', style: textStyle);
       textPainter.layout();
+
+      // Только снизу графика
       textPainter.paint(canvas, Offset(x - textPainter.width / 2, topPadding + chartHeight + 8));
     }
 
-    // Подписи глубины (ось Y)
+    // Подписи глубины (ось Y) - оставляем как есть
     final depthStep = _calculateDepthStep(maxDepth - minDepth);
     for (double d = (minDepth / depthStep).ceil() * depthStep; d <= maxDepth; d += depthStep) {
       final y = topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
