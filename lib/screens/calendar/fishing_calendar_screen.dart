@@ -860,82 +860,236 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    event.title,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (event.location != null)
+      child: InkWell(
+        onLongPress: () => _showTournamentEventOptions(context, event, localizations),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(
-                    Icons.location_on,
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      event.location!,
+                      event.title,
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: statusColor.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
-            if (event.description != null) ...[
+              const SizedBox(height: 8),
+              if (event.location != null)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event.location!,
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              if (event.description != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  event.description!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.6),
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
-                event.description!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                localizations.translate('tap_hold_for_options'),
                 style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  fontSize: 14,
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                  fontSize: 12,
                   fontStyle: FontStyle.italic,
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  // Новый метод для показа опций турнира
+  void _showTournamentEventOptions(BuildContext context, CalendarEvent event, AppLocalizations localizations) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Заголовок
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppConstants.textColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                event.title,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 24),
+
+              // Кнопка удаления из календаря
+              ListTile(
+                leading: Icon(
+                  Icons.event_busy,
+                  color: Colors.red,
+                ),
+                title: Text(
+                  localizations.translate('remove_from_calendar'),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _removeTournamentFromCalendar(context, event, localizations);
+                },
+              ),
+
+              const SizedBox(height: 8),
+
+              // Кнопка отмены
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    localizations.translate('cancel'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Метод для удаления турнира из календаря
+  void _removeTournamentFromCalendar(BuildContext context, CalendarEvent event, AppLocalizations localizations) async {
+    // Показываем диалог подтверждения
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.surfaceColor,
+        title: Text(
+          localizations.translate('remove_from_calendar'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        content: Text(
+          localizations.translate('remove_tournament_confirmation'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              localizations.translate('cancel'),
+              style: TextStyle(color: AppConstants.textColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              localizations.translate('remove'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _calendarEventService.removeEvent(event.id);
+
+        // Обновляем список событий
+        await _loadFishingNotes();
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('tournament_removed_from_calendar')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${localizations.translate('error_loading')}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 }

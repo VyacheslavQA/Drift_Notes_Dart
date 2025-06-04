@@ -1136,5 +1136,11 @@
   "edit_map_info": "Редактировать информацию",
   "share_map": "Поделиться картой",
   "feature_coming_soon": "Функция будет реализована позже",
-  "edit_map_information": "Редактирование информации о карте"
+  "edit_map_information": "Редактирование информации о карте",
+
+  "remove_from_calendar": "Удалить из календаря",
+  "tournament_removed_from_calendar": "Турнир удален из календаря рыбалок",
+  "tap_hold_for_options": "Удерживайте для опций",
+  "remove_tournament_confirmation": "Вы уверены, что хотите удалить этот турнир из календаря рыбалок?",
+  "remove": "Удалить"
 }

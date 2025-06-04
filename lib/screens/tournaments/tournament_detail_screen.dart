@@ -7,13 +7,48 @@ import '../../models/tournament_model.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/calendar_event_service.dart';
 
-class TournamentDetailScreen extends StatelessWidget {
+class TournamentDetailScreen extends StatefulWidget {
   final TournamentModel tournament;
 
   const TournamentDetailScreen({
     super.key,
     required this.tournament,
   });
+
+  @override
+  State<TournamentDetailScreen> createState() => _TournamentDetailScreenState();
+}
+
+class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
+  bool _isInCalendar = false;
+  bool _isCheckingCalendar = true;
+  bool _isUpdatingCalendar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfInCalendar();
+  }
+
+  Future<void> _checkIfInCalendar() async {
+    try {
+      final calendarService = CalendarEventService();
+      final isInCalendar = await calendarService.isTournamentInCalendar(widget.tournament.id);
+
+      if (mounted) {
+        setState(() {
+          _isInCalendar = isInCalendar;
+          _isCheckingCalendar = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingCalendar = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +155,7 @@ class TournamentDetailScreen extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    tournament.fishingType.icon,
+                    widget.tournament.fishingType.icon,
                     style: const TextStyle(fontSize: 32),
                   ),
                 ),
@@ -134,7 +169,7 @@ class TournamentDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tournament.name,
+                      widget.tournament.name,
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 18,
@@ -159,7 +194,7 @@ class TournamentDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            localizations.translate(tournament.fishingType.localizationKey),
+                            localizations.translate(widget.tournament.fishingType.localizationKey),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -180,12 +215,12 @@ class TournamentDetailScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                tournament.category.icon,
+                                widget.tournament.category.icon,
                                 style: const TextStyle(fontSize: 14),
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                localizations.translate(tournament.category.localizationKey),
+                                localizations.translate(widget.tournament.category.localizationKey),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
                                   fontSize: 12,
@@ -206,7 +241,7 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Статус
-          if (tournament.isActive)
+          if (widget.tournament.isActive)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -228,7 +263,7 @@ class TournamentDetailScreen extends StatelessWidget {
                 ],
               ),
             )
-          else if (tournament.isFuture)
+          else if (widget.tournament.isFuture)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -320,7 +355,7 @@ class TournamentDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      tournament.formattedDate,
+                      widget.tournament.formattedDate,
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -343,7 +378,7 @@ class TournamentDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${tournament.duration} ${localizations.translate('hours')}',
+                      '${widget.tournament.duration} ${localizations.translate('hours')}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -389,7 +424,7 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           Text(
-            tournament.location,
+            widget.tournament.location,
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -430,7 +465,7 @@ class TournamentDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           Text(
-            tournament.organizer,
+            widget.tournament.organizer,
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -456,7 +491,7 @@ class TournamentDetailScreen extends StatelessWidget {
           Row(
             children: [
               Text(
-                tournament.fishingType.icon,
+                widget.tournament.fishingType.icon,
                 style: const TextStyle(fontSize: 24),
               ),
               const SizedBox(width: 12),
@@ -480,7 +515,7 @@ class TournamentDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              localizations.translate(tournament.fishingType.localizationKey),
+              localizations.translate(widget.tournament.fishingType.localizationKey),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 16,
@@ -526,13 +561,13 @@ class TournamentDetailScreen extends StatelessWidget {
               Expanded(
                 child: _buildInfoItem(
                     localizations.translate('month'),
-                    tournament.month
+                    widget.tournament.month
                 ),
               ),
               Expanded(
                 child: _buildInfoItem(
                     localizations.translate('category'),
-                    localizations.translate(tournament.category.localizationKey)
+                    localizations.translate(widget.tournament.category.localizationKey)
                 ),
               ),
             ],
@@ -550,8 +585,8 @@ class TournamentDetailScreen extends StatelessWidget {
   }
 
   String _getTournamentStatus(AppLocalizations localizations) {
-    if (tournament.isActive) return localizations.translate('active');
-    if (tournament.isFuture) return localizations.translate('future');
+    if (widget.tournament.isActive) return localizations.translate('active');
+    if (widget.tournament.isFuture) return localizations.translate('future');
     return localizations.translate('finished');
   }
 
@@ -603,38 +638,99 @@ class TournamentDetailScreen extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // Кнопка добавления в календарь
+        // Кнопка добавления/удаления из календаря
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _addToCalendar(context, localizations),
-            icon: const Icon(Icons.calendar_today),
-            label: Text(localizations.translate('add_to_calendar')),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppConstants.textColor,
-              side: BorderSide(color: AppConstants.textColor),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+          child: _buildCalendarButton(context, localizations),
         ),
       ],
     );
   }
 
+  Widget _buildCalendarButton(BuildContext context, AppLocalizations localizations) {
+    if (_isCheckingCalendar) {
+      return OutlinedButton.icon(
+        onPressed: null,
+        icon: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor.withValues(alpha: 0.5)),
+          ),
+        ),
+        label: Text(localizations.translate('loading')),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppConstants.textColor.withValues(alpha: 0.5),
+          side: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+
+    if (_isInCalendar) {
+      return OutlinedButton.icon(
+        onPressed: _isUpdatingCalendar ? null : () => _removeFromCalendar(context, localizations),
+        icon: _isUpdatingCalendar
+            ? SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+          ),
+        )
+            : const Icon(Icons.event_busy),
+        label: Text(localizations.translate('remove_from_calendar')),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } else {
+      return OutlinedButton.icon(
+        onPressed: _isUpdatingCalendar ? null : () => _addToCalendar(context, localizations),
+        icon: _isUpdatingCalendar
+            ? SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+          ),
+        )
+            : const Icon(Icons.calendar_today),
+        label: Text(localizations.translate('add_to_calendar')),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppConstants.textColor,
+          side: BorderSide(color: AppConstants.textColor),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
   void _copyTournamentInfo(BuildContext context, AppLocalizations localizations) {
     final text = '''
-${tournament.category.icon} ${tournament.name}
+${widget.tournament.category.icon} ${widget.tournament.name}
 
-📅 ${localizations.translate('date')}: ${tournament.formattedDate}
-⏰ ${localizations.translate('duration')}: ${tournament.duration} ${localizations.translate('hours')}
-🎣 ${localizations.translate('fishing_type')}: ${localizations.translate(tournament.fishingType.localizationKey)}
-📍 ${localizations.translate('venue')}: ${tournament.location}
-👥 ${localizations.translate('organizer')}: ${tournament.organizer}
+📅 ${localizations.translate('date')}: ${widget.tournament.formattedDate}
+⏰ ${localizations.translate('duration')}: ${widget.tournament.duration} ${localizations.translate('hours')}
+🎣 ${localizations.translate('fishing_type')}: ${localizations.translate(widget.tournament.fishingType.localizationKey)}
+📍 ${localizations.translate('venue')}: ${widget.tournament.location}
+👥 ${localizations.translate('organizer')}: ${widget.tournament.organizer}
 
-#${tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
+#${widget.tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
     '''.trim();
 
     Clipboard.setData(ClipboardData(text: text));
@@ -653,26 +749,35 @@ ${tournament.category.icon} ${tournament.name}
       context,
       '/fishing_type_selection',
       arguments: {
-        'tournament': tournament,
+        'tournament': widget.tournament,
         'prefilledData': {
-          'location': tournament.location,
-          'date': tournament.startDate,
-          'endDate': tournament.endDate,
-          'fishingType': tournament.fishingType.displayName,
+          'location': widget.tournament.location,
+          'date': widget.tournament.startDate,
+          'endDate': widget.tournament.endDate,
+          'fishingType': widget.tournament.fishingType.displayName,
         },
       },
     );
   }
 
   void _addToCalendar(BuildContext context, AppLocalizations localizations) async {
+    setState(() {
+      _isUpdatingCalendar = true;
+    });
+
     try {
       final calendarService = CalendarEventService();
 
       // Добавляем турнир в календарь с напоминанием за день
       await calendarService.addTournamentToCalendar(
-        tournament: tournament,
+        tournament: widget.tournament,
         reminderType: ReminderType.oneDay,
       );
+
+      setState(() {
+        _isInCalendar = true;
+        _isUpdatingCalendar = false;
+      });
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -683,10 +788,55 @@ ${tournament.category.icon} ${tournament.name}
         );
       }
     } catch (e) {
+      setState(() {
+        _isUpdatingCalendar = false;
+      });
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка при добавлении в календарь: $e'),
+            content: Text('${localizations.translate('error_loading')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeFromCalendar(BuildContext context, AppLocalizations localizations) async {
+    setState(() {
+      _isUpdatingCalendar = true;
+    });
+
+    try {
+      final calendarService = CalendarEventService();
+      final eventId = 'tournament_${widget.tournament.id}';
+
+      // Удаляем турнир из календаря
+      await calendarService.removeEvent(eventId);
+
+      setState(() {
+        _isInCalendar = false;
+        _isUpdatingCalendar = false;
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('tournament_removed_from_calendar')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isUpdatingCalendar = false;
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_loading')}: $e'),
             backgroundColor: Colors.red,
           ),
         );

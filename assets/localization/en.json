@@ -1182,5 +1182,11 @@
   "edit_map_info": "Edit Information",
   "share_map": "Share Map",
   "feature_coming_soon": "Feature coming soon",
-  "edit_map_information": "Edit Map Information"
+  "edit_map_information": "Edit Map Information",
+
+  "remove_from_calendar": "Remove from Calendar",
+  "tournament_removed_from_calendar": "Tournament removed from fishing calendar",
+  "tap_hold_for_options": "Hold for options",
+  "remove_tournament_confirmation": "Are you sure you want to remove this tournament from the fishing calendar?",
+  "remove": "Remove"
 }
