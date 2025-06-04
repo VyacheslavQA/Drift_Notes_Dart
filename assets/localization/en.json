@@ -1291,6 +1291,16 @@
   "view_details_desc": "Tap on a marker to view details",
   "editing": "Editing",
   "editing_desc": "In details mode you can edit or delete markers",
-  "close": "Close"
+  "close": "Close",
+
+  "map_settings": "Map Settings",
+  "edit_map_info": "Edit Information",
+  "share_map": "Share Map",
+  "feature_coming_soon": "Feature coming soon",
+  "edit_map_information": "Edit Map Information",
+  "map_name_required": "Enter map name",
+  "info_updated": "Information updated",
+  "map_deleted_successfully": "Map deleted successfully",
+  "error_deleting_map": "Error deleting map"
 
 }
