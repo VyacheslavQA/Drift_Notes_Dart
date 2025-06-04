@@ -124,7 +124,7 @@ class ShopDetailScreen extends StatelessWidget {
 
               const SizedBox(width: 16),
 
-              // Название и статус
+              // Название (убрали статус)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,50 +138,7 @@ class ShopDetailScreen extends StatelessWidget {
                         height: 1.2,
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
-
-
-                    // Статус
-                    if (shop.status != ShopStatus.regular)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: shop.status == ShopStatus.premium
-                              ? Colors.amber.withValues(alpha: 0.2)
-                              : Colors.green.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              shop.status == ShopStatus.premium
-                                  ? Icons.diamond
-                                  : Icons.star,
-                              size: 16,
-                              color: shop.status == ShopStatus.premium
-                                  ? Colors.amber
-                                  : Colors.green,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              localizations.translate(shop.status.localizationKey),
-                              style: TextStyle(
-                                color: shop.status == ShopStatus.premium
-                                    ? Colors.amber
-                                    : Colors.green,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),

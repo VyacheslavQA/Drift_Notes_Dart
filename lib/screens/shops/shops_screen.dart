@@ -251,48 +251,17 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Название и статус
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              shop.name,
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (shop.status != ShopStatus.regular)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: shop.status == ShopStatus.premium
-                                    ? Colors.amber.withValues(alpha: 0.2)
-                                    : Colors.green.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                localizations.translate(shop.status.localizationKey),
-                                style: TextStyle(
-                                  color: shop.status == ShopStatus.premium
-                                      ? Colors.amber
-                                      : Colors.green,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
+                      // Название (убрали статус)
+                      Text(
+                        shop.name,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
 
                       const SizedBox(height: 8),
-
-
 
                       // Описание (теперь переводится)
                       Text(
