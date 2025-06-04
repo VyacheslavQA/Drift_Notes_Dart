@@ -1188,5 +1188,6 @@
   "tournament_removed_from_calendar": "Tournament removed from fishing calendar",
   "tap_hold_for_options": "Hold for options",
   "remove_tournament_confirmation": "Are you sure you want to remove this tournament from the fishing calendar?",
-  "remove": "Remove"
+  "remove": "Remove",
+  "by_types": "By Types"
 }

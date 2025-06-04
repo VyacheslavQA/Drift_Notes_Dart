@@ -288,28 +288,41 @@ class _TournamentsScreenState extends State<TournamentsScreen>
 
   Widget _buildFishingTypesView() {
     final localizations = AppLocalizations.of(context);
+
+    // Получаем все виды рыбалки, которые есть в данных
     final fishingStats = _tournamentService.getFishingTypeStatistics();
+
+    // Определяем порядок отображения видов рыбалки
+    final fishingTypesOrder = [
+      FishingType.carpFishing,
+      FishingType.spinning,
+      FishingType.feeder,
+      FishingType.iceFishing,
+      FishingType.casting,
+      FishingType.floatFishing,
+    ];
 
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: [
-        // Карповая рыбалка
-        _buildFishingTypeCard(
-          FishingType.carpFishing,
-          fishingStats[FishingType.carpFishing] ?? 0,
-          _tournaments.where((t) => t.fishingType == FishingType.carpFishing).toList(),
-          localizations,
-        ),
-        const SizedBox(height: 12),
+      children: fishingTypesOrder.map((fishingType) {
+        final count = fishingStats[fishingType] ?? 0;
+        final tournaments = _tournaments.where((t) => t.fishingType == fishingType).toList();
 
-        // Кастинг
-        _buildFishingTypeCard(
-          FishingType.casting,
-          fishingStats[FishingType.casting] ?? 0,
-          _tournaments.where((t) => t.fishingType == FishingType.casting).toList(),
-          localizations,
-        ),
-      ],
+        // Показываем только те типы, для которых есть турниры
+        if (count == 0) return const SizedBox.shrink();
+
+        return Column(
+          children: [
+            _buildFishingTypeCard(
+              fishingType,
+              count,
+              tournaments,
+              localizations,
+            ),
+            const SizedBox(height: 12),
+          ],
+        );
+      }).toList(),
     );
   }
 
@@ -317,9 +330,23 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     return Card(
       color: AppConstants.surfaceColor,
       child: ExpansionTile(
-        leading: Text(
-          fishingType.icon,
-          style: const TextStyle(fontSize: 24),
+        leading: Container(
+          width: 32,
+          height: 32,
+          padding: const EdgeInsets.all(4),
+          child: Image.asset(
+            fishingType.iconPath,
+            width: 24,
+            height: 24,
+            color: AppConstants.textColor,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback к эмодзи если иконка не найдена
+              return Text(
+                fishingType.icon,
+                style: const TextStyle(fontSize: 24),
+              );
+            },
+          ),
         ),
         title: Text(
           localizations.translate(fishingType.localizationKey),
@@ -478,9 +505,18 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         color: AppConstants.primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(
-                        tournament.fishingType.icon,
-                        style: const TextStyle(fontSize: 20),
+                      child: Image.asset(
+                        tournament.fishingType.iconPath,
+                        width: 20,
+                        height: 20,
+                        color: AppConstants.textColor,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Fallback к эмодзи если иконка не найдена
+                          return Text(
+                            tournament.fishingType.icon,
+                            style: const TextStyle(fontSize: 20),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),

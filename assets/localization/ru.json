@@ -1142,5 +1142,6 @@
   "tournament_removed_from_calendar": "Турнир удален из календаря рыбалок",
   "tap_hold_for_options": "Удерживайте для опций",
   "remove_tournament_confirmation": "Вы уверены, что хотите удалить этот турнир из календаря рыбалок?",
-  "remove": "Удалить"
+  "remove": "Удалить",
+  "by_types": "По типам"
 }

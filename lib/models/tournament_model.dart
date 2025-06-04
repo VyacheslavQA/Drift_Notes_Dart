@@ -129,6 +129,29 @@ extension FishingTypeExtension on FishingType {
     }
   }
 
+  // Путь к PNG иконке вместо эмодзи
+  String get iconPath {
+    switch (this) {
+      case FishingType.carpFishing:
+        return 'assets/images/fishing_types/carp_fishing.png';
+      case FishingType.casting:
+        return 'assets/images/fishing_types/other.png'; // Нет специальной иконки для кастинга, используем "other"
+      case FishingType.spinning:
+        return 'assets/images/fishing_types/spinning.png';
+      case FishingType.feeder:
+        return 'assets/images/fishing_types/feeder.png';
+      case FishingType.floatFishing:
+        return 'assets/images/fishing_types/float_fishing.png';
+      case FishingType.iceFishing:
+        return 'assets/images/fishing_types/ice_fishing.png';
+      case FishingType.flyFishing:
+        return 'assets/images/fishing_types/fly_fishing.png';
+      case FishingType.other:
+        return 'assets/images/fishing_types/other.png';
+    }
+  }
+
+  // Эмодзи как fallback (оставляем для совместимости)
   String get icon {
     switch (this) {
       case FishingType.carpFishing:

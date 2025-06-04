@@ -154,9 +154,18 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(
-                    widget.tournament.fishingType.icon,
-                    style: const TextStyle(fontSize: 32),
+                  child: Image.asset(
+                    widget.tournament.fishingType.iconPath,
+                    width: 32,
+                    height: 32,
+                    color: AppConstants.textColor,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback к эмодзи если иконка не найдена
+                      return Text(
+                        widget.tournament.fishingType.icon,
+                        style: const TextStyle(fontSize: 32),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -490,9 +499,18 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         children: [
           Row(
             children: [
-              Text(
-                widget.tournament.fishingType.icon,
-                style: const TextStyle(fontSize: 24),
+              Image.asset(
+                widget.tournament.fishingType.iconPath,
+                width: 24,
+                height: 24,
+                color: AppConstants.textColor,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback к эмодзи если иконка не найдена
+                  return Text(
+                    widget.tournament.fishingType.icon,
+                    style: const TextStyle(fontSize: 24),
+                  );
+                },
               ),
               const SizedBox(width: 12),
               Text(
@@ -543,12 +561,16 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
             children: [
               Icon(Icons.info, color: AppConstants.primaryColor, size: 24),
               const SizedBox(width: 12),
-              Text(
-                localizations.translate('additional_info'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded( // Добавлено Expanded для корректного отображения длинного текста
+                child: Text(
+                  localizations.translate('additional_info'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2, // Разрешаем до 2 строк
+                  overflow: TextOverflow.ellipsis, // Добавляем многоточие при переполнении
                 ),
               ),
             ],
