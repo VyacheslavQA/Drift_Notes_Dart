@@ -1205,7 +1205,9 @@
   "terms_of_service": "Terms of Service",
   "terms_of_service_agreement": "Terms of Service",
   "i_agree_to_terms": "I agree to the Terms of Service",
-  "terms_required": "You must accept the Terms of Service"
+  "terms_required": "You must accept the Terms of Service",
 
-
+  "terms_and_privacy_required": "You must accept the terms of service and privacy policy",
+  "and": "and",
+  "passwords_dont_match": "Passwords do not match"
 }

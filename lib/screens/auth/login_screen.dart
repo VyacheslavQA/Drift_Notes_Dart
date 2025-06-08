@@ -211,342 +211,349 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(24, size.height * 0.02, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Кнопка "Назад"
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  SizedBox(height: size.height * 0.02),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Кнопка "Назад" - уменьшенный отступ
+                const SizedBox(height: 16),
+                IconButton(
+                  icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
 
-                  // Заголовок экрана
-                  Text(
-                    localizations.translate('login_with_email_title'),
-                    style: TextStyle(
-                      fontSize: 28 * adaptiveTextScale,
-                      fontWeight: FontWeight.bold,
-                      color: AppConstants.textColor,
-                    ),
-                  ),
+                // Основной контент в Expanded для автоматического распределения
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Верхняя часть: заголовок и логотип
+                      Column(
+                        children: [
+                          // Заголовок экрана - уменьшенный размер
+                          Text(
+                            localizations.translate('login_with_email_title'),
+                            style: TextStyle(
+                              fontSize: 24 * adaptiveTextScale,
+                              fontWeight: FontWeight.bold,
+                              color: AppConstants.textColor,
+                            ),
+                          ),
 
-                  SizedBox(height: size.height * 0.06),
+                          const SizedBox(height: 24),
 
-                  // Логотип по центру
-                  Center(
-                    child: Container(
-                      width: size.width * 0.28,
-                      height: size.width * 0.28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF12332E),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                          // Логотип - без контейнера
+                          Image.asset(
+                            'assets/images/app_logo.png',
+                            width: size.width * 0.22,
+                            height: size.width * 0.22,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Название приложения - уменьшенный размер
+                          Text(
+                            'Drift Notes',
+                            style: TextStyle(
+                              fontSize: 30 * adaptiveTextScale,
+                              fontWeight: FontWeight.bold,
+                              color: AppConstants.textColor,
+                            ),
                           ),
                         ],
                       ),
-                      child: Image.asset(
-                        'assets/images/app_logo.png',
-                        width: size.width * 0.25,
-                      ),
-                    ),
-                  ),
 
-                  SizedBox(height: size.height * 0.04),
-
-                  // Название приложения
-                  Center(
-                    child: Text(
-                      'Drift Notes',
-                      style: TextStyle(
-                        fontSize: 36 * adaptiveTextScale,
-                        fontWeight: FontWeight.bold,
-                        color: AppConstants.textColor,
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: size.height * 0.06),
-
-                  // Форма входа
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Email поле
-                        TextFormField(
-                          controller: _emailController,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: localizations.translate('email'),
-                            hintStyle: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.5),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF12332E),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
+                      // Средняя часть: форма входа
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Email поле - компактная версия
+                            TextFormField(
+                              controller: _emailController,
+                              style: const TextStyle(
                                 color: AppConstants.textColor,
-                                width: 1.5,
+                                fontSize: 16,
                               ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1.5,
+                              decoration: InputDecoration(
+                                hintText: localizations.translate('email'),
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFF12332E),
+                                prefixIcon: Icon(Icons.email, color: AppConstants.textColor),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14, // Уменьшенный padding
+                                ),
                               ),
+                              validator: (value) => Validators.validateEmail(value, context),
+                              textInputAction: TextInputAction.next,
                             ),
-                            focusedErrorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1.5,
-                              ),
-                            ),
-                            errorStyle: const TextStyle(color: Colors.redAccent),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) => Validators.validateEmail(value, context),
-                          textInputAction: TextInputAction.next,
-                        ),
 
-                        SizedBox(height: size.height * 0.02),
+                            const SizedBox(height: 16), // Уменьшенный отступ
 
-                        // Пароль поле
-                        TextFormField(
-                          controller: _passwordController,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: localizations.translate('password'),
-                            hintStyle: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.5),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF12332E),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
+                            // Password поле - компактная версия
+                            TextFormField(
+                              controller: _passwordController,
+                              style: const TextStyle(
                                 color: AppConstants.textColor,
-                                width: 1.5,
+                                fontSize: 16,
                               ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1.5,
+                              decoration: InputDecoration(
+                                hintText: localizations.translate('password'),
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFF12332E),
+                                prefixIcon: Icon(Icons.lock, color: AppConstants.textColor),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                    color: AppConstants.textColor,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14, // Уменьшенный padding
+                                ),
                               ),
+                              obscureText: _obscurePassword,
+                              validator: (value) => Validators.validatePassword(value, context),
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _login(),
                             ),
-                            focusedErrorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Colors.redAccent,
-                                width: 1.5,
-                              ),
-                            ),
-                            errorStyle: const TextStyle(color: Colors.redAccent),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                color: AppConstants.textColor,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                          ),
-                          obscureText: _obscurePassword,
-                          validator: (value) => Validators.validatePassword(value, context),
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _login(),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  SizedBox(height: size.height * 0.02),
+                            const SizedBox(height: 12), // Уменьшенный отступ
 
-                  // Чекбокс "Запомнить меня"
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: Checkbox(
-                          value: _rememberMe,
-                          onChanged: (value) {
-                            setState(() {
-                              _rememberMe = value ?? false;
-                            });
-                          },
-                          activeColor: AppConstants.primaryColor,
-                          checkColor: AppConstants.textColor,
-                          side: BorderSide(
-                            color: AppConstants.textColor.withValues(alpha: 0.5),
-                            width: 1.5,
-                          ),
+                            // Чекбокс "Запомнить меня" и "Забыли пароль?" в одной строке
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Чекбокс "Запомнить меня"
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: Checkbox(
+                                        value: _rememberMe,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _rememberMe = value ?? false;
+                                          });
+                                        },
+                                        activeColor: AppConstants.primaryColor,
+                                        checkColor: AppConstants.textColor,
+                                        side: BorderSide(
+                                          color: AppConstants.textColor.withValues(alpha: 0.5),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _rememberMe = !_rememberMe;
+                                        });
+                                      },
+                                      child: Text(
+                                        localizations.translate('remember_me'),
+                                        style: TextStyle(
+                                          color: AppConstants.textColor,
+                                          fontSize: 13 * adaptiveTextScale,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Ссылка "Забыли пароль?"
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(context, '/forgot_password');
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppConstants.textColor,
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    localizations.translate('forgot_password'),
+                                    style: TextStyle(
+                                      fontSize: 13 * adaptiveTextScale,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _rememberMe = !_rememberMe;
-                          });
-                        },
-                        child: Text(
-                          localizations.translate('remember_me'),
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 14 * adaptiveTextScale,
+
+                      // Нижняя часть: ошибка и кнопка входа
+                      Column(
+                        children: [
+                          // Сообщение об ошибке - компактная версия
+                          if (_errorMessage.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                _errorMessage,
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 13 * adaptiveTextScale,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+
+                          // Кнопка входа - компактная версия
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50, // Уменьшенная высота
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _login,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: AppConstants.textColor,
+                                side: BorderSide(color: AppConstants.textColor),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                padding: EdgeInsets.zero,
+                                disabledBackgroundColor: Colors.transparent,
+                                elevation: 0,
+                              ),
+                              child: _isLoading
+                                  ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppConstants.textColor,
+                                  ),
+                                ),
+                              )
+                                  : Text(
+                                localizations.translate('login'),
+                                style: TextStyle(
+                                  fontSize: 16 * adaptiveTextScale,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+
+                          const SizedBox(height: 16),
+
+                          // Ссылка на регистрацию
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                localizations.translate('no_account_register').split('?')[0] + '? ',
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 14 * adaptiveTextScale,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushReplacementNamed(context, '/register');
+                                },
+                                child: Text(
+                                  localizations.translate('no_account_register').split('? ')[1],
+                                  style: TextStyle(
+                                    color: AppConstants.textColor,
+                                    fontSize: 14 * adaptiveTextScale,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                ),
 
-                  SizedBox(height: size.height * 0.02),
-
-                  // Ссылка "Забыли пароль?"
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/forgot_password');
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppConstants.textColor,
-                      ),
-                      child: Text(
-                        localizations.translate('forgot_password'),
-                        style: TextStyle(
-                          fontSize: 14 * adaptiveTextScale,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: size.height * 0.02),
-
-                  // Сообщение об ошибке
-                  if (_errorMessage.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 14 * adaptiveTextScale,
-                        ),
-                      ),
-                    ),
-
-                  SizedBox(height: _errorMessage.isNotEmpty ? size.height * 0.04 : size.height * 0.06),
-
-                  // Кнопка входа
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent, // Прозрачный фон
-                        foregroundColor: AppConstants.textColor, // Цвет текста
-                        side: BorderSide(color: AppConstants.textColor), // Граница кнопки
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        padding: EdgeInsets.zero, // Убираем отступы
-                        disabledBackgroundColor: Colors.transparent, // Фон при отключении
-                        elevation: 0, // Без тени
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: AppConstants.textColor,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                          : Center( // Явно центрируем текст
-                        child: Text(
-                          localizations.translate('login'),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            height: 1.0, // Фиксируем высоту строки
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: size.height * 0.03),
-
-                  // Ссылка на регистрацию
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/register');
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppConstants.textColor,
-                      ),
-                      child: Text(
-                        localizations.translate('no_account_register'),
-                        style: TextStyle(
-                          fontSize: 16 * adaptiveTextScale,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                const SizedBox(height: 16), // Нижний отступ
+              ],
             ),
           ),
         ),
