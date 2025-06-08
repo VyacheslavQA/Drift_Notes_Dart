@@ -1193,6 +1193,12 @@
 
   "center_button_tooltip_title": "Create Notes",
   "center_button_tooltip_description": "Tap this button to create a new fishing note",
-  "got_it": "Got it"
+  "got_it": "Got it",
+
+  "google_sign_in_canceled": "Google sign-in canceled",
+  "google_sign_in_failed": "Failed to sign in with Google",
+  "google_sign_in_error": "Google sign-in error",
+  "account_exists_different_credential": "An account with this email already exists with different sign-in credentials",
+  "google_login_successful": "Successfully signed in with Google"
 
 }

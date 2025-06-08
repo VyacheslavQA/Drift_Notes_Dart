@@ -48,4 +48,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // ДОБАВЛЯЕМ ЭТУ СТРОКУ для Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 }

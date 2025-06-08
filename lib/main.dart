@@ -76,6 +76,16 @@ void main() async {
     debugPrint('Ошибка инициализации Firebase: $e');
   }
 
+  // Инициализация Google Sign-In (тихий вход)
+  try {
+    // Импорт будет добавлен автоматически
+    // final googleSignInService = GoogleSignInService();
+    // await googleSignInService.signInSilently();
+    debugPrint('Google Sign-In будет инициализирован после создания сервиса');
+  } catch (e) {
+    debugPrint('Ошибка инициализации Google Sign-In: $e');
+  }
+
   // Инициализация сервисов для офлайн режима
   final offlineStorage = OfflineStorageService();
   await offlineStorage.initialize();

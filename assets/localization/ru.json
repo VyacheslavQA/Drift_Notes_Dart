@@ -1147,5 +1147,11 @@
 
   "center_button_tooltip_title": "Создание заметок",
   "center_button_tooltip_description": "Нажмите на эту кнопку, чтобы создать новую заметку о рыбалке",
-  "got_it": "Понятно"
+  "got_it": "Понятно",
+
+  "google_sign_in_canceled": "Вход через Google отменен",
+  "google_sign_in_failed": "Не удалось войти через Google",
+  "google_sign_in_error": "Ошибка входа через Google",
+  "account_exists_different_credential": "Аккаунт с таким email уже существует с другими данными для входа",
+  "google_login_successful": "Успешный вход через Google"
 }

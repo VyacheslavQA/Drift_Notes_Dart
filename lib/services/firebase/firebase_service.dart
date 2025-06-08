@@ -243,6 +243,11 @@ class FirebaseService {
     return errorMessage;
   }
 
+  /// Кэширование данных пользователя из UserCredential (для Google Sign-In)
+  Future<void> cacheUserDataFromCredential(UserCredential userCredential) async {
+    await _cacheUserData(userCredential.user);
+  }
+
   // Выход пользователя
   Future<void> signOut() async {
     // Удаляем кэшированные данные пользователя

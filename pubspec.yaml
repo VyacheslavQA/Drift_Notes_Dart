@@ -27,6 +27,9 @@ dependencies:
   cloud_firestore: ^4.17.5
   firebase_storage: ^11.7.7
 
+  # Google Sign-In - ДОБАВЛЯЕМ ЭТУ СТРОКУ
+  google_sign_in: ^6.2.1
+
   # UI и дизайн
   intl: ^0.19.0
   flutter_svg: ^2.0.9
