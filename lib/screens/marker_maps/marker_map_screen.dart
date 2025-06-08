@@ -1311,8 +1311,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         message: AppLocalizations.of(context).translate('please_wait'),
         child: Stack(
           children: [
-            // Карта на весь экран
-            Positioned.fill(
+            // Карта на весь экран с учетом системных отступов
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.of(context).padding.bottom,
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -1345,7 +1349,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             // Информационная кнопка в левом нижнем углу
             Positioned(
               left: 16,
-              bottom: 55, // Выше кнопки добавления маркера
+              bottom: 55 + MediaQuery.of(context).padding.bottom, // Добавляем отступ для системных кнопок
               child: FloatingActionButton(
                 heroTag: "info_button",
                 onPressed: _showMarkerInfo,
@@ -1355,10 +1359,10 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
-            // Три кнопки справа (равномерное расстояние 75px между кнопками)
+// Три кнопки справа
             Positioned(
               right: 16,
-              bottom: 180, // Верхняя кнопка
+              bottom: 180 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка
               child: FloatingActionButton(
                 heroTag: "exit_button",
                 onPressed: _exitWithSave,
@@ -1370,7 +1374,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
             Positioned(
               right: 16,
-              bottom: 105, // Средняя кнопка (180 - 75 = 105)
+              bottom: 105 + MediaQuery.of(context).padding.bottom, // Средняя кнопка
               child: FloatingActionButton(
                 heroTag: "charts_button",
                 onPressed: _showDepthCharts,
@@ -1382,13 +1386,13 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
             Positioned(
               right: 16,
-              bottom: 30, // Нижняя кнопка (105 - 75 = 30)
+              bottom: 30 + MediaQuery.of(context).padding.bottom, // Нижняя кнопка
               child: FloatingActionButton(
                 heroTag: "add_marker_button",
                 onPressed: _showAddMarkerDialog,
                 backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.add_location),
+                child: const Icon(Icons.add),
               ),
             ),
           ],

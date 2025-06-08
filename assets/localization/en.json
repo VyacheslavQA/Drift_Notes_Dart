@@ -1189,5 +1189,10 @@
   "tap_hold_for_options": "Hold for options",
   "remove_tournament_confirmation": "Are you sure you want to remove this tournament from the fishing calendar?",
   "remove": "Remove",
-  "by_types": "By Types"
+  "by_types": "By Types",
+
+  "center_button_tooltip_title": "Create Notes",
+  "center_button_tooltip_description": "Tap this button to create a new fishing note",
+  "got_it": "Got it"
+
 }

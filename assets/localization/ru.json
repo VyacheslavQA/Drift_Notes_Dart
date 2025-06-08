@@ -1143,5 +1143,9 @@
   "tap_hold_for_options": "Удерживайте для опций",
   "remove_tournament_confirmation": "Вы уверены, что хотите удалить этот турнир из календаря рыбалок?",
   "remove": "Удалить",
-  "by_types": "По типам"
+  "by_types": "По типам",
+
+  "center_button_tooltip_title": "Создание заметок",
+  "center_button_tooltip_description": "Нажмите на эту кнопку, чтобы создать новую заметку о рыбалке",
+  "got_it": "Понятно"
 }
