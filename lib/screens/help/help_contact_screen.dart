@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import 'privacy_policy_screen.dart';
+import 'terms_of_service_screen.dart';  // ДОБАВЛЯЕМ ИМПОРТ
 import 'user_guide_screen.dart';
 
 class HelpContactScreen extends StatelessWidget {
@@ -61,6 +62,11 @@ class HelpContactScreen extends StatelessWidget {
 
                 // Кнопка руководства пользователя
                 _buildUserGuideButton(context, localizations),
+
+                const SizedBox(height: 16),
+
+                // ДОБАВЛЯЕМ КНОПКУ ПОЛЬЗОВАТЕЛЬСКОГО СОГЛАШЕНИЯ
+                _buildTermsOfServiceButton(context, localizations),
 
                 const SizedBox(height: 16),
 
@@ -226,7 +232,65 @@ class HelpContactScreen extends StatelessWidget {
                     localizations.translate('user_guide'),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 16, // Уменьшил размер шрифта
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppConstants.textColor.withValues(alpha: 0.6),
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ДОБАВЛЯЕМ НОВУЮ КНОПКУ ПОЛЬЗОВАТЕЛЬСКОГО СОГЛАШЕНИЯ (ТОЧНО ТАКОГО ЖЕ СТИЛЯ)
+  Widget _buildTermsOfServiceButton(BuildContext context, AppLocalizations localizations) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openTermsOfService(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.description_outlined,
+                    color: AppConstants.textColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    localizations.translate('terms_of_service'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -283,7 +347,7 @@ class HelpContactScreen extends StatelessWidget {
                     localizations.translate('privacy_policy'),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 16, // Уменьшил размер шрифта
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -382,6 +446,16 @@ class HelpContactScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => const UserGuideScreen(),
+      ),
+    );
+  }
+
+  // ДОБАВЛЯЕМ НОВЫЙ МЕТОД ДЛЯ ОТКРЫТИЯ ПОЛЬЗОВАТЕЛЬСКОГО СОГЛАШЕНИЯ
+  void _openTermsOfService(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TermsOfServiceScreen(),
       ),
     );
   }

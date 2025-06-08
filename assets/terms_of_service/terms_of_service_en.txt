@@ -1,0 +1,68 @@
+Drift Notes User Agreement
+Last updated: 08.06.2025
+Support Email: support@driftnotesapp.com
+Telegram channel & chat: Drift Notes App
+____________________________________
+1. General
+This User Agreement governs the use of the Drift Notes mobile app (the “App”), designed for anglers to log fishing trips, analyze patterns, and track personal statistics.
+By installing, registering for, or using the App, you (“User”) agree to the terms of this Agreement. If you disagree, do not use the App.
+____________________________________
+2. Age Restrictions
+The App is intended for users aged 13 and above.
+____________________________________
+3. Registration and Authentication
+Users can sign in via:
+•	Google Account
+•	Phone number (via code verification)
+The App receives:
+•	Your name
+•	Email (if using Google login)
+•	Phone number (if using phone login)
+These are used for secure login, personalization, and communication.
+____________________________________
+4. Collected Data
+You may voluntarily provide:
+•	Name, email, profile photo
+•	Fishing locations and GPS points
+•	Fishing experience level, preferred fishing types
+•	Catch data: fish count and weight
+•	Photos and notes
+•	Bottom mapping data
+All data is stored in Firebase and is not shared with third parties.
+____________________________________
+5. Data Deletion
+Users can delete:
+•	Individual notes, photos, and maps
+•	Their entire account and associated data (from the account settings)
+____________________________________
+6. Paid Features
+The App may include paid features. Payments are processed via Google Play, App Store, and RuStore. Refunds are handled by the respective store policies.
+____________________________________
+7. Permissions
+The App may request access to:
+•	GPS (for location tagging and forecasts)
+•	Camera (for uploading photos)
+•	Device storage
+____________________________________
+8. Offline Mode
+You can create new notes offline. Once connected, your data syncs automatically. Previously saved notes are not viewable offline.
+____________________________________
+9. User Content & Analytics
+You can upload images and notes. These inputs are used for personalized stats and insights. You are responsible for your uploaded content.
+____________________________________
+10. Restrictions
+Users must not:
+•	Hack, modify, or replicate the App
+•	Break Kazakhstan law
+•	Use bots or automation tools
+____________________________________
+11. Limitation of Liability
+The App offers recommendations only and does not guarantee forecast accuracy. The developers are not liable for any losses or damage caused by the use of the App.
+____________________________________
+12. Jurisdiction
+This Agreement is governed by the laws of the Republic of Kazakhstan.
+____________________________________
+13. Contact
+For support and feedback:
+•	Email: support@driftnotesapp.com
+•	Telegram: Drift Notes App

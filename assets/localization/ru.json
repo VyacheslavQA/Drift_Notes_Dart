@@ -1153,5 +1153,10 @@
   "google_sign_in_failed": "Не удалось войти через Google",
   "google_sign_in_error": "Ошибка входа через Google",
   "account_exists_different_credential": "Аккаунт с таким email уже существует с другими данными для входа",
-  "google_login_successful": "Успешный вход через Google"
+  "google_login_successful": "Успешный вход через Google",
+
+  "terms_of_service": "Пользовательское соглашение",
+  "terms_of_service_agreement": "Пользовательским соглашением",
+  "i_agree_to_terms": "Я согласен с пользовательским соглашением",
+  "terms_required": "Необходимо принять пользовательское соглашение"
 }

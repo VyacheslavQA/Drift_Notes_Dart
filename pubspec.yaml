@@ -96,6 +96,9 @@ flutter:
     - assets/privacy_policy/privacy_policy_en.txt
     - assets/user_guide/
     - assets/icon/
+    - assets/terms_of_service/                    # ДОБАВИТЬ ЭТУ СТРОКУ
+    - assets/terms_of_service/terms_of_service_ru.txt  # ДОБАВИТЬ ЭТУ СТРОКУ
+    - assets/terms_of_service/terms_of_service_en.txt  # ДОБАВИТЬ ЭТУ СТРОКУ
 
 
 

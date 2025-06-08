@@ -1199,6 +1199,13 @@
   "google_sign_in_failed": "Failed to sign in with Google",
   "google_sign_in_error": "Google sign-in error",
   "account_exists_different_credential": "An account with this email already exists with different sign-in credentials",
-  "google_login_successful": "Successfully signed in with Google"
+  "google_login_successful": "Successfully signed in with Google",
+
+
+  "terms_of_service": "Terms of Service",
+  "terms_of_service_agreement": "Terms of Service",
+  "i_agree_to_terms": "I agree to the Terms of Service",
+  "terms_required": "You must accept the Terms of Service"
+
 
 }
