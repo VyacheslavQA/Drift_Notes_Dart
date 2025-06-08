@@ -16,6 +16,7 @@ import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
 import 'depth_chart_screen.dart';
 
+
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
 
@@ -82,17 +83,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     'default': Colors.blue, // для обратной совместимости
   };
 
-  // Иконки для типов дна
   final Map<String, IconData> _bottomTypeIcons = {
-    'ил': Icons.blur_linear,
-    'глубокий_ил': Icons.waves,
-    'ракушка': Icons.grain,
-    'ровно_твердо': Icons.view_agenda,
-    'камни': Icons.circle,
+    'ил': Icons.view_headline,              // горизонтальные линии для ила
+    'глубокий_ил': Icons.waves_outlined,
+    'ракушка': Icons.wifi,                  // волнистые линии WiFi для ракушки
+    'ровно_твердо': Icons.remove,
+    'камни': Icons.more_horiz,
     'трава_водоросли': Icons.grass,
     'зацеп': Icons.warning,
     'бугор': Icons.landscape,
-    'точка_кормления': Icons.room_service,
+    'точка_кормления': Icons.gps_fixed,
     'default': Icons.location_on,
   };
 

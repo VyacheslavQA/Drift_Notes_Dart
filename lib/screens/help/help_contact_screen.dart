@@ -13,7 +13,7 @@ class HelpContactScreen extends StatelessWidget {
   // Константы приложения (легко изменяемые)
   static const String appVersion = '1.0.0';
   static const String appSize = '25.4 МБ';
-  static const String supportEmail = 'support@driftnotes.com'; // Здесь ваш email
+  static const String supportEmail = 'support@driftnotesapp.com'; // Здесь ваш email
 
   @override
   Widget build(BuildContext context) {
