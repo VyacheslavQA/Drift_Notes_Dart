@@ -825,6 +825,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
+        padding: const EdgeInsets.only(bottom: 60), // Добавляем отступ снизу для системных кнопок
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {
