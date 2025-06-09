@@ -412,7 +412,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             ),
           );
 
-          Navigator.pop(context);
+          Navigator.pop(context, true); // Возвращаем true для обновления списка
         }
       }
     } catch (e) {
@@ -483,7 +483,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                           // Сбрасываем ИИ-анализ при смене типа рыбалки
                           _aiPrediction = null;
                         });
-                        Navigator.pop(context);
+                        Navigator.pop(context, true); // Возвращаем true для обновления списка
                       },
                     );
                   },
@@ -496,7 +496,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   children: [
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.pop(context, true); // Возвращаем true для обновления списка
                       },
                       child: Text(
                         localizations.translate('cancel'),
@@ -756,7 +756,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true), // Возвращаем true для обновления списка
         ),
         actions: [
           if (!_isSaving)

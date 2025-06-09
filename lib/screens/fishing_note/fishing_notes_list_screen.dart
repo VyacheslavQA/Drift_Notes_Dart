@@ -88,8 +88,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
       MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen()),
     );
 
+    // Если заметка была успешно создана, обновляем список
     if (result == true) {
-      // Сбрасываем анимацию перед обновлением данных
       _animationController.reset();
       _loadNotes();
     }

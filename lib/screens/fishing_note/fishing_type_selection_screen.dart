@@ -26,13 +26,18 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
     });
   }
 
-  void _continueToNoteCreation() {
-    Navigator.pushReplacement(
+  void _continueToNoteCreation() async {
+    final result = await Navigator.push(  // Заменили pushReplacement на push
       context,
       MaterialPageRoute(
         builder: (context) => AddFishingNoteScreen(fishingType: _selectedFishingType),
       ),
     );
+
+    // Если заметка была успешно создана, передаем результат дальше
+    if (mounted && result == true) {
+      Navigator.pop(context, true);
+    }
   }
 
   // Метод для отображения выпадающего списка типов рыбалки как на скриншоте
