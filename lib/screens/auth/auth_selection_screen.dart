@@ -6,7 +6,7 @@ import '../../localization/app_localizations.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
-import '../../../services/auth/google_auth_with_agreements.dart'; // ДОБАВИТЬ этот импорт
+import '../../services/auth/google_auth_with_agreements.dart'; // ПРАВИЛЬНО
 
 
 class AuthSelectionScreen extends StatefulWidget {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -18,6 +19,7 @@ import 'screens/auth/forgot_password_screen.dart';
 import 'screens/help/help_contact_screen.dart';
 import 'screens/fishing_note/fishing_type_selection_screen.dart';
 import 'screens/fishing_note/fishing_notes_list_screen.dart';
+import 'screens/settings/accepted_agreements_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'localization/app_localizations.dart';
@@ -31,6 +33,7 @@ import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
+import 'services/user_consent_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,11 +47,6 @@ void main() async {
   // Инициализация локали для форматирования дат
   await initializeDateFormatting('ru_RU', null);
   await initializeDateFormatting('en_US', null);
-
-  // Инициализация сервисов уведомлений
-  await NotificationService().initialize();
-  await WeatherNotificationService().initialize();
-  await WeatherSettingsService().initialize();
 
   // Устанавливаем ориентацию экрана только на портретный режим
   await SystemChrome.setPreferredOrientations([
@@ -66,14 +64,63 @@ void main() async {
     ),
   );
 
-  // Инициализация Firebase
+  // КРИТИЧЕСКИ ВАЖНО: Инициализация Firebase ПЕРВОЙ перед всеми другими сервисами
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('Firebase успешно инициализирован');
+    debugPrint('✅ Firebase успешно инициализирован');
   } catch (e) {
-    debugPrint('Ошибка инициализации Firebase: $e');
+    debugPrint('❌ Ошибка инициализации Firebase: $e');
+    // Если Firebase не инициализируется, приложение не должно продолжать работу
+    return;
+  }
+
+  // ТОЛЬКО ПОСЛЕ успешной инициализации Firebase инициализируем другие сервисы
+  try {
+    // Инициализация сервисов уведомлений
+    await NotificationService().initialize();
+    debugPrint('✅ Сервис уведомлений инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+  }
+
+  try {
+    await WeatherNotificationService().initialize();
+    debugPrint('✅ Сервис погодных уведомлений инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации сервиса погодных уведомлений: $e');
+  }
+
+  try {
+    await WeatherSettingsService().initialize();
+    debugPrint('✅ Сервис настроек погоды инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации сервиса настроек погоды: $e');
+  }
+
+  // ТЕПЕРЬ можно безопасно создать UserConsentService
+  UserConsentService? consentService;
+  try {
+    consentService = UserConsentService();
+    debugPrint('✅ UserConsentService создан успешно');
+
+    // ДИАГНОСТИКА ПЕРЕД ОЧИСТКОЙ
+    final statusBefore = await consentService.getUserConsentStatus();
+    debugPrint('🔍 ДО очистки: Privacy=${statusBefore.privacyPolicyAccepted}, Terms=${statusBefore.termsOfServiceAccepted}');
+    debugPrint('🔍 ДО очистки: Version=${statusBefore.consentVersion}');
+
+    // ОЧИСТКА
+    await consentService.clearAllConsents();
+    debugPrint('🧹 ТЕСТ: Выполнена очистка согласий');
+
+    // ДИАГНОСТИКА ПОСЛЕ ОЧИСТКИ
+    final statusAfter = await consentService.getUserConsentStatus();
+    debugPrint('🔍 ПОСЛЕ очистки: Privacy=${statusAfter.privacyPolicyAccepted}, Terms=${statusAfter.termsOfServiceAccepted}');
+    debugPrint('🔍 ПОСЛЕ очистки: Version=${statusAfter.consentVersion}');
+
+  } catch (e) {
+    debugPrint('❌ Ошибка создания UserConsentService: $e');
   }
 
   // Инициализация Google Sign-In (тихий вход)
@@ -87,26 +134,37 @@ void main() async {
   }
 
   // Инициализация сервисов для офлайн режима
-  final offlineStorage = OfflineStorageService();
-  await offlineStorage.initialize();
+  try {
+    final offlineStorage = OfflineStorageService();
+    await offlineStorage.initialize();
+    debugPrint('✅ Офлайн хранилище инициализировано');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации офлайн хранилища: $e');
+  }
 
   // Запуск мониторинга сети
-  final networkMonitor = NetworkUtils();
-  networkMonitor.startNetworkMonitoring();
+  try {
+    final networkMonitor = NetworkUtils();
+    networkMonitor.startNetworkMonitoring();
 
-  // Добавление слушателя для запуска синхронизации при появлении сети
-  networkMonitor.addConnectionListener((isConnected) {
-    if (isConnected) {
-      debugPrint('🌐 Соединение с интернетом восстановлено, запускаем синхронизацию');
-      SyncService().syncAll();
-    } else {
-      debugPrint('🔴 Соединение с интернетом потеряно, переход в офлайн режим');
-    }
-  });
+    // Добавление слушателя для запуска синхронизации при появлении сети
+    networkMonitor.addConnectionListener((isConnected) {
+      if (isConnected) {
+        debugPrint('🌐 Соединение с интернетом восстановлено, запускаем синхронизацию');
+        SyncService().syncAll();
+      } else {
+        debugPrint('🔴 Соединение с интернетом потеряно, переход в офлайн режим');
+      }
+    });
 
-  // Запуск периодической синхронизации
-  SyncService().startPeriodicSync();
+    // Запуск периодической синхронизации
+    SyncService().startPeriodicSync();
+    debugPrint('✅ Мониторинг сети и синхронизация запущены');
+  } catch (e) {
+    debugPrint('❌ Ошибка запуска мониторинга сети: $e');
+  }
 
+  // Запуск приложения
   runApp(
     MultiProvider(
       providers: [
@@ -114,13 +172,15 @@ void main() async {
         ChangeNotifierProvider(create: (context) => StatisticsProvider()),
         ChangeNotifierProvider(create: (context) => LanguageProvider()),
       ],
-      child: const DriftNotesApp(),
+      child: DriftNotesApp(consentService: consentService),
     ),
   );
 }
 
 class DriftNotesApp extends StatefulWidget {
-  const DriftNotesApp({super.key});
+  final UserConsentService? consentService;
+
+  const DriftNotesApp({super.key, this.consentService});
 
   @override
   State<DriftNotesApp> createState() => _DriftNotesAppState();
@@ -139,12 +199,23 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
     super.initState();
     _initializeQuickActions();
     _initializeDeepLinkHandling();
+    _checkDocumentUpdatesAfterAuth();
   }
 
   @override
   void dispose() {
     _linkSubscription?.cancel();
     super.dispose();
+  }
+
+  void _checkDocumentUpdatesAfterAuth() {
+    // Слушаем изменения состояния авторизации через FirebaseAuth напрямую
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null && widget.consentService != null) {
+        // Пользователь авторизован - можно добавить дополнительную логику если нужно
+        debugPrint('✅ Пользователь авторизован: ${user.uid}');
+      }
+    });
   }
 
   void _initializeQuickActions() {
@@ -449,6 +520,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
             '/help_contact': (context) => const HelpContactScreen(),
+            '/settings/accepted_agreements': (context) => const AcceptedAgreementsScreen(),
           },
         );
       },

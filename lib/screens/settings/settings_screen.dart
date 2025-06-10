@@ -476,7 +476,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // ЕДИНСТВЕННОЕ МЕСТО ДЛЯ УВЕДОМЛЕНИЙ
+              // Уведомления
               _buildSectionHeader(localizations.translate('notifications')),
               Card(
                 color: AppConstants.cardColor,
@@ -501,7 +501,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // НАСТРОЙКИ ПОГОДЫ ТОЛЬКО ДЛЯ ЕДИНИЦ ИЗМЕРЕНИЯ И КАЛИБРОВКИ
+              // Настройки погоды
               _buildSectionHeader(localizations.translate('weather_settings')),
               Card(
                 color: AppConstants.cardColor,
@@ -563,7 +563,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
               const SizedBox(height: 20),
 
-              // Безопасность
+              // Безопасность (только смена пароля)
               _buildSectionHeader(localizations.translate('security')),
               Card(
                 color: AppConstants.cardColor,

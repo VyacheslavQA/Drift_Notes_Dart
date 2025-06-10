@@ -6,6 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/notification_service.dart';
 import '../../models/notification_model.dart';
+import '../settings/accepted_agreements_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -384,6 +385,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showNotificationDetails(NotificationModel notification) {
+    // Если это уведомление об обновлении политики, переходим к соглашениям
+    if (notification.type == NotificationType.policyUpdate) {
+      _markAsRead(notification.id);
+      Navigator.pop(context); // Закрываем экран уведомлений
+
+      // Переходим к экрану принятых соглашений
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AcceptedAgreementsScreen(),
+        ),
+      );
+      return;
+    }
+
+    // Для других типов уведомлений показываем диалог
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -562,7 +579,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.general:
         return Icons.notifications;
       case NotificationType.fishingReminder:
-        return Icons.catching_pokemon; // или Icons.anchor
+        return Icons.catching_pokemon;
       case NotificationType.biteForecast:
         return Icons.show_chart;
       case NotificationType.weatherUpdate:
@@ -571,6 +588,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.star;
       case NotificationType.systemUpdate:
         return Icons.system_update;
+      case NotificationType.policyUpdate:
+        return Icons.security;
     }
   }
 
@@ -588,6 +607,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return 'Новости';
       case NotificationType.systemUpdate:
         return 'Система';
+      case NotificationType.policyUpdate:
+        return 'Документы';
     }
   }
 }

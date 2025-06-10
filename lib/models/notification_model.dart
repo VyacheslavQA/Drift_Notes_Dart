@@ -7,6 +7,7 @@ enum NotificationType {
   weatherUpdate,     // Обновления погоды
   newFeatures,       // Новые функции
   systemUpdate,      // Системные обновления
+  policyUpdate,      // Обновления политики конфиденциальности и соглашений
 }
 
 class NotificationModel {
@@ -90,6 +91,8 @@ class NotificationModel {
         return 'assets/icons/star.png';
       case NotificationType.systemUpdate:
         return 'assets/icons/system.png';
+      case NotificationType.policyUpdate:
+        return 'assets/icons/security.png';
     }
   }
 
@@ -108,6 +111,8 @@ class NotificationModel {
         return 0xFFFFC107; // Желтый
       case NotificationType.systemUpdate:
         return 0xFF607D8B; // Серый
+      case NotificationType.policyUpdate:
+        return 0xFFE91E63; // Розовый/красный
     }
   }
 }

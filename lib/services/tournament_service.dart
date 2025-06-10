@@ -141,8 +141,8 @@ class TournamentService {
       TournamentModel(
         id: 'jun_1',
         name: 'Чемпионат Области Абай',
-        startDate: DateTime(2025, 6, 5),
-        endDate: DateTime(2025, 6, 8),
+        startDate: DateTime(2025, 6, 19),
+        endDate: DateTime(2025, 6, 22),
         duration: 72,
         location: 'оз. Тополек Область Абай (г. Семей)',
         organizer: 'ФСР области Абай/Карповый клуб Семей',
