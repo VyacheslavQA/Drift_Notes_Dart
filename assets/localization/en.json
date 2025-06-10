@@ -1209,5 +1209,15 @@
 
   "terms_and_privacy_required": "You must accept the terms of service and privacy policy",
   "and": "and",
-  "passwords_dont_match": "Passwords do not match"
+  "passwords_dont_match": "Passwords do not match",
+
+  "agreements_title": "Agreements",
+  "agreements_description": "To continue using the app, you need to accept the agreements",
+  "i_agree_privacy_policy": "I agree to the",
+  "i_agree_terms": "I agree to the",
+  "privacy_policy_agreement": "Privacy Policy",
+  "accept": "Accept",
+  "cancel": "Cancel",
+  "agreements_required": "You must accept all agreements to continue",
+  "error_saving_agreements": "Error saving agreements. Please try again."
 }

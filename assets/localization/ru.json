@@ -1163,6 +1163,16 @@
 
   "terms_and_privacy_required": "Необходимо принять пользовательское соглашение и политику конфиденциальности",
   "and": "и",
-  "passwords_dont_match": "Пароли не совпадают"
+  "passwords_dont_match": "Пароли не совпадают",
+
+  "agreements_title": "Соглашения",
+  "agreements_description": "Для продолжения работы с приложением необходимо принять соглашения",
+  "i_agree_privacy_policy": "Я согласен с",
+  "i_agree_terms": "Я согласен с",
+  "privacy_policy_agreement": "Политикой конфиденциальности",
+  "accept": "Принять",
+  "cancel": "Отмена",
+  "agreements_required": "Необходимо принять все соглашения для продолжения",
+  "error_saving_agreements": "Ошибка сохранения согласий. Попробуйте снова."
 
 }

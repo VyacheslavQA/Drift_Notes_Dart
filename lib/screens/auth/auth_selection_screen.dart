@@ -6,6 +6,8 @@ import '../../localization/app_localizations.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
+import '../../../services/auth/google_auth_with_agreements.dart'; // ДОБАВИТЬ этот импорт
+
 
 class AuthSelectionScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -20,7 +22,7 @@ class AuthSelectionScreen extends StatefulWidget {
 }
 
 class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
-  final GoogleSignInService _googleSignInService = GoogleSignInService();
+  final GoogleAuthWithAgreements _googleAuthWithAgreements = GoogleAuthWithAgreements(); // ИЗМЕНИТЬ эту строку
   bool _isGoogleLoading = false;
 
   @override
@@ -201,44 +203,27 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
     );
   }
 
-  /// Метод для входа через Google
+  /// Метод для входа через Google С ПРОВЕРКОЙ СОГЛАШЕНИЙ
   Future<void> _signInWithGoogle() async {
     setState(() {
       _isGoogleLoading = true;
     });
 
     try {
-      final userCredential = await _googleSignInService.signInWithGoogle(context);
+      // ЗАМЕНИТЬ этот вызов:
+      final userCredential = await _googleAuthWithAgreements.signInWithGoogleAndCheckAgreements(
+        context,
+        onAuthSuccess: widget.onAuthSuccess,
+      );
 
-      if (userCredential != null && mounted) {
-        final localizations = AppLocalizations.of(context);
-
-        // Показываем сообщение об успешном входе
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('google_login_successful')),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-
-        // Проверяем, есть ли коллбэк для выполнения отложенного действия
-        if (widget.onAuthSuccess != null) {
-          debugPrint('🎯 Вызываем коллбэк после успешной авторизации через Google');
-          // Переходим на главный экран
-          Navigator.of(context).pushReplacementNamed('/home');
-          // Вызываем коллбэк через небольшую задержку
-          Future.delayed(const Duration(milliseconds: 500), () {
-            widget.onAuthSuccess!();
-          });
-        } else {
-          // Если нет коллбэка, просто переходим на главный экран
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
+      // Проверка результата уже обработана внутри сервиса
+      if (userCredential == null && mounted) {
+        debugPrint('❌ Google авторизация не завершена');
       }
+
     } catch (e) {
-      debugPrint('Ошибка входа через Google: $e');
-      // Ошибка уже обработана в GoogleSignInService
+      debugPrint('❌ Ошибка входа через Google: $e');
+      // Ошибка уже обработана в GoogleAuthWithAgreements
     } finally {
       if (mounted) {
         setState(() {
