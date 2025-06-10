@@ -1247,5 +1247,7 @@
   "confirm": "Confirm",
   "reauthentication_required": "Reauthentication required",
   "reauthentication_error": "Reauthentication error",
-  "relogin_required_for_deletion": "Account deletion requires recent authentication. Please log out and log in again."
+  "relogin_required_for_deletion": "Account deletion requires recent authentication. Please log out and log in again.",
+
+  "delete_account_confirm_text": "To confirm account deletion, type the word \"delete\" in the field below:"
 }

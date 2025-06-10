@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase/firebase_service.dart';
+import '../../repositories/user_repository.dart';
 import '../../localization/app_localizations.dart';
 
 /// Сервис для работы с Google Sign-In
@@ -66,6 +67,9 @@ class GoogleSignInService {
       // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
 
+      // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
+      await _createOrUpdateUserDocument(userCredential);
+
       debugPrint('Успешный вход через Google: ${userCredential.user?.email}');
       return userCredential;
 
@@ -90,12 +94,64 @@ class GoogleSignInService {
       // Кэшируем данные пользователя
       await _firebaseService.cacheUserDataFromCredential(userCredential);
 
+      // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
+      await _createOrUpdateUserDocument(userCredential);
+
       debugPrint('Успешный вход через Google (веб): ${userCredential.user?.email}');
       return userCredential;
 
     } catch (e) {
       debugPrint('Ошибка входа через Google (веб-версия): $e');
       rethrow;
+    }
+  }
+
+  /// НОВЫЙ МЕТОД: Создание или обновление документа пользователя в Firestore после входа через Google
+  Future<void> _createOrUpdateUserDocument(UserCredential userCredential) async {
+    try {
+      final user = userCredential.user;
+      if (user == null) return;
+
+      final userRepository = UserRepository();
+
+      // Проверяем, существует ли уже документ пользователя
+      final existingUser = await userRepository.getUserData(user.uid);
+
+      if (existingUser == null) {
+        // Создаем новый документ пользователя с данными из Google
+        final userData = {
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'displayName': user.displayName ?? '',
+          'photoUrl': user.photoURL,
+          'country': '',
+          'city': '',
+          'experience': null,
+          'fishingTypes': <String>[],
+        };
+
+        await userRepository.updateUserData(userData);
+        debugPrint('✅ Создан документ пользователя в Firestore для Google аккаунта: ${user.email}');
+      } else {
+        // Обновляем существующий документ, но сохраняем пользовательские данные
+        final userData = {
+          'uid': user.uid,
+          'email': user.email ?? existingUser.email, // Обновляем email из Google
+          'displayName': user.displayName ?? existingUser.displayName,
+          'photoUrl': user.photoURL ?? existingUser.photoUrl,
+          // Сохраняем существующие пользовательские данные
+          'country': existingUser.country ?? '',
+          'city': existingUser.city ?? '',
+          'experience': existingUser.experience,
+          'fishingTypes': existingUser.fishingTypes,
+        };
+
+        await userRepository.updateUserData(userData);
+        debugPrint('✅ Обновлен документ пользователя в Firestore для Google аккаунта: ${user.email}');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при создании/обновлении документа пользователя: $e');
+      // Не пробрасываем ошибку дальше, чтобы не нарушить процесс входа
     }
   }
 
@@ -142,6 +198,9 @@ class GoogleSignInService {
 
       // Связываем аккаунты
       final UserCredential userCredential = await currentUser.linkWithCredential(credential);
+
+      // ИСПРАВЛЕНИЕ: Обновляем документ пользователя после связывания
+      await _createOrUpdateUserDocument(userCredential);
 
       debugPrint('Аккаунт успешно связан с Google');
       return userCredential;

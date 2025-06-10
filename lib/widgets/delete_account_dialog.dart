@@ -21,6 +21,12 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
   void initState() {
     super.initState();
     _confirmationController.addListener(_onTextChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Определяем раскладку после того, как context стал доступен
     _detectKeyboardLayout();
   }
 
@@ -32,8 +38,8 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 
   // Определение текущей раскладки клавиатуры
   void _detectKeyboardLayout() {
-    // Простое определение раскладки по системной локали
-    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    // Определяем раскладку по локали приложения через context
+    final locale = Localizations.localeOf(context);
     if (locale.languageCode == 'ru') {
       _currentKeyboard = 'ru';
     } else {
@@ -60,17 +66,29 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
   }
 
   String _getConfirmationText(AppLocalizations localizations) {
-    if (_currentKeyboard == 'ru') {
-      return 'Для подтверждения удаления аккаунта введите слово "удалить" в поле ниже:';
-    } else {
-      return 'To confirm account deletion, type the word "delete" in the field below:';
-    }
+    return localizations.translate('delete_account_confirm_text');
   }
 
-  String _getHintText() {
+  String _getHintText(AppLocalizations localizations) {
     return _currentKeyboard == 'ru'
-        ? 'Введите "удалить" для подтверждения'
-        : 'Type "delete" to confirm';
+        ? localizations.translate('type_delete_to_confirm')
+        : localizations.translate('type_delete_to_confirm_en');
+  }
+
+  String _getKeyboardLayoutText(AppLocalizations localizations) {
+    return _currentKeyboard == 'ru'
+        ? 'Текущая раскладка: Русская (введите "удалить")'
+        : 'Current layout: English (type "delete")';
+  }
+
+  String _getValidationText(AppLocalizations localizations) {
+    if (_isDeleteButtonEnabled) {
+      return _currentKeyboard == 'ru' ? 'Подтверждение принято' : 'Confirmation accepted';
+    } else {
+      return _currentKeyboard == 'ru'
+          ? 'Введите "удалить" для подтверждения'
+          : 'Type "delete" to confirm';
+    }
   }
 
   @override
@@ -175,9 +193,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _currentKeyboard == 'ru'
-                            ? 'Текущая раскладка: Русская (введите "удалить")'
-                            : 'Current layout: English (type "delete")',
+                        _getKeyboardLayoutText(localizations),
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.8),
                           fontSize: 12,
@@ -196,7 +212,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                 child: TextField(
                   controller: _confirmationController,
                   decoration: InputDecoration(
-                    hintText: _getHintText(),
+                    hintText: _getHintText(localizations),
                     hintStyle: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.5),
                     ),
@@ -252,9 +268,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _isDeleteButtonEnabled
-                              ? 'Подтверждение принято'
-                              : 'Введите "${_getRequiredWord()}" для подтверждения',
+                          _getValidationText(localizations),
                           style: TextStyle(
                             color: _isDeleteButtonEnabled ? Colors.green : Colors.red,
                             fontSize: 12,

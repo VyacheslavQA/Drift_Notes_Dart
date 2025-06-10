@@ -249,6 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Сохраняем данные
       final userData = {
         'displayName': _displayNameController.text.trim(),
+        'email': _emailController.text.trim(), // ← ДОБАВЛЯЕМ EMAIL!
         'country': countryKey ?? '',
         'city': cityKey ?? '',
         'experience': _selectedExperience,
