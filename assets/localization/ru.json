@@ -1166,13 +1166,41 @@
   "passwords_dont_match": "Пароли не совпадают",
 
   "agreements_title": "Соглашения",
-  "agreements_description": "Для продолжения работы с приложением необходимо принять соглашения",
+  "agreements_description": "Для продолжения работы с приложением необходимо ознакомиться и принять соглашения",
   "i_agree_privacy_policy": "Я согласен с",
   "i_agree_terms": "Я согласен с",
   "privacy_policy_agreement": "Политикой конфиденциальности",
   "accept": "Принять",
   "cancel": "Отмена",
   "agreements_required": "Необходимо принять все соглашения для продолжения",
-  "error_saving_agreements": "Ошибка сохранения согласий. Попробуйте снова."
+  "error_saving_agreements": "Ошибка сохранения согласий. Попробуйте снова.",
+
+  "terms_and_privacy_required": "Необходимо принять пользовательское соглашение и политику конфиденциальности",
+  "and": "и",
+  "passwords_dont_match": "Пароли не совпадают",
+
+  "delete_account": "Удалить аккаунт",
+  "delete_account_permanently": "Удалить аккаунт навсегда",
+  "delete_account_warning": "Удаление аккаунта",
+  "delete_account_warning_text": "Вы собираетесь безвозвратно удалить свой аккаунт и все связанные с ним данные.",
+  "delete_account_confirm_text": "Для подтверждения удаления аккаунта введите слово \"удалить\" в поле ниже:",
+  "type_delete_to_confirm": "Введите \"удалить\" для подтверждения",
+  "type_delete_to_confirm_en": "Введите \"delete\" для подтверждения",
+  "delete_word_required": "Необходимо ввести слово \"удалить\"",
+  "delete_word_required_en": "Необходимо ввести слово \"delete\"",
+  "account_deleted_successfully": "Аккаунт успешно удален",
+  "error_deleting_account": "Ошибка при удалении аккаунта",
+  "account_deletion_canceled": "Удаление аккаунта отменено",
+  "deleting_account": "Удаление аккаунта...",
+  "danger_zone": "Опасная зона",
+  "this_action_cannot_be_undone": "Это действие нельзя отменить",
+  "user_not_authorized": "Пользователь не авторизован",
+
+  "password_confirmation_title": "Подтверждение пароля",
+  "enter_password_to_delete": "Для удаления аккаунта введите ваш текущий пароль:",
+  "confirm": "Подтвердить",
+  "reauthentication_required": "Требуется повторная аутентификация",
+  "reauthentication_error": "Ошибка при повторной аутентификации",
+  "relogin_required_for_deletion": "Для удаления аккаунта требуется повторный вход. Пожалуйста, выйдите и войдите снова."
 
 }

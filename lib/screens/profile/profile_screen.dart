@@ -6,6 +6,8 @@ import '../../repositories/user_repository.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../services/geography_service.dart';
 import '../../localization/app_localizations.dart';
+import '../../widgets/delete_account_dialog.dart';
+import '../../services/auth/google_sign_in_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _firebaseService = FirebaseService();
   final _geographyService = GeographyService();
   final _formKey = GlobalKey<FormState>();
+  final _googleSignInService = GoogleSignInService();
 
   late TextEditingController _displayNameController;
   late TextEditingController _emailController;
@@ -300,6 +303,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  // Показать диалог удаления аккаунта
+  Future<void> _showDeleteAccountDialog() async {
+    final localizations = AppLocalizations.of(context);
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const DeleteAccountDialog();
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      await _deleteAccount();
+    }
+  }
+
+  // Удаление аккаунта
+  Future<void> _deleteAccount() async {
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.surfaceColor,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                localizations.translate('deleting_account'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      // Удаляем аккаунт через FirebaseService
+      await _firebaseService.deleteAccount(context);
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Показываем сообщение об успешном удалении
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              localizations.translate('account_deleted_successfully'),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+
+        // Ждем немного для показа сообщения, затем выходим из всех экранов
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Закрываем все экраны до корневого
+        Navigator.of(context).popUntil((route) => route.isFirst);
+
+        // Заменяем корневой экран на экран с сообщением об удалении
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              backgroundColor: AppConstants.backgroundColor,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Аккаунт успешно удален',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Пожалуйста, перезапустите приложение',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+    } catch (e) {
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Показываем ошибку
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_deleting_account')}: ${e.toString()}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -474,7 +612,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 48),
+
+              // Секция "Опасная зона"
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.red.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          localizations.translate('danger_zone'),
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Text(
+                      localizations.translate('delete_account_warning_text'),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      localizations.translate('this_action_cannot_be_undone'),
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showDeleteAccountDialog,
+                        icon: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.red,
+                        ),
+                        label: Text(
+                          localizations.translate('delete_account_permanently'),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Colors.red,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
             ],
           ),
         ),

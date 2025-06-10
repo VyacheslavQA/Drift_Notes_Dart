@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../offline/offline_storage_service.dart';
 import '../../utils/network_utils.dart';
 import '../../localization/app_localizations.dart';
+import '../auth/google_sign_in_service.dart';
+import '../../constants/app_constants.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -402,6 +404,256 @@ class FirebaseService {
     } catch (e) {
       debugPrint('Ошибка при загрузке изображения: $e');
       rethrow;
+    }
+  }
+
+  // Удаление аккаунта пользователя
+  Future<void> deleteAccount([BuildContext? context]) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception(context != null
+            ? AppLocalizations.of(context).translate('user_not_authorized')
+            : 'Пользователь не авторизован');
+      }
+
+      final String userId = user.uid;
+
+      // Проверяем, требуется ли повторная аутентификация
+      try {
+        // Пытаемся удалить аккаунт сразу
+        await user.delete();
+
+        // Если удаление прошло успешно, удаляем данные
+        await _deleteUserDataFromFirestore(userId);
+        await _clearUserCache();
+
+        debugPrint('Аккаунт успешно удален: $userId');
+      } catch (e) {
+        if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
+          // Требуется повторная аутентификация
+          await _reauthenticateAndDelete(user, userId, context);
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      debugPrint('Ошибка при удалении аккаунта: $e');
+      throw _handleAuthException(e, context);
+    }
+  }
+
+  // Повторная аутентификация и удаление аккаунта
+  Future<void> _reauthenticateAndDelete(User user, String userId, [BuildContext? context]) async {
+    try {
+      // Получаем методы аутентификации пользователя
+      final providerData = user.providerData;
+
+      if (providerData.isNotEmpty) {
+        final providerId = providerData.first.providerId;
+
+        if (providerId == 'password') {
+          // Если пользователь вошел через email/пароль
+          await _reauthenticateWithPassword(user, context);
+        } else if (providerId == 'google.com') {
+          // Если пользователь вошел через Google
+          await _reauthenticateWithGoogle(user, context);
+        } else {
+          // Для других провайдеров показываем сообщение
+          throw Exception(context != null
+              ? 'Для удаления аккаунта требуется повторный вход. Пожалуйста, выйдите и войдите снова.'
+              : 'Требуется повторный вход для удаления аккаунта');
+        }
+      }
+
+      // После успешной реаутентификации удаляем аккаунт
+      await user.delete();
+
+      // Удаляем данные из Firestore и кэш
+      await _deleteUserDataFromFirestore(userId);
+      await _clearUserCache();
+
+      debugPrint('Аккаунт успешно удален после реаутентификации: $userId');
+    } catch (e) {
+      debugPrint('Ошибка при реаутентификации и удалении: $e');
+      rethrow;
+    }
+  }
+
+  // Повторная аутентификация с паролем
+  Future<void> _reauthenticateWithPassword(User user, [BuildContext? context]) async {
+    if (context == null) {
+      throw Exception('Требуется повторная аутентификация');
+    }
+
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем диалог для ввода пароля
+    final password = await _showPasswordDialog(context, localizations);
+
+    if (password == null || password.isEmpty) {
+      throw Exception(localizations.translate('account_deletion_canceled'));
+    }
+
+    // Создаем учетные данные для повторной аутентификации
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
+    );
+
+    // Повторно аутентифицируем пользователя
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  // Повторная аутентификация через Google
+  Future<void> _reauthenticateWithGoogle(User user, [BuildContext? context]) async {
+    try {
+      // Импортируем Google Sign-In Service
+      final GoogleSignInService googleService = GoogleSignInService();
+
+      // Выполняем повторный вход через Google
+      final userCredential = await googleService.signInWithGoogle(context);
+
+      if (userCredential == null) {
+        throw Exception(context != null
+            ? AppLocalizations.of(context).translate('account_deletion_canceled')
+            : 'Отменено пользователем');
+      }
+    } catch (e) {
+      debugPrint('Ошибка при повторной аутентификации через Google: $e');
+      rethrow;
+    }
+  }
+
+  // Диалог для ввода пароля
+  Future<String?> _showPasswordDialog(BuildContext context, AppLocalizations localizations) async {
+    final passwordController = TextEditingController();
+
+    return await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.surfaceColor,
+          title: Text(
+            localizations.translate('password_confirmation_title'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                localizations.translate('enter_password_to_delete'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: localizations.translate('password'),
+                  prefixIcon: const Icon(Icons.lock),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(null);
+              },
+              child: Text(
+                localizations.translate('cancel'),
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(passwordController.text);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+              ),
+              child: Text(
+                localizations.translate('confirm'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Удаление всех данных пользователя из Firestore
+  Future<void> _deleteUserDataFromFirestore(String userId) async {
+    try {
+      final batch = _firestore.batch();
+
+      // Удаляем документ профиля пользователя
+      final userDoc = _firestore.collection('users').doc(userId);
+      batch.delete(userDoc);
+
+      // Удаляем все заметки пользователя
+      final notesQuery = await _firestore
+          .collection('fishing_notes')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      for (var doc in notesQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Удаляем все маркерные карты пользователя
+      final mapsQuery = await _firestore
+          .collection('marker_maps')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      for (var doc in mapsQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Выполняем пакетное удаление
+      await batch.commit();
+
+      debugPrint('Данные пользователя удалены из Firestore: $userId');
+    } catch (e) {
+      debugPrint('Ошибка при удалении данных пользователя из Firestore: $e');
+      throw e;
+    }
+  }
+
+  // Очистка кэшированных данных пользователя
+  Future<void> _clearUserCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_authUserEmailKey);
+      await prefs.remove(_authUserIdKey);
+      await prefs.remove(_authUserDisplayNameKey);
+
+      // Очищаем статический кэш
+      _cachedUserId = null;
+
+      debugPrint('Кэшированные данные пользователя очищены');
+    } catch (e) {
+      debugPrint('Ошибка при очистке кэша пользователя: $e');
     }
   }
 }

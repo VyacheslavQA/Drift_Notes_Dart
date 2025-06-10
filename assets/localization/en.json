@@ -1212,12 +1212,40 @@
   "passwords_dont_match": "Passwords do not match",
 
   "agreements_title": "Agreements",
-  "agreements_description": "To continue using the app, you need to accept the agreements",
+  "agreements_description": "To continue using the app, you need to read and accept the agreements",
   "i_agree_privacy_policy": "I agree to the",
   "i_agree_terms": "I agree to the",
   "privacy_policy_agreement": "Privacy Policy",
   "accept": "Accept",
   "cancel": "Cancel",
   "agreements_required": "You must accept all agreements to continue",
-  "error_saving_agreements": "Error saving agreements. Please try again."
+  "error_saving_agreements": "Error saving agreements. Please try again.",
+
+  "terms_and_privacy_required": "You must accept the Terms of Service and Privacy Policy",
+  "and": "and",
+  "passwords_dont_match": "Passwords don't match",
+
+  "delete_account": "Delete Account",
+  "delete_account_permanently": "Delete Account Permanently",
+  "delete_account_warning": "Account Deletion",
+  "delete_account_warning_text": "You are about to permanently delete your account and all associated data.",
+  "delete_account_confirm_text": "To confirm account deletion, type the word \"delete\" in the field below:",
+  "type_delete_to_confirm": "Type \"delete\" to confirm",
+  "type_delete_to_confirm_en": "Type \"delete\" to confirm",
+  "delete_word_required": "You must type the word \"delete\"",
+  "delete_word_required_en": "You must type the word \"delete\"",
+  "account_deleted_successfully": "Account successfully deleted",
+  "error_deleting_account": "Error deleting account",
+  "account_deletion_canceled": "Account deletion canceled",
+  "deleting_account": "Deleting account...",
+  "danger_zone": "Danger Zone",
+  "this_action_cannot_be_undone": "This action cannot be undone",
+  "user_not_authorized": "User not authorized",
+
+  "password_confirmation_title": "Password Confirmation",
+  "enter_password_to_delete": "To delete your account, enter your current password:",
+  "confirm": "Confirm",
+  "reauthentication_required": "Reauthentication required",
+  "reauthentication_error": "Reauthentication error",
+  "relogin_required_for_deletion": "Account deletion requires recent authentication. Please log out and log in again."
 }
