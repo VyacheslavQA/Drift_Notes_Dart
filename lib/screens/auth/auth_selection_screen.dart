@@ -38,165 +38,193 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // Центрируем содержимое
             children: [
-              // Логотип приложения
-              SizedBox(
-                width: screenSize.width * 0.5,
-                height: screenSize.width * 0.5,
-                child: Image.asset(
-                  'assets/images/app_logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Если логотип не найден, показываем иконку
-                    return Container(
-                      width: screenSize.width * 0.3,
-                      height: screenSize.width * 0.3,
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
+              // ДОБАВЛЕНО: Кнопка "Назад" в верхнем левом углу
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+                    onPressed: () {
+                      // Безопасный возврат назад
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        // Если не можем вернуться назад, переходим к splash экрану
+                        Navigator.pushReplacementNamed(context, '/splash');
+                      }
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+
+              // ИЗМЕНЕНО: Оборачиваем основной контент в Expanded и центрируем
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center, // Центрируем содержимое
+                  children: [
+                    // Логотип приложения
+                    SizedBox(
+                      width: screenSize.width * 0.5,
+                      height: screenSize.width * 0.5,
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Если логотип не найден, показываем иконку
+                          return Container(
+                            width: screenSize.width * 0.3,
+                            height: screenSize.width * 0.3,
+                            decoration: BoxDecoration(
+                              color: AppConstants.primaryColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(
+                              Icons.phishing,
+                              size: screenSize.width * 0.15,
+                              color: AppConstants.textColor,
+                            ),
+                          );
+                        },
                       ),
-                      child: Icon(
-                        Icons.phishing,
-                        size: screenSize.width * 0.15,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Название приложения
+                    Text(
+                      'Drift Notes',
+                      style: TextStyle(
+                        fontSize: 36 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontWeight: FontWeight.bold,
                         color: AppConstants.textColor,
                       ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Название приложения
-              Text(
-                'Drift Notes',
-                style: TextStyle(
-                  fontSize: 36 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                  fontWeight: FontWeight.bold,
-                  color: AppConstants.textColor,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Заголовок "Выберите способ входа"
-              Text(
-                localizations.translate('select_login_method'),
-                style: TextStyle(
-                  fontSize: 24 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Подзаголовок
-              Text(
-                localizations.translate('select_convenient_login_method'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(height: 36),
-
-              // Кнопка входа через Email
-              _buildAuthButton(
-                context: context,
-                icon: Icons.email_outlined,
-                text: localizations.translate('login_with_email'),
-                onPressed: () {
-                  // Переходим к экрану входа с передачей коллбэка
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LoginScreen(onAuthSuccess: widget.onAuthSuccess),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-              // Кнопка входа через Google
-              SizedBox(
-                width: double.infinity, // Занимает всю ширину
-                child: ElevatedButton.icon(
-                  icon: _isGoogleLoading
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                    // Заголовок "Выберите способ входа"
+                    Text(
+                      localizations.translate('select_login_method'),
+                      style: TextStyle(
+                        fontSize: 24 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  )
-                      : Image.asset(
-                    'assets/images/google_logo.png',
-                    height: 24,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Если изображение не найдено, показываем иконку
-                      return const Icon(
-                        Icons.account_circle,
-                        size: 24,
-                        color: Colors.black87,
-                      );
-                    },
-                  ),
-                  label: Text(
-                    localizations.translate('login_with_google'),
-                    style: TextStyle(
-                      fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                      color: Colors.black87,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+
+                    // Подзаголовок
+                    Text(
+                      localizations.translate('select_convenient_login_method'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        color: Colors.white70,
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25.0),
+                    const SizedBox(height: 36),
+
+                    // Кнопка входа через Email
+                    _buildAuthButton(
+                      context: context,
+                      icon: Icons.email_outlined,
+                      text: localizations.translate('login_with_email'),
+                      onPressed: () {
+                        // Переходим к экрану входа с передачей коллбэка
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginScreen(onAuthSuccess: widget.onAuthSuccess),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+                    const SizedBox(height: 16),
+
+                    // Кнопка входа через Google
+                    SizedBox(
+                      width: double.infinity, // Занимает всю ширину
+                      child: ElevatedButton.icon(
+                        icon: _isGoogleLoading
+                            ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                          ),
+                        )
+                            : Image.asset(
+                          'assets/images/google_logo.png',
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Если изображение не найдено, показываем иконку
+                            return const Icon(
+                              Icons.account_circle,
+                              size: 24,
+                              color: Colors.black87,
+                            );
+                          },
+                        ),
+                        label: Text(
+                          localizations.translate('login_with_google'),
+                          style: TextStyle(
+                            fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25.0),
+                          ),
+                        ),
+                        onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Кнопка входа по номеру телефона
+                    _buildAuthButton(
+                      context: context,
+                      icon: Icons.phone,
+                      text: localizations.translate('login_with_phone'),
+                      onPressed: () {
+                        // Можно реализовать вход по телефону
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(localizations.translate('phone_login_later'))),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Ссылка на регистрацию
+                    TextButton(
+                      onPressed: () {
+                        // Переходим к экрану регистрации с передачей коллбэка
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegisterScreen(onAuthSuccess: widget.onAuthSuccess),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        localizations.translate('no_account_register'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Кнопка входа по номеру телефона
-              _buildAuthButton(
-                context: context,
-                icon: Icons.phone,
-                text: localizations.translate('login_with_phone'),
-                onPressed: () {
-                  // Можно реализовать вход по телефону
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(localizations.translate('phone_login_later'))),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Ссылка на регистрацию
-              TextButton(
-                onPressed: () {
-                  // Переходим к экрану регистрации с передачей коллбэка
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RegisterScreen(onAuthSuccess: widget.onAuthSuccess),
-                    ),
-                  );
-                },
-                child: Text(
-                  localizations.translate('no_account_register'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                  ),
-                ),
-              ),
-            ],
+              ), // Закрываем Expanded
+            ], // Закрываем основной Column
           ),
         ),
       ),

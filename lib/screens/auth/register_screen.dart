@@ -273,7 +273,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 IconButton(
                   icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    // Безопасный возврат назад
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      // Если не можем вернуться назад, переходим к экрану выбора авторизации
+                      Navigator.pushReplacementNamed(context, '/auth_selection');
+                    }
+                  },
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
