@@ -1420,6 +1420,15 @@
   "agreement_status": "Agreement acceptance status",
   "select_document_for_history": "Select document to view version history",
   "privacy_policy_history_description": "View privacy policy change history",
-  "terms_history_description": "View terms of service change history"
+  "terms_history_description": "View terms of service change history",
+
+  "read": "Read",
+  "read_only": "Read only",
+  "not_specified": "Not specified",
+  "unknown": "Unknown",
+  "error_loading_consents": "Error loading consents",
+  "try_again": "Try again",
+  "document_loading_error": "Error loading document",
+  "error": "Error"
 
 }

@@ -1311,6 +1311,15 @@
   "agreement_status": "Статус принятых соглашений",
   "select_document_for_history": "Выберите документ для просмотра истории версий",
   "privacy_policy_history_description": "Просмотр истории изменений политики конфиденциальности",
-  "terms_history_description": "Просмотр истории изменений пользовательского соглашения"
+  "terms_history_description": "Просмотр истории изменений пользовательского соглашения",
+
+  "read": "Читать",
+  "read_only": "Только для чтения",
+  "not_specified": "Не указано",
+  "unknown": "Неизвестно",
+  "error_loading_consents": "Ошибка загрузки согласий",
+  "try_again": "Попробовать снова",
+  "document_loading_error": "Ошибка загрузки документа",
+  "error": "Ошибка"
 
 }
