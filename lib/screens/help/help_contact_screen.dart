@@ -46,6 +46,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     }
   }
 
+  // ИСПРАВЛЕНО: Используем селективную проверку вместо общей
   Future<void> _checkAgreementUpdates() async {
     if (!mounted) return;
 
@@ -54,12 +55,16 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
 
-      final isVersionCurrent = await _consentService.isConsentVersionCurrent(languageCode);
+      // НОВОЕ: Используем селективную проверку согласий
+      final consentResult = await _consentService.checkUserConsents(languageCode);
+
       if (mounted) {
         setState(() {
-          _hasAgreementUpdates = !isVersionCurrent;
+          _hasAgreementUpdates = consentResult.hasChanges; // ИСПРАВЛЕНО
           _isLoading = false;
         });
+
+        debugPrint('📋 Проверка обновлений в Help: hasChanges=${consentResult.hasChanges}');
       }
     } catch (e) {
       debugPrint('❌ Ошибка проверки обновлений соглашений: $e');

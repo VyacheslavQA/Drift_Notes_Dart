@@ -27,6 +27,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
   bool _isLoading = true;
   List<DocumentVersion> _versions = [];
   UserConsentStatus? _consentStatus;
+  ConsentCheckResult? _consentResult; // НОВОЕ: Результат проверки согласий
   String _currentVersionString = '';
   bool _isDependenciesInitialized = false;
 
@@ -65,6 +66,9 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
 
       _consentStatus = await _consentService.getUserConsentStatus(languageCode);
 
+      // НОВОЕ: Получаем результат проверки согласий для селективного статуса
+      _consentResult = await _consentService.checkUserConsents(languageCode);
+
       // Сортируем версии по дате выпуска (новые сверху)
       _versions.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
 
@@ -91,6 +95,28 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
 
   String _getCurrentVersion() {
     return _currentVersionString;
+  }
+
+  // НОВЫЙ МЕТОД: Проверяет нужно ли обновление конкретного документа
+  bool _needsUpdate() {
+    if (_consentResult == null) return false;
+
+    if (widget.documentType == 'privacy_policy') {
+      return _consentResult!.needPrivacyPolicy;
+    } else {
+      return _consentResult!.needTermsOfService;
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Получает статус принятия конкретного документа
+  bool _isDocumentAccepted() {
+    if (_consentStatus == null) return false;
+
+    if (widget.documentType == 'privacy_policy') {
+      return _consentStatus!.privacyPolicyAccepted;
+    } else {
+      return _consentStatus!.termsOfServiceAccepted;
+    }
   }
 
   /// НОВЫЙ МЕТОД: Открытие документа для чтения
@@ -202,7 +228,11 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
     );
   }
 
+  // ИСПРАВЛЕННЫЙ МЕТОД: Показывает статус конкретного документа
   Widget _buildCurrentVersionHeader(AppLocalizations localizations) {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+
     return Container(
       width: double.infinity,
       color: AppConstants.primaryColor.withOpacity(0.1),
@@ -222,23 +252,53 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
           Row(
             children: [
               Icon(
-                Icons.check_circle,
-                color: AppConstants.primaryColor,
+                isAccepted && !needsUpdate ? Icons.check_circle : Icons.warning,
+                color: isAccepted && !needsUpdate ? AppConstants.primaryColor : Colors.orange,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 _getCurrentVersion(),
                 style: TextStyle(
-                  color: AppConstants.primaryColor,
+                  color: isAccepted && !needsUpdate ? AppConstants.primaryColor : Colors.orange,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          if (_consentStatus != null && !_consentStatus!.isVersionCurrent) ...[
-            const SizedBox(height: 8),
+          const SizedBox(height: 8),
+
+          // НОВАЯ ЛОГИКА: Показываем статус конкретного документа
+          if (!isAccepted)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.close,
+                    color: Colors.red,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Не принято',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (needsUpdate)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -250,13 +310,13 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.warning,
+                    Icons.update,
                     color: Colors.orange,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    localizations.translate('update_required') ?? 'Update required',
+                    'Требуется обновление',
                     style: const TextStyle(
                       color: Colors.orange,
                       fontSize: 12,
@@ -265,8 +325,35 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   ),
                 ],
               ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check,
+                    color: Colors.green,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Принято',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
         ],
       ),
     );

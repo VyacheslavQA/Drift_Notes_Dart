@@ -253,10 +253,10 @@ class UserConsentService {
             currentTermsVersion
         );
 
-        // Если в Firebase что-то не так, очищаем локальные данные
+        // ИСПРАВЛЕНО: Не очищаем локальные данные при частичном обновлении
+        // Просто возвращаем результат проверки Firebase
         if (!firebaseResult.allValid) {
-          debugPrint('❌ Firebase согласия неактуальны, очищаем локальные данные');
-          await clearAllConsents();
+          debugPrint('🔄 Firebase показывает что нужно обновить согласия: $firebaseResult');
           return firebaseResult;
         }
 
@@ -460,7 +460,7 @@ class UserConsentService {
     }
   }
 
-  /// Селективное сохранение согласий (только измененные документы)
+  /// НОВЫЙ МЕТОД: Селективное сохранение согласий (только измененные документы)
   Future<bool> saveSelectiveConsents({
     bool? privacyPolicyAccepted,
     bool? termsOfServiceAccepted,
@@ -547,7 +547,7 @@ class UserConsentService {
     }
   }
 
-  /// Селективное сохранение в Firestore
+  /// НОВЫЙ МЕТОД: Селективное сохранение в Firestore
   Future<void> _saveSelectiveConsentsToFirestore(
       String userId,
       bool? privacyAccepted,

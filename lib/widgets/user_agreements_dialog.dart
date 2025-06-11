@@ -48,13 +48,25 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
           _consentResult = result;
           _isLoading = false;
 
-          // Если документы уже приняты ранее, автоматически отмечаем их как принятые
-          // (нужны для случая когда изменился только один документ)
+          // ИСПРАВЛЕНО: Правильная инициализация состояния
+          // Документы, которые НЕ нужно принимать, автоматически считаются принятыми
           _privacyPolicyAccepted = !result.needPrivacyPolicy;
           _termsOfServiceAccepted = !result.needTermsOfService;
         });
 
         debugPrint('🔍 Результат проверки согласий: $result');
+        debugPrint('🔧 Инициализация: privacy=$_privacyPolicyAccepted, terms=$_termsOfServiceAccepted');
+
+        // ИСПРАВЛЕНО: Если все документы актуальны, автоматически закрываем диалог
+        if (result.allValid) {
+          debugPrint('✅ Все согласия актуальны - закрываем диалог');
+          Future.delayed(Duration.zero, () {
+            if (mounted) {
+              Navigator.of(context).pop();
+              widget.onAgreementsAccepted();
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint('❌ Ошибка при проверке согласий: $e');
@@ -69,6 +81,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
             currentPrivacyVersion: '1.0.0',
             currentTermsVersion: '1.0.0',
           );
+          _privacyPolicyAccepted = false;
+          _termsOfServiceAccepted = false;
         });
       }
     }
@@ -92,13 +106,17 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     );
   }
 
-  /// Обрабатывает принятие соглашений (селективно)
+  /// ИСПРАВЛЕНО: Обрабатывает принятие соглашений (селективно)
   Future<void> _handleAcceptAgreements() async {
     if (_consentResult == null) return;
 
     // Проверяем что все НУЖНЫЕ документы приняты
     final needsPrivacy = _consentResult!.needPrivacyPolicy;
     final needsTerms = _consentResult!.needTermsOfService;
+
+    debugPrint('🔍 Проверка перед сохранением:');
+    debugPrint('   needsPrivacy: $needsPrivacy, accepted: $_privacyPolicyAccepted');
+    debugPrint('   needsTerms: $needsTerms, accepted: $_termsOfServiceAccepted');
 
     if ((needsPrivacy && !_privacyPolicyAccepted) ||
         (needsTerms && !_termsOfServiceAccepted)) {
@@ -113,18 +131,19 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     try {
       bool success = false;
 
-      // Используем селективное сохранение - только измененные документы
+      // ИСПРАВЛЕНО: Правильная логика селективного сохранения
       if (needsPrivacy || needsTerms) {
+        // Сохраняем только те документы, которые пользователь ДЕЙСТВИТЕЛЬНО принимал
         success = await _consentService.saveSelectiveConsents(
           privacyPolicyAccepted: needsPrivacy ? _privacyPolicyAccepted : null,
           termsOfServiceAccepted: needsTerms ? _termsOfServiceAccepted : null,
         );
+
+        debugPrint('💾 Селективное сохранение: Privacy=${needsPrivacy ? _privacyPolicyAccepted : 'skip'}, Terms=${needsTerms ? _termsOfServiceAccepted : 'skip'}');
       } else {
-        // Если ничего не нужно принимать (не должно происходить), сохраняем все
-        success = await _consentService.saveUserConsents(
-          privacyPolicyAccepted: _privacyPolicyAccepted,
-          termsOfServiceAccepted: _termsOfServiceAccepted,
-        );
+        // Если ничего не нужно принимать (не должно происходить в этом диалоге)
+        debugPrint('⚠️ Неожиданная ситуация: нечего сохранять');
+        success = true;
       }
 
       if (success && mounted) {
@@ -149,23 +168,30 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
   }
 
-  /// Показывает сообщение об ошибке валидации (умное)
+  /// ИСПРАВЛЕНО: Показывает сообщение об ошибке валидации (умное)
   void _showErrorMessage() {
     if (_consentResult == null) return;
 
     final localizations = AppLocalizations.of(context);
     String message;
 
-    // Формируем сообщение в зависимости от того, что нужно принять
-    if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      message = localizations.translate('terms_and_privacy_required') ??
-          'Необходимо принять пользовательское соглашение и политику конфиденциальности';
-    } else if (_consentResult!.needPrivacyPolicy) {
-      message = 'Необходимо принять обновленную политику конфиденциальности';
-    } else if (_consentResult!.needTermsOfService) {
-      message = 'Необходимо принять обновленное пользовательское соглашение';
+    // Формируем сообщение в зависимости от того, что РЕАЛЬНО нужно принять
+    List<String> needed = [];
+
+    if (_consentResult!.needPrivacyPolicy && !_privacyPolicyAccepted) {
+      needed.add(localizations.translate('privacy_policy') ?? 'политику конфиденциальности');
+    }
+
+    if (_consentResult!.needTermsOfService && !_termsOfServiceAccepted) {
+      needed.add(localizations.translate('terms_of_service') ?? 'пользовательское соглашение');
+    }
+
+    if (needed.isEmpty) {
+      message = localizations.translate('agreements_required') ?? 'Необходимо принять соглашения для продолжения';
+    } else if (needed.length == 1) {
+      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed[0]}';
     } else {
-      message = 'Необходимо принять соглашения для продолжения';
+      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed.join(' и ')}';
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -179,11 +205,12 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
   /// Показывает сообщение об ошибке сохранения
   void _showSaveErrorMessage() {
+    final localizations = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ошибка сохранения согласий. Попробуйте снова.'),
+      SnackBar(
+        content: Text(localizations.translate('error_saving_agreements') ?? 'Ошибка сохранения согласий. Попробуйте снова.'),
         backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -204,17 +231,17 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
     // Если нужно принять оба документа - общий заголовок
     if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return localizations.translate('agreements_title') ?? 'Соглашения';
+      return localizations.translate('agreements_update_title') ?? 'Обновление соглашений';
     }
 
     // Если только политика конфиденциальности
     if (_consentResult!.needPrivacyPolicy && !_consentResult!.needTermsOfService) {
-      return 'Обновление политики конфиденциальности';
+      return localizations.translate('privacy_policy_update_title') ?? 'Обновление политики конфиденциальности';
     }
 
     // Если только пользовательское соглашение
     if (!_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return 'Обновление пользовательского соглашения';
+      return localizations.translate('terms_update_title') ?? 'Обновление пользовательского соглашения';
     }
 
     return localizations.translate('agreements_title') ?? 'Соглашения';
@@ -229,17 +256,20 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
     // Если нужно принять оба документа
     if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return 'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
+      return localizations.translate('both_agreements_updated') ??
+          'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
     }
 
     // Если только политика конфиденциальности
     if (_consentResult!.needPrivacyPolicy && !_consentResult!.needTermsOfService) {
-      return 'Обновилась политика конфиденциальности. Для продолжения работы необходимо принять новую версию.';
+      return localizations.translate('privacy_policy_updated') ??
+          'Обновилась политика конфиденциальности. Для продолжения работы необходимо принять новую версию.';
     }
 
     // Если только пользовательское соглашение
     if (!_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return 'Обновилось пользовательское соглашение. Для продолжения работы необходимо принять новую версию.';
+      return localizations.translate('terms_updated') ??
+          'Обновилось пользовательское соглашение. Для продолжения работы необходимо принять новую версию.';
     }
 
     return localizations.translate('agreements_description') ??
@@ -254,15 +284,26 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
     // Если нужно принять оба документа
     if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return 'Принять все';
+      return localizations.translate('accept_all_updates') ?? 'Принять все обновления';
     }
 
     // Если только один документ
     if (_consentResult!.needPrivacyPolicy || _consentResult!.needTermsOfService) {
-      return 'Принять обновление';
+      return localizations.translate('accept_update') ?? 'Принять обновление';
     }
 
     return localizations.translate('accept') ?? 'Принять';
+  }
+
+  /// ИСПРАВЛЕНО: Проверяет можно ли активировать кнопку "Принять"
+  bool _canAccept() {
+    if (_consentResult == null) return false;
+
+    // Кнопка активна если все НУЖНЫЕ документы приняты
+    final privacyOk = !_consentResult!.needPrivacyPolicy || _privacyPolicyAccepted;
+    final termsOk = !_consentResult!.needTermsOfService || _termsOfServiceAccepted;
+
+    return privacyOk && termsOk;
   }
 
   @override
@@ -283,13 +324,13 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
               maxWidth: screenSize.width * 0.9,
               maxHeight: 200,
             ),
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Проверка соглашений...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(localizations.translate('checking_agreements') ?? 'Проверка соглашений...'),
                 ],
               ),
             ),
@@ -364,11 +405,12 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                         _buildAgreementCheckbox(
                           value: _privacyPolicyAccepted,
                           onChanged: (value) => setState(() => _privacyPolicyAccepted = value ?? false),
-                          text: localizations.translate('i_agree_privacy_policy') ?? 'Я согласен с',
-                          linkText: localizations.translate('privacy_policy_agreement') ?? 'Политикой конфиденциальности',
+                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
+                          linkText: localizations.translate('privacy_policy') ?? 'Политикой конфиденциальности',
                           onLinkTap: _showPrivacyPolicy,
                           version: _consentResult?.currentPrivacyVersion,
                           isUpdated: _consentResult?.savedPrivacyVersion != null,
+                          oldVersion: _consentResult?.savedPrivacyVersion,
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -378,16 +420,17 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                         _buildAgreementCheckbox(
                           value: _termsOfServiceAccepted,
                           onChanged: (value) => setState(() => _termsOfServiceAccepted = value ?? false),
-                          text: localizations.translate('i_agree_terms') ?? 'Я согласен с',
-                          linkText: localizations.translate('terms_of_service_agreement') ?? 'Пользовательским соглашением',
+                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
+                          linkText: localizations.translate('terms_of_service') ?? 'Пользовательским соглашением',
                           onLinkTap: _showTermsOfService,
                           version: _consentResult?.currentTermsVersion,
                           isUpdated: _consentResult?.savedTermsVersion != null,
+                          oldVersion: _consentResult?.savedTermsVersion,
                         ),
                         const SizedBox(height: 16),
                       ],
 
-                      // Информация о том, что осталось действующим (если есть)
+                      // ИСПРАВЛЕНО: Информация о том, что осталось действующим
                       if (_consentResult != null &&
                           (!_consentResult!.needPrivacyPolicy || !_consentResult!.needTermsOfService)) ...[
                         Container(
@@ -403,7 +446,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  _buildValidDocumentsText(),
+                                  _buildValidDocumentsText(localizations),
                                   style: TextStyle(
                                     fontSize: 12 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                                     color: Colors.green.shade700,
@@ -442,12 +485,13 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
                           const SizedBox(width: 12),
 
-                          // Кнопка принятия (динамический текст)
+                          // ИСПРАВЛЕНО: Кнопка принятия с правильной логикой активации
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isProcessing ? null : _handleAcceptAgreements,
+                              onPressed: (_isProcessing || !_canAccept()) ? null : _handleAcceptAgreements,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppConstants.primaryColor,
+                                disabledBackgroundColor: AppConstants.primaryColor.withOpacity(0.3),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -467,6 +511,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                                   fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                                   fontWeight: FontWeight.bold,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
@@ -483,24 +528,28 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     );
   }
 
-  /// Формирует текст о том, какие документы остались действующими
-  String _buildValidDocumentsText() {
+  /// ИСПРАВЛЕНО: Формирует текст о том, какие документы остались действующими
+  String _buildValidDocumentsText(AppLocalizations localizations) {
     if (_consentResult == null) return '';
 
     List<String> validDocs = [];
 
     if (!_consentResult!.needPrivacyPolicy) {
-      validDocs.add('Политика конфиденциальности v${_consentResult!.savedPrivacyVersion ?? 'текущая'} остается действующей');
+      final version = _consentResult!.savedPrivacyVersion ?? _consentResult!.currentPrivacyVersion;
+      validDocs.add(localizations.translate('privacy_policy_remains_valid')?.replaceAll('{version}', version) ??
+          'Политика конфиденциальности v$version остается действующей');
     }
 
     if (!_consentResult!.needTermsOfService) {
-      validDocs.add('Пользовательское соглашение v${_consentResult!.savedTermsVersion ?? 'текущее'} остается действующим');
+      final version = _consentResult!.savedTermsVersion ?? _consentResult!.currentTermsVersion;
+      validDocs.add(localizations.translate('terms_remains_valid')?.replaceAll('{version}', version) ??
+          'Пользовательское соглашение v$version остается действующим');
     }
 
     return validDocs.join('. ');
   }
 
-  /// Создает виджет checkbox с текстом и ссылкой (обновленный)
+  /// ИСПРАВЛЕНО: Создает виджет checkbox с текстом и ссылкой (обновленный)
   Widget _buildAgreementCheckbox({
     required bool value,
     required ValueChanged<bool?> onChanged,
@@ -508,9 +557,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     required String linkText,
     required VoidCallback onLinkTap,
     String? version,
+    String? oldVersion,
     bool isUpdated = false,
   }) {
     final textScaler = MediaQuery.of(context).textScaler;
+    final localizations = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -578,7 +629,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                           Icon(Icons.fiber_new, size: 16, color: Colors.blue),
                           const SizedBox(width: 4),
                           Text(
-                            'ОБНОВЛЕНО',
+                            localizations.translate('updated') ?? 'ОБНОВЛЕНО',
                             style: TextStyle(
                               fontSize: 11 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                               color: Colors.blue,
@@ -589,7 +640,9 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                         ],
                         if (version != null) ...[
                           Text(
-                            'версия $version',
+                            isUpdated && oldVersion != null
+                                ? 'v$oldVersion → v$version'
+                                : '${localizations.translate('version') ?? 'версия'} $version',
                             style: TextStyle(
                               fontSize: 11 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
                               color: AppConstants.textColor.withOpacity(0.6),
