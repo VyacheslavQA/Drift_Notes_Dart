@@ -558,22 +558,23 @@ class UserConsentService {
         case ConsentRestrictionLevel.none:
           return 'Для продолжения работы необходимо принять обновленную политику конфиденциальности';
         case ConsentRestrictionLevel.soft:
-          return 'Ограничен доступ к созданию нового контента ($days/${'7'} дней)';
+          return 'Ограничен доступ к созданию нового контента ($days/7 дней)';
         case ConsentRestrictionLevel.hard:
-          return 'Доступен только просмотр данных ($days/${'14'} дней)';
+          return 'Доступен только просмотр данных ($days/14 дней)';
         case ConsentRestrictionLevel.final_:
           return 'Внимание! Аккаунт будет удален через ${21 - days} дней';
         case ConsentRestrictionLevel.deletion:
           return 'Аккаунт запланирован к удалению. Примите политику для восстановления доступа';
       }
     } else {
+      // Английский
       switch (level) {
         case ConsentRestrictionLevel.none:
           return 'Please accept the updated privacy policy to continue';
         case ConsentRestrictionLevel.soft:
-          return 'Content creation is restricted ($days/${'7'} days)';
+          return 'Content creation is restricted ($days/7 days)';
         case ConsentRestrictionLevel.hard:
-          return 'Read-only access mode ($days/${'14'} days)';
+          return 'Read-only access mode ($days/14 days)';
         case ConsentRestrictionLevel.final_:
           return 'Warning! Account will be deleted in ${21 - days} days';
         case ConsentRestrictionLevel.deletion:

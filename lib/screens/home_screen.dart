@@ -45,42 +45,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ДОБАВЛЕНО: Переменные для системы принудительного принятия политики
   ConsentRestrictionResult? _policyRestrictions;
+  bool _hasPolicyBeenChecked = false; // Флаг для предотвращения повторных проверок
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
   @override
   void initState() {
     super.initState();
-    // ИЗМЕНЕНО: Добавлена проверка политики при инициализации
-    _initializeScreen();
+    // ИЗМЕНЕНО: Убираем проверку политики из initState
+    _loadFishingNotes();
+    _fishingNoteRepository.syncOfflineDataOnStartup();
   }
 
-  /// НОВЫЙ МЕТОД: Инициализация экрана с проверкой политики
-  Future<void> _initializeScreen() async {
-    // Сначала проверяем политику конфиденциальности
-    await _checkPolicyCompliance();
-
-    // Затем загружаем данные
-    await _loadFishingNotes();
-
-    // Синхронизируем офлайн данные
-    _fishingNoteRepository.syncOfflineDataOnStartup();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ДОБАВЛЕНО: Проверяем политику здесь, когда контекст готов
+    if (!_hasPolicyBeenChecked) {
+      _hasPolicyBeenChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkPolicyCompliance();
+      });
+    }
   }
 
   /// НОВЫЙ МЕТОД: Проверяет соблюдение политики конфиденциальности
   Future<void> _checkPolicyCompliance() async {
     try {
-      final consentResult = await UserConsentService().checkUserConsents();
+      if (!mounted) return;
+
+      String languageCode = 'ru'; // Дефолтный язык
+
+      // Безопасно получаем язык из локализации
+      try {
+        final localizations = AppLocalizations.of(context);
+        languageCode = localizations.translate('language_code') ?? 'ru';
+      } catch (e) {
+        debugPrint('⚠️ Локализация недоступна, используем русский язык');
+      }
+
+      final consentResult = await UserConsentService().checkUserConsents(languageCode);
 
       if (!consentResult.allValid) {
         debugPrint('🚫 Политика не принята - показываем принудительный диалог');
-        await _showPolicyUpdateDialog();
+        if (mounted) {
+          await _showPolicyUpdateDialog();
+        }
       }
 
-      // Получаем текущие ограничения
-      _policyRestrictions = await UserConsentService().getConsentRestrictions();
+      // Получаем текущие ограничения с правильным языком
+      _policyRestrictions = await UserConsentService().getConsentRestrictions(languageCode);
 
-      if (_policyRestrictions!.hasRestrictions) {
+      if (mounted && _policyRestrictions!.hasRestrictions) {
         debugPrint('⚠️ Действуют ограничения: ${_policyRestrictions!.level}');
         _showPolicyRestrictionBanner();
       }
@@ -119,13 +135,25 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshPolicyStatus() async {
     if (!mounted) return;
 
-    _policyRestrictions = await UserConsentService().getConsentRestrictions();
+    String languageCode = 'ru'; // Дефолтный язык
 
-    if (_policyRestrictions!.hasRestrictions) {
+    // Безопасно получаем язык из локализации
+    try {
+      final localizations = AppLocalizations.of(context);
+      languageCode = localizations.translate('language_code') ?? 'ru';
+    } catch (e) {
+      debugPrint('⚠️ Локализация недоступна при обновлении статуса');
+    }
+
+    _policyRestrictions = await UserConsentService().getConsentRestrictions(languageCode);
+
+    if (mounted && _policyRestrictions!.hasRestrictions) {
       _showPolicyRestrictionBanner();
     }
 
-    setState(() {}); // Обновляем UI
+    if (mounted) {
+      setState(() {}); // Обновляем UI
+    }
   }
 
   /// НОВЫЙ МЕТОД: Показывает баннер с ограничениями политики
