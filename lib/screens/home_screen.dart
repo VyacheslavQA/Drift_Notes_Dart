@@ -11,6 +11,8 @@ import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
 import '../localization/app_localizations.dart';
 import '../widgets/center_button_tooltip.dart';
+import '../services/user_consent_service.dart';
+import '../widgets/user_agreements_dialog.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
@@ -24,7 +26,6 @@ import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 import 'tournaments/tournaments_screen.dart';
 import 'shops/shops_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,13 +43,185 @@ class _HomeScreenState extends State<HomeScreen> {
   List<FishingNoteModel> _fishingNotes = [];
   bool _hasNewNotifications = true; // Временно устанавливаем в true для демонстрации
 
+  // ДОБАВЛЕНО: Переменные для системы принудительного принятия политики
+  ConsentRestrictionResult? _policyRestrictions;
+
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
   @override
   void initState() {
     super.initState();
-    _loadFishingNotes(); // Оставляем для статистики
+    // ИЗМЕНЕНО: Добавлена проверка политики при инициализации
+    _initializeScreen();
+  }
+
+  /// НОВЫЙ МЕТОД: Инициализация экрана с проверкой политики
+  Future<void> _initializeScreen() async {
+    // Сначала проверяем политику конфиденциальности
+    await _checkPolicyCompliance();
+
+    // Затем загружаем данные
+    await _loadFishingNotes();
+
+    // Синхронизируем офлайн данные
     _fishingNoteRepository.syncOfflineDataOnStartup();
+  }
+
+  /// НОВЫЙ МЕТОД: Проверяет соблюдение политики конфиденциальности
+  Future<void> _checkPolicyCompliance() async {
+    try {
+      final consentResult = await UserConsentService().checkUserConsents();
+
+      if (!consentResult.allValid) {
+        debugPrint('🚫 Политика не принята - показываем принудительный диалог');
+        await _showPolicyUpdateDialog();
+      }
+
+      // Получаем текущие ограничения
+      _policyRestrictions = await UserConsentService().getConsentRestrictions();
+
+      if (_policyRestrictions!.hasRestrictions) {
+        debugPrint('⚠️ Действуют ограничения: ${_policyRestrictions!.level}');
+        _showPolicyRestrictionBanner();
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке политики: $e');
+    }
+  }
+
+  /// НОВЫЙ МЕТОД: Показывает диалог обновления политики
+  Future<void> _showPolicyUpdateDialog() async {
+    if (!mounted) return;
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Запрещаем закрытие диалога
+          child: UserAgreementsDialog(
+            onAgreementsAccepted: () async {
+              debugPrint('✅ Политика принята пользователем');
+              await _refreshPolicyStatus();
+            },
+            onCancel: () async {
+              debugPrint('❌ Пользователь отказался от принятия политики');
+              await UserConsentService().recordPolicyRejection();
+              await _refreshPolicyStatus();
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// НОВЫЙ МЕТОД: Обновляет статус политики после изменений
+  Future<void> _refreshPolicyStatus() async {
+    if (!mounted) return;
+
+    _policyRestrictions = await UserConsentService().getConsentRestrictions();
+
+    if (_policyRestrictions!.hasRestrictions) {
+      _showPolicyRestrictionBanner();
+    }
+
+    setState(() {}); // Обновляем UI
+  }
+
+  /// НОВЫЙ МЕТОД: Показывает баннер с ограничениями политики
+  void _showPolicyRestrictionBanner() {
+    if (!mounted || _policyRestrictions == null) return;
+
+    final localizations = AppLocalizations.of(context);
+    final restrictions = _policyRestrictions!;
+
+    Color bannerColor;
+    IconData bannerIcon;
+
+    switch (restrictions.level) {
+      case ConsentRestrictionLevel.soft:
+        bannerColor = Colors.orange;
+        bannerIcon = Icons.warning_amber;
+        break;
+      case ConsentRestrictionLevel.hard:
+        bannerColor = Colors.red;
+        bannerIcon = Icons.warning;
+        break;
+      case ConsentRestrictionLevel.final_:
+        bannerColor = Colors.red[800]!;
+        bannerIcon = Icons.error;
+        break;
+      case ConsentRestrictionLevel.deletion:
+        bannerColor = Colors.red[900]!;
+        bannerIcon = Icons.delete_forever;
+        break;
+      default:
+        return;
+    }
+
+    // Показываем баннер через SnackBar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(bannerIcon, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        localizations.translate('policy_restrictions_title') ?? 'Ограничения доступа',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        restrictions.restrictionMessage,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: bannerColor,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: localizations.translate('accept_policy') ?? 'Принять политику',
+              textColor: Colors.white,
+              onPressed: () => _showPolicyUpdateDialog(),
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  /// НОВЫЙ МЕТОД: Проверяет возможность создания контента
+  bool get _canCreateContent => _policyRestrictions?.canCreateContent ?? true;
+
+  /// НОВЫЙ МЕТОД: Показывает сообщение о блокировке создания контента
+  void _showContentCreationBlocked() {
+    final localizations = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            localizations.translate('create_note_blocked') ??
+                'Создание заметок заблокировано. Примите политику конфиденциальности.'
+        ),
+        backgroundColor: Colors.red,
+        action: SnackBarAction(
+          label: localizations.translate('accept_policy') ?? 'Принять политику',
+          textColor: Colors.white,
+          onPressed: () => _showPolicyUpdateDialog(),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadFishingNotes() async {
@@ -134,6 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToAddNote() {
+    // ДОБАВЛЕНО: Проверяем ограничения политики перед созданием заметки
+    if (!_canCreateContent) {
+      _showContentCreationBlocked();
+      return;
+    }
+
     Navigator.push(
         context,
         MaterialPageRoute(
@@ -462,6 +641,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
+        // ДОБАВЛЕНО: Показываем баннер ограничений если есть
+        if (_policyRestrictions?.hasRestrictions == true)
+          _buildPolicyRestrictionCard(),
+
         // 1. Самая большая рыба
         if (stats['biggestFish'] != null)
           _buildStatCard(
@@ -581,6 +764,119 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// НОВЫЙ МЕТОД: Строит карточку с ограничениями политики
+  Widget _buildPolicyRestrictionCard() {
+    if (_policyRestrictions == null || !_policyRestrictions!.hasRestrictions) {
+      return const SizedBox.shrink();
+    }
+
+    final localizations = AppLocalizations.of(context);
+    final restrictions = _policyRestrictions!;
+
+    Color cardColor;
+    IconData cardIcon;
+    String title;
+
+    switch (restrictions.level) {
+      case ConsentRestrictionLevel.soft:
+        cardColor = Colors.orange;
+        cardIcon = Icons.warning_amber;
+        title = localizations.translate('soft_restrictions_title') ?? 'Мягкие ограничения';
+        break;
+      case ConsentRestrictionLevel.hard:
+        cardColor = Colors.red;
+        cardIcon = Icons.warning;
+        title = localizations.translate('hard_restrictions_title') ?? 'Жесткие ограничения';
+        break;
+      case ConsentRestrictionLevel.final_:
+        cardColor = Colors.red[800]!;
+        cardIcon = Icons.error;
+        title = localizations.translate('final_warning_title') ?? 'Финальное предупреждение';
+        break;
+      case ConsentRestrictionLevel.deletion:
+        cardColor = Colors.red[900]!;
+        cardIcon = Icons.delete_forever;
+        title = localizations.translate('deletion_warning_title') ?? 'Запланировано удаление';
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardColor, width: 2),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  cardIcon,
+                  color: cardColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: cardColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      restrictions.restrictionMessage,
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _showPolicyUpdateDialog(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                localizations.translate('accept_policy') ?? 'Принять политику',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Метод для определения цвета в зависимости от процента реализации
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
@@ -645,7 +941,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         drawer: _buildDrawer(),
         body: RefreshIndicator(
-          onRefresh: _loadFishingNotes,
+          // ИЗМЕНЕНО: Добавлена проверка политики при обновлении
+          onRefresh: () async {
+            await _checkPolicyCompliance();
+            await _loadFishingNotes();
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Padding(
@@ -882,6 +1182,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: localizations.translate('profile'),
                   onTap: () {
                     Navigator.pop(context);
+
+                    // ДОБАВЛЕНО: Проверяем ограничения перед редактированием профиля
+                    if (_policyRestrictions?.canEditProfile != true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              localizations.translate('edit_profile_blocked') ??
+                                  'Редактирование профиля заблокировано. Примите политику конфиденциальности.'
+                          ),
+                          backgroundColor: Colors.red,
+                          action: SnackBarAction(
+                            label: localizations.translate('accept_policy') ?? 'Принять политику',
+                            textColor: Colors.white,
+                            onPressed: () => _showPolicyUpdateDialog(),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -1228,10 +1548,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/images/app_logo.png',
-                    width: 80,
-                    height: 80,
+                  child: Stack(
+                    children: [
+                      Image.asset(
+                        'assets/images/app_logo.png',
+                        width: 80,
+                        height: 80,
+                      ),
+                      // ДОБАВЛЕНО: Показываем индикатор блокировки если создание контента заблокировано
+                      if (!_canCreateContent)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.lock,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

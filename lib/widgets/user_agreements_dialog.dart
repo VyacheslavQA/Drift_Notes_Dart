@@ -168,6 +168,33 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
   }
 
+  /// НОВЫЙ МЕТОД: Обрабатывает отказ от принятия политики
+  Future<void> _handleDeclineAgreements() async {
+    try {
+      // Записываем отказ от принятия политики
+      await _consentService.recordPolicyRejection();
+
+      debugPrint('📝 Отказ от политики записан');
+
+      // Закрываем диалог и вызываем коллбэк отмены
+      if (mounted) {
+        Navigator.of(context).pop();
+        if (widget.onCancel != null) {
+          widget.onCancel!();
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при записи отказа: $e');
+      // Даже если запись не удалась, закрываем диалог
+      if (mounted) {
+        Navigator.of(context).pop();
+        if (widget.onCancel != null) {
+          widget.onCancel!();
+        }
+      }
+    }
+  }
+
   /// ИСПРАВЛЕНО: Показывает сообщение об ошибке валидации (умное)
   void _showErrorMessage() {
     if (_consentResult == null) return;
@@ -213,14 +240,6 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
         duration: const Duration(seconds: 3),
       ),
     );
-  }
-
-  /// Обрабатывает отмену
-  void _handleCancel() {
-    Navigator.of(context).pop();
-    if (widget.onCancel != null) {
-      widget.onCancel!();
-    }
   }
 
   /// Получает динамический заголовок в зависимости от контекста
@@ -464,20 +483,21 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                       // Кнопки
                       Row(
                         children: [
-                          // Кнопка отмены
+                          // ОБНОВЛЕНО: Кнопка отмены теперь записывает отказ
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isProcessing ? null : _handleCancel,
+                              onPressed: _isProcessing ? null : _handleDeclineAgreements,
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+                                side: BorderSide(color: Colors.red.withOpacity(0.7)),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               child: Text(
-                                localizations.translate('cancel') ?? 'Отмена',
+                                localizations.translate('decline') ?? 'Отклонить',
                                 style: TextStyle(
-                                  color: AppConstants.textColor,
+                                  color: Colors.red,
                                   fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
