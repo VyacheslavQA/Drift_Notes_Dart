@@ -47,8 +47,8 @@ class UserConsentService {
   // Ключи для локального хранения
   static const String _privacyPolicyAcceptedKey = 'privacy_policy_accepted';
   static const String _termsOfServiceAcceptedKey = 'terms_of_service_accepted';
-  static const String _privacyPolicyVersionKey = 'privacy_policy_version'; // НОВЫЙ!
-  static const String _termsOfServiceVersionKey = 'terms_of_service_version'; // НОВЫЙ!
+  static const String _privacyPolicyVersionKey = 'privacy_policy_version';
+  static const String _termsOfServiceVersionKey = 'terms_of_service_version';
   static const String _privacyPolicyHashKey = 'privacy_policy_hash';
   static const String _termsOfServiceHashKey = 'terms_of_service_hash';
 
@@ -60,6 +60,32 @@ class UserConsentService {
   String? _cachedTermsOfServiceVersion;
   String? _cachedPrivacyPolicyHash;
   String? _cachedTermsOfServiceHash;
+
+  /// НОВЫЙ МЕТОД: Получение локализованного описания
+  String _getLocalizedDescription(String type, String version, String languageCode, bool isCurrent) {
+    if (languageCode == 'ru') {
+      if (type == 'privacy_policy') {
+        return isCurrent
+            ? 'Текущая версия политики конфиденциальности'
+            : 'Архивная версия $version';
+      } else {
+        return isCurrent
+            ? 'Текущая версия пользовательского соглашения'
+            : 'Архивная версия $version';
+      }
+    } else {
+      // Английский
+      if (type == 'privacy_policy') {
+        return isCurrent
+            ? 'Current version of privacy policy'
+            : 'Archived version $version';
+      } else {
+        return isCurrent
+            ? 'Current version of terms of service'
+            : 'Archived version $version';
+      }
+    }
+  }
 
   /// Извлекает версию из первой строки файла
   String _extractVersionFromContent(String content) {
@@ -399,8 +425,8 @@ class UserConsentService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_privacyPolicyAcceptedKey, privacyPolicyAccepted);
       await prefs.setBool(_termsOfServiceAcceptedKey, termsOfServiceAccepted);
-      await prefs.setString(_privacyPolicyVersionKey, currentPrivacyVersion); // НОВОЕ!
-      await prefs.setString(_termsOfServiceVersionKey, currentTermsVersion); // НОВОЕ!
+      await prefs.setString(_privacyPolicyVersionKey, currentPrivacyVersion);
+      await prefs.setString(_termsOfServiceVersionKey, currentTermsVersion);
       await prefs.setString('consent_timestamp', DateTime.now().toIso8601String());
       await prefs.setString('consent_language', languageCode);
 
@@ -506,8 +532,8 @@ class UserConsentService {
       await _firestore.collection('user_consents').doc(userId).set({
         'privacy_policy_accepted': privacyAccepted,
         'terms_of_service_accepted': termsAccepted,
-        'privacy_policy_version': privacyVersion, // НОВОЕ!
-        'terms_of_service_version': termsVersion, // НОВОЕ!
+        'privacy_policy_version': privacyVersion,
+        'terms_of_service_version': termsVersion,
         'consent_language': languageCode,
         'consent_timestamp': FieldValue.serverTimestamp(),
         'user_id': userId,
@@ -603,8 +629,8 @@ class UserConsentService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_privacyPolicyAcceptedKey, privacyAccepted);
         await prefs.setBool(_termsOfServiceAcceptedKey, termsAccepted);
-        await prefs.setString(_privacyPolicyVersionKey, privacyVersion); // НОВОЕ!
-        await prefs.setString(_termsOfServiceVersionKey, termsVersion); // НОВОЕ!
+        await prefs.setString(_privacyPolicyVersionKey, privacyVersion);
+        await prefs.setString(_termsOfServiceVersionKey, termsVersion);
         await prefs.setString('consent_language', consentLanguage);
 
         if (consentTimestamp != null) {
@@ -634,8 +660,8 @@ class UserConsentService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_privacyPolicyAcceptedKey);
       await prefs.remove(_termsOfServiceAcceptedKey);
-      await prefs.remove(_privacyPolicyVersionKey); // НОВОЕ!
-      await prefs.remove(_termsOfServiceVersionKey); // НОВОЕ!
+      await prefs.remove(_privacyPolicyVersionKey);
+      await prefs.remove(_termsOfServiceVersionKey);
       await prefs.remove(_privacyPolicyHashKey);
       await prefs.remove(_termsOfServiceHashKey);
       await prefs.remove('consent_timestamp');
@@ -716,31 +742,6 @@ class UserConsentService {
     return result.allValid;
   }
 
-  /// Получает информацию о текущих версиях документов (обновленный)
-  Future<Map<String, dynamic>> getDocumentVersionsInfo([String? languageCode]) async {
-    languageCode ??= 'ru';
-
-    try {
-      final privacyInfo = await _loadPrivacyPolicyInfo(languageCode);
-      final termsInfo = await _loadTermsOfServiceInfo(languageCode);
-
-      return {
-        'privacy_policy': {
-          'version': privacyInfo['version'],
-          'hash': privacyInfo['hash']?.substring(0, 8),
-        },
-        'terms_of_service': {
-          'version': termsInfo['version'],
-          'hash': termsInfo['hash']?.substring(0, 8),
-        },
-        'language': languageCode,
-      };
-    } catch (e) {
-      debugPrint('❌ Ошибка получения информации о версиях: $e');
-      return {};
-    }
-  }
-
   /// Ищет архивные версии политики конфиденциальности
   Future<List<String>> _findArchivedPrivacyVersions(String languageCode) async {
     List<String> versions = [];
@@ -816,7 +817,7 @@ class UserConsentService {
     return 0; // Версии равны
   }
 
-  /// Получает историю версий политики конфиденциальности
+  /// ИСПРАВЛЕНО: Получает историю версий политики конфиденциальности с локализацией
   Future<List<DocumentVersion>> getPrivacyPolicyHistory([String? languageCode]) async {
     languageCode ??= 'ru';
     List<DocumentVersion> history = [];
@@ -829,9 +830,7 @@ class UserConsentService {
         releaseDate: DateTime.now(),
         documentType: 'privacy_policy',
         language: languageCode,
-        description: languageCode == 'ru'
-            ? 'Текущая версия политики конфиденциальности'
-            : 'Current version of privacy policy',
+        description: _getLocalizedDescription('privacy_policy', currentVersion, languageCode, true),
         hash: _cachedPrivacyPolicyHash?.substring(0, 8),
         isCurrent: true,
       ));
@@ -845,9 +844,7 @@ class UserConsentService {
             releaseDate: DateTime.now(), // В реальности можно парсить из файла
             documentType: 'privacy_policy',
             language: languageCode,
-            description: languageCode == 'ru'
-                ? 'Архивная версия $version'
-                : 'Archived version $version',
+            description: _getLocalizedDescription('privacy_policy', version, languageCode, false),
             isCurrent: false,
           ));
         }
@@ -859,7 +856,7 @@ class UserConsentService {
     return history;
   }
 
-  /// Получает историю версий пользовательского соглашения
+  /// ИСПРАВЛЕНО: Получает историю версий пользовательского соглашения с локализацией
   Future<List<DocumentVersion>> getTermsOfServiceHistory([String? languageCode]) async {
     languageCode ??= 'ru';
     List<DocumentVersion> history = [];
@@ -872,9 +869,7 @@ class UserConsentService {
         releaseDate: DateTime.now(),
         documentType: 'terms_of_service',
         language: languageCode,
-        description: languageCode == 'ru'
-            ? 'Текущая версия пользовательского соглашения'
-            : 'Current version of terms of service',
+        description: _getLocalizedDescription('terms_of_service', currentVersion, languageCode, true),
         hash: _cachedTermsOfServiceHash?.substring(0, 8),
         isCurrent: true,
       ));
@@ -888,9 +883,7 @@ class UserConsentService {
             releaseDate: DateTime.now(), // В реальности можно парсить из файла
             documentType: 'terms_of_service',
             language: languageCode,
-            description: languageCode == 'ru'
-                ? 'Архивная версия $version'
-                : 'Archived version $version',
+            description: _getLocalizedDescription('terms_of_service', version, languageCode, false),
             isCurrent: false,
           ));
         }
@@ -900,5 +893,30 @@ class UserConsentService {
     }
 
     return history;
+  }
+
+  /// Получает информацию о текущих версиях документов (обновленный)
+  Future<Map<String, dynamic>> getDocumentVersionsInfo([String? languageCode]) async {
+    languageCode ??= 'ru';
+
+    try {
+      final privacyInfo = await _loadPrivacyPolicyInfo(languageCode);
+      final termsInfo = await _loadTermsOfServiceInfo(languageCode);
+
+      return {
+        'privacy_policy': {
+          'version': privacyInfo['version'],
+          'hash': privacyInfo['hash']?.substring(0, 8),
+        },
+        'terms_of_service': {
+          'version': termsInfo['version'],
+          'hash': termsInfo['hash']?.substring(0, 8),
+        },
+        'language': languageCode,
+      };
+    } catch (e) {
+      debugPrint('❌ Ошибка получения информации о версиях: $e');
+      return {};
+    }
   }
 }

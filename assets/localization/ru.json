@@ -1297,6 +1297,20 @@
   "agreements_updated_successfully": "Согласия успешно обновлены",
   "limited_mode_activated": "Активирован ограниченный режим",
 
-  "read_document": "Прочитать"
+  "read_document": "Прочитать",
+
+  "user_guide": "Руководство пользователя",
+  "version_history": "История версий",
+  "version_history_description": "Просмотр изменений в документах",
+
+  "user_guide": "Руководство пользователя",
+  "version_history": "История версий",
+  "version_history_description": "Просмотр изменений в документах",
+  "accepted_agreements": "Принятые соглашения",
+  "new_agreement_version_available": "Доступна новая версия соглашений",
+  "agreement_status": "Статус принятых соглашений",
+  "select_document_for_history": "Выберите документ для просмотра истории версий",
+  "privacy_policy_history_description": "Просмотр истории изменений политики конфиденциальности",
+  "terms_history_description": "Просмотр истории изменений пользовательского соглашения"
 
 }

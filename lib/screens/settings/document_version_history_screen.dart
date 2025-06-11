@@ -28,25 +28,42 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
   List<DocumentVersion> _versions = [];
   UserConsentStatus? _consentStatus;
   String _currentVersionString = '';
+  bool _isDependenciesInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadVersionHistory();
+    // НЕ вызываем _loadVersionHistory() здесь!
+    // Перенесено в didChangeDependencies()
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Выполняем инициализацию только один раз после того, как dependencies готовы
+    if (!_isDependenciesInitialized) {
+      _isDependenciesInitialized = true;
+      _loadVersionHistory();
+    }
   }
 
   Future<void> _loadVersionHistory() async {
+    if (!mounted) return;
+
     try {
-      // ИСПРАВЛЕНО: Используем await для асинхронных методов
+      // Теперь безопасно использовать AppLocalizations.of(context)
+      final localizations = AppLocalizations.of(context);
+      final languageCode = localizations.locale.languageCode;
+
       if (widget.documentType == 'privacy_policy') {
-        _versions = await _consentService.getPrivacyPolicyHistory();
-        _currentVersionString = await _consentService.getCurrentPrivacyPolicyVersion();
+        _versions = await _consentService.getPrivacyPolicyHistory(languageCode);
+        _currentVersionString = await _consentService.getCurrentPrivacyPolicyVersion(languageCode);
       } else {
-        _versions = await _consentService.getTermsOfServiceHistory();
-        _currentVersionString = await _consentService.getCurrentTermsOfServiceVersion();
+        _versions = await _consentService.getTermsOfServiceHistory(languageCode);
+        _currentVersionString = await _consentService.getCurrentTermsOfServiceVersion(languageCode);
       }
 
-      _consentStatus = await _consentService.getUserConsentStatus();
+      _consentStatus = await _consentService.getUserConsentStatus(languageCode);
 
       // Сортируем версии по дате выпуска (новые сверху)
       _versions.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
@@ -68,8 +85,8 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
 
   String _getDocumentTitle(AppLocalizations localizations) {
     return widget.documentType == 'privacy_policy'
-        ? (localizations.translate('privacy_policy') ?? 'Политика конфиденциальности')
-        : (localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
+        ? (localizations.translate('privacy_policy') ?? 'Privacy Policy')
+        : (localizations.translate('terms_of_service') ?? 'Terms of Service');
   }
 
   String _getCurrentVersion() {
@@ -118,7 +135,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          '${localizations.translate('version_history') ?? 'История версий'}: ${_getDocumentTitle(localizations)}',
+          '${localizations.translate('version_history') ?? 'Version History'}: ${_getDocumentTitle(localizations)}',
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -155,7 +172,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
             ),
             const SizedBox(height: 16),
             Text(
-              localizations.translate('no_version_history') ?? 'История версий отсутствует',
+              localizations.translate('no_version_history') ?? 'No version history available',
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: 16,
@@ -194,7 +211,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            localizations.translate('current_version') ?? 'Текущая версия',
+            localizations.translate('current_version') ?? 'Current version',
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -239,7 +256,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    localizations.translate('update_required') ?? 'Требуется обновление',
+                    localizations.translate('update_required') ?? 'Update required',
                     style: const TextStyle(
                       color: Colors.orange,
                       fontSize: 12,
@@ -287,7 +304,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        '${localizations.translate('version') ?? 'Версия'} ${version.version}',
+                        '${localizations.translate('version') ?? 'Version'} ${version.version}',
                         style: TextStyle(
                           color: isCurrent ? Colors.white : AppConstants.textColor,
                           fontSize: 14,
@@ -305,7 +322,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                           border: Border.all(color: Colors.green, width: 1),
                         ),
                         child: Text(
-                          localizations.translate('current') ?? 'Текущая',
+                          localizations.translate('current') ?? 'Current',
                           style: const TextStyle(
                             color: Colors.green,
                             fontSize: 12,
@@ -322,7 +339,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                           border: Border.all(color: Colors.orange, width: 1),
                         ),
                         child: Text(
-                          localizations.translate('archived_version') ?? 'Архивная',
+                          localizations.translate('archived_version') ?? 'Archived Version',
                           style: const TextStyle(
                             color: Colors.orange,
                             fontSize: 12,
@@ -338,7 +355,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                 // Информация о версии
                 _buildVersionInfoRow(
                   Icons.calendar_today,
-                  localizations.translate('release_date') ?? 'Дата выпуска',
+                  localizations.translate('release_date') ?? 'Release date',
                   _formatDate(version.releaseDate),
                 ),
 
@@ -346,7 +363,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   const SizedBox(height: 8),
                   _buildVersionInfoRow(
                     Icons.description,
-                    localizations.translate('description') ?? 'Описание',
+                    localizations.translate('description') ?? 'Description',
                     version.description!,
                   ),
                 ],
@@ -355,21 +372,22 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   const SizedBox(height: 8),
                   _buildVersionInfoRow(
                     Icons.fingerprint,
-                    localizations.translate('hash') ?? 'Хеш',
+                    localizations.translate('hash') ?? 'Hash',
                     version.hash!,
                   ),
                 ],
 
+                // ИСПРАВЛЕНО: Показываем правильный язык документа
                 _buildVersionInfoRow(
                   Icons.language,
-                  localizations.translate('language') ?? 'Язык',
-                  version.language.toUpperCase(),
+                  localizations.translate('language') ?? 'Language',
+                  _getLanguageDisplayName(version.language),
                 ),
               ],
             ),
           ),
 
-          // НОВЫЙ БЛОК: Кнопка "Прочитать"
+          // Кнопка "Прочитать" с локализацией
           const Divider(height: 1, color: Colors.white10),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -383,7 +401,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   size: 18,
                 ),
                 label: Text(
-                  localizations.translate('read_document') ?? 'Прочитать',
+                  localizations.translate('read') ?? 'Read',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -405,6 +423,18 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
         ],
       ),
     );
+  }
+
+  /// НОВЫЙ МЕТОД: Получает читаемое название языка
+  String _getLanguageDisplayName(String languageCode) {
+    switch (languageCode.toLowerCase()) {
+      case 'ru':
+        return 'RU';
+      case 'en':
+        return 'EN';
+      default:
+        return languageCode.toUpperCase();
+    }
   }
 
   Widget _buildVersionInfoRow(IconData icon, String label, String value) {
@@ -449,7 +479,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
   }
 }
 
-/// НОВЫЙ ЭКРАН: Просмотр архивных версий документов
+/// Просмотр архивных версий документов с правильным языком
 class ArchivedDocumentViewerScreen extends StatefulWidget {
   final String documentType;
   final String version;
@@ -469,12 +499,12 @@ class ArchivedDocumentViewerScreen extends StatefulWidget {
 class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScreen> {
   String _documentText = '';
   bool _isLoading = true;
-  bool _hasLoadedOnce = false; // Флаг для предотвращения повторной загрузки
+  bool _hasLoadedOnce = false;
 
   @override
   void initState() {
     super.initState();
-    // Убираем загрузку отсюда - перенесли в didChangeDependencies
+    // НЕ загружаем документ здесь!
   }
 
   @override
@@ -489,6 +519,8 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
   }
 
   Future<void> _loadArchivedDocument() async {
+    if (!mounted) return;
+
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
@@ -511,7 +543,7 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
           debugPrint('✅ Загружена текущая версия как замена: $currentFileName');
         } catch (e2) {
           debugPrint('❌ Не удалось загрузить и текущую версию: $e2');
-          throw Exception('Не удалось загрузить документ');
+          throw Exception(localizations.translate('document_loading_error') ?? 'Failed to load document');
         }
       }
 
@@ -524,8 +556,9 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
     } catch (e) {
       debugPrint('❌ Критическая ошибка при загрузке архивного документа: $e');
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         setState(() {
-          _documentText = 'Ошибка загрузки архивного документа\n\nОшибка: $e';
+          _documentText = '${localizations.translate('document_loading_error') ?? 'Error loading archived document'}\n\n${localizations.translate('error') ?? 'Error'}: $e';
           _isLoading = false;
         });
       }
@@ -551,7 +584,7 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
               ),
             ),
             Text(
-              '${localizations.translate('version') ?? 'Версия'} ${widget.version}',
+              '${localizations.translate('version') ?? 'Version'} ${widget.version}',
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: 14,
@@ -574,7 +607,7 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
       )
           : Column(
         children: [
-          // ВОДЯНОЙ ЗНАК "Архивная версия"
+          // ВОДЯНОЙ ЗНАК "Архивная версия" с локализацией
           Container(
             width: double.infinity,
             color: Colors.orange.withOpacity(0.1),
@@ -588,7 +621,7 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Архивная версия ${widget.version}',
+                  '${localizations.translate('archived_version') ?? 'Archived version'} ${widget.version}',
                   style: TextStyle(
                     color: Colors.orange,
                     fontSize: 14,
@@ -604,7 +637,7 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
                     border: Border.all(color: Colors.orange, width: 1),
                   ),
                   child: Text(
-                    'Только для чтения',
+                    localizations.translate('read_only') ?? 'Read only',
                     style: const TextStyle(
                       color: Colors.orange,
                       fontSize: 10,

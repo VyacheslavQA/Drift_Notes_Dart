@@ -28,16 +28,33 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   final UserConsentService _consentService = UserConsentService();
   bool _hasAgreementUpdates = false;
   bool _isLoading = true;
+  bool _isDependenciesInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAgreementUpdates();
+    // НЕ вызываем _checkAgreementUpdates() здесь!
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Выполняем инициализацию только один раз после того, как dependencies готовы
+    if (!_isDependenciesInitialized) {
+      _isDependenciesInitialized = true;
+      _checkAgreementUpdates();
+    }
   }
 
   Future<void> _checkAgreementUpdates() async {
+    if (!mounted) return;
+
     try {
-      final isVersionCurrent = await _consentService.isConsentVersionCurrent();
+      // Теперь безопасно использовать AppLocalizations.of(context)
+      final localizations = AppLocalizations.of(context);
+      final languageCode = localizations.locale.languageCode;
+
+      final isVersionCurrent = await _consentService.isConsentVersionCurrent(languageCode);
       if (mounted) {
         setState(() {
           _hasAgreementUpdates = !isVersionCurrent;
@@ -276,7 +293,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('user_guide'),
+                    localizations.translate('user_guide') ?? 'Руководство пользователя',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -379,8 +396,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _hasAgreementUpdates
-                            ? 'Доступна новая версия соглашений'
-                            : 'Статус принятых соглашений',
+                            ? (localizations.translate('new_agreement_version_available') ?? 'Доступна новая версия соглашений')
+                            : (localizations.translate('agreement_status') ?? 'Статус принятых соглашений'),
                         style: TextStyle(
                           color: _hasAgreementUpdates
                               ? Colors.orange
@@ -463,7 +480,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('terms_of_service'),
+                    localizations.translate('terms_of_service') ?? 'Пользовательское соглашение',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -520,7 +537,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('privacy_policy'),
+                    localizations.translate('privacy_policy') ?? 'Политика конфиденциальности',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -590,7 +607,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Просмотр изменений в документах',
+                        localizations.translate('version_history_description') ?? 'Просмотр изменений в документах',
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 12,
@@ -649,7 +666,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
             const SizedBox(height: 8),
 
             Text(
-              'Выберите документ для просмотра истории версий',
+              localizations.translate('select_document_for_history') ?? 'Выберите документ для просмотра истории версий',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 14,
@@ -663,7 +680,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
               context,
               localizations,
               title: localizations.translate('privacy_policy') ?? 'Политика конфиденциальности',
-              description: 'Просмотр истории изменений политики конфиденциальности',
+              description: localizations.translate('privacy_policy_history_description') ?? 'Просмотр истории изменений политики конфиденциальности',
               icon: Icons.security,
               onTap: () {
                 Navigator.pop(context);
@@ -685,7 +702,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
               context,
               localizations,
               title: localizations.translate('terms_of_service') ?? 'Пользовательское соглашение',
-              description: 'Просмотр истории изменений пользовательского соглашения',
+              description: localizations.translate('terms_history_description') ?? 'Просмотр истории изменений пользовательского соглашения',
               icon: Icons.description,
               onTap: () {
                 Navigator.pop(context);

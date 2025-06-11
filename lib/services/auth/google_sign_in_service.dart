@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../firebase/firebase_service.dart';
 import '../../repositories/user_repository.dart';
 import '../../localization/app_localizations.dart';
+import '../user_consent_service.dart'; // НОВЫЙ ИМПОРТ!
 
 /// Сервис для работы с Google Sign-In
 class GoogleSignInService {
@@ -23,6 +24,7 @@ class GoogleSignInService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseService _firebaseService = FirebaseService();
+  final UserConsentService _consentService = UserConsentService(); // НОВОЕ!
 
   /// Вход через Google аккаунт
   Future<UserCredential?> signInWithGoogle([BuildContext? context]) async {
@@ -82,16 +84,16 @@ class GoogleSignInService {
   /// Вход через Google для веб-платформы
   Future<UserCredential?> _signInWithGoogleWeb([BuildContext? context]) async {
     try {
-      // Создаем провайдер для веб-платформы
+      // Создаем провайдер для Google
       GoogleAuthProvider googleProvider = GoogleAuthProvider();
 
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
 
-      // Вход через popup (для веб)
+      // Выполняем вход через popup
       final UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
 
-      // Кэшируем данные пользователя
+      // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
 
       // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
@@ -106,7 +108,7 @@ class GoogleSignInService {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Создание или обновление документа пользователя в Firestore после входа через Google
+  /// Создает или обновляет документ пользователя в Firestore
   Future<void> _createOrUpdateUserDocument(UserCredential userCredential) async {
     try {
       final user = userCredential.user;
@@ -118,24 +120,26 @@ class GoogleSignInService {
       final existingUser = await userRepository.getUserData(user.uid);
 
       if (existingUser == null) {
-        // Создаем новый документ пользователя с данными из Google
+        // Создаем новый документ пользователя
         final userData = {
           'uid': user.uid,
           'email': user.email ?? '',
           'displayName': user.displayName ?? '',
-          'photoUrl': user.photoURL,
+          'photoUrl': user.photoURL ?? '',
+          'authProvider': 'google',
+          'createdAt': DateTime.now().toIso8601String(),
+          // Дефолтные значения для профиля
           'country': '',
           'city': '',
           'experience': null,
-          'fishingTypes': <String>[],
+          'fishingTypes': [],
         };
 
         await userRepository.updateUserData(userData);
-        debugPrint('✅ Создан документ пользователя в Firestore для Google аккаунта: ${user.email}');
+        debugPrint('✅ Создан новый документ пользователя в Firestore для Google аккаунта: ${user.email}');
       } else {
-        // Обновляем существующий документ, но сохраняем пользовательские данные
+        // Обновляем существующий документ только с Google данными
         final userData = {
-          'uid': user.uid,
           'email': user.email ?? existingUser.email, // Обновляем email из Google
           'displayName': user.displayName ?? existingUser.displayName,
           'photoUrl': user.photoURL ?? existingUser.photoUrl,
@@ -155,18 +159,22 @@ class GoogleSignInService {
     }
   }
 
-  /// Выход из Google аккаунта
+  /// Выход из Google аккаунта (ИСПРАВЛЕНО!)
   Future<void> signOutGoogle() async {
     try {
+      // ВАЖНО: Очищаем согласия ПЕРЕД выходом
+      debugPrint('🧹 Очищаем согласия пользователя перед выходом');
+      await _consentService.clearAllConsents();
+
       // Выходим из Google
       await _googleSignIn.signOut();
 
       // Выходим из Firebase
       await _firebaseService.signOut();
 
-      debugPrint('Успешный выход из Google аккаунта');
+      debugPrint('✅ Успешный выход из Google аккаунта (с очисткой согласий)');
     } catch (e) {
-      debugPrint('Ошибка при выходе из Google аккаунта: $e');
+      debugPrint('❌ Ошибка при выходе из Google аккаунта: $e');
     }
   }
 

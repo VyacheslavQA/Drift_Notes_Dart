@@ -5,10 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import '../services/user_consent_service.dart'; // НОВЫЙ ИМПОРТ!
 
 class UserRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final UserConsentService _consentService = UserConsentService(); // НОВОЕ!
 
   // Получение текущего пользователя
   User? get currentUser => _auth.currentUser;
@@ -88,8 +90,26 @@ class UserRepository {
     });
   }
 
-  // Выход из аккаунта
+  // Выход из аккаунта (ИСПРАВЛЕНО!)
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      // ВАЖНО: Очищаем согласия ПЕРЕД выходом
+      debugPrint('🧹 Очищаем согласия пользователя перед выходом');
+      await _consentService.clearAllConsents();
+
+      // Выходим из Firebase Auth
+      await _auth.signOut();
+
+      debugPrint('✅ Успешный выход из аккаунта (с очисткой согласий)');
+    } catch (e) {
+      debugPrint('❌ Ошибка при выходе из аккаунта: $e');
+
+      // В случае ошибки все равно пытаемся выйти из Firebase
+      try {
+        await _auth.signOut();
+      } catch (signOutError) {
+        debugPrint('❌ Критическая ошибка при выходе из Firebase: $signOutError');
+      }
+    }
   }
 }
