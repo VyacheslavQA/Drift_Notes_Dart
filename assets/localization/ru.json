@@ -1374,5 +1374,11 @@
   "settings_saved": "Настройки сохранены",
   "error": "Ошибка",
   "done": "Готово",
-  "sound_vibration_badge_settings": "Настройка звуков, вибрации и бейджа"
+  "sound_vibration_badge_settings": "Настройка звуков, вибрации и бейджа",
+
+  "select_time": "Выберите время",
+  "confirm": "Подтвердить",
+  "daily_forecast_time_desc": "Время получения ежедневного прогноза рыбалки"
+
+
 }

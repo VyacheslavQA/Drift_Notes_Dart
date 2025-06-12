@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
 import '../models/weather_alert_model.dart';
 import '../models/weather_api_model.dart';
 import '../models/notification_model.dart';
@@ -24,6 +27,9 @@ class WeatherNotificationService {
   final NotificationService _notificationService = NotificationService();
   final Uuid _uuid = const Uuid();
 
+  // Добавляем локальные уведомления
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+
   // Таймеры для периодических проверок
   Timer? _periodicCheckTimer;
   Timer? _dailyForecastTimer;
@@ -37,19 +43,92 @@ class WeatherNotificationService {
   static const String _lastWeatherKey = 'last_weather_data';
   static const String _lastNotificationTimeKey = 'last_notification_time_';
 
+  // Глобальный ключ навигатора (будет установлен из main.dart)
+  static GlobalKey<NavigatorState>? _navigatorKey;
+
+  /// Установка ключа навигатора из main.dart
+  static void setNavigatorKey(GlobalKey<NavigatorState> navigatorKey) {
+    _navigatorKey = navigatorKey;
+  }
+
   /// Инициализация сервиса
   Future<void> initialize() async {
     debugPrint('🌤️ Инициализация сервиса погодных уведомлений...');
+
+    // Инициализируем временные зоны
+    tz.initializeTimeZones();
+
+    // Инициализируем локальные уведомления
+    await _initializeLocalNotifications();
 
     await _loadSettings();
     await _loadLastWeatherData();
 
     if (_settings.enabled) {
       _startPeriodicChecks();
-      _scheduleDailyForecast();
+      await _scheduleDailyForecastWithLocalNotification();
     }
 
     debugPrint('✅ Сервис погодных уведомлений инициализирован');
+  }
+
+  /// Инициализация локальных уведомлений
+  Future<void> _initializeLocalNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+    AndroidInitializationSettings('@mipmap/launcher_icon');
+
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
+
+    // Запрашиваем разрешения для Android 13+
+    await _requestNotificationPermissions();
+  }
+
+  /// Запрос разрешений на уведомления
+  Future<void> _requestNotificationPermissions() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+    _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      await androidImplementation.requestExactAlarmsPermission();
+    }
+  }
+
+  /// Обработка нажатий на уведомления
+  void _onNotificationTapped(NotificationResponse notificationResponse) {
+    debugPrint('🔔 Нажатие на уведомление: ${notificationResponse.payload}');
+
+    // Получаем контекст через навигатор
+    final context = _navigatorKey?.currentContext;
+    if (context == null) {
+      debugPrint('❌ Контекст навигации недоступен');
+      return;
+    }
+
+    // Определяем куда перейти в зависимости от типа уведомления
+    switch (notificationResponse.payload) {
+      case 'daily_forecast':
+      // Переходим на главный экран (где есть погода)
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        break;
+      case 'pressure_change':
+      case 'storm_warning':
+      case 'favorable_conditions':
+      case 'weather_alert':
+      // Переходим на главный экран
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        break;
+      default:
+      // По умолчанию - главный экран
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    }
   }
 
   /// Загрузка настроек из SharedPreferences
@@ -120,7 +199,65 @@ class WeatherNotificationService {
     });
   }
 
-  /// Планирование ежедневного прогноза
+  /// Планирование ежедневного прогноза через локальные уведомления
+  Future<void> _scheduleDailyForecastWithLocalNotification() async {
+    try {
+      // Отменяем предыдущие запланированные уведомления
+      await _localNotifications.cancel(999); // ID для ежедневного прогноза
+
+      if (!_settings.dailyForecastEnabled) return;
+
+      final now = DateTime.now();
+      DateTime scheduledTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        _settings.dailyForecastHour,
+        _settings.dailyForecastMinute,
+      );
+
+      // Если время уже прошло сегодня, планируем на завтра
+      if (scheduledTime.isBefore(now)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      }
+
+      // Конвертируем в TZDateTime
+      final tz.TZDateTime tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
+
+      debugPrint('📅 Планируем ежедневный прогноз через локальные уведомления на: $tzScheduledTime');
+
+      // Создаем повторяющееся уведомление
+      await _localNotifications.zonedSchedule(
+        999, // Уникальный ID для ежедневного прогноза
+        'Прогноз рыбалки на сегодня',
+        'Нажмите для получения актуального прогноза',
+        tzScheduledTime,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_forecast_channel',
+            'Ежедневный прогноз рыбалки',
+            channelDescription: 'Уведомления с ежедневным прогнозом условий для рыбалки',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/launcher_icon',
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // Повторять каждый день в это время
+        payload: 'daily_forecast',
+      );
+
+      debugPrint('✅ Ежедневный прогноз запланирован на ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')}');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка планирования ежедневного прогноза: $e');
+      // Fallback на обычный таймер
+      _scheduleDailyForecast();
+    }
+  }
+
+  /// Старый метод планирования (оставляем как fallback)
   void _scheduleDailyForecast() {
     _dailyForecastTimer?.cancel();
 
@@ -130,6 +267,7 @@ class WeatherNotificationService {
       now.month,
       now.day,
       _settings.dailyForecastHour,
+      _settings.dailyForecastMinute,
     );
 
     // Если время уже прошло, планируем на завтра
@@ -446,8 +584,57 @@ class WeatherNotificationService {
 
       await _sendWeatherAlert(alert);
 
+      // ДОПОЛНИТЕЛЬНО: отправляем локальное уведомление с актуальными данными
+      await _sendLocalNotification(
+        'Прогноз рыбалки на сегодня',
+        '$activityText ($scorePoints/100)\nT: $temperature°C, Ветер: $windSpeed м/с',
+        1000, // Уникальный ID
+        'daily_forecast',
+      );
+
     } catch (e) {
       debugPrint('❌ Ошибка при отправке ежедневного прогноза: $e');
+    }
+  }
+
+  /// Получение payload для типа уведомления
+  String _getPayloadForAlertType(WeatherAlertType type) {
+    switch (type) {
+      case WeatherAlertType.dailyForecast:
+        return 'daily_forecast';
+      case WeatherAlertType.pressureChange:
+        return 'pressure_change';
+      case WeatherAlertType.stormWarning:
+        return 'storm_warning';
+      case WeatherAlertType.favorableConditions:
+        return 'favorable_conditions';
+      default:
+        return 'weather_alert';
+    }
+  }
+
+  /// Отправка локального уведомления
+  Future<void> _sendLocalNotification(String title, String body, int id, [String? payload]) async {
+    try {
+      await _localNotifications.show(
+        id,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'weather_alerts_channel',
+            'Погодные уведомления',
+            channelDescription: 'Уведомления об изменениях погоды и условий рыбалки',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/launcher_icon',
+          ),
+        ),
+        payload: payload,
+      );
+      debugPrint('✅ Локальное уведомление отправлено: $title');
+    } catch (e) {
+      debugPrint('❌ Ошибка отправки локального уведомления: $e');
     }
   }
 
@@ -467,6 +654,14 @@ class WeatherNotificationService {
 
       // Отправляем через основной сервис уведомлений
       await _notificationService.addNotification(notification);
+
+      // ДОПОЛНИТЕЛЬНО: отправляем локальное уведомление
+      await _sendLocalNotification(
+        weatherAlert.title,
+        weatherAlert.message,
+        weatherAlert.hashCode, // Используем hashCode как уникальный ID
+        _getPayloadForAlertType(weatherAlert.type),
+      );
 
       debugPrint('✅ Погодное уведомление отправлено: ${weatherAlert.title}');
 
@@ -603,7 +798,7 @@ class WeatherNotificationService {
     // Перезапускаем службы с новыми настройками
     if (_settings.enabled) {
       _startPeriodicChecks();
-      _scheduleDailyForecast();
+      await _scheduleDailyForecastWithLocalNotification();
     } else {
       _stopServices();
     }
@@ -613,6 +808,8 @@ class WeatherNotificationService {
   void _stopServices() {
     _periodicCheckTimer?.cancel();
     _dailyForecastTimer?.cancel();
+    // Отменяем запланированные локальные уведомления
+    _localNotifications.cancel(999);
   }
 
   /// Принудительная проверка погоды прямо сейчас

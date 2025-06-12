@@ -1435,5 +1435,11 @@
   "settings_saved": "Settings saved",
   "error": "Error",
   "done": "Done",
-  "sound_vibration_badge_settings": "Sound, vibration and badge settings"
+  "sound_vibration_badge_settings": "Sound, vibration and badge settings",
+
+  "select_time": "Select Time",
+  "confirm": "Confirm",
+  "daily_forecast_time_desc": "Time to receive daily fishing forecast"
+
+
 }

@@ -63,13 +63,16 @@ dependencies:
   permission_handler: ^11.1.0
 
   fl_chart: ^0.68.0
-  flutter_local_notifications: ^17.2.2
+  flutter_local_notifications: 17.2.2
+  timezone: 0.9.4
 
   # Альтернативная библиотека для бейджа
   app_badge_plus: ^1.1.4
 
   quick_actions: ^1.0.7  # Добавь эту строку
   app_links: ^6.3.2  # Добавь эту строку
+
+
 
 dev_dependencies:
   flutter_test:

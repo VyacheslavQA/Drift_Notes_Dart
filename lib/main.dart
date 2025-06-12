@@ -208,6 +208,10 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
   @override
   void initState() {
     super.initState();
+
+    // ДОБАВИТЬ ЭТУ СТРОКУ:
+    WeatherNotificationService.setNavigatorKey(_navigatorKey);
+
     _initializeQuickActions();
     _initializeDeepLinkHandling();
     _checkDocumentUpdatesAfterAuth();
