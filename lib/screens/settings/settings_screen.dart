@@ -489,8 +489,8 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                     // Настройки звуков уведомлений - НОВЫЙ ПУНКТ
                     ListTile(
                       leading: const Icon(Icons.volume_up, color: Colors.green),
-                      title: Text('Звуки уведомлений'),
-                      subtitle: Text('Настройка звуков, вибрации и бейджа'),
+                      title: Text(AppLocalizations.of(context).translate('notification_sounds')),
+                      subtitle: Text(AppLocalizations.of(context).translate('sound_vibration_badge_settings')),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(

@@ -115,11 +115,11 @@ class NotificationSoundSettings {
       case NotificationSoundType.defaultSound:
         return null; // Использует звук по умолчанию
       case NotificationSoundType.notification:
-        return 'android.resource://android/raw/notification_sound';
+        return 'notification';
       case NotificationSoundType.alarm:
-        return 'android.resource://android/raw/alarm_sound';
+        return 'alarm';
       case NotificationSoundType.ringtone:
-        return 'android.resource://android/raw/ringtone_sound';
+        return 'ringtone';
       case NotificationSoundType.silent:
         return 'silent';
     }

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_sound_settings_model.dart';
 import '../models/notification_model.dart';
@@ -102,7 +103,7 @@ class LocalPushNotificationService {
       final shouldPlaySound = _soundSettings.shouldPlaySound();
       final shouldVibrate = _soundSettings.vibrationEnabled && !_soundSettings.isQuietHours();
 
-      // Простые настройки для Android
+      // Настройки для Android
       final androidDetails = AndroidNotificationDetails(
         'default_channel',
         'Уведомления',
@@ -111,6 +112,7 @@ class LocalPushNotificationService {
         priority: Priority.high,
         enableVibration: shouldVibrate,
         playSound: shouldPlaySound,
+        // Убираем sound параметр - будет использоваться системный звук по умолчанию
         icon: '@mipmap/launcher_icon',
         color: Color(notification.typeColor),
         styleInformation: BigTextStyleInformation(
@@ -119,11 +121,12 @@ class LocalPushNotificationService {
         ),
       );
 
-      // Простые настройки для iOS
+      // Настройки для iOS
       final iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: shouldPlaySound,
+        // Убираем sound параметр - будет использоваться системный звук по умолчанию
         subtitle: _getNotificationTypeText(notification.type),
       );
 
@@ -182,19 +185,38 @@ class LocalPushNotificationService {
   /// Увеличение счетчика бейджа
   Future<void> _incrementBadge() async {
     _currentBadgeCount++;
-    await _saveBadgeCount();
+    await _updateBadge();
   }
 
   /// Установка конкретного значения бейджа
   Future<void> setBadgeCount(int count) async {
     _currentBadgeCount = count;
-    await _saveBadgeCount();
+    await _updateBadge();
   }
 
   /// Очистка бейджа
   Future<void> clearBadge() async {
     _currentBadgeCount = 0;
-    await _saveBadgeCount();
+    await _updateBadge();
+  }
+
+  /// Обновление бейджа на иконке
+  Future<void> _updateBadge() async {
+    try {
+      if (_soundSettings.badgeEnabled && _currentBadgeCount > 0) {
+        await AppBadgePlus.updateBadge(_currentBadgeCount);
+        debugPrint('✅ Бейдж обновлен: $_currentBadgeCount');
+      } else {
+        await AppBadgePlus.updateBadge(0);
+        debugPrint('✅ Бейдж очищен');
+      }
+
+      // Сохраняем в SharedPreferences
+      await _saveBadgeCount();
+
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления бейджа: $e');
+    }
   }
 
   /// Сохранение счетчика бейджа
@@ -274,7 +296,12 @@ class LocalPushNotificationService {
 
   /// Проверка поддержки бейджей
   Future<bool> isBadgeSupported() async {
-    return Platform.isIOS;
+    try {
+      return await AppBadgePlus.isSupported();
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки поддержки бейджа: $e');
+      return Platform.isIOS; // Fallback - iOS всегда поддерживает
+    }
   }
 
   /// Освобождение ресурсов

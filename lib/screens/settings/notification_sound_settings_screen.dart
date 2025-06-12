@@ -23,11 +23,13 @@ class _NotificationSoundSettingsScreenState
 
   late NotificationSoundSettings _settings;
   bool _isLoading = true;
+  bool _isBadgeSupported = false;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _checkBadgeSupport();
   }
 
   Future<void> _loadSettings() async {
@@ -35,6 +37,15 @@ class _NotificationSoundSettingsScreenState
       _settings = _pushService.soundSettings;
       _isLoading = false;
     });
+  }
+
+  Future<void> _checkBadgeSupport() async {
+    final isSupported = await _pushService.isBadgeSupported();
+    if (mounted) {
+      setState(() {
+        _isBadgeSupported = isSupported;
+      });
+    }
   }
 
   Future<void> _updateSettings(NotificationSoundSettings newSettings) async {
@@ -46,10 +57,10 @@ class _NotificationSoundSettingsScreenState
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Настройки сохранены'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('settings_saved')),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -60,8 +71,8 @@ class _NotificationSoundSettingsScreenState
       await _pushService.showNotification(
         NotificationModel(
           id: 'test_${DateTime.now().millisecondsSinceEpoch}',
-          title: 'Тест уведомлений',
-          message: 'Это тестовое уведомление для проверки настроек звука',
+          title: AppLocalizations.of(context).translate('test_notifications_title'),
+          message: AppLocalizations.of(context).translate('test_notification_message'),
           type: NotificationType.general,
           timestamp: DateTime.now(),
         ),
@@ -69,10 +80,10 @@ class _NotificationSoundSettingsScreenState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Тестовое уведомление отправлено'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('test_notification_sent')),
             backgroundColor: Colors.blue,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -80,7 +91,7 @@ class _NotificationSoundSettingsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error')}: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -95,7 +106,7 @@ class _NotificationSoundSettingsScreenState
       return Scaffold(
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          title: const Text('Звуки уведомлений'),
+          title: Text(AppLocalizations.of(context).translate('notification_sounds')),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
@@ -108,9 +119,9 @@ class _NotificationSoundSettingsScreenState
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Звуки уведомлений',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context).translate('notification_sounds'),
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -121,7 +132,7 @@ class _NotificationSoundSettingsScreenState
           // Кнопка тестирования
           IconButton(
             icon: const Icon(Icons.play_arrow),
-            tooltip: 'Тест уведомления',
+            tooltip: AppLocalizations.of(context).translate('test_notification'),
             onPressed: _testNotification,
           ),
         ],
@@ -132,7 +143,7 @@ class _NotificationSoundSettingsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Основные настройки звука
-            _buildSectionHeader('Звуковые уведомления'),
+            _buildSectionHeader(AppLocalizations.of(context).translate('sound_notifications')),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -143,14 +154,14 @@ class _NotificationSoundSettingsScreenState
                   // Включить/выключить звук
                   SwitchListTile(
                     title: Text(
-                      'Звуковые уведомления',
+                      AppLocalizations.of(context).translate('sound_notifications'),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     subtitle: Text(
-                      'Проигрывать звук при получении уведомлений',
+                      AppLocalizations.of(context).translate('play_sound_on_notifications'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -166,10 +177,13 @@ class _NotificationSoundSettingsScreenState
                   if (_settings.soundEnabled) ...[
                     const Divider(height: 1, color: Colors.white10),
 
+                    // Пока убираем выбор типа звука - будем использовать системный
+                    // TODO: Добавить позже когда настроим звуковые ресурсы
+
                     // Громкость
                     ListTile(
                       title: Text(
-                        'Громкость',
+                        AppLocalizations.of(context).translate('volume'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontWeight: FontWeight.w500,
@@ -215,7 +229,7 @@ class _NotificationSoundSettingsScreenState
             const SizedBox(height: 20),
 
             // Вибрация
-            _buildSectionHeader('Вибрация'),
+            _buildSectionHeader(AppLocalizations.of(context).translate('vibration')),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -223,14 +237,14 @@ class _NotificationSoundSettingsScreenState
               ),
               child: SwitchListTile(
                 title: Text(
-                  'Вибрация',
+                  AppLocalizations.of(context).translate('vibration'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 subtitle: Text(
-                  'Включить вибрацию при получении уведомлений',
+                  AppLocalizations.of(context).translate('enable_vibration_on_notifications'),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -247,7 +261,7 @@ class _NotificationSoundSettingsScreenState
             const SizedBox(height: 20),
 
             // Тихие часы
-            _buildSectionHeader('Тихие часы'),
+            _buildSectionHeader(AppLocalizations.of(context).translate('quiet_hours')),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -257,14 +271,14 @@ class _NotificationSoundSettingsScreenState
                 children: [
                   SwitchListTile(
                     title: Text(
-                      'Тихие часы',
+                      AppLocalizations.of(context).translate('quiet_hours'),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     subtitle: Text(
-                      'Отключать звук и вибрацию в определенное время',
+                      AppLocalizations.of(context).translate('disable_sound_vibration_at_time'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -283,7 +297,7 @@ class _NotificationSoundSettingsScreenState
                     // Время начала
                     ListTile(
                       title: Text(
-                        'Начало тихих часов',
+                        AppLocalizations.of(context).translate('quiet_hours_start'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontWeight: FontWeight.w500,
@@ -305,7 +319,7 @@ class _NotificationSoundSettingsScreenState
                     // Время окончания
                     ListTile(
                       title: Text(
-                        'Окончание тихих часов',
+                        AppLocalizations.of(context).translate('quiet_hours_end'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontWeight: FontWeight.w500,
@@ -340,8 +354,8 @@ class _NotificationSoundSettingsScreenState
                           const SizedBox(width: 8),
                           Text(
                             _settings.isQuietHours()
-                                ? 'Сейчас тихие часы'
-                                : 'Звуки включены',
+                                ? AppLocalizations.of(context).translate('currently_quiet_hours')
+                                : AppLocalizations.of(context).translate('sounds_enabled'),
                             style: TextStyle(
                               color: AppConstants.textColor.withValues(alpha: 0.8),
                               fontSize: 14,
@@ -357,6 +371,76 @@ class _NotificationSoundSettingsScreenState
             ),
 
             const SizedBox(height: 20),
+
+            // Бейдж на иконке (только если поддерживается)
+            if (_isBadgeSupported) ...[
+              _buildSectionHeader(AppLocalizations.of(context).translate('badge_on_icon')),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: Text(
+                        AppLocalizations.of(context).translate('show_badge'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        AppLocalizations.of(context).translate('red_dot_on_app_icon_with_number'),
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: _settings.badgeEnabled,
+                      activeColor: AppConstants.primaryColor,
+                      onChanged: (value) {
+                        _updateSettings(_settings.copyWith(badgeEnabled: value));
+                      },
+                    ),
+
+                    if (_settings.badgeEnabled) ...[
+                      const Divider(height: 1, color: Colors.white10),
+                      ListTile(
+                        title: Text(
+                          AppLocalizations.of(context).translate('clear_badge'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          AppLocalizations.of(context).translate('remove_red_dot_from_app_icon'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.clear, size: 20),
+                        onTap: () async {
+                          await _pushService.clearBadge();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context).translate('badge_cleared')),
+                                backgroundColor: Colors.green,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // Информационная карточка
             Container(
@@ -382,7 +466,7 @@ class _NotificationSoundSettingsScreenState
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Информация',
+                        AppLocalizations.of(context).translate('information'),
                         style: TextStyle(
                           color: AppConstants.primaryColor,
                           fontWeight: FontWeight.bold,
@@ -393,10 +477,7 @@ class _NotificationSoundSettingsScreenState
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '• Уведомления помогут не пропустить благоприятные условия для рыбалки\n'
-                        '• Тихие часы автоматически отключают звук в указанное время\n'
-                        '• Используйте кнопку тестирования для проверки настроек\n'
-                        '• Настройки сохраняются автоматически',
+                    AppLocalizations.of(context).translate('notification_help_text'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 14,
@@ -427,6 +508,21 @@ class _NotificationSoundSettingsScreenState
       ),
     );
   }
+
+  // ВРЕМЕННО ЗАКОММЕНТИРОВАНО - добавим позже
+  /*
+  void _showSoundTypePicker() {
+    // Код метода...
+  }
+
+  String _getSoundTypeDisplayName(NotificationSoundType type) {
+    // Код метода...
+  }
+
+  String _getSoundTypeDescription(NotificationSoundType type) {
+    // Код метода...
+  }
+  */
 
   void _showTimePicker(bool isStartTime) {
     showModalBottomSheet(
