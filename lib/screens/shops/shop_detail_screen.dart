@@ -36,36 +36,39 @@ class ShopDetailScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Главная карточка с логотипом и основной информацией
-            _buildMainInfoCard(localizations),
+      body: SafeArea(
+        bottom: true,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Главная карточка с логотипом и основной информацией
+              _buildMainInfoCard(localizations),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Описание
-            _buildDescriptionCard(localizations),
+              // Описание
+              _buildDescriptionCard(localizations),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Услуги (если есть)
-            if (shop.services.isNotEmpty)
-              _buildServicesCard(localizations),
+              // Услуги (если есть)
+              if (shop.services.isNotEmpty)
+                _buildServicesCard(localizations),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Контактная информация
-            _buildContactCard(localizations),
+              // Контактная информация
+              _buildContactCard(localizations),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Кнопки действий
-            _buildActionButtons(context, localizations),
+              // Кнопки действий
+              _buildActionButtons(context, localizations),
 
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

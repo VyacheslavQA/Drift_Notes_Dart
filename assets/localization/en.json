@@ -1383,5 +1383,28 @@
   "current_version_label": "Current version",
   "archived_version_text": "Archived version",
 
-  "language_code": "en"
+  "language_code": "en",
+
+  "version_history_description": "View document change history",
+
+  "units_of_measurement": "Units of Measurement",
+  "calibration": "Calibration",
+  "temperature": "Temperature",
+  "celsius": "Celsius",
+  "fahrenheit": "Fahrenheit",
+  "wind_speed": "Wind Speed",
+  "meters_per_second": "Meters/sec",
+  "kilometers_per_hour": "Km/hour",
+  "miles_per_hour": "Miles/hour",
+  "atmospheric_pressure": "Atmospheric Pressure",
+  "common": "Common",
+  "scientific": "Scientific",
+  "inches": "Inches",
+  "barometer_calibration": "Barometer Calibration",
+  "pressure_calibration_description": "Adjust pressure readings relative to local weather stations",
+
+  "units_and_calibration": "Units and calibration",
+  "remove_problematic_notes": "Remove problematic notes",
+
+  "mmhg_unit": "mmHg"
 }

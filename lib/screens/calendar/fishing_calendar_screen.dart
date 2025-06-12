@@ -451,7 +451,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen> with Sing
               const SizedBox(width: 12),
               _buildLegendItem(localizations.translate('planned'), _futureFishingColor),
               const SizedBox(width: 12),
-              _buildLegendItem('Турниры', _tournamentColor),
+              _buildLegendItem(localizations.translate('tournaments'), _tournamentColor),
             ],
           ),
         ],

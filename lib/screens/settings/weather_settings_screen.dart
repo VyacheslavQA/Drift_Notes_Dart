@@ -120,26 +120,26 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // Единицы измерения
-          _buildSectionHeader('Единицы измерения'),
+          _buildSectionHeader(localizations.translate('units_of_measurement')),
 
           // Температура
-          _buildTemperatureUnitCard(),
+          _buildTemperatureUnitCard(localizations),
           const SizedBox(height: 12),
 
           // Скорость ветра
-          _buildWindSpeedUnitCard(),
+          _buildWindSpeedUnitCard(localizations),
           const SizedBox(height: 12),
 
           // Давление
-          _buildPressureUnitCard(),
+          _buildPressureUnitCard(localizations),
 
           const SizedBox(height: 24),
 
           // Калибровка
-          _buildSectionHeader('Калибровка'),
+          _buildSectionHeader(localizations.translate('calibration')),
 
           // Калибровка барометра
-          _buildBarometerCalibrationCard(),
+          _buildBarometerCalibrationCard(localizations),
 
           const SizedBox(height: 40),
         ],
@@ -161,7 +161,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildTemperatureUnitCard() {
+  Widget _buildTemperatureUnitCard(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -176,7 +176,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               Icon(Icons.thermostat, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
-                'Температура',
+                localizations.translate('temperature'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -190,7 +190,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  title: 'Цельсий',
+                  title: localizations.translate('celsius'),
                   subtitle: '°C',
                   isSelected: _selectedTemperatureUnit == TemperatureUnit.celsius,
                   onTap: () => _updateTemperatureUnit(TemperatureUnit.celsius),
@@ -199,7 +199,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildUnitOption(
-                  title: 'Фаренгейт',
+                  title: localizations.translate('fahrenheit'),
                   subtitle: '°F',
                   isSelected: _selectedTemperatureUnit == TemperatureUnit.fahrenheit,
                   onTap: () => _updateTemperatureUnit(TemperatureUnit.fahrenheit),
@@ -212,7 +212,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildWindSpeedUnitCard() {
+  Widget _buildWindSpeedUnitCard(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -227,7 +227,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               Icon(Icons.air, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
-                'Скорость ветра',
+                localizations.translate('wind_speed'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -241,8 +241,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  title: 'м/с',
-                  subtitle: 'Метры/сек',
+                  title: 'm/s',
+                  subtitle: localizations.translate('meters_per_second'),
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.ms,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.ms),
                 ),
@@ -250,8 +250,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildUnitOption(
-                  title: 'км/ч',
-                  subtitle: 'Км/час',
+                  title: 'km/h',
+                  subtitle: localizations.translate('kilometers_per_hour'),
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.kmh,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.kmh),
                 ),
@@ -260,7 +260,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               Expanded(
                 child: _buildUnitOption(
                   title: 'mph',
-                  subtitle: 'Мили/час',
+                  subtitle: localizations.translate('miles_per_hour'),
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.mph,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.mph),
                 ),
@@ -272,7 +272,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildPressureUnitCard() {
+  Widget _buildPressureUnitCard(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -287,7 +287,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               Icon(Icons.speed, color: AppConstants.textColor, size: 24),
               const SizedBox(width: 12),
               Text(
-                'Атмосферное давление',
+                localizations.translate('atmospheric_pressure'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -301,8 +301,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             children: [
               Expanded(
                 child: _buildUnitOption(
-                  title: 'мм рт.ст.',
-                  subtitle: 'Привычно',
+                  title: 'mmHg',
+                  subtitle: localizations.translate('common'),
                   isSelected: _selectedPressureUnit == PressureUnit.mmhg,
                   onTap: () => _updatePressureUnit(PressureUnit.mmhg),
                 ),
@@ -310,8 +310,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildUnitOption(
-                  title: 'гПа',
-                  subtitle: 'Научно',
+                  title: 'hPa',
+                  subtitle: localizations.translate('scientific'),
                   isSelected: _selectedPressureUnit == PressureUnit.hpa,
                   onTap: () => _updatePressureUnit(PressureUnit.hpa),
                 ),
@@ -320,7 +320,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               Expanded(
                 child: _buildUnitOption(
                   title: 'inHg',
-                  subtitle: 'Дюймы',
+                  subtitle: localizations.translate('inches'),
                   isSelected: _selectedPressureUnit == PressureUnit.inhg,
                   onTap: () => _updatePressureUnit(PressureUnit.inhg),
                 ),
@@ -332,7 +332,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     );
   }
 
-  Widget _buildBarometerCalibrationCard() {
+  Widget _buildBarometerCalibrationCard(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -348,7 +348,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Калибровка барометра',
+                  localizations.translate('barometer_calibration'),
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -360,7 +360,7 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Корректировка показаний давления относительно местных метеостанций',
+            localizations.translate('pressure_calibration_description'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,

@@ -429,42 +429,45 @@ class _TournamentsScreenState extends State<TournamentsScreen>
       groupedTournaments[month]!.add(tournament);
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: groupedTournaments.length,
-      itemBuilder: (context, index) {
-        final month = groupedTournaments.keys.elementAt(index);
-        final monthTournaments = groupedTournaments[month]!;
+    return SafeArea(
+      bottom: true,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        itemCount: groupedTournaments.length,
+        itemBuilder: (context, index) {
+          final month = groupedTournaments.keys.elementAt(index);
+          final monthTournaments = groupedTournaments[month]!;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Заголовок месяца
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                month,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок месяца
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  month,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
 
-            // Турниры месяца
-            ...monthTournaments.map((tournament) => _buildTournamentCard(tournament, localizations)),
+              // Турниры месяца
+              ...monthTournaments.map((tournament) => _buildTournamentCard(tournament, localizations)),
 
-            const SizedBox(height: 16),
-          ],
-        );
-      },
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
     );
   }
 

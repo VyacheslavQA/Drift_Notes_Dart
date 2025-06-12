@@ -1322,5 +1322,28 @@
   "agreement_save_failed": "Не удалось сохранить соглашения",
   "error_updating_agreements": "Ошибка обновления соглашений",
 
-  "language_code": "ru"
+  "language_code": "ru",
+
+  "version_history_description": "Просмотр истории изменений документов",
+
+  "units_of_measurement": "Единицы измерения",
+  "calibration": "Калибровка",
+  "temperature": "Температура",
+  "celsius": "Цельсий",
+  "fahrenheit": "Фаренгейт",
+  "wind_speed": "Скорость ветра",
+  "meters_per_second": "Метры/сек",
+  "kilometers_per_hour": "Км/час",
+  "miles_per_hour": "Мили/час",
+  "atmospheric_pressure": "Атмосферное давление",
+  "common": "Привычно",
+  "scientific": "Научно",
+  "inches": "Дюймы",
+  "barometer_calibration": "Калибровка барометра",
+  "pressure_calibration_description": "Корректировка показаний давления относительно местных метеостанций",
+
+  "units_and_calibration": "Единицы измерения и калибровка",
+  "remove_problematic_notes": "Удалить проблемные заметки",
+
+  "mmhg_unit": "мм рт.ст."
 }

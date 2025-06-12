@@ -511,7 +511,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 child: ListTile(
                   leading: const Icon(Icons.cloud, color: Colors.blue),
                   title: Text(localizations.translate('weather_settings')),
-                  subtitle: Text('Единицы измерения и калибровка'),
+                  subtitle: Text(localizations.translate('units_and_calibration')),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
