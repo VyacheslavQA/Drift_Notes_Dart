@@ -113,81 +113,83 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildMapTypeSelectorSheet() {
     final localizations = AppLocalizations.of(context);
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Заголовок
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  localizations.translate('map_type'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+    return SafeArea(
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          color: AppConstants.backgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Заголовок
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    localizations.translate('map_type'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.close,
-                    color: AppConstants.textColor,
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(
+                      Icons.close,
+                      color: AppConstants.textColor,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Разделитель
-          Divider(
-            color: AppConstants.textColor.withValues(alpha: 0.2),
-            height: 1,
-          ),
-
-          // Список типов карт
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildMapTypeOption(
-                  MapType.normal,
-                  localizations.translate('normal_map'),
-                  localizations.translate('normal_map_desc'),
-                  Icons.map_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.satellite,
-                  localizations.translate('satellite_map'),
-                  localizations.translate('satellite_map_desc'),
-                  Icons.satellite_alt,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.hybrid,
-                  localizations.translate('hybrid_map'),
-                  localizations.translate('hybrid_map_desc'),
-                  Icons.layers,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.terrain,
-                  localizations.translate('terrain_map'),
-                  localizations.translate('terrain_map_desc'),
-                  Icons.terrain,
-                ),
-              ],
+            // Разделитель
+            Divider(
+              color: AppConstants.textColor.withValues(alpha: 0.2),
+              height: 1,
             ),
-          ),
-        ],
+
+            // Список типов карт
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                children: [
+                  _buildMapTypeOption(
+                    MapType.normal,
+                    localizations.translate('normal_map'),
+                    localizations.translate('normal_map_desc'),
+                    Icons.map_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapTypeOption(
+                    MapType.satellite,
+                    localizations.translate('satellite_map'),
+                    localizations.translate('satellite_map_desc'),
+                    Icons.satellite_alt,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapTypeOption(
+                    MapType.hybrid,
+                    localizations.translate('hybrid_map'),
+                    localizations.translate('hybrid_map_desc'),
+                    Icons.layers,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapTypeOption(
+                    MapType.terrain,
+                    localizations.translate('terrain_map'),
+                    localizations.translate('terrain_map_desc'),
+                    Icons.terrain,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
