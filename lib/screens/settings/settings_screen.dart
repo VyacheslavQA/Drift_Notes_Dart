@@ -12,6 +12,7 @@ import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
+import 'notification_sound_settings_screen.dart';  // НОВЫЙ ИМПОРТ
 import 'weather_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -483,19 +484,42 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: ListTile(
-                  leading: const Icon(Icons.notifications_active, color: Colors.amber),
-                  title: Text(localizations.translate('weather_notifications')),
-                  subtitle: Text(localizations.translate('weather_notifications_desc')),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WeatherNotificationsSettingsScreen(),
-                      ),
-                    );
-                  },
+                child: Column(
+                  children: [
+                    // Настройки звуков уведомлений - НОВЫЙ ПУНКТ
+                    ListTile(
+                      leading: const Icon(Icons.volume_up, color: Colors.green),
+                      title: Text('Звуки уведомлений'),
+                      subtitle: Text('Настройка звуков, вибрации и бейджа'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationSoundSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const Divider(height: 1, color: Colors.white10),
+
+                    // Погодные уведомления
+                    ListTile(
+                      leading: const Icon(Icons.notifications_active, color: Colors.amber),
+                      title: Text(localizations.translate('weather_notifications')),
+                      subtitle: Text(localizations.translate('weather_notifications_desc')),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const WeatherNotificationsSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 

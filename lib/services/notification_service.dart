@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/notification_model.dart';
+import 'local_push_notification_service.dart';  // НОВЫЙ ИМПОРТ
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -14,6 +15,9 @@ class NotificationService {
 
   final Uuid _uuid = const Uuid();
   final List<NotificationModel> _notifications = [];
+
+  // НОВЫЙ: Интеграция с push-сервисом
+  final LocalPushNotificationService _pushService = LocalPushNotificationService();
 
   // Stream для уведомления UI об изменениях
   final StreamController<List<NotificationModel>> _notificationsController =
@@ -29,10 +33,36 @@ class NotificationService {
     debugPrint('📱 Инициализация сервиса уведомлений...');
 
     try {
+      // НОВЫЙ: Инициализируем push-сервис
+      await _pushService.initialize();
+
       await _loadNotificationsFromStorage();
+
+      // НОВЫЙ: Обновляем бейдж на основе непрочитанных уведомлений
+      await _updateBadgeCount();
+
+      // НОВЫЙ: Подписываемся на нажатия уведомлений
+      _pushService.notificationTapStream.listen(_handleNotificationTap);
+
       debugPrint('✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений');
     } catch (e) {
       debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+    }
+  }
+
+  /// НОВЫЙ: Обработчик нажатий на уведомления
+  void _handleNotificationTap(String payload) {
+    try {
+      final payloadData = json.decode(payload);
+      final notificationId = payloadData['id'] as String?;
+
+      if (notificationId != null) {
+        // Отмечаем уведомление как прочитанное при нажатии
+        markAsRead(notificationId);
+        debugPrint('📱 Уведомление отмечено как прочитанное: $notificationId');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
     }
   }
 
@@ -82,6 +112,16 @@ class NotificationService {
     }
   }
 
+  /// НОВЫЙ: Обновление счетчика бейджа
+  Future<void> _updateBadgeCount() async {
+    try {
+      final unreadCount = getUnreadCount();
+      await _pushService.setBadgeCount(unreadCount);
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления бейджа: $e');
+    }
+  }
+
   /// Добавление нового уведомления
   Future<void> addNotification(NotificationModel notification) async {
     try {
@@ -102,6 +142,12 @@ class NotificationService {
       }
 
       await _saveNotificationsToStorage();
+
+      // НОВЫЙ: Отправляем push-уведомление
+      await _pushService.showNotification(notification);
+
+      // НОВЫЙ: Обновляем бейдж
+      await _updateBadgeCount();
 
       // Уведомляем слушателей об изменениях
       _notificationsController.add(List.from(_notifications));
@@ -155,6 +201,10 @@ class NotificationService {
       if (index != -1) {
         _notifications[index] = _notifications[index].copyWith(isRead: true);
         await _saveNotificationsToStorage();
+
+        // НОВЫЙ: Обновляем бейдж
+        await _updateBadgeCount();
+
         _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Уведомление отмечено как прочитанное: $notificationId');
@@ -178,6 +228,10 @@ class NotificationService {
 
       if (hasChanges) {
         await _saveNotificationsToStorage();
+
+        // НОВЫЙ: Очищаем бейдж при прочтении всех уведомлений
+        await _pushService.clearBadge();
+
         _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Все уведомления отмечены как прочитанные');
@@ -195,6 +249,13 @@ class NotificationService {
 
       if (_notifications.length != initialLength) {
         await _saveNotificationsToStorage();
+
+        // НОВЫЙ: Обновляем бейдж
+        await _updateBadgeCount();
+
+        // НОВЫЙ: Отменяем push-уведомление
+        await _pushService.cancelNotification(notificationId);
+
         _notificationsController.add(List.from(_notifications));
 
         debugPrint('✅ Уведомление удалено: $notificationId');
@@ -209,6 +270,11 @@ class NotificationService {
     try {
       _notifications.clear();
       await _saveNotificationsToStorage();
+
+      // НОВЫЙ: Очищаем все push-уведомления и бейдж
+      await _pushService.cancelAllNotifications();
+      await _pushService.clearBadge();
+
       _notificationsController.add(List.from(_notifications));
 
       debugPrint('✅ Все уведомления очищены');
@@ -288,8 +354,17 @@ class NotificationService {
     );
   }
 
+  /// НОВЫЙ: Получение настроек звука
+  get soundSettings => _pushService.soundSettings;
+
+  /// НОВЫЙ: Обновление настроек звука
+  Future<void> updateSoundSettings(settings) async {
+    await _pushService.updateSoundSettings(settings);
+  }
+
   /// Освобождение ресурсов
   void dispose() {
     _notificationsController.close();
+    _pushService.dispose();
   }
 }

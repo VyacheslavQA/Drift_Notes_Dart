@@ -25,6 +25,9 @@
     <!-- Для Android 14 -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
+    <!-- ДОБАВЛЕНЫ: Разрешения для звуковых уведомлений -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
     <!-- ДОБАВЛЕНЫ: Объявление функций как необязательных -->
     <uses-feature
         android:name="android.hardware.camera"

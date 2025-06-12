@@ -31,6 +31,7 @@ import 'utils/network_utils.dart';
 import 'config/api_keys.dart';
 import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
+import 'services/local_push_notification_service.dart';  // НОВЫЙ ИМПОРТ
 import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
 import 'services/user_consent_service.dart';
@@ -76,9 +77,18 @@ void main() async {
     return;
   }
 
+  // НОВОЕ: Инициализация сервисов уведомлений в правильном порядке
+  try {
+    // 1. Сначала инициализируем локальные push-уведомления
+    await LocalPushNotificationService().initialize();
+    debugPrint('✅ Сервис локальных push-уведомлений инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации локальных push-уведомлений: $e');
+  }
+
   // ТОЛЬКО ПОСЛЕ успешной инициализации Firebase инициализируем другие сервисы
   try {
-    // Инициализация сервисов уведомлений
+    // 2. Инициализация основного сервиса уведомлений (он теперь использует push-сервис)
     await NotificationService().initialize();
     debugPrint('✅ Сервис уведомлений инициализирован');
   } catch (e) {
@@ -86,6 +96,7 @@ void main() async {
   }
 
   try {
+    // 3. Инициализация погодных уведомлений
     await WeatherNotificationService().initialize();
     debugPrint('✅ Сервис погодных уведомлений инициализирован');
   } catch (e) {
@@ -186,7 +197,7 @@ class DriftNotesApp extends StatefulWidget {
   State<DriftNotesApp> createState() => _DriftNotesAppState();
 }
 
-class _DriftNotesAppState extends State<DriftNotesApp> {
+class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final _firebaseService = FirebaseService();
 
@@ -200,12 +211,62 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
     _initializeQuickActions();
     _initializeDeepLinkHandling();
     _checkDocumentUpdatesAfterAuth();
+
+    // НОВОЕ: Настройка обработчиков уведомлений
+    _setupNotificationHandlers();
   }
 
   @override
   void dispose() {
     _linkSubscription?.cancel();
+
+    // НОВОЕ: Освобождение ресурсов сервисов уведомлений
+    try {
+      NotificationService().dispose();
+      LocalPushNotificationService().dispose();
+      WeatherNotificationService().dispose();
+    } catch (e) {
+      debugPrint('❌ Ошибка освобождения ресурсов уведомлений: $e');
+    }
+
     super.dispose();
+  }
+
+  // НОВАЯ ФУНКЦИЯ: Настройка обработчиков уведомлений
+  void _setupNotificationHandlers() {
+    try {
+      final pushService = LocalPushNotificationService();
+
+      // Обрабатываем нажатия на уведомления
+      pushService.notificationTapStream.listen((payload) {
+        debugPrint('📱 Приложение: получено нажатие на уведомление: $payload');
+        _handleNotificationTap(payload);
+      });
+
+      debugPrint('✅ Обработчики уведомлений настроены');
+    } catch (e) {
+      debugPrint('❌ Ошибка настройки обработчиков уведомлений: $e');
+    }
+  }
+
+  // НОВАЯ ФУНКЦИЯ: Обработка нажатий на уведомления
+  void _handleNotificationTap(String payload) {
+    try {
+      debugPrint('📱 Обработка нажатия на уведомление: $payload');
+
+      // Проверяем, готово ли приложение для навигации
+      if (_navigatorKey.currentContext == null) {
+        debugPrint('⏳ Приложение не готово для навигации');
+        return;
+      }
+
+      // Простая навигация к экрану уведомлений
+      // Здесь можно добавить более сложную логику на основе payload
+      // Например, если это погодное уведомление, перейти к прогнозу погоды
+
+    } catch (e) {
+      debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
+    }
   }
 
   void _checkDocumentUpdatesAfterAuth() {
@@ -382,6 +443,56 @@ class _DriftNotesAppState extends State<DriftNotesApp> {
         _executeAction(action);
       });
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // НОВОЕ: Обработка изменений состояния приложения для уведомлений
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _onAppResumed();
+        break;
+      case AppLifecycleState.paused:
+        _onAppPaused();
+        break;
+      case AppLifecycleState.detached:
+        _onAppDetached();
+        break;
+      default:
+        break;
+    }
+  }
+
+  // НОВАЯ ФУНКЦИЯ: Обработка возобновления приложения
+  void _onAppResumed() {
+    debugPrint('📱 Приложение возобновлено');
+
+    try {
+      // Обновляем бейдж при возобновлении приложения
+      final notificationService = NotificationService();
+      final unreadCount = notificationService.getUnreadCount();
+
+      if (unreadCount == 0) {
+        final pushService = LocalPushNotificationService();
+        pushService.clearBadge();
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления бейджа при возобновлении: $e');
+    }
+  }
+
+  // НОВАЯ ФУНКЦИЯ: Обработка паузы приложения
+  void _onAppPaused() {
+    debugPrint('📱 Приложение на паузе');
+    // Здесь можно сохранить текущее состояние
+  }
+
+  // НОВАЯ ФУНКЦИЯ: Обработка закрытия приложения
+  void _onAppDetached() {
+    debugPrint('📱 Приложение закрывается');
+    // Ресурсы освобождаются в dispose()
   }
 
   @override
