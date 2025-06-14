@@ -45,11 +45,12 @@ class _PressureChartState extends State<PressureChart> {
       final now = DateTime.now();
 
       // Берем данные за последние 12 часов и следующие 12 часов
-      final relevantHours = hours.where((hour) {
-        final hourTime = DateTime.parse(hour.time);
-        return hourTime.isAfter(now.subtract(const Duration(hours: 12))) &&
-            hourTime.isBefore(now.add(const Duration(hours: 12)));
-      }).toList();
+      final relevantHours =
+          hours.where((hour) {
+            final hourTime = DateTime.parse(hour.time);
+            return hourTime.isAfter(now.subtract(const Duration(hours: 12))) &&
+                hourTime.isBefore(now.add(const Duration(hours: 12)));
+          }).toList();
 
       if (relevantHours.isNotEmpty) {
         // Генерируем реалистичные данные давления
@@ -74,8 +75,10 @@ class _PressureChartState extends State<PressureChart> {
         }
 
         if (pressureSpots.isNotEmpty) {
-          minPressure = pressureSpots.map((spot) => spot.y).reduce(math.min) - 5;
-          maxPressure = pressureSpots.map((spot) => spot.y).reduce(math.max) + 5;
+          minPressure =
+              pressureSpots.map((spot) => spot.y).reduce(math.min) - 5;
+          maxPressure =
+              pressureSpots.map((spot) => spot.y).reduce(math.max) + 5;
         }
       }
     }
@@ -126,11 +129,7 @@ class _PressureChartState extends State<PressureChart> {
           // Заголовок графика
           Row(
             children: [
-              Icon(
-                Icons.speed,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              Icon(Icons.speed, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 localizations.translate('pressure_analysis'),
@@ -186,7 +185,9 @@ class _PressureChartState extends State<PressureChart> {
                         return Text(
                           '${value.toInt()}',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 10,
                           ),
                         );
@@ -206,7 +207,9 @@ class _PressureChartState extends State<PressureChart> {
                             child: Text(
                               timeLabels[index],
                               style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 10,
                               ),
                             ),
@@ -258,7 +261,10 @@ class _PressureChartState extends State<PressureChart> {
                 ],
                 lineTouchData: LineTouchData(
                   enabled: true,
-                  touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+                  touchCallback: (
+                    FlTouchEvent event,
+                    LineTouchResponse? response,
+                  ) {
                     if (response != null && response.lineBarSpots != null) {
                       setState(() {
                         touchedIndex = response.lineBarSpots!.first.spotIndex;
@@ -270,7 +276,9 @@ class _PressureChartState extends State<PressureChart> {
                     }
                   },
                   touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                    getTooltipColor:
+                        (touchedSpot) =>
+                            AppConstants.surfaceColor.withValues(alpha: 0.9),
                     tooltipBorder: BorderSide(
                       color: AppConstants.primaryColor.withValues(alpha: 0.5),
                       width: 1,
@@ -337,10 +345,7 @@ class _PressureChartState extends State<PressureChart> {
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(height: 4),
         Text(
@@ -401,10 +406,12 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
       final hours = widget.weatherData.forecast.first.hour;
       final now = DateTime.now();
 
-      final relevantHours = hours.where((hour) {
-        final hourTime = DateTime.parse(hour.time);
-        return hourTime.isAfter(now) && hourTime.isBefore(now.add(const Duration(hours: 24)));
-      }).toList();
+      final relevantHours =
+          hours.where((hour) {
+            final hourTime = DateTime.parse(hour.time);
+            return hourTime.isAfter(now) &&
+                hourTime.isBefore(now.add(const Duration(hours: 24)));
+          }).toList();
 
       for (int i = 0; i < relevantHours.length; i++) {
         final hour = relevantHours[i];
@@ -444,11 +451,7 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
           // Заголовок и переключатели
           Row(
             children: [
-              Icon(
-                Icons.analytics,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              Icon(Icons.analytics, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 localizations.translate('weather_factors'),
@@ -489,7 +492,9 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
                         return Text(
                           _formatLeftTitle(value),
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 10,
                           ),
                         );
@@ -509,7 +514,9 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
                             child: Text(
                               timeLabels[index],
                               style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 10,
                               ),
                             ),
@@ -531,7 +538,9 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
                 lineTouchData: LineTouchData(
                   enabled: true,
                   touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                    getTooltipColor:
+                        (touchedSpot) =>
+                            AppConstants.surfaceColor.withValues(alpha: 0.9),
                     tooltipBorder: BorderSide(
                       color: AppConstants.primaryColor.withValues(alpha: 0.5),
                       width: 1,
@@ -602,7 +611,10 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppConstants.textColor.withValues(alpha: 0.7),
+            color:
+                isSelected
+                    ? Colors.white
+                    : AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
@@ -631,7 +643,10 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
       // Ветер (нормализованный для отображения)
       bars.add(
         LineChartBarData(
-          spots: windSpots.map((spot) => FlSpot(spot.x, spot.y * 2)).toList(), // Умножаем для видимости
+          spots:
+              windSpots
+                  .map((spot) => FlSpot(spot.x, spot.y * 2))
+                  .toList(), // Умножаем для видимости
           isCurved: true,
           color: Colors.blue,
           barWidth: 2,
@@ -644,7 +659,10 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
       // Дождь (нормализованный)
       bars.add(
         LineChartBarData(
-          spots: rainSpots.map((spot) => FlSpot(spot.x, spot.y / 5)).toList(), // Делим для масштаба
+          spots:
+              rainSpots
+                  .map((spot) => FlSpot(spot.x, spot.y / 5))
+                  .toList(), // Делим для масштаба
           isCurved: false,
           color: Colors.lightBlue,
           barWidth: 2,
@@ -658,19 +676,27 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
 
   double _getGridInterval() {
     switch (selectedChart) {
-      case 1: return 5; // Температура
-      case 2: return 2; // Ветер
-      case 3: return 5; // Дождь
-      default: return 5; // Все
+      case 1:
+        return 5; // Температура
+      case 2:
+        return 2; // Ветер
+      case 3:
+        return 5; // Дождь
+      default:
+        return 5; // Все
     }
   }
 
   String _formatLeftTitle(double value) {
     switch (selectedChart) {
-      case 1: return '${value.toInt()}°C';
-      case 2: return '${(value / 2).toInt()}м/с';
-      case 3: return '${(value * 5).toInt()}%';
-      default: return value.toInt().toString();
+      case 1:
+        return '${value.toInt()}°C';
+      case 2:
+        return '${(value / 2).toInt()}м/с';
+      case 3:
+        return '${(value * 5).toInt()}%';
+      default:
+        return value.toInt().toString();
     }
   }
 
@@ -716,23 +742,11 @@ class _CombinedWeatherChartState extends State<CombinedWeatherChart> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         if (selectedChart == 0 || selectedChart == 1)
-          _buildLegendItem(
-            color: Colors.red,
-            label: 'Температура',
-            unit: '°C',
-          ),
+          _buildLegendItem(color: Colors.red, label: 'Температура', unit: '°C'),
         if (selectedChart == 0 || selectedChart == 2)
-          _buildLegendItem(
-            color: Colors.blue,
-            label: 'Ветер',
-            unit: 'м/с',
-          ),
+          _buildLegendItem(color: Colors.blue, label: 'Ветер', unit: 'м/с'),
         if (selectedChart == 0 || selectedChart == 3)
-          _buildLegendItem(
-            color: Colors.lightBlue,
-            label: 'Дождь',
-            unit: '%',
-          ),
+          _buildLegendItem(color: Colors.lightBlue, label: 'Дождь', unit: '%'),
       ],
     );
   }

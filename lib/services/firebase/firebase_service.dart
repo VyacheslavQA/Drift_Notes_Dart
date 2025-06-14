@@ -72,12 +72,17 @@ class FirebaseService {
 
   // Проверка валидности email перед отправкой
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
   }
 
   // Регистрация нового пользователя с email и паролем
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password, [BuildContext? context]) async {
+    String email,
+    String password, [
+    BuildContext? context,
+  ]) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -96,13 +101,18 @@ class FirebaseService {
 
   // Вход пользователя с email и паролем
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password, [BuildContext? context]) async {
+    String email,
+    String password, [
+    BuildContext? context,
+  ]) async {
     try {
       // Проверяем формат email перед отправкой
       if (!_isValidEmail(email)) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('invalid_email')
-            : 'Неверный формат email');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(context).translate('invalid_email')
+              : 'Неверный формат email',
+        );
       }
 
       final userCredential = await _auth.signInWithEmailAndPassword(
@@ -148,9 +158,10 @@ class FirebaseService {
 
   // Обработка ошибок аутентификации Firebase
   String _handleAuthException(dynamic e, [BuildContext? context]) {
-    String errorMessage = context != null
-        ? AppLocalizations.of(context).translate('unknown_error')
-        : 'Произошла неизвестная ошибка';
+    String errorMessage =
+        context != null
+            ? AppLocalizations.of(context).translate('unknown_error')
+            : 'Произошла неизвестная ошибка';
 
     if (e is FirebaseAuthException) {
       if (context != null) {
@@ -184,7 +195,7 @@ class FirebaseService {
             errorMessage = localizations.translate('too_many_requests');
             break;
           case 'invalid-credential':
-          // Для invalid-credential показываем универсальное сообщение
+            // Для invalid-credential показываем универсальное сообщение
             errorMessage = localizations.translate('invalid_credentials');
             break;
           case 'user-token-expired':
@@ -246,7 +257,9 @@ class FirebaseService {
   }
 
   /// Кэширование данных пользователя из UserCredential (для Google Sign-In)
-  Future<void> cacheUserDataFromCredential(UserCredential userCredential) async {
+  Future<void> cacheUserDataFromCredential(
+    UserCredential userCredential,
+  ) async {
     await _cacheUserData(userCredential.user);
   }
 
@@ -269,7 +282,10 @@ class FirebaseService {
   }
 
   // Отправка письма для сброса пароля
-  Future<void> sendPasswordResetEmail(String email, [BuildContext? context]) async {
+  Future<void> sendPasswordResetEmail(
+    String email, [
+    BuildContext? context,
+  ]) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
@@ -278,13 +294,19 @@ class FirebaseService {
   }
 
   // Смена пароля пользователя
-  Future<void> changePassword(String currentPassword, String newPassword, [BuildContext? context]) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword, [
+    BuildContext? context,
+  ]) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('user_not_authorized')
-            : 'Пользователь не авторизован');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(context).translate('user_not_authorized')
+              : 'Пользователь не авторизован',
+        );
       }
 
       // Создаем учетные данные для повторной аутентификации
@@ -314,7 +336,10 @@ class FirebaseService {
 
       if (isOnline) {
         // Если есть интернет, обновляем данные в Firestore
-        await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .set(data, SetOptions(merge: true));
       }
 
       // В любом случае, сохраняем данные локально
@@ -351,7 +376,9 @@ class FirebaseService {
   }
 
   // Добавление заметки о рыбалке
-  Future<DocumentReference> addFishingNote(Map<String, dynamic> noteData) async {
+  Future<DocumentReference> addFishingNote(
+    Map<String, dynamic> noteData,
+  ) async {
     try {
       return await _firestore.collection('fishing_notes').add(noteData);
     } catch (e) {
@@ -361,7 +388,10 @@ class FirebaseService {
   }
 
   // Обновление заметки о рыбалке
-  Future<void> updateFishingNote(String noteId, Map<String, dynamic> noteData) async {
+  Future<void> updateFishingNote(
+    String noteId,
+    Map<String, dynamic> noteData,
+  ) async {
     try {
       await _firestore.collection('fishing_notes').doc(noteId).update(noteData);
     } catch (e) {
@@ -381,7 +411,9 @@ class FirebaseService {
     } catch (e) {
       // Если ошибка связана с индексом, пытаемся выполнить запрос без сортировки
       if (e.toString().contains('index')) {
-        debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
+        debugPrint(
+          'Ошибка индекса в Firestore, выполняем запрос без сортировки',
+        );
         return await _firestore
             .collection('fishing_notes')
             .where('userId', isEqualTo: userId)
@@ -412,9 +444,11 @@ class FirebaseService {
     try {
       final user = _auth.currentUser;
       if (user == null) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('user_not_authorized')
-            : 'Пользователь не авторизован');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(context).translate('user_not_authorized')
+              : 'Пользователь не авторизован',
+        );
       }
 
       final String userId = user.uid;
@@ -444,7 +478,11 @@ class FirebaseService {
   }
 
   // Повторная аутентификация и удаление аккаунта
-  Future<void> _reauthenticateAndDelete(User user, String userId, [BuildContext? context]) async {
+  Future<void> _reauthenticateAndDelete(
+    User user,
+    String userId, [
+    BuildContext? context,
+  ]) async {
     try {
       // Получаем методы аутентификации пользователя
       final providerData = user.providerData;
@@ -460,9 +498,11 @@ class FirebaseService {
           await _reauthenticateWithGoogle(user, context);
         } else {
           // Для других провайдеров показываем сообщение
-          throw Exception(context != null
-              ? 'Для удаления аккаунта требуется повторный вход. Пожалуйста, выйдите и войдите снова.'
-              : 'Требуется повторный вход для удаления аккаунта');
+          throw Exception(
+            context != null
+                ? 'Для удаления аккаунта требуется повторный вход. Пожалуйста, выйдите и войдите снова.'
+                : 'Требуется повторный вход для удаления аккаунта',
+          );
         }
       }
 
@@ -481,7 +521,10 @@ class FirebaseService {
   }
 
   // Повторная аутентификация с паролем
-  Future<void> _reauthenticateWithPassword(User user, [BuildContext? context]) async {
+  Future<void> _reauthenticateWithPassword(
+    User user, [
+    BuildContext? context,
+  ]) async {
     if (context == null) {
       throw Exception('Требуется повторная аутентификация');
     }
@@ -506,7 +549,10 @@ class FirebaseService {
   }
 
   // Повторная аутентификация через Google
-  Future<void> _reauthenticateWithGoogle(User user, [BuildContext? context]) async {
+  Future<void> _reauthenticateWithGoogle(
+    User user, [
+    BuildContext? context,
+  ]) async {
     try {
       // Импортируем Google Sign-In Service
       final GoogleSignInService googleService = GoogleSignInService();
@@ -515,9 +561,13 @@ class FirebaseService {
       final userCredential = await googleService.signInWithGoogle(context);
 
       if (userCredential == null) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('account_deletion_canceled')
-            : 'Отменено пользователем');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(
+                context,
+              ).translate('account_deletion_canceled')
+              : 'Отменено пользователем',
+        );
       }
     } catch (e) {
       debugPrint('Ошибка при повторной аутентификации через Google: $e');
@@ -526,7 +576,10 @@ class FirebaseService {
   }
 
   // Диалог для ввода пароля
-  Future<String?> _showPasswordDialog(BuildContext context, AppLocalizations localizations) async {
+  Future<String?> _showPasswordDialog(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) async {
     final passwordController = TextEditingController();
 
     return await showDialog<String>(
@@ -547,10 +600,7 @@ class FirebaseService {
             children: [
               Text(
                 localizations.translate('enter_password_to_delete'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: AppConstants.textColor, fontSize: 16),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -563,9 +613,7 @@ class FirebaseService {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                ),
+                style: TextStyle(color: AppConstants.textColor),
               ),
             ],
           ),
@@ -590,9 +638,7 @@ class FirebaseService {
               ),
               child: Text(
                 localizations.translate('confirm'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                ),
+                style: TextStyle(color: AppConstants.textColor),
               ),
             ),
           ],
@@ -611,20 +657,22 @@ class FirebaseService {
       batch.delete(userDoc);
 
       // Удаляем все заметки пользователя
-      final notesQuery = await _firestore
-          .collection('fishing_notes')
-          .where('userId', isEqualTo: userId)
-          .get();
+      final notesQuery =
+          await _firestore
+              .collection('fishing_notes')
+              .where('userId', isEqualTo: userId)
+              .get();
 
       for (var doc in notesQuery.docs) {
         batch.delete(doc.reference);
       }
 
       // Удаляем все маркерные карты пользователя
-      final mapsQuery = await _firestore
-          .collection('marker_maps')
-          .where('userId', isEqualTo: userId)
-          .get();
+      final mapsQuery =
+          await _firestore
+              .collection('marker_maps')
+              .where('userId', isEqualTo: userId)
+              .get();
 
       for (var doc in mapsQuery.docs) {
         batch.delete(doc.reference);

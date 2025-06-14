@@ -18,7 +18,8 @@ class CoverPhotoSelectionScreen extends StatefulWidget {
   });
 
   @override
-  State<CoverPhotoSelectionScreen> createState() => _CoverPhotoSelectionScreenState();
+  State<CoverPhotoSelectionScreen> createState() =>
+      _CoverPhotoSelectionScreenState();
 }
 
 class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
@@ -36,7 +37,8 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
     super.initState();
 
     // Если есть текущая обложка, используем её, иначе берём первое фото
-    _selectedPhotoUrl = widget.currentCoverPhotoUrl ??
+    _selectedPhotoUrl =
+        widget.currentCoverPhotoUrl ??
         (widget.photoUrls.isNotEmpty ? widget.photoUrls.first : '');
 
     // Если есть настройки кадрирования, загружаем их
@@ -52,11 +54,9 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
   void _saveCoverPhoto() {
     final result = {
       'coverPhotoUrl': _selectedPhotoUrl,
-      'cropSettings': _cropSettings ?? {
-        'offsetX': _offsetX,
-        'offsetY': _offsetY,
-        'scale': _scale,
-      },
+      'cropSettings':
+          _cropSettings ??
+          {'offsetX': _offsetX, 'offsetY': _offsetY, 'scale': _scale},
     };
 
     Navigator.pop(context, result);
@@ -86,8 +86,8 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
         actions: [
           IconButton(
             icon: Icon(
-                _isCropping ? Icons.crop : Icons.check,
-                color: AppConstants.textColor
+              _isCropping ? Icons.crop : Icons.check,
+              color: AppConstants.textColor,
             ),
             onPressed: _isCropping ? _toggleCropping : _saveCoverPhoto,
           ),
@@ -109,26 +109,28 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                       width: 2,
                     ),
                   ),
-                  child: _isCropping
-                      ? _buildCroppingView()
-                      : ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: UniversalImage(
-                      imageUrl: _selectedPhotoUrl,
-                      fit: BoxFit.cover,
-                      placeholder: Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              AppConstants.textColor),
-                        ),
-                      ),
-                      errorWidget: const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                        size: 50,
-                      ),
-                    ),
-                  ),
+                  child:
+                      _isCropping
+                          ? _buildCroppingView()
+                          : ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: UniversalImage(
+                              imageUrl: _selectedPhotoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppConstants.textColor,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: const Icon(
+                                Icons.error,
+                                color: Colors.red,
+                                size: 50,
+                              ),
+                            ),
+                          ),
                 ),
               ),
 
@@ -138,13 +140,14 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _toggleCropping,
                   icon: Icon(_isCropping ? Icons.check : Icons.crop),
-                  label: Text(_isCropping
-                      ? localizations.translate('apply_cropping')
-                      : localizations.translate('crop')),
+                  label: Text(
+                    _isCropping
+                        ? localizations.translate('apply_cropping')
+                        : localizations.translate('crop'),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isCropping
-                        ? Colors.green
-                        : AppConstants.primaryColor,
+                    backgroundColor:
+                        _isCropping ? Colors.green : AppConstants.primaryColor,
                     foregroundColor: AppConstants.textColor,
                     minimumSize: const Size(double.infinity, 46),
                     shape: RoundedRectangleBorder(
@@ -176,76 +179,82 @@ class _CoverPhotoSelectionScreenState extends State<CoverPhotoSelectionScreen> {
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: widget.photoUrls.isEmpty
-                        ? Center(
-                      child: Text(
-                        localizations.translate('no_photos_available'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                    )
-                        : GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 1,
-                      ),
-                      itemCount: widget.photoUrls.length,
-                      itemBuilder: (context, index) {
-                        final photoUrl = widget.photoUrls[index];
-                        final isSelected = photoUrl == _selectedPhotoUrl;
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedPhotoUrl = photoUrl;
-                              // Сбрасываем настройки кадрирования при смене фото
-                              _offsetX = 0.0;
-                              _offsetY = 0.0;
-                              _scale = 1.0;
-                              _cropSettings = null;
-                            });
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppConstants.primaryColor
-                                    : Colors.transparent,
-                                width: 3,
+                    child:
+                        widget.photoUrls.isEmpty
+                            ? Center(
+                              child: Text(
+                                localizations.translate('no_photos_available'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(5),
-                              child: UniversalImage(
-                                imageUrl: photoUrl,
-                                fit: BoxFit.cover,
-                                placeholder: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          AppConstants.textColor),
-                                      strokeWidth: 2,
+                            )
+                            : GridView.builder(
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 3,
+                                    crossAxisSpacing: 8,
+                                    mainAxisSpacing: 8,
+                                    childAspectRatio: 1,
+                                  ),
+                              itemCount: widget.photoUrls.length,
+                              itemBuilder: (context, index) {
+                                final photoUrl = widget.photoUrls[index];
+                                final isSelected =
+                                    photoUrl == _selectedPhotoUrl;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedPhotoUrl = photoUrl;
+                                      // Сбрасываем настройки кадрирования при смене фото
+                                      _offsetX = 0.0;
+                                      _offsetY = 0.0;
+                                      _scale = 1.0;
+                                      _cropSettings = null;
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? AppConstants.primaryColor
+                                                : Colors.transparent,
+                                        width: 3,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(5),
+                                      child: UniversalImage(
+                                        imageUrl: photoUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: Center(
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    AppConstants.textColor,
+                                                  ),
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: const Icon(
+                                          Icons.error,
+                                          color: Colors.red,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                errorWidget: const Icon(
-                                  Icons.error,
-                                  color: Colors.red,
-                                ),
-                              ),
+                                );
+                              },
                             ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),

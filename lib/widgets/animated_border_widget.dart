@@ -54,10 +54,7 @@ class _AnimatedBorderWidgetState extends State<AnimatedBorderWidget>
     _animation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.linear,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
 
     if (widget.isEnabled) {
       _controller.repeat();
@@ -150,10 +147,11 @@ class SmoothAnimatedBorderPainter extends CustomPainter {
     );
 
     // Базовая рамка (статичная)
-    final Paint basePaint = Paint()
-      ..color = baseColor.withValues(alpha: isEnabled ? 0.6 : 0.5)
-      ..strokeWidth = borderWidth
-      ..style = PaintingStyle.stroke;
+    final Paint basePaint =
+        Paint()
+          ..color = baseColor.withValues(alpha: isEnabled ? 0.6 : 0.5)
+          ..strokeWidth = borderWidth
+          ..style = PaintingStyle.stroke;
 
     canvas.drawRRect(borderRect, basePaint);
 
@@ -169,7 +167,8 @@ class SmoothAnimatedBorderPainter extends CustomPainter {
   /// Рассчитывает плавную позицию свечения по периметру прямоугольника
   Offset _calculateSmoothGlowPosition(Size size, double progress) {
     // Используем sinusoidal функции для более плавного движения
-    final smoothProgress = (math.sin(progress * 2 * math.pi - math.pi / 2) + 1) / 2;
+    final smoothProgress =
+        (math.sin(progress * 2 * math.pi - math.pi / 2) + 1) / 2;
 
     final width = size.width - borderWidth;
     final height = size.height - borderWidth;
@@ -179,7 +178,8 @@ class SmoothAnimatedBorderPainter extends CustomPainter {
     final straightWidth = width - 2 * cornerRadius;
     final straightHeight = height - 2 * cornerRadius;
     final cornerPerimeter = 2 * math.pi * cornerRadius;
-    final totalPerimeter = 2 * straightWidth + 2 * straightHeight + cornerPerimeter;
+    final totalPerimeter =
+        2 * straightWidth + 2 * straightHeight + cornerPerimeter;
 
     final currentDistance = smoothProgress * totalPerimeter;
 
@@ -192,45 +192,63 @@ class SmoothAnimatedBorderPainter extends CustomPainter {
       y = borderWidth / 2;
     } else if (currentDistance <= straightWidth + math.pi * cornerRadius / 2) {
       // Правый верхний угол
-      final angleProgress = (currentDistance - straightWidth) / (math.pi * cornerRadius / 2);
+      final angleProgress =
+          (currentDistance - straightWidth) / (math.pi * cornerRadius / 2);
       final angle = -math.pi / 2 + angleProgress * math.pi / 2;
       x = width - cornerRadius + cornerRadius * math.cos(angle);
       y = cornerRadius + cornerRadius * math.sin(angle);
-    } else if (currentDistance <= straightWidth + math.pi * cornerRadius / 2 + straightHeight) {
+    } else if (currentDistance <=
+        straightWidth + math.pi * cornerRadius / 2 + straightHeight) {
       // Правая сторона
-      final sideProgress = currentDistance - straightWidth - math.pi * cornerRadius / 2;
+      final sideProgress =
+          currentDistance - straightWidth - math.pi * cornerRadius / 2;
       x = width - borderWidth / 2;
       y = cornerRadius + sideProgress;
-    } else if (currentDistance <= straightWidth + math.pi * cornerRadius + straightHeight) {
+    } else if (currentDistance <=
+        straightWidth + math.pi * cornerRadius + straightHeight) {
       // Правый нижний угол
-      final angleStart = straightWidth + math.pi * cornerRadius / 2 + straightHeight;
-      final angleProgress = (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
+      final angleStart =
+          straightWidth + math.pi * cornerRadius / 2 + straightHeight;
+      final angleProgress =
+          (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
       final angle = angleProgress * math.pi / 2;
       x = width - cornerRadius + cornerRadius * math.cos(angle);
       y = height - cornerRadius + cornerRadius * math.sin(angle);
-    } else if (currentDistance <= 2 * straightWidth + math.pi * cornerRadius + straightHeight) {
+    } else if (currentDistance <=
+        2 * straightWidth + math.pi * cornerRadius + straightHeight) {
       // Нижняя сторона
       final sideStart = straightWidth + math.pi * cornerRadius + straightHeight;
       final sideProgress = currentDistance - sideStart;
       x = width - cornerRadius - sideProgress;
       y = height - borderWidth / 2;
-    } else if (currentDistance <= 2 * straightWidth + 3 * math.pi * cornerRadius / 2 + straightHeight) {
+    } else if (currentDistance <=
+        2 * straightWidth + 3 * math.pi * cornerRadius / 2 + straightHeight) {
       // Левый нижний угол
-      final angleStart = 2 * straightWidth + math.pi * cornerRadius + straightHeight;
-      final angleProgress = (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
+      final angleStart =
+          2 * straightWidth + math.pi * cornerRadius + straightHeight;
+      final angleProgress =
+          (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
       final angle = math.pi / 2 + angleProgress * math.pi / 2;
       x = cornerRadius + cornerRadius * math.cos(angle);
       y = height - cornerRadius + cornerRadius * math.sin(angle);
-    } else if (currentDistance <= 2 * straightWidth + 3 * math.pi * cornerRadius / 2 + 2 * straightHeight) {
+    } else if (currentDistance <=
+        2 * straightWidth +
+            3 * math.pi * cornerRadius / 2 +
+            2 * straightHeight) {
       // Левая сторона
-      final sideStart = 2 * straightWidth + 3 * math.pi * cornerRadius / 2 + straightHeight;
+      final sideStart =
+          2 * straightWidth + 3 * math.pi * cornerRadius / 2 + straightHeight;
       final sideProgress = currentDistance - sideStart;
       x = borderWidth / 2;
       y = height - cornerRadius - sideProgress;
     } else {
       // Левый верхний угол
-      final angleStart = 2 * straightWidth + 3 * math.pi * cornerRadius / 2 + 2 * straightHeight;
-      final angleProgress = (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
+      final angleStart =
+          2 * straightWidth +
+          3 * math.pi * cornerRadius / 2 +
+          2 * straightHeight;
+      final angleProgress =
+          (currentDistance - angleStart) / (math.pi * cornerRadius / 2);
       final angle = math.pi + angleProgress * math.pi / 2;
       x = cornerRadius + cornerRadius * math.cos(angle);
       y = cornerRadius + cornerRadius * math.sin(angle);
@@ -240,45 +258,62 @@ class SmoothAnimatedBorderPainter extends CustomPainter {
   }
 
   /// Рисует множественные слои свечения для лучшего эффекта
-  void _drawGlowLayers(Canvas canvas, Size size, RRect borderRect, Offset glowCenter) {
+  void _drawGlowLayers(
+    Canvas canvas,
+    Size size,
+    RRect borderRect,
+    Offset glowCenter,
+  ) {
     // Внешнее свечение (самое размытое)
-    final Paint outerGlowPaint = Paint()
-      ..shader = _createRadialGlowGradient(glowCenter, glowSize * 1.5, 0.3)
-      ..strokeWidth = borderWidth * 3.5
-      ..style = PaintingStyle.stroke
-      ..maskFilter = MaskFilter.blur(BlurStyle.outer, glowSize * 0.8);
+    final Paint outerGlowPaint =
+        Paint()
+          ..shader = _createRadialGlowGradient(glowCenter, glowSize * 1.5, 0.3)
+          ..strokeWidth = borderWidth * 3.5
+          ..style = PaintingStyle.stroke
+          ..maskFilter = MaskFilter.blur(BlurStyle.outer, glowSize * 0.8);
 
     canvas.drawRRect(borderRect, outerGlowPaint);
 
     // Среднее свечение
-    final Paint middleGlowPaint = Paint()
-      ..shader = _createRadialGlowGradient(glowCenter, glowSize, 0.6)
-      ..strokeWidth = borderWidth * 2.5
-      ..style = PaintingStyle.stroke
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowSize * 0.4);
+    final Paint middleGlowPaint =
+        Paint()
+          ..shader = _createRadialGlowGradient(glowCenter, glowSize, 0.6)
+          ..strokeWidth = borderWidth * 2.5
+          ..style = PaintingStyle.stroke
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowSize * 0.4);
 
     canvas.drawRRect(borderRect, middleGlowPaint);
 
     // Внутреннее свечение (самое яркое)
-    final Paint innerGlowPaint = Paint()
-      ..shader = _createRadialGlowGradient(glowCenter, glowSize * 0.6, glowIntensity)
-      ..strokeWidth = borderWidth * 1.8
-      ..style = PaintingStyle.stroke
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowSize * 0.2);
+    final Paint innerGlowPaint =
+        Paint()
+          ..shader = _createRadialGlowGradient(
+            glowCenter,
+            glowSize * 0.6,
+            glowIntensity,
+          )
+          ..strokeWidth = borderWidth * 1.8
+          ..style = PaintingStyle.stroke
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowSize * 0.2);
 
     canvas.drawRRect(borderRect, innerGlowPaint);
 
     // Основная яркая линия
-    final Paint corePaint = Paint()
-      ..shader = _createRadialGlowGradient(glowCenter, glowSize * 0.3, 1.0)
-      ..strokeWidth = borderWidth * 1.2
-      ..style = PaintingStyle.stroke;
+    final Paint corePaint =
+        Paint()
+          ..shader = _createRadialGlowGradient(glowCenter, glowSize * 0.3, 1.0)
+          ..strokeWidth = borderWidth * 1.2
+          ..style = PaintingStyle.stroke;
 
     canvas.drawRRect(borderRect, corePaint);
   }
 
   /// Создает радиальный градиент для свечения
-  Shader _createRadialGlowGradient(Offset center, double radius, double intensity) {
+  Shader _createRadialGlowGradient(
+    Offset center,
+    double radius,
+    double intensity,
+  ) {
     return RadialGradient(
       center: Alignment.topLeft,
       focal: Alignment.topLeft,
@@ -331,13 +366,15 @@ class _PulseBorderWidgetState extends State<PulseBorderWidget>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    _opacityAnimation = Tween<double>(begin: 0.3, end: 0.8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: 0.8,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _controller.repeat(reverse: true);
   }
@@ -364,7 +401,9 @@ class _PulseBorderWidgetState extends State<PulseBorderWidget>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withValues(alpha: _opacityAnimation.value * 0.5),
+                  color: widget.color.withValues(
+                    alpha: _opacityAnimation.value * 0.5,
+                  ),
                   blurRadius: 10 * _scaleAnimation.value,
                   spreadRadius: 2 * _scaleAnimation.value,
                 ),

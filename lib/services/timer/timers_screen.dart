@@ -96,7 +96,9 @@ class _TimersScreenState extends State<TimersScreen> {
                 itemCount: timers.length,
                 itemBuilder: (context, index) {
                   final timer = timers[index];
-                  final currentDuration = _timerProvider.getCurrentDuration(timer.id);
+                  final currentDuration = _timerProvider.getCurrentDuration(
+                    timer.id,
+                  );
 
                   return _buildTimerCard(timer, currentDuration);
                 },
@@ -156,7 +158,9 @@ class _TimersScreenState extends State<TimersScreen> {
             child: LinearProgressIndicator(
               value: currentDuration.inSeconds / 3600, // Прогресс до 1 часа
               backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withOpacity(0.7)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                timer.timerColor.withOpacity(0.7),
+              ),
               minHeight: 2,
             ),
           ),
@@ -227,7 +231,9 @@ class _TimersScreenState extends State<TimersScreen> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => TimerSettingsScreen(timerId: timer.id),
+                          builder:
+                              (context) =>
+                                  TimerSettingsScreen(timerId: timer.id),
                         ),
                       );
                     },

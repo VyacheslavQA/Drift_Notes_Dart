@@ -17,7 +17,8 @@ class AppLocalizations {
   }
 
   // Статический метод для инициализации делегата
-  static const LocalizationsDelegate<AppLocalizations> delegate = AppLocalizationDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      AppLocalizationDelegate();
 
   // Кэш для переводов
   late Map<String, String> _localizedStrings;
@@ -26,7 +27,9 @@ class AppLocalizations {
   Future<bool> load() async {
     try {
       // Загружаем JSON файл из папки assets
-      String jsonString = await rootBundle.loadString('assets/localization/${locale.languageCode}.json');
+      String jsonString = await rootBundle.loadString(
+        'assets/localization/${locale.languageCode}.json',
+      );
       Map<String, dynamic> jsonMap = json.decode(jsonString);
 
       _localizedStrings = jsonMap.map((key, value) {

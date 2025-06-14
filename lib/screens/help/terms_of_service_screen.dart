@@ -38,7 +38,8 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
       print('🔍 Full locale: ${localizations.locale}');
 
       // Пробуем загрузить файл для текущего языка
-      final fileName = 'assets/terms_of_service/terms_of_service_$languageCode.txt';
+      final fileName =
+          'assets/terms_of_service/terms_of_service_$languageCode.txt';
       print('🔍 Trying to load file: $fileName');
 
       String termsText;
@@ -49,7 +50,9 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
         print('❌ Failed to load $fileName: $e');
         // Если файл для текущего языка не найден, загружаем английскую версию
         try {
-          termsText = await rootBundle.loadString('assets/terms_of_service/terms_of_service_en.txt');
+          termsText = await rootBundle.loadString(
+            'assets/terms_of_service/terms_of_service_en.txt',
+          );
           print('✅ Successfully loaded fallback English version');
         } catch (e2) {
           print('❌ Failed to load English version: $e2');
@@ -68,7 +71,8 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
       print('❌ Error loading terms of service: $e');
       if (mounted) {
         setState(() {
-          _termsText = 'Ошибка загрузки пользовательского соглашения.\nError loading terms of service.';
+          _termsText =
+              'Ошибка загрузки пользовательского соглашения.\nError loading terms of service.';
           _isLoading = false;
         });
       }
@@ -97,52 +101,55 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
-        ),
-      )
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок
-              Text(
-                localizations.translate('terms_of_service'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppConstants.primaryColor,
+                  ),
+                ),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppConstants.textColor.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Заголовок
+                      Text(
+                        localizations.translate('terms_of_service'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Текст пользовательского соглашения
+                      Text(
+                        _termsText,
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.9),
+                          fontSize: 16,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // Текст пользовательского соглашения
-              Text(
-                _termsText,
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.9),
-                  fontSize: 16,
-                  height: 1.6,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

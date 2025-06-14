@@ -19,7 +19,7 @@ class NotificationSoundSettingsScreen extends StatefulWidget {
 class _NotificationSoundSettingsScreenState
     extends State<NotificationSoundSettingsScreen> {
   final LocalPushNotificationService _pushService =
-  LocalPushNotificationService();
+      LocalPushNotificationService();
 
   late NotificationSoundSettings _settings;
   bool _isLoading = true;
@@ -58,7 +58,9 @@ class _NotificationSoundSettingsScreenState
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('settings_saved')),
+          content: Text(
+            AppLocalizations.of(context).translate('settings_saved'),
+          ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
         ),
@@ -71,8 +73,12 @@ class _NotificationSoundSettingsScreenState
       await _pushService.showNotification(
         NotificationModel(
           id: 'test_${DateTime.now().millisecondsSinceEpoch}',
-          title: AppLocalizations.of(context).translate('test_notifications_title'),
-          message: AppLocalizations.of(context).translate('test_notification_message'),
+          title: AppLocalizations.of(
+            context,
+          ).translate('test_notifications_title'),
+          message: AppLocalizations.of(
+            context,
+          ).translate('test_notification_message'),
           type: NotificationType.general,
           timestamp: DateTime.now(),
         ),
@@ -81,7 +87,9 @@ class _NotificationSoundSettingsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('test_notification_sent')),
+            content: Text(
+              AppLocalizations.of(context).translate('test_notification_sent'),
+            ),
             backgroundColor: Colors.blue,
             duration: const Duration(seconds: 2),
           ),
@@ -91,7 +99,9 @@ class _NotificationSoundSettingsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error')}: $e',
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -106,13 +116,13 @@ class _NotificationSoundSettingsScreenState
       return Scaffold(
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          title: Text(AppLocalizations.of(context).translate('notification_sounds')),
+          title: Text(
+            AppLocalizations.of(context).translate('notification_sounds'),
+          ),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -121,10 +131,7 @@ class _NotificationSoundSettingsScreenState
       appBar: AppBar(
         title: Text(
           AppLocalizations.of(context).translate('notification_sounds'),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -132,7 +139,9 @@ class _NotificationSoundSettingsScreenState
           // Кнопка тестирования
           IconButton(
             icon: const Icon(Icons.play_arrow),
-            tooltip: AppLocalizations.of(context).translate('test_notification'),
+            tooltip: AppLocalizations.of(
+              context,
+            ).translate('test_notification'),
             onPressed: _testNotification,
           ),
         ],
@@ -143,7 +152,9 @@ class _NotificationSoundSettingsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Основные настройки звука
-            _buildSectionHeader(AppLocalizations.of(context).translate('sound_notifications')),
+            _buildSectionHeader(
+              AppLocalizations.of(context).translate('sound_notifications'),
+            ),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -154,14 +165,18 @@ class _NotificationSoundSettingsScreenState
                   // Включить/выключить звук
                   SwitchListTile(
                     title: Text(
-                      AppLocalizations.of(context).translate('sound_notifications'),
+                      AppLocalizations.of(
+                        context,
+                      ).translate('sound_notifications'),
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     subtitle: Text(
-                      AppLocalizations.of(context).translate('play_sound_on_notifications'),
+                      AppLocalizations.of(
+                        context,
+                      ).translate('play_sound_on_notifications'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -195,7 +210,9 @@ class _NotificationSoundSettingsScreenState
                           Text(
                             '${(_settings.volume * 100).round()}%',
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               fontSize: 14,
                             ),
                           ),
@@ -203,9 +220,11 @@ class _NotificationSoundSettingsScreenState
                           SliderTheme(
                             data: SliderTheme.of(context).copyWith(
                               activeTrackColor: AppConstants.primaryColor,
-                              inactiveTrackColor: AppConstants.primaryColor.withValues(alpha: 0.3),
+                              inactiveTrackColor: AppConstants.primaryColor
+                                  .withValues(alpha: 0.3),
                               thumbColor: AppConstants.primaryColor,
-                              overlayColor: AppConstants.primaryColor.withValues(alpha: 0.1),
+                              overlayColor: AppConstants.primaryColor
+                                  .withValues(alpha: 0.1),
                               trackHeight: 4,
                             ),
                             child: Slider(
@@ -214,7 +233,9 @@ class _NotificationSoundSettingsScreenState
                               max: 1.0,
                               divisions: 10,
                               onChanged: (value) {
-                                _updateSettings(_settings.copyWith(volume: value));
+                                _updateSettings(
+                                  _settings.copyWith(volume: value),
+                                );
                               },
                             ),
                           ),
@@ -229,7 +250,9 @@ class _NotificationSoundSettingsScreenState
             const SizedBox(height: 20),
 
             // Вибрация
-            _buildSectionHeader(AppLocalizations.of(context).translate('vibration')),
+            _buildSectionHeader(
+              AppLocalizations.of(context).translate('vibration'),
+            ),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -244,7 +267,9 @@ class _NotificationSoundSettingsScreenState
                   ),
                 ),
                 subtitle: Text(
-                  AppLocalizations.of(context).translate('enable_vibration_on_notifications'),
+                  AppLocalizations.of(
+                    context,
+                  ).translate('enable_vibration_on_notifications'),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -261,7 +286,9 @@ class _NotificationSoundSettingsScreenState
             const SizedBox(height: 20),
 
             // Тихие часы
-            _buildSectionHeader(AppLocalizations.of(context).translate('quiet_hours')),
+            _buildSectionHeader(
+              AppLocalizations.of(context).translate('quiet_hours'),
+            ),
             Card(
               color: AppConstants.cardColor,
               shape: RoundedRectangleBorder(
@@ -278,7 +305,9 @@ class _NotificationSoundSettingsScreenState
                       ),
                     ),
                     subtitle: Text(
-                      AppLocalizations.of(context).translate('disable_sound_vibration_at_time'),
+                      AppLocalizations.of(
+                        context,
+                      ).translate('disable_sound_vibration_at_time'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -287,7 +316,9 @@ class _NotificationSoundSettingsScreenState
                     value: _settings.quietHoursEnabled,
                     activeColor: AppConstants.primaryColor,
                     onChanged: (value) {
-                      _updateSettings(_settings.copyWith(quietHoursEnabled: value));
+                      _updateSettings(
+                        _settings.copyWith(quietHoursEnabled: value),
+                      );
                     },
                   ),
 
@@ -297,7 +328,9 @@ class _NotificationSoundSettingsScreenState
                     // Время начала
                     ListTile(
                       title: Text(
-                        AppLocalizations.of(context).translate('quiet_hours_start'),
+                        AppLocalizations.of(
+                          context,
+                        ).translate('quiet_hours_start'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontWeight: FontWeight.w500,
@@ -319,7 +352,9 @@ class _NotificationSoundSettingsScreenState
                     // Время окончания
                     ListTile(
                       title: Text(
-                        AppLocalizations.of(context).translate('quiet_hours_end'),
+                        AppLocalizations.of(
+                          context,
+                        ).translate('quiet_hours_end'),
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontWeight: FontWeight.w500,
@@ -346,18 +381,25 @@ class _NotificationSoundSettingsScreenState
                             _settings.isQuietHours()
                                 ? Icons.volume_off
                                 : Icons.volume_up,
-                            color: _settings.isQuietHours()
-                                ? Colors.orange
-                                : Colors.green,
+                            color:
+                                _settings.isQuietHours()
+                                    ? Colors.orange
+                                    : Colors.green,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _settings.isQuietHours()
-                                ? AppLocalizations.of(context).translate('currently_quiet_hours')
-                                : AppLocalizations.of(context).translate('sounds_enabled'),
+                                ? AppLocalizations.of(
+                                  context,
+                                ).translate('currently_quiet_hours')
+                                : AppLocalizations.of(
+                                  context,
+                                ).translate('sounds_enabled'),
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.8),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.8,
+                              ),
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -374,7 +416,9 @@ class _NotificationSoundSettingsScreenState
 
             // Бейдж на иконке (только если поддерживается)
             if (_isBadgeSupported) ...[
-              _buildSectionHeader(AppLocalizations.of(context).translate('badge_on_icon')),
+              _buildSectionHeader(
+                AppLocalizations.of(context).translate('badge_on_icon'),
+              ),
               Card(
                 color: AppConstants.cardColor,
                 shape: RoundedRectangleBorder(
@@ -391,7 +435,9 @@ class _NotificationSoundSettingsScreenState
                         ),
                       ),
                       subtitle: Text(
-                        AppLocalizations.of(context).translate('red_dot_on_app_icon_with_number'),
+                        AppLocalizations.of(
+                          context,
+                        ).translate('red_dot_on_app_icon_with_number'),
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 14,
@@ -400,7 +446,9 @@ class _NotificationSoundSettingsScreenState
                       value: _settings.badgeEnabled,
                       activeColor: AppConstants.primaryColor,
                       onChanged: (value) {
-                        _updateSettings(_settings.copyWith(badgeEnabled: value));
+                        _updateSettings(
+                          _settings.copyWith(badgeEnabled: value),
+                        );
                       },
                     ),
 
@@ -415,9 +463,13 @@ class _NotificationSoundSettingsScreenState
                           ),
                         ),
                         subtitle: Text(
-                          AppLocalizations.of(context).translate('remove_red_dot_from_app_icon'),
+                          AppLocalizations.of(
+                            context,
+                          ).translate('remove_red_dot_from_app_icon'),
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 14,
                           ),
                         ),
@@ -427,7 +479,11 @@ class _NotificationSoundSettingsScreenState
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(AppLocalizations.of(context).translate('badge_cleared')),
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).translate('badge_cleared'),
+                                ),
                                 backgroundColor: Colors.green,
                                 duration: const Duration(seconds: 2),
                               ),
@@ -477,7 +533,9 @@ class _NotificationSoundSettingsScreenState
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    AppLocalizations.of(context).translate('notification_help_text'),
+                    AppLocalizations.of(
+                      context,
+                    ).translate('notification_help_text'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 14,
@@ -531,62 +589,70 @@ class _NotificationSoundSettingsScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        height: 250,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Text(
-              isStartTime ? 'Начало тихих часов' : 'Окончание тихих часов',
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: CupertinoPicker(
-                backgroundColor: Colors.transparent,
-                itemExtent: 40,
-                scrollController: FixedExtentScrollController(
-                  initialItem: isStartTime ? _settings.quietHoursStart : _settings.quietHoursEnd,
+      builder:
+          (context) => Container(
+            height: 250,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Text(
+                  isStartTime ? 'Начало тихих часов' : 'Окончание тихих часов',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                onSelectedItemChanged: (index) {
-                  if (isStartTime) {
-                    _updateSettings(_settings.copyWith(quietHoursStart: index));
-                  } else {
-                    _updateSettings(_settings.copyWith(quietHoursEnd: index));
-                  }
-                },
-                children: List.generate(24, (index) {
-                  return Center(
-                    child: Text(
-                      '${index.toString().padLeft(2, '0')}:00',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                      ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: CupertinoPicker(
+                    backgroundColor: Colors.transparent,
+                    itemExtent: 40,
+                    scrollController: FixedExtentScrollController(
+                      initialItem:
+                          isStartTime
+                              ? _settings.quietHoursStart
+                              : _settings.quietHoursEnd,
                     ),
-                  );
-                }),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    onSelectedItemChanged: (index) {
+                      if (isStartTime) {
+                        _updateSettings(
+                          _settings.copyWith(quietHoursStart: index),
+                        );
+                      } else {
+                        _updateSettings(
+                          _settings.copyWith(quietHoursEnd: index),
+                        );
+                      }
+                    },
+                    children: List.generate(24, (index) {
+                      return Center(
+                        child: Text(
+                          '${index.toString().padLeft(2, '0')}:00',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 18,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
                 ),
-              ),
-              child: const Text('Готово'),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: AppConstants.textColor,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Готово'),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }

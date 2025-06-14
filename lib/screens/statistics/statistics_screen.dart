@@ -19,7 +19,10 @@ class StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void initState() {
     super.initState();
-    _statisticsProvider = Provider.of<StatisticsProvider>(context, listen: false);
+    _statisticsProvider = Provider.of<StatisticsProvider>(
+      context,
+      listen: false,
+    );
     _loadStatistics();
   }
 
@@ -134,45 +137,46 @@ class StatisticsScreenState extends State<StatisticsScreen> {
           return RefreshIndicator(
             onRefresh: _loadStatistics,
             color: AppConstants.primaryColor,
-            child: isLoading
-                ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-                : errorMessage != null
-                ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: Colors.red,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    errorMessage,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _loadStatistics,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                    ),
-                    child: Text(localizations.translate('try_again')),
-                  ),
-                ],
-              ),
-            )
-                : stats.hasNoData
-                ? _buildEmptyState()
-                : _buildStatisticsContent(),
+            child:
+                isLoading
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                    : errorMessage != null
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            errorMessage,
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _loadStatistics,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppConstants.primaryColor,
+                            ),
+                            child: Text(localizations.translate('try_again')),
+                          ),
+                        ],
+                      ),
+                    )
+                    : stats.hasNoData
+                    ? _buildEmptyState()
+                    : _buildStatisticsContent(),
           );
         },
       ),
@@ -181,7 +185,8 @@ class StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildEmptyState() {
     final localizations = AppLocalizations.of(context);
-    final isFilterApplied = _statisticsProvider.selectedPeriod != StatisticsPeriod.allTime;
+    final isFilterApplied =
+        _statisticsProvider.selectedPeriod != StatisticsPeriod.allTime;
 
     return Center(
       child: SingleChildScrollView(
@@ -216,7 +221,10 @@ class StatisticsScreenState extends State<StatisticsScreen> {
               // Если фильтр применён, показываем информацию о текущем периоде
               if (isFilterApplied) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppConstants.primaryColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -254,7 +262,9 @@ class StatisticsScreenState extends State<StatisticsScreen> {
                 child: Text(
                   isFilterApplied
                       ? localizations.translate('try_different_period')
-                      : localizations.translate('create_fishing_notes_for_stats'),
+                      : localizations.translate(
+                        'create_fishing_notes_for_stats',
+                      ),
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 16,
@@ -317,7 +327,6 @@ class StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildStatisticsContent() {
-
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
@@ -343,9 +352,13 @@ class StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ),
                 // Показываем индикатор активного фильтра
-                if (_statisticsProvider.selectedPeriod != StatisticsPeriod.allTime)
+                if (_statisticsProvider.selectedPeriod !=
+                    StatisticsPeriod.allTime)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppConstants.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -364,7 +377,9 @@ class StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          AppLocalizations.of(context).translate('filter_applied'),
+                          AppLocalizations.of(
+                            context,
+                          ).translate('filter_applied'),
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 12,
@@ -401,31 +416,31 @@ class StatisticsScreenState extends State<StatisticsScreen> {
           _buildPeriodButton(
             localizations.translate('week'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.week,
-                () => _onPeriodSelected(StatisticsPeriod.week),
+            () => _onPeriodSelected(StatisticsPeriod.week),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
             localizations.translate('month'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.month,
-                () => _onPeriodSelected(StatisticsPeriod.month),
+            () => _onPeriodSelected(StatisticsPeriod.month),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
             localizations.translate('year'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.year,
-                () => _onPeriodSelected(StatisticsPeriod.year),
+            () => _onPeriodSelected(StatisticsPeriod.year),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
             localizations.translate('all_time'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.allTime,
-                () => _onPeriodSelected(StatisticsPeriod.allTime),
+            () => _onPeriodSelected(StatisticsPeriod.allTime),
           ),
           const SizedBox(width: 8),
           _buildPeriodButton(
             localizations.translate('select_custom'),
             _statisticsProvider.selectedPeriod == StatisticsPeriod.custom,
-                () => _onPeriodSelected(StatisticsPeriod.custom),
+            () => _onPeriodSelected(StatisticsPeriod.custom),
             Icons.date_range,
           ),
         ],
@@ -434,35 +449,33 @@ class StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildPeriodButton(
-      String text,
-      bool isSelected,
-      VoidCallback onTap, [
-        IconData? icon,
-      ]) {
+    String text,
+    bool isSelected,
+    VoidCallback onTap, [
+    IconData? icon,
+  ]) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(25),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor
-              : AppConstants.primaryColor.withValues(alpha: 0.2),
+          color:
+              isSelected
+                  ? AppConstants.primaryColor
+                  : AppConstants.primaryColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(25),
           // Добавляем рамку для лучшего выделения активного фильтра
-          border: isSelected
-              ? Border.all(color: AppConstants.primaryColor, width: 2)
-              : Border.all(color: Colors.transparent, width: 2),
+          border:
+              isSelected
+                  ? Border.all(color: AppConstants.primaryColor, width: 2)
+                  : Border.all(color: Colors.transparent, width: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(
-                icon,
-                color: AppConstants.textColor,
-                size: 18,
-              ),
+              Icon(icon, color: AppConstants.textColor, size: 18),
               const SizedBox(width: 4),
             ],
             Text(
@@ -492,7 +505,8 @@ class StatisticsScreenState extends State<StatisticsScreen> {
           _buildStatCard(
             icon: Icons.emoji_events,
             title: localizations.translate('biggest_fish'),
-            value: '${stats.biggestFish!.weight} ${localizations.translate('kg')}',
+            value:
+                '${stats.biggestFish!.weight} ${localizations.translate('kg')}',
             subtitle: stats.biggestFish!.getFormattedText(context),
             valueColor: Colors.amber,
           ),
@@ -536,7 +550,8 @@ class StatisticsScreenState extends State<StatisticsScreen> {
         _buildStatCard(
           icon: Icons.scale,
           title: localizations.translate('total_catch_weight'),
-          value: '${stats.totalWeight.toStringAsFixed(1)} ${localizations.translate('kg')}',
+          value:
+              '${stats.totalWeight.toStringAsFixed(1)} ${localizations.translate('kg')}',
           subtitle: localizations.translate('total_weight_caught_fish'),
           valueColor: Colors.green,
         ),
@@ -548,7 +563,10 @@ class StatisticsScreenState extends State<StatisticsScreen> {
           icon: Icons.format_list_bulleted,
           title: localizations.translate('total_fishing_trips'),
           value: stats.totalTrips.toString(),
-          subtitle: DateFormatter.getFishingTripsText(stats.totalTrips, context),
+          subtitle: DateFormatter.getFishingTripsText(
+            stats.totalTrips,
+            context,
+          ),
         ),
 
         const SizedBox(height: 16),
@@ -589,7 +607,10 @@ class StatisticsScreenState extends State<StatisticsScreen> {
           _buildStatCard(
             icon: Icons.star,
             title: localizations.translate('best_month'),
-            value: DateFormatter.getMonthInNominative(stats.bestMonth!.month, context),
+            value: DateFormatter.getMonthInNominative(
+              stats.bestMonth!.month,
+              context,
+            ),
             subtitle: stats.bestMonth!.getFormattedText(context),
             valueColor: Colors.amber,
           ),

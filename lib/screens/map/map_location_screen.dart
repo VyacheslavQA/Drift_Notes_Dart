@@ -38,7 +38,10 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
 
     // Если есть начальные координаты, используем их
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
-      _selectedPosition = LatLng(widget.initialLatitude!, widget.initialLongitude!);
+      _selectedPosition = LatLng(
+        widget.initialLatitude!,
+        widget.initialLongitude!,
+      );
       _updateMarker();
     } else {
       // Иначе пытаемся определить текущее местоположение
@@ -50,7 +53,8 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
   Future<void> _loadSavedMapType() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedMapTypeIndex = prefs.getInt('location_map_type') ?? 2; // По умолчанию hybrid
+      final savedMapTypeIndex =
+          prefs.getInt('location_map_type') ?? 2; // По умолчанию hybrid
 
       setState(() {
         _currentMapType = MapType.values[savedMapTypeIndex];
@@ -117,10 +121,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.close,
-                    color: AppConstants.textColor,
-                  ),
+                  icon: Icon(Icons.close, color: AppConstants.textColor),
                 ),
               ],
             ),
@@ -174,11 +175,11 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
 
   // Опция выбора типа карты
   Widget _buildMapTypeOption(
-      MapType mapType,
-      String title,
-      String description,
-      IconData icon
-      ) {
+    MapType mapType,
+    String title,
+    String description,
+    IconData icon,
+  ) {
     final isSelected = _currentMapType == mapType;
 
     return InkWell(
@@ -187,14 +188,13 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor.withValues(alpha: 0.1)
-              : const Color(0xFF12332E),
+          color:
+              isSelected
+                  ? AppConstants.primaryColor.withValues(alpha: 0.1)
+                  : const Color(0xFF12332E),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? AppConstants.primaryColor
-                : Colors.transparent,
+            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
             width: 2,
           ),
         ),
@@ -205,16 +205,18 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppConstants.primaryColor
-                    : AppConstants.textColor.withValues(alpha: 0.1),
+                color:
+                    isSelected
+                        ? AppConstants.primaryColor
+                        : AppConstants.textColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
-                color: isSelected
-                    ? AppConstants.textColor
-                    : AppConstants.textColor.withValues(alpha: 0.7),
+                color:
+                    isSelected
+                        ? AppConstants.textColor
+                        : AppConstants.textColor.withValues(alpha: 0.7),
                 size: 30,
               ),
             ),
@@ -320,10 +322,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
         // Перемещаем камеру к текущему местоположению
         _mapController?.animateCamera(
           CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: _selectedPosition,
-              zoom: 15.0,
-            ),
+            CameraPosition(target: _selectedPosition, zoom: 15.0),
           ),
         );
       }
@@ -433,7 +432,8 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
             },
             zoomControlsEnabled: false, // Отключаем стандартные кнопки зума
             myLocationEnabled: true,
-            myLocationButtonEnabled: false, // Отключаем стандартную кнопку местоположения
+            myLocationButtonEnabled:
+                false, // Отключаем стандартную кнопку местоположения
             compassEnabled: true,
             mapType: _currentMapType, // Используем выбранный тип карты
           ),
@@ -464,11 +464,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.layers,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        const Icon(Icons.layers, color: Colors.white, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           localizations.translate('layers'),
@@ -519,11 +515,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
                       child: const SizedBox(
                         width: 44,
                         height: 44,
-                        child: Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 24,
-                        ),
+                        child: Icon(Icons.add, color: Colors.white, size: 24),
                       ),
                     ),
                   ),
@@ -683,7 +675,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
               color: Colors.black.withValues(alpha: 0.5),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppConstants.textColor,
+                  ),
                 ),
               ),
             ),
@@ -706,10 +700,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
             ),
             child: Text(
               localizations.translate('select_this_point').toUpperCase(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),

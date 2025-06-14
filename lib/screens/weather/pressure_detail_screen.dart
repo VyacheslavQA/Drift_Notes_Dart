@@ -168,9 +168,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           // Только за последние 24 часа
           if (hourTime.isAfter(now.subtract(const Duration(hours: 24))) &&
               hourTime.isBefore(now.add(const Duration(hours: 1)))) {
-
-            final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
-            _pressure24hSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+            final convertedPressure = _weatherSettings.convertPressure(
+              hour.pressureMb,
+            );
+            _pressure24hSpots.add(
+              FlSpot(spotIndex.toDouble(), convertedPressure),
+            );
             allPressures.add(convertedPressure);
 
             // Все точки синие для 24h
@@ -196,7 +199,8 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
       // Тренд за 24 часа
       if (allPressures.length >= 2) {
         _pressure24hChange = allPressures.last - allPressures.first;
-        final threshold = _weatherSettings.pressureUnit == PressureUnit.mmhg ? 1.5 : 2.0;
+        final threshold =
+            _weatherSettings.pressureUnit == PressureUnit.mmhg ? 1.5 : 2.0;
 
         if (_pressure24hChange > threshold) {
           _pressureTrend = 'rising';
@@ -233,8 +237,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           final hourTime = DateTime.parse(hour.time);
 
           // Берем все данные из полученного массива (история + прогноз)
-          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
-          _pressureForecastSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+          final convertedPressure = _weatherSettings.convertPressure(
+            hour.pressureMb,
+          );
+          _pressureForecastSpots.add(
+            FlSpot(spotIndex.toDouble(), convertedPressure),
+          );
           allPressures.add(convertedPressure);
 
           // Цвета: желтый (прошлое), зеленый (настоящее), синий (будущее)
@@ -251,13 +259,21 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           // ИСПРАВЛЕНО: Временные метки каждые 3 часа вместо 12
           if (spotIndex % 3 == 0) {
             if (hourTime.day == now.day && hourTime.month == now.month) {
-              _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nСегодня');
+              _timeLabelsForecast.add(
+                '${DateFormat('HH:mm').format(hourTime)}\nСегодня',
+              );
             } else if (hourTime.difference(now).inDays == 1) {
-              _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nЗавтра');
+              _timeLabelsForecast.add(
+                '${DateFormat('HH:mm').format(hourTime)}\nЗавтра',
+              );
             } else if (hourTime.difference(now).inDays == -1) {
-              _timeLabelsForecast.add('${DateFormat('HH:mm').format(hourTime)}\nВчера');
+              _timeLabelsForecast.add(
+                '${DateFormat('HH:mm').format(hourTime)}\nВчера',
+              );
             } else {
-              _timeLabelsForecast.add(DateFormat('dd.MM\nHH:mm').format(hourTime));
+              _timeLabelsForecast.add(
+                DateFormat('dd.MM\nHH:mm').format(hourTime),
+              );
             }
           } else {
             _timeLabelsForecast.add('');
@@ -296,8 +312,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
         if (hourTime.isAfter(now.subtract(const Duration(hours: 24))) &&
             hourTime.isBefore(now.add(const Duration(hours: 1)))) {
-          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
-          _pressure24hSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+          final convertedPressure = _weatherSettings.convertPressure(
+            hour.pressureMb,
+          );
+          _pressure24hSpots.add(
+            FlSpot(spotIndex.toDouble(), convertedPressure),
+          );
           allPressures.add(convertedPressure);
           _dotColors24h.add(AppConstants.primaryColor);
 
@@ -335,8 +355,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         final hourTime = DateTime.parse(hour.time);
 
         if (hourTime.isAfter(now.subtract(const Duration(days: 3)))) {
-          final convertedPressure = _weatherSettings.convertPressure(hour.pressureMb);
-          _pressureForecastSpots.add(FlSpot(spotIndex.toDouble(), convertedPressure));
+          final convertedPressure = _weatherSettings.convertPressure(
+            hour.pressureMb,
+          );
+          _pressureForecastSpots.add(
+            FlSpot(spotIndex.toDouble(), convertedPressure),
+          );
           allPressures.add(convertedPressure);
 
           // Цвета для fallback данных
@@ -352,7 +376,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
           // Временные метки каждые 3 часа
           if (spotIndex % 3 == 0) {
-            _timeLabelsForecast.add(DateFormat('dd.MM\nHH:mm').format(hourTime));
+            _timeLabelsForecast.add(
+              DateFormat('dd.MM\nHH:mm').format(hourTime),
+            );
           } else {
             _timeLabelsForecast.add('');
           }
@@ -436,7 +462,10 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
 
   Widget _buildCurrentPressureCard(double pressureMb) {
     final localizations = AppLocalizations.of(context);
-    final formattedPressure = _weatherSettings.formatPressure(pressureMb, showUnit: false);
+    final formattedPressure = _weatherSettings.formatPressure(
+      pressureMb,
+      showUnit: false,
+    );
 
     return Container(
       width: double.infinity,
@@ -503,7 +532,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.primaryColor,
+                    ),
                   ),
                 ),
             ],
@@ -548,7 +579,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               color: _getPressureStatusColor(pressureMb).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _getPressureStatusColor(pressureMb).withValues(alpha: 0.5),
+                color: _getPressureStatusColor(
+                  pressureMb,
+                ).withValues(alpha: 0.5),
                 width: 1,
               ),
             ),
@@ -587,10 +620,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         indicatorPadding: const EdgeInsets.all(6),
         labelColor: Colors.white,
         unselectedLabelColor: AppConstants.textColor.withValues(alpha: 0.7),
-        labelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
+        labelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         unselectedLabelStyle: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
@@ -663,7 +693,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             minY: _minPressureForecast,
             maxY: _maxPressureForecast,
             title: localizations.translate('pressure_analysis'),
-            chartWidth: MediaQuery.of(context).size.width * 5, // В 5 раз шире для большего количества данных
+            chartWidth:
+                MediaQuery.of(context).size.width *
+                5, // В 5 раз шире для большего количества данных
             showLegend: true,
           ),
           const SizedBox(height: 24),
@@ -717,7 +749,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                 child: _buildTrendItem(
                   localizations.translate('change'),
                   '${_pressure24hChange >= 0 ? '+' : ''}${_pressure24hChange.toStringAsFixed(1)} ${_weatherSettings.getPressureUnitSymbol()}',
-                  _pressure24hChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                  _pressure24hChange >= 0
+                      ? Icons.trending_up
+                      : Icons.trending_down,
                   _pressure24hChange >= 0 ? Colors.green : Colors.red,
                 ),
               ),
@@ -730,7 +764,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     );
   }
 
-  Widget _buildTrendItem(String label, String value, IconData icon, Color color) {
+  Widget _buildTrendItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Container(
@@ -788,18 +827,11 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.info_outline,
-            color: color,
-            size: 20,
-          ),
+          Icon(Icons.info_outline, color: color, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -844,11 +876,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         children: [
           Row(
             children: [
-              Icon(
-                Icons.analytics,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              Icon(Icons.analytics, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -861,7 +889,10 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               const Spacer(),
               if (_extendedData != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -882,28 +913,35 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           if (spots.isEmpty)
             Expanded(
               child: Center(
-                child: _isLoadingExtended
-                    ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Загрузка данных...',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                )
-                    : Text(
-                  localizations.translate('no_data_to_display'),
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                  ),
-                ),
+                child:
+                    _isLoadingExtended
+                        ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppConstants.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Загрузка данных...',
+                              style: TextStyle(
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                        : Text(
+                          localizations.translate('no_data_to_display'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
               ),
             )
           else
@@ -911,10 +949,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
               child: Row(
                 children: [
                   // Зафиксированная левая шкала
-                  SizedBox(
-                    width: 50,
-                    child: _buildFixedYAxis(minY, maxY),
-                  ),
+                  SizedBox(width: 50, child: _buildFixedYAxis(minY, maxY)),
                   // Скроллируемая область графика
                   Expanded(
                     child: SingleChildScrollView(
@@ -927,38 +962,57 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                               show: true,
                               drawVerticalLine: true,
                               horizontalInterval: _getDetailedGridInterval(),
-                              verticalInterval: math.max(1, spots.length / 24), // Больше вертикальных линий
+                              verticalInterval: math.max(
+                                1,
+                                spots.length / 24,
+                              ), // Больше вертикальных линий
                               getDrawingHorizontalLine: (value) {
                                 return FlLine(
-                                  color: AppConstants.textColor.withValues(alpha: 0.1),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   strokeWidth: 1,
                                 );
                               },
                               getDrawingVerticalLine: (value) {
                                 return FlLine(
-                                  color: AppConstants.textColor.withValues(alpha: 0.05),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.05,
+                                  ),
                                   strokeWidth: 1,
                                 );
                               },
                             ),
                             titlesData: FlTitlesData(
-                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   reservedSize: 45,
-                                  interval: math.max(1, spots.length / 16), // Больше меток времени
+                                  interval: math.max(
+                                    1,
+                                    spots.length / 16,
+                                  ), // Больше меток времени
                                   getTitlesWidget: (value, meta) {
                                     final index = value.toInt();
-                                    if (index >= 0 && index < timeLabels.length && timeLabels[index].isNotEmpty) {
+                                    if (index >= 0 &&
+                                        index < timeLabels.length &&
+                                        timeLabels[index].isNotEmpty) {
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
                                           timeLabels[index],
                                           style: TextStyle(
-                                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                                            color: AppConstants.textColor
+                                                .withValues(alpha: 0.7),
                                             fontSize: 9,
                                           ),
                                           textAlign: TextAlign.center,
@@ -980,10 +1034,16 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                                 isStrokeCapRound: true,
                                 dotData: FlDotData(
                                   show: true,
-                                  getDotPainter: (spot, percent, barData, index) {
-                                    final color = index < dotColors.length
-                                        ? dotColors[index]
-                                        : AppConstants.primaryColor;
+                                  getDotPainter: (
+                                    spot,
+                                    percent,
+                                    barData,
+                                    index,
+                                  ) {
+                                    final color =
+                                        index < dotColors.length
+                                            ? dotColors[index]
+                                            : AppConstants.primaryColor;
                                     return FlDotCirclePainter(
                                       radius: 3,
                                       color: color,
@@ -998,8 +1058,12 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
                                     colors: [
-                                      AppConstants.primaryColor.withValues(alpha: 0.3),
-                                      AppConstants.primaryColor.withValues(alpha: 0.1),
+                                      AppConstants.primaryColor.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      AppConstants.primaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1008,9 +1072,13 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                             lineTouchData: LineTouchData(
                               enabled: true,
                               touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                                getTooltipColor:
+                                    (touchedSpot) => AppConstants.surfaceColor
+                                        .withValues(alpha: 0.9),
                                 tooltipBorder: BorderSide(
-                                  color: AppConstants.primaryColor.withValues(alpha: 0.5),
+                                  color: AppConstants.primaryColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   width: 1,
                                 ),
                                 tooltipRoundedRadius: 8,
@@ -1086,10 +1154,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
         Text(
@@ -1129,11 +1194,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
                   color: impact['color'].withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.set_meal,
-                  color: impact['color'],
-                  size: 20,
-                ),
+                child: Icon(Icons.set_meal, color: impact['color'], size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1221,34 +1282,38 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
             ],
           ),
           const SizedBox(height: 16),
-          ...recommendations.map((recommendation) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor,
-                    shape: BoxShape.circle,
+          ...recommendations
+              .map(
+                (recommendation) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          recommendation,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 15,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    recommendation,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )).toList(),
+              )
+              .toList(),
         ],
       ),
     );
@@ -1270,8 +1335,10 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   Color _getPressureStatusColor(double pressure) {
     final calibratedPressure = pressure + _weatherSettings.barometerCalibration;
 
-    if (calibratedPressure >= 1010 && calibratedPressure <= 1025) return Colors.green;
-    if (calibratedPressure < 1000 || calibratedPressure > 1030) return Colors.red;
+    if (calibratedPressure >= 1010 && calibratedPressure <= 1025)
+      return Colors.green;
+    if (calibratedPressure < 1000 || calibratedPressure > 1030)
+      return Colors.red;
     return Colors.orange;
   }
 
@@ -1294,25 +1361,34 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
   String _getTrendText(String trend) {
     final localizations = AppLocalizations.of(context);
     switch (trend) {
-      case 'rising': return localizations.translate('rising');
-      case 'falling': return localizations.translate('falling');
-      default: return localizations.translate('stable');
+      case 'rising':
+        return localizations.translate('rising');
+      case 'falling':
+        return localizations.translate('falling');
+      default:
+        return localizations.translate('stable');
     }
   }
 
   IconData _getTrendIcon(String trend) {
     switch (trend) {
-      case 'rising': return Icons.trending_up;
-      case 'falling': return Icons.trending_down;
-      default: return Icons.trending_flat;
+      case 'rising':
+        return Icons.trending_up;
+      case 'falling':
+        return Icons.trending_down;
+      default:
+        return Icons.trending_flat;
     }
   }
 
   Color _getTrendColor(String trend) {
     switch (trend) {
-      case 'rising': return Colors.green;
-      case 'falling': return Colors.red;
-      default: return Colors.blue;
+      case 'rising':
+        return Colors.green;
+      case 'falling':
+        return Colors.red;
+      default:
+        return Colors.blue;
     }
   }
 
@@ -1323,7 +1399,9 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
     if (calibratedPressure >= 1010 && calibratedPressure <= 1025) {
       return {
         'level': localizations.translate('excellent_for_fishing'),
-        'description': localizations.translate('pressure_excellent_description'),
+        'description': localizations.translate(
+          'pressure_excellent_description',
+        ),
         'color': Colors.green,
       };
     } else if (calibratedPressure < 1000) {

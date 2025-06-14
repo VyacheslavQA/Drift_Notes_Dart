@@ -17,13 +17,15 @@ class NotificationService {
   final List<NotificationModel> _notifications = [];
 
   // НОВЫЙ: Интеграция с push-сервисом
-  final LocalPushNotificationService _pushService = LocalPushNotificationService();
+  final LocalPushNotificationService _pushService =
+      LocalPushNotificationService();
 
   // Stream для уведомления UI об изменениях
   final StreamController<List<NotificationModel>> _notificationsController =
-  StreamController<List<NotificationModel>>.broadcast();
+      StreamController<List<NotificationModel>>.broadcast();
 
-  Stream<List<NotificationModel>> get notificationsStream => _notificationsController.stream;
+  Stream<List<NotificationModel>> get notificationsStream =>
+      _notificationsController.stream;
 
   // Ключ для SharedPreferences
   static const String _notificationsKey = 'local_notifications';
@@ -44,7 +46,9 @@ class NotificationService {
       // УДАЛЕНО: Подписка на нажатия уведомлений (теперь обрабатывается в main.dart)
       // _pushService.notificationTapStream.listen(_handleNotificationTap);
 
-      debugPrint('✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений');
+      debugPrint(
+        '✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений',
+      );
     } catch (e) {
       debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
     }
@@ -92,7 +96,6 @@ class NotificationService {
         _notifications.removeRange(100, _notifications.length);
         await _saveNotificationsToStorage();
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка загрузки уведомлений: $e');
     }
@@ -102,9 +105,10 @@ class NotificationService {
   Future<void> _saveNotificationsToStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final notificationsJson = _notifications
-          .map((notification) => json.encode(notification.toJson()))
-          .toList();
+      final notificationsJson =
+          _notifications
+              .map((notification) => json.encode(notification.toJson()))
+              .toList();
 
       await prefs.setStringList(_notificationsKey, notificationsJson);
     } catch (e) {
@@ -126,7 +130,9 @@ class NotificationService {
   Future<void> addNotification(NotificationModel notification) async {
     try {
       // Проверяем, нет ли уже такого уведомления (по ID)
-      final existingIndex = _notifications.indexWhere((n) => n.id == notification.id);
+      final existingIndex = _notifications.indexWhere(
+        (n) => n.id == notification.id,
+      );
 
       if (existingIndex != -1) {
         // Обновляем существующее
@@ -153,7 +159,6 @@ class NotificationService {
       _notificationsController.add(List.from(_notifications));
 
       debugPrint('✅ Уведомление добавлено: ${notification.title}');
-
     } catch (e) {
       debugPrint('❌ Ошибка добавления уведомления: $e');
     }
@@ -191,14 +196,15 @@ class NotificationService {
 
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
-      final filteredLines = lines.where((line) {
-        return !line.startsWith('eventId:') &&
-            !line.startsWith('eventType:') &&
-            !line.startsWith('location:') &&
-            !line.startsWith('eventTitle:') &&
-            !line.startsWith('eventStartDate:') &&
-            !line.trim().startsWith('Дополнительные данные:');
-      }).toList();
+      final filteredLines =
+          lines.where((line) {
+            return !line.startsWith('eventId:') &&
+                !line.startsWith('eventType:') &&
+                !line.startsWith('location:') &&
+                !line.startsWith('eventTitle:') &&
+                !line.startsWith('eventStartDate:') &&
+                !line.trim().startsWith('Дополнительные данные:');
+          }).toList();
 
       cleanMessage = filteredLines.join('\n').trim();
 
@@ -215,7 +221,6 @@ class NotificationService {
 
       debugPrint('✅ Уведомление о турнире добавлено: $title');
       debugPrint('✅ Очищенное сообщение: $cleanMessage');
-
     } catch (e) {
       debugPrint('❌ Ошибка добавления уведомления о турнире: $e');
     }
@@ -234,14 +239,15 @@ class NotificationService {
 
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
-      final filteredLines = lines.where((line) {
-        return !line.startsWith('eventId:') &&
-            !line.startsWith('eventType:') &&
-            !line.startsWith('location:') &&
-            !line.startsWith('eventTitle:') &&
-            !line.startsWith('eventStartDate:') &&
-            !line.trim().startsWith('Дополнительные данные:');
-      }).toList();
+      final filteredLines =
+          lines.where((line) {
+            return !line.startsWith('eventId:') &&
+                !line.startsWith('eventType:') &&
+                !line.startsWith('location:') &&
+                !line.startsWith('eventTitle:') &&
+                !line.startsWith('eventStartDate:') &&
+                !line.trim().startsWith('Дополнительные данные:');
+          }).toList();
 
       cleanMessage = filteredLines.join('\n').trim();
 
@@ -257,7 +263,6 @@ class NotificationService {
       await addNotification(notification);
 
       debugPrint('✅ Уведомление о рыбалке добавлено: $title');
-
     } catch (e) {
       debugPrint('❌ Ошибка добавления уведомления о рыбалке: $e');
     }
@@ -270,7 +275,9 @@ class NotificationService {
 
   /// Получение непрочитанных уведомлений
   List<NotificationModel> getUnreadNotifications() {
-    return _notifications.where((notification) => !notification.isRead).toList();
+    return _notifications
+        .where((notification) => !notification.isRead)
+        .toList();
   }
 
   /// Количество непрочитанных уведомлений
@@ -330,7 +337,9 @@ class NotificationService {
   Future<void> removeNotification(String notificationId) async {
     try {
       final initialLength = _notifications.length;
-      _notifications.removeWhere((notification) => notification.id == notificationId);
+      _notifications.removeWhere(
+        (notification) => notification.id == notificationId,
+      );
 
       if (_notifications.length != initialLength) {
         await _saveNotificationsToStorage();
@@ -370,7 +379,9 @@ class NotificationService {
 
   /// Получение уведомлений по типу
   List<NotificationModel> getNotificationsByType(NotificationType type) {
-    return _notifications.where((notification) => notification.type == type).toList();
+    return _notifications
+        .where((notification) => notification.type == type)
+        .toList();
   }
 
   /// Добавление тестового уведомления с локализацией
@@ -382,10 +393,7 @@ class NotificationService {
       title: title,
       message: message,
       type: NotificationType.general,
-      data: {
-        'test': true,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      },
+      data: {'test': true, 'timestamp': DateTime.now().millisecondsSinceEpoch},
     );
   }
 
@@ -419,10 +427,7 @@ class NotificationService {
       title: title,
       message: description,
       type: NotificationType.weatherUpdate,
-      data: {
-        'weatherChange': true,
-        ...weatherData,
-      },
+      data: {'weatherChange': true, ...weatherData},
     );
   }
 

@@ -97,24 +97,15 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
 
     _gaugeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _gaugeController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _gaugeController, curve: Curves.easeOutCubic),
     );
 
     _needleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _needleController,
-        curve: Curves.elasticOut,
-      ),
+      CurvedAnimation(parent: _needleController, curve: Curves.elasticOut),
     );
 
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _gaugeController.forward();
@@ -161,7 +152,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   /// Перевод фазы луны с английского на локализованный язык
-  String _translateMoonPhase(String englishPhase, AppLocalizations localizations) {
+  String _translateMoonPhase(
+    String englishPhase,
+    AppLocalizations localizations,
+  ) {
     final cleanPhase = englishPhase.trim().toLowerCase();
 
     final Map<String, String> phaseToKey = {
@@ -233,7 +227,9 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           ),
           const SizedBox(height: 20),
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppConstants.primaryColor,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -259,10 +255,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF1B3A36),
-            const Color(0xFF0F2A26),
-          ],
+          colors: [const Color(0xFF1B3A36), const Color(0xFF0F2A26)],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -401,7 +394,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  Widget _buildFishingTypesScroll(AppLocalizations localizations, String bestType) {
+  Widget _buildFishingTypesScroll(
+    AppLocalizations localizations,
+    String bestType,
+  ) {
     final allTypes = fishingTypes.keys.toList();
 
     return Column(
@@ -437,14 +433,16 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   width: 85,
                   margin: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: BoxDecoration(
-                    color: isBest
-                        ? Colors.green.withValues(alpha: 0.3)
-                        : _getScoreColor(score).withValues(alpha: 0.2),
+                    color:
+                        isBest
+                            ? Colors.green.withValues(alpha: 0.3)
+                            : _getScoreColor(score).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isBest
-                          ? Colors.green.withValues(alpha: 0.6)
-                          : _getScoreColor(score).withValues(alpha: 0.4),
+                      color:
+                          isBest
+                              ? Colors.green.withValues(alpha: 0.6)
+                              : _getScoreColor(score).withValues(alpha: 0.4),
                       width: isBest ? 2 : 1,
                     ),
                   ),
@@ -461,12 +459,18 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                             width: 36,
                             height: 36,
                             fit: BoxFit.contain,
-                            color: isBest ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                            color:
+                                isBest
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.8),
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
                                 Icons.sports,
                                 size: 36,
-                                color: isBest ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                                color:
+                                    isBest
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.8),
                               );
                             },
                           ),
@@ -474,7 +478,8 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         const SizedBox(height: 8),
                         // Название на 2 строки
                         Text(
-                          localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
+                          localizations.translate(typeInfo['nameKey']!) ??
+                              typeInfo['name']!,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -530,39 +535,39 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
           // Параметры в столбик с описаниями
           _buildWeatherMetricRow(
-              '🌡️',
-              '${(weatherSummary.pressure / 1.333).round()} мм',
-              localizations.translate('pressure')
+            '🌡️',
+            '${(weatherSummary.pressure / 1.333).round()} мм',
+            localizations.translate('pressure'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
-              '💨',
-              '${(weatherSummary.windSpeed / 3.6).round()} м/с',
-              localizations.translate('wind')
+            '💨',
+            '${(weatherSummary.windSpeed / 3.6).round()} м/с',
+            localizations.translate('wind'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
-              '🌙',
-              _translateMoonPhase(weatherSummary.moonPhase, localizations),
-              localizations.translate('moon_phase')
+            '🌙',
+            _translateMoonPhase(weatherSummary.moonPhase, localizations),
+            localizations.translate('moon_phase'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
-              '💧',
-              '${weatherSummary.humidity}%',
-              localizations.translate('humidity')
+            '💧',
+            '${weatherSummary.humidity}%',
+            localizations.translate('humidity'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
-              '🕐',
-              _getBestTimeString(),
-              localizations.translate('best_time')
+            '🕐',
+            _getBestTimeString(),
+            localizations.translate('best_time'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
-              '⭐',
-              '${_getBestFilteredScore()}/100',
-              localizations.translate('bite_activity')
+            '⭐',
+            '${_getBestFilteredScore()}/100',
+            localizations.translate('bite_activity'),
           ),
         ],
       ),
@@ -618,10 +623,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         icon: const Icon(Icons.analytics, size: 18),
         label: Text(
           localizations.translate('more_details'),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
@@ -643,11 +645,12 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FishingTypeDetailScreen(
-          fishingType: type,
-          prediction: prediction,
-          typeInfo: fishingTypes[type]!,
-        ),
+        builder:
+            (context) => FishingTypeDetailScreen(
+              fishingType: type,
+              prediction: prediction,
+              typeInfo: fishingTypes[type]!,
+            ),
       ),
     );
   }
@@ -706,11 +709,12 @@ class SpeedometerPainter extends CustomPainter {
   }
 
   void _drawBackgroundArc(Canvas canvas, Offset center, double radius) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15)
-      ..strokeWidth = 16
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.15)
+          ..strokeWidth = 16
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     const startAngle = math.pi + 0.4;
     const sweepAngle = math.pi - 0.8;
@@ -742,11 +746,14 @@ class SpeedometerPainter extends CustomPainter {
       ],
     );
 
-    final paint = Paint()
-      ..shader = gradient.createShader(Rect.fromCircle(center: center, radius: radius))
-      ..strokeWidth = 16
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..shader = gradient.createShader(
+            Rect.fromCircle(center: center, radius: radius),
+          )
+          ..strokeWidth = 16
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -763,7 +770,8 @@ class SpeedometerPainter extends CustomPainter {
     const startAngle = math.pi + 0.4;
     const totalSweepAngle = math.pi - 0.8;
     final scoreProgress = score / 100.0;
-    final triangleAngle = startAngle + (totalSweepAngle * scoreProgress * needleProgress);
+    final triangleAngle =
+        startAngle + (totalSweepAngle * scoreProgress * needleProgress);
 
     // Позиция треугольника НА ВНУТРЕННЕЙ СТОРОНЕ ДУГИ (ближе к центру)
     final innerRadius = radius - 8; // Сдвигаем треугольник ближе к центру
@@ -807,27 +815,36 @@ class SpeedometerPainter extends CustomPainter {
     final shadowOffset = const Offset(1.5, 1.5);
 
     shadowPath.moveTo(tip.dx + shadowOffset.dx, tip.dy + shadowOffset.dy);
-    shadowPath.lineTo(leftBase.dx + shadowOffset.dx, leftBase.dy + shadowOffset.dy);
-    shadowPath.lineTo(rightBase.dx + shadowOffset.dx, rightBase.dy + shadowOffset.dy);
+    shadowPath.lineTo(
+      leftBase.dx + shadowOffset.dx,
+      leftBase.dy + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      rightBase.dx + shadowOffset.dx,
+      rightBase.dy + shadowOffset.dy,
+    );
     shadowPath.close();
 
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5);
+    final shadowPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
 
     canvas.drawPath(shadowPath, shadowPaint);
 
     // Основной треугольник - белый цвет
-    final trianglePaint = Paint()
-      ..color = Colors.white // Белый цвет
-      ..style = PaintingStyle.fill;
+    final trianglePaint =
+        Paint()
+          ..color =
+              Colors
+                  .white // Белый цвет
+          ..style = PaintingStyle.fill;
 
     canvas.drawPath(path, trianglePaint);
 
     // Обводка треугольника
-    final strokePaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    final strokePaint =
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.3)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
 
     canvas.drawPath(path, strokePaint);
   }

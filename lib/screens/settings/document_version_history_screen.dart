@@ -12,16 +12,15 @@ import '../help/terms_of_service_screen.dart';
 class DocumentVersionHistoryScreen extends StatefulWidget {
   final String documentType; // 'privacy_policy' или 'terms_of_service'
 
-  const DocumentVersionHistoryScreen({
-    super.key,
-    required this.documentType,
-  });
+  const DocumentVersionHistoryScreen({super.key, required this.documentType});
 
   @override
-  State<DocumentVersionHistoryScreen> createState() => _DocumentVersionHistoryScreenState();
+  State<DocumentVersionHistoryScreen> createState() =>
+      _DocumentVersionHistoryScreenState();
 }
 
-class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScreen> {
+class _DocumentVersionHistoryScreenState
+    extends State<DocumentVersionHistoryScreen> {
   final UserConsentService _consentService = UserConsentService();
 
   bool _isLoading = true;
@@ -58,10 +57,14 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
 
       if (widget.documentType == 'privacy_policy') {
         _versions = await _consentService.getPrivacyPolicyHistory(languageCode);
-        _currentVersionString = await _consentService.getCurrentPrivacyPolicyVersion(languageCode);
+        _currentVersionString = await _consentService
+            .getCurrentPrivacyPolicyVersion(languageCode);
       } else {
-        _versions = await _consentService.getTermsOfServiceHistory(languageCode);
-        _currentVersionString = await _consentService.getCurrentTermsOfServiceVersion(languageCode);
+        _versions = await _consentService.getTermsOfServiceHistory(
+          languageCode,
+        );
+        _currentVersionString = await _consentService
+            .getCurrentTermsOfServiceVersion(languageCode);
       }
 
       _consentStatus = await _consentService.getUserConsentStatus(languageCode);
@@ -126,16 +129,12 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
       if (widget.documentType == 'privacy_policy') {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const PrivacyPolicyScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
         );
       } else {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const TermsOfServiceScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
         );
       }
     } else {
@@ -143,11 +142,12 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ArchivedDocumentViewerScreen(
-            documentType: widget.documentType,
-            version: version.version,
-            documentTitle: _getDocumentTitle(AppLocalizations.of(context)),
-          ),
+          builder:
+              (context) => ArchivedDocumentViewerScreen(
+                documentType: widget.documentType,
+                version: version.version,
+                documentTitle: _getDocumentTitle(AppLocalizations.of(context)),
+              ),
         ),
       );
     }
@@ -175,13 +175,14 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          color: AppConstants.primaryColor,
-        ),
-      )
-          : _buildContent(localizations),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  color: AppConstants.primaryColor,
+                ),
+              )
+              : _buildContent(localizations),
     );
   }
 
@@ -198,7 +199,8 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
             ),
             const SizedBox(height: 16),
             Text(
-              localizations.translate('no_version_history') ?? 'No version history available',
+              localizations.translate('no_version_history') ??
+                  'No version history available',
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: 16,
@@ -253,14 +255,20 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
             children: [
               Icon(
                 isAccepted && !needsUpdate ? Icons.check_circle : Icons.warning,
-                color: isAccepted && !needsUpdate ? AppConstants.primaryColor : Colors.orange,
+                color:
+                    isAccepted && !needsUpdate
+                        ? AppConstants.primaryColor
+                        : Colors.orange,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 _getCurrentVersion(),
                 style: TextStyle(
-                  color: isAccepted && !needsUpdate ? AppConstants.primaryColor : Colors.orange,
+                  color:
+                      isAccepted && !needsUpdate
+                          ? AppConstants.primaryColor
+                          : Colors.orange,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -281,11 +289,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.close,
-                    color: Colors.red,
-                    size: 16,
-                  ),
+                  Icon(Icons.close, color: Colors.red, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     'Не принято',
@@ -309,11 +313,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.update,
-                    color: Colors.orange,
-                    size: 16,
-                  ),
+                  Icon(Icons.update, color: Colors.orange, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     'Требуется обновление',
@@ -337,11 +337,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.check,
-                    color: Colors.green,
-                    size: 16,
-                  ),
+                  Icon(Icons.check, color: Colors.green, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     'Принято',
@@ -359,7 +355,11 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
     );
   }
 
-  Widget _buildVersionCard(DocumentVersion version, AppLocalizations localizations, int index) {
+  Widget _buildVersionCard(
+    DocumentVersion version,
+    AppLocalizations localizations,
+    int index,
+  ) {
     final isCurrent = version.version == _getCurrentVersion();
 
     return Card(
@@ -367,9 +367,10 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isCurrent
-            ? BorderSide(color: AppConstants.primaryColor, width: 2)
-            : BorderSide.none,
+        side:
+            isCurrent
+                ? BorderSide(color: AppConstants.primaryColor, width: 2)
+                : BorderSide.none,
       ),
       child: Column(
         children: [
@@ -383,17 +384,22 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: isCurrent
-                            ? AppConstants.primaryColor
-                            : AppConstants.textColor.withOpacity(0.1),
+                        color:
+                            isCurrent
+                                ? AppConstants.primaryColor
+                                : AppConstants.textColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         '${localizations.translate('version') ?? 'Version'} ${version.version}',
                         style: TextStyle(
-                          color: isCurrent ? Colors.white : AppConstants.textColor,
+                          color:
+                              isCurrent ? Colors.white : AppConstants.textColor,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -402,7 +408,10 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                     const SizedBox(width: 12),
                     if (isCurrent)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -419,14 +428,18 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                       ),
                     if (!isCurrent)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orange.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.orange, width: 1),
                         ),
                         child: Text(
-                          localizations.translate('archived_version') ?? 'Archived Version',
+                          localizations.translate('archived_version') ??
+                              'Archived Version',
                           style: const TextStyle(
                             color: Colors.orange,
                             fontSize: 12,
@@ -496,9 +509,8 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isCurrent
-                      ? AppConstants.primaryColor
-                      : Colors.orange,
+                  backgroundColor:
+                      isCurrent ? AppConstants.primaryColor : Colors.orange,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -530,11 +542,7 @@ class _DocumentVersionHistoryScreenState extends State<DocumentVersionHistoryScr
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: AppConstants.textColor.withOpacity(0.7),
-          ),
+          Icon(icon, size: 16, color: AppConstants.textColor.withOpacity(0.7)),
           const SizedBox(width: 8),
           SizedBox(
             width: 80,
@@ -580,10 +588,12 @@ class ArchivedDocumentViewerScreen extends StatefulWidget {
   });
 
   @override
-  State<ArchivedDocumentViewerScreen> createState() => _ArchivedDocumentViewerScreenState();
+  State<ArchivedDocumentViewerScreen> createState() =>
+      _ArchivedDocumentViewerScreenState();
 }
 
-class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScreen> {
+class _ArchivedDocumentViewerScreenState
+    extends State<ArchivedDocumentViewerScreen> {
   String _documentText = '';
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
@@ -613,7 +623,8 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
       final languageCode = localizations.locale.languageCode;
 
       // Формируем путь к архивному файлу
-      final fileName = 'assets/${widget.documentType}/${widget.documentType}_${languageCode}_v${widget.version}.txt';
+      final fileName =
+          'assets/${widget.documentType}/${widget.documentType}_${languageCode}_v${widget.version}.txt';
 
       debugPrint('🔍 Загружаем архивный документ: $fileName');
 
@@ -625,12 +636,16 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
         debugPrint('❌ Не удалось загрузить $fileName: $e');
         // Если архивная версия не найдена, пробуем загрузить текущую
         try {
-          final currentFileName = 'assets/${widget.documentType}/${widget.documentType}_$languageCode.txt';
+          final currentFileName =
+              'assets/${widget.documentType}/${widget.documentType}_$languageCode.txt';
           documentText = await rootBundle.loadString(currentFileName);
           debugPrint('✅ Загружена текущая версия как замена: $currentFileName');
         } catch (e2) {
           debugPrint('❌ Не удалось загрузить и текущую версию: $e2');
-          throw Exception(localizations.translate('document_loading_error') ?? 'Failed to load document');
+          throw Exception(
+            localizations.translate('document_loading_error') ??
+                'Failed to load document',
+          );
         }
       }
 
@@ -645,7 +660,8 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         setState(() {
-          _documentText = '${localizations.translate('document_loading_error') ?? 'Error loading archived document'}\n\n${localizations.translate('error') ?? 'Error'}: $e';
+          _documentText =
+              '${localizations.translate('document_loading_error') ?? 'Error loading archived document'}\n\n${localizations.translate('error') ?? 'Error'}: $e';
           _isLoading = false;
         });
       }
@@ -686,83 +702,88 @@ class _ArchivedDocumentViewerScreenState extends State<ArchivedDocumentViewerScr
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          color: AppConstants.primaryColor,
-        ),
-      )
-          : Column(
-        children: [
-          // ВОДЯНОЙ ЗНАК "Архивная версия" с локализацией
-          Container(
-            width: double.infinity,
-            color: Colors.orange.withOpacity(0.1),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.archive,
-                  color: Colors.orange,
-                  size: 20,
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  color: AppConstants.primaryColor,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '${localizations.translate('archived_version') ?? 'Archived version'} ${widget.version}',
-                  style: TextStyle(
-                    color: Colors.orange,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange, width: 1),
-                  ),
-                  child: Text(
-                    localizations.translate('read_only') ?? 'Read only',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+              )
+              : Column(
+                children: [
+                  // ВОДЯНОЙ ЗНАК "Архивная версия" с локализацией
+                  Container(
+                    width: double.infinity,
+                    color: Colors.orange.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.archive, color: Colors.orange, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${localizations.translate('archived_version') ?? 'Archived version'} ${widget.version}',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange, width: 1),
+                          ),
+                          child: Text(
+                            localizations.translate('read_only') ?? 'Read only',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
 
-          // Содержимое документа
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppConstants.textColor.withValues(alpha: 0.1),
-                    width: 1,
+                  // Содержимое документа
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.1,
+                            ),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          _documentText,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 16,
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  _documentText,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                    height: 1.6,
-                  ),
-                ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

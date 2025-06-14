@@ -49,7 +49,9 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         print('❌ Failed to load $fileName: $e');
         // Если файл для текущего языка не найден, загружаем английскую версию
         try {
-          policyText = await rootBundle.loadString('assets/privacy_policy/privacy_policy_en.txt');
+          policyText = await rootBundle.loadString(
+            'assets/privacy_policy/privacy_policy_en.txt',
+          );
           print('✅ Successfully loaded fallback English version');
         } catch (e2) {
           print('❌ Failed to load English version: $e2');
@@ -67,7 +69,8 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       print('💥 Critical error in _loadPrivacyPolicy: $e');
       if (mounted) {
         setState(() {
-          _policyText = 'Ошибка загрузки политики конфиденциальности\n\nОшибка: $e';
+          _policyText =
+              'Ошибка загрузки политики конфиденциальности\n\nОшибка: $e';
           _isLoading = false;
         });
       }
@@ -96,34 +99,37 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-        ),
-      )
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            _policyText,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              height: 1.6,
-            ),
-          ),
-        ),
-      ),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppConstants.textColor,
+                  ),
+                ),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppConstants.textColor.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _policyText,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ),
     );
   }
 }

@@ -9,7 +9,8 @@ import '../localization/app_localizations.dart';
 
 class FishingForecastService {
   // Singleton pattern
-  static final FishingForecastService _instance = FishingForecastService._internal();
+  static final FishingForecastService _instance =
+      FishingForecastService._internal();
   factory FishingForecastService() => _instance;
   FishingForecastService._internal();
 
@@ -37,10 +38,18 @@ class FishingForecastService {
       final hourlyForecast = _generateHourlyForecast(weather, biteForecast);
 
       // Определяем лучшие временные окна
-      final bestTimeWindows = _enhanceBestTimeWindows(weather, biteForecast, context);
+      final bestTimeWindows = _enhanceBestTimeWindows(
+        weather,
+        biteForecast,
+        context,
+      );
 
       // Генерируем практические рекомендации
-      final practicalTips = _generatePracticalTips(weather, biteForecast, context);
+      final practicalTips = _generatePracticalTips(
+        weather,
+        biteForecast,
+        context,
+      );
 
       // Создаем итоговый прогноз
       final forecast = {
@@ -62,9 +71,10 @@ class FishingForecastService {
         'calculatedAt': DateTime.now().toIso8601String(),
       };
 
-      debugPrint('✅ Полный прогноз рыбалки готов: ${biteForecast.scorePoints} баллов');
+      debugPrint(
+        '✅ Полный прогноз рыбалки готов: ${biteForecast.scorePoints} баллов',
+      );
       return forecast;
-
     } catch (e) {
       debugPrint('❌ Ошибка при получении прогноза рыбалки: $e');
 
@@ -73,9 +83,12 @@ class FishingForecastService {
         'overallActivity': 0.5,
         'scorePoints': 50,
         'level': 'moderate_activity',
-        'recommendation': context != null
-            ? AppLocalizations.of(context).translate('moderate_conditions_recommendation')
-            : 'Умеренные условия для рыбалки',
+        'recommendation':
+            context != null
+                ? AppLocalizations.of(
+                  context,
+                ).translate('moderate_conditions_recommendation')
+                : 'Умеренные условия для рыбалки',
         'tips': <String>[],
         'factors': <String, dynamic>{},
         'bestTimeWindows': <Map<String, dynamic>>[],
@@ -88,13 +101,14 @@ class FishingForecastService {
 
   /// Генерация почасового прогноза клева
   List<Map<String, dynamic>> _generateHourlyForecast(
-      WeatherApiResponse weather,
-      BiteForecastModel biteForecast
-      ) {
+    WeatherApiResponse weather,
+    BiteForecastModel biteForecast,
+  ) {
     final hourlyForecast = <Map<String, dynamic>>[];
 
     try {
-      if (weather.forecast.isNotEmpty && weather.forecast.first.hour.isNotEmpty) {
+      if (weather.forecast.isNotEmpty &&
+          weather.forecast.first.hour.isNotEmpty) {
         final hours = weather.forecast.first.hour;
         final now = DateTime.now();
 
@@ -139,7 +153,8 @@ class FishingForecastService {
       final hourOfDay = hourTime.hour;
 
       // Корректировка по времени суток
-      if ((hourOfDay >= 5 && hourOfDay <= 8) || (hourOfDay >= 18 && hourOfDay <= 21)) {
+      if ((hourOfDay >= 5 && hourOfDay <= 8) ||
+          (hourOfDay >= 18 && hourOfDay <= 21)) {
         activity *= 1.2; // Золотые часы
       } else if (hourOfDay >= 22 || hourOfDay <= 4) {
         activity *= 0.7; // Ночное время
@@ -163,7 +178,6 @@ class FishingForecastService {
       if (hour.chanceOfRain > 50) {
         activity *= 0.8;
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка при расчете активности для часа: $e');
     }
@@ -191,10 +205,10 @@ class FishingForecastService {
 
   /// Улучшение временных окон с дополнительной информацией
   List<Map<String, dynamic>> _enhanceBestTimeWindows(
-      WeatherApiResponse weather,
-      BiteForecastModel biteForecast,
-      BuildContext? context,
-      ) {
+    WeatherApiResponse weather,
+    BiteForecastModel biteForecast,
+    BuildContext? context,
+  ) {
     final enhancedWindows = <Map<String, dynamic>>[];
 
     try {
@@ -233,7 +247,10 @@ class FishingForecastService {
   }
 
   /// Форматирование факторов для UI
-  Map<String, dynamic> _formatFactors(Map<String, BiteFactor> factors, BuildContext? context) {
+  Map<String, dynamic> _formatFactors(
+    Map<String, BiteFactor> factors,
+    BuildContext? context,
+  ) {
     final formatted = <String, dynamic>{};
 
     try {
@@ -247,7 +264,11 @@ class FishingForecastService {
           'description': factor.description,
           'score': (factor.value * 100).round(),
           'level': _getFactorLevel(factor.value),
-          'recommendation': _getFactorRecommendation(entry.key, factor.value, context),
+          'recommendation': _getFactorRecommendation(
+            entry.key,
+            factor.value,
+            context,
+          ),
         };
       }
     } catch (e) {
@@ -267,26 +288,70 @@ class FishingForecastService {
   }
 
   /// Рекомендация для конкретного фактора
-  String _getFactorRecommendation(String factorName, double value, BuildContext? context) {
+  String _getFactorRecommendation(
+    String factorName,
+    double value,
+    BuildContext? context,
+  ) {
     switch (factorName) {
       case 'pressure':
-        if (value >= 0.7) return context?.let((c) => AppLocalizations.of(c).translate('pressure_stable_good')) ?? 'Стабильное давление благоприятно';
-        if (value < 0.4) return context?.let((c) => AppLocalizations.of(c).translate('pressure_low_bad')) ?? 'Низкое давление - рыба пассивна';
-        return context?.let((c) => AppLocalizations.of(c).translate('pressure_high_bad')) ?? 'Высокое давление - клев слабый';
+        if (value >= 0.7)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('pressure_stable_good'),
+              ) ??
+              'Стабильное давление благоприятно';
+        if (value < 0.4)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('pressure_low_bad'),
+              ) ??
+              'Низкое давление - рыба пассивна';
+        return context?.let(
+              (c) => AppLocalizations.of(c).translate('pressure_high_bad'),
+            ) ??
+            'Высокое давление - клев слабый';
 
       case 'wind':
-        if (value >= 0.7) return context?.let((c) => AppLocalizations.of(c).translate('wind_optimal')) ?? 'Оптимальный ветер';
-        if (value < 0.4) return context?.let((c) => AppLocalizations.of(c).translate('wind_calm')) ?? 'Штиль - используйте легкие приманки';
-        return context?.let((c) => AppLocalizations.of(c).translate('wind_strong')) ?? 'Сильный ветер затрудняет рыбалку';
+        if (value >= 0.7)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('wind_optimal'),
+              ) ??
+              'Оптимальный ветер';
+        if (value < 0.4)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('wind_calm'),
+              ) ??
+              'Штиль - используйте легкие приманки';
+        return context?.let(
+              (c) => AppLocalizations.of(c).translate('wind_strong'),
+            ) ??
+            'Сильный ветер затрудняет рыбалку';
 
       case 'moon':
-        if (value >= 0.7) return context?.let((c) => AppLocalizations.of(c).translate('moon_active_phase')) ?? 'Активная фаза луны';
-        return context?.let((c) => AppLocalizations.of(c).translate('moon_passive_phase')) ?? 'Пассивная фаза луны';
+        if (value >= 0.7)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('moon_active_phase'),
+              ) ??
+              'Активная фаза луны';
+        return context?.let(
+              (c) => AppLocalizations.of(c).translate('moon_passive_phase'),
+            ) ??
+            'Пассивная фаза луны';
 
       case 'temperature':
-        if (value >= 0.7) return context?.let((c) => AppLocalizations.of(c).translate('temperature_optimal')) ?? 'Комфортная температура';
-        if (value < 0.4) return context?.let((c) => AppLocalizations.of(c).translate('temperature_cold')) ?? 'Холодная погода';
-        return context?.let((c) => AppLocalizations.of(c).translate('temperature_hot')) ?? 'Жаркая погода';
+        if (value >= 0.7)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('temperature_optimal'),
+              ) ??
+              'Комфортная температура';
+        if (value < 0.4)
+          return context?.let(
+                (c) => AppLocalizations.of(c).translate('temperature_cold'),
+              ) ??
+              'Холодная погода';
+        return context?.let(
+              (c) => AppLocalizations.of(c).translate('temperature_hot'),
+            ) ??
+            'Жаркая погода';
 
       default:
         return 'Нормальные условия';
@@ -300,16 +365,21 @@ class FishingForecastService {
 
     return {
       'current': currentPressure,
-      'trend': 'stable', // stable, rising, falling, rapidly_rising, rapidly_falling
+      'trend':
+          'stable', // stable, rising, falling, rapidly_rising, rapidly_falling
       'change24h': 0.0, // Изменение за 24 часа
-      'recommendation': currentPressure >= 1010 && currentPressure <= 1025
-          ? 'pressure_stable_good'
-          : 'pressure_unstable',
+      'recommendation':
+          currentPressure >= 1010 && currentPressure <= 1025
+              ? 'pressure_stable_good'
+              : 'pressure_unstable',
     };
   }
 
   /// Анализ ветра для рыбалки
-  Map<String, dynamic> _analyzeWindForFishing(WeatherApiResponse weather, BuildContext? context) {
+  Map<String, dynamic> _analyzeWindForFishing(
+    WeatherApiResponse weather,
+    BuildContext? context,
+  ) {
     final wind = weather.current;
     final windKph = wind.windKph;
     final windDir = wind.windDir;
@@ -345,16 +415,24 @@ class FishingForecastService {
   String _getOptimalFishingSide(String windDir) {
     // Упрощенная логика - обычно лучше ловить с наветренной стороны
     switch (windDir.toUpperCase()) {
-      case 'N': return 'south_side';
-      case 'S': return 'north_side';
-      case 'E': return 'west_side';
-      case 'W': return 'east_side';
-      default: return 'windward_side';
+      case 'N':
+        return 'south_side';
+      case 'S':
+        return 'north_side';
+      case 'E':
+        return 'west_side';
+      case 'W':
+        return 'east_side';
+      default:
+        return 'windward_side';
     }
   }
 
   /// Анализ луны для рыбалки
-  Map<String, dynamic> _analyzeMoonForFishing(WeatherApiResponse weather, BuildContext? context) {
+  Map<String, dynamic> _analyzeMoonForFishing(
+    WeatherApiResponse weather,
+    BuildContext? context,
+  ) {
     if (weather.forecast.isEmpty) {
       return {
         'phase': 'unknown',
@@ -378,14 +456,18 @@ class FishingForecastService {
     return {
       'phase': moonPhase,
       'impact': impact,
-      'recommendation': impact == 'moon_impact_excellent'
-          ? 'moon_active_phase'
-          : 'moon_passive_phase',
+      'recommendation':
+          impact == 'moon_impact_excellent'
+              ? 'moon_active_phase'
+              : 'moon_passive_phase',
     };
   }
 
   /// Рекомендация оптимальной глубины
-  Map<String, dynamic> _recommendOptimalDepth(WeatherApiResponse weather, BiteForecastModel forecast) {
+  Map<String, dynamic> _recommendOptimalDepth(
+    WeatherApiResponse weather,
+    BiteForecastModel forecast,
+  ) {
     final pressure = weather.current.pressureMb;
     final temp = weather.current.tempC;
 
@@ -416,19 +498,23 @@ class FishingForecastService {
   /// Диапазон глубин в метрах
   String _getDepthRange(String depth) {
     switch (depth) {
-      case 'shallow': return '0.5-2м';
-      case 'medium': return '2-5м';
-      case 'deep': return '5-15м';
-      default: return '2-5м';
+      case 'shallow':
+        return '0.5-2м';
+      case 'medium':
+        return '2-5м';
+      case 'deep':
+        return '5-15м';
+      default:
+        return '2-5м';
     }
   }
 
   /// Рекомендация приманок
   List<Map<String, dynamic>> _recommendBaits(
-      WeatherApiResponse weather,
-      BiteForecastModel forecast,
-      BuildContext? context,
-      ) {
+    WeatherApiResponse weather,
+    BiteForecastModel forecast,
+    BuildContext? context,
+  ) {
     final baits = <Map<String, dynamic>>[];
 
     final temp = weather.current.tempC;
@@ -476,7 +562,6 @@ class FishingForecastService {
           'colors': ['natural'],
         });
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка при рекомендации приманок: $e');
     }
@@ -486,10 +571,10 @@ class FishingForecastService {
 
   /// Рекомендация техники ловли
   Map<String, dynamic> _recommendTechnique(
-      WeatherApiResponse weather,
-      BiteForecastModel forecast,
-      BuildContext? context,
-      ) {
+    WeatherApiResponse weather,
+    BiteForecastModel forecast,
+    BuildContext? context,
+  ) {
     final temp = weather.current.tempC;
     final activity = forecast.overallActivity;
 
@@ -511,19 +596,15 @@ class FishingForecastService {
       tips = ['Средний темп', 'Периодические паузы', 'Смена ритма'];
     }
 
-    return {
-      'type': technique,
-      'description': description,
-      'tips': tips,
-    };
+    return {'type': technique, 'description': description, 'tips': tips};
   }
 
   /// Генерация практических советов
   List<String> _generatePracticalTips(
-      WeatherApiResponse weather,
-      BiteForecastModel forecast,
-      BuildContext? context,
-      ) {
+    WeatherApiResponse weather,
+    BiteForecastModel forecast,
+    BuildContext? context,
+  ) {
     final tips = <String>[];
 
     try {
@@ -556,7 +637,6 @@ class FishingForecastService {
 
       // Удаляем дубликаты
       return tips.toSet().toList();
-
     } catch (e) {
       debugPrint('❌ Ошибка при генерации практических советов: $e');
       return forecast.tips;

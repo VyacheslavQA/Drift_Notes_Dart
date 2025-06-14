@@ -83,18 +83,12 @@ class _WeatherHeaderState extends State<WeatherHeader>
     );
 
     _effectsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _effectsController,
-        curve: Curves.linear,
-      ),
+      CurvedAnimation(parent: _effectsController, curve: Curves.linear),
     );
 
     // Плавное дыхание
     _breathingAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _breathingController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
     );
 
     _animationController.forward();
@@ -130,7 +124,9 @@ class _WeatherHeaderState extends State<WeatherHeader>
         ),
         boxShadow: [
           BoxShadow(
-            color: _getTimeBasedGradientStart(current.isDay == 1).withValues(alpha: 0.3),
+            color: _getTimeBasedGradientStart(
+              current.isDay == 1,
+            ).withValues(alpha: 0.3),
             blurRadius: 20,
             spreadRadius: 5,
             offset: const Offset(0, 8),
@@ -196,11 +192,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
               width: 1,
             ),
           ),
-          child: Icon(
-            Icons.location_on,
-            color: Colors.white,
-            size: 20,
-          ),
+          child: Icon(Icons.location_on, color: Colors.white, size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -271,7 +263,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
     );
   }
 
-  Widget _buildMainWeatherInfo(Current current, AppLocalizations localizations) {
+  Widget _buildMainWeatherInfo(
+    Current current,
+    AppLocalizations localizations,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -288,7 +283,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.weatherSettings.convertTemperature(current.tempC).round().toString(),
+                      widget.weatherSettings
+                          .convertTemperature(current.tempC)
+                          .round()
+                          .toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 72,
@@ -325,7 +323,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
 
               // Описание погоды
               Text(
-                _translateWeatherDescription(current.condition.text, localizations),
+                _translateWeatherDescription(
+                  current.condition.text,
+                  localizations,
+                ),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.95),
                   fontSize: 18,
@@ -377,25 +378,29 @@ class _WeatherHeaderState extends State<WeatherHeader>
           ),
         ],
       ),
-      child: Center(
-        child: _buildWeatherIconWithEffects(current),
-      ),
+      child: Center(child: _buildWeatherIconWithEffects(current)),
     );
   }
 
   Widget _buildWeatherIconWithEffects(Current current) {
     final icon = _getWeatherIcon(current.condition.code, current.isDay == 1);
-    final color = _getWeatherIconColor(current.condition.code, current.isDay == 1);
+    final color = _getWeatherIconColor(
+      current.condition.code,
+      current.isDay == 1,
+    );
     final conditionText = current.condition.text.toLowerCase();
 
     // Добавляем более приятные эффекты для разных типов погоды
     if (conditionText.contains('rain') || conditionText.contains('drizzle')) {
       return _buildRainyEffect(icon, color);
-    } else if (conditionText.contains('snow') || conditionText.contains('blizzard')) {
+    } else if (conditionText.contains('snow') ||
+        conditionText.contains('blizzard')) {
       return _buildSnowyEffect(icon, color);
-    } else if (conditionText.contains('thunder') || conditionText.contains('storm')) {
+    } else if (conditionText.contains('thunder') ||
+        conditionText.contains('storm')) {
       return _buildThunderEffect(icon, color);
-    } else if (conditionText.contains('sun') || conditionText.contains('clear')) {
+    } else if (conditionText.contains('sun') ||
+        conditionText.contains('clear')) {
       return _buildSunnyEffect(icon, color);
     } else if (conditionText.contains('cloud')) {
       return _buildCloudyEffect(icon, color);
@@ -416,7 +421,9 @@ class _WeatherHeaderState extends State<WeatherHeader>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.yellow.withValues(alpha: 0.3 * _breathingAnimation.value),
+                color: Colors.yellow.withValues(
+                  alpha: 0.3 * _breathingAnimation.value,
+                ),
                 blurRadius: 15 * _breathingAnimation.value,
                 spreadRadius: 8 * _breathingAnimation.value,
               ),
@@ -503,7 +510,10 @@ class _WeatherHeaderState extends State<WeatherHeader>
                   left: startX,
                   top: endY,
                   child: Opacity(
-                    opacity: (math.sin(animValue * math.pi) * 0.8).clamp(0.0, 0.8),
+                    opacity: (math.sin(animValue * math.pi) * 0.8).clamp(
+                      0.0,
+                      0.8,
+                    ),
                     child: Container(
                       width: 2,
                       height: 6,
@@ -548,14 +558,18 @@ class _WeatherHeaderState extends State<WeatherHeader>
               ...List.generate(6, (index) {
                 final delay = index * 0.15;
                 final animValue = (_effectsAnimation.value + delay) % 1.0;
-                final horizontalDrift = math.sin((animValue + delay) * math.pi * 3) * 8;
+                final horizontalDrift =
+                    math.sin((animValue + delay) * math.pi * 3) * 8;
                 final verticalPos = 5 + (animValue * 65);
 
                 return Positioned(
                   left: 15 + (index * 10.0) + horizontalDrift,
                   top: verticalPos,
                   child: Opacity(
-                    opacity: (math.sin(animValue * math.pi) * 0.9).clamp(0.0, 0.9),
+                    opacity: (math.sin(animValue * math.pi) * 0.9).clamp(
+                      0.0,
+                      0.9,
+                    ),
                     child: Transform.rotate(
                       angle: animValue * math.pi * 2,
                       child: Icon(
@@ -590,22 +604,31 @@ class _WeatherHeaderState extends State<WeatherHeader>
         // Интенсивность вспышки
         double flashIntensity = 0.0;
         if (flashTrigger1) {
-          flashIntensity = math.sin((timePhase - 0.15) * math.pi * 10).clamp(0.0, 1.0);
+          flashIntensity = math
+              .sin((timePhase - 0.15) * math.pi * 10)
+              .clamp(0.0, 1.0);
         } else if (flashTrigger2) {
-          flashIntensity = math.sin((timePhase - 0.7) * math.pi * 20).clamp(0.0, 1.0);
+          flashIntensity = math
+              .sin((timePhase - 0.7) * math.pi * 20)
+              .clamp(0.0, 1.0);
         }
 
         return Container(
-          decoration: isFlashing ? BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.yellow.withValues(alpha: 0.6 * flashIntensity),
-                blurRadius: 25 * flashIntensity,
-                spreadRadius: 10 * flashIntensity,
-              ),
-            ],
-          ) : null,
+          decoration:
+              isFlashing
+                  ? BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.yellow.withValues(
+                          alpha: 0.6 * flashIntensity,
+                        ),
+                        blurRadius: 25 * flashIntensity,
+                        spreadRadius: 10 * flashIntensity,
+                      ),
+                    ],
+                  )
+                  : null,
           child: Stack(
             children: [
               // Основная иконка с дыханием
@@ -618,9 +641,14 @@ class _WeatherHeaderState extends State<WeatherHeader>
                       child: Icon(
                         icon,
                         size: 50,
-                        color: isFlashing
-                            ? Color.lerp(color, Colors.yellow[100], flashIntensity * 0.7)
-                            : color,
+                        color:
+                            isFlashing
+                                ? Color.lerp(
+                                  color,
+                                  Colors.yellow[100],
+                                  flashIntensity * 0.7,
+                                )
+                                : color,
                       ),
                     );
                   },
@@ -687,10 +715,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
       decoration: BoxDecoration(
         color: badgeColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: badgeColor.withValues(alpha: 0.4),
-          width: 1,
-        ),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 1),
       ),
       child: Text(
         badgeText,
@@ -746,11 +771,7 @@ class _WeatherHeaderState extends State<WeatherHeader>
     return Expanded(
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 20,
-          ),
+          Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 20),
           const SizedBox(height: 6),
           Text(
             label,
@@ -813,18 +834,42 @@ class _WeatherHeaderState extends State<WeatherHeader>
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
       case 1003: // Partly cloudy
         return isDay ? Icons.wb_cloudy : Icons.cloud;
-      case 1006: case 1009: // Cloudy/Overcast
-      return Icons.cloud;
-      case 1030: case 1135: case 1147: // Mist/Fog
-      return Icons.cloud;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
-      case 1198: case 1201: // Rain
-      return Icons.grain;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
-      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
-      return Icons.ac_unit;
-      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
-      return Icons.flash_on;
+      case 1006:
+      case 1009: // Cloudy/Overcast
+        return Icons.cloud;
+      case 1030:
+      case 1135:
+      case 1147: // Mist/Fog
+        return Icons.cloud;
+      case 1063:
+      case 1180:
+      case 1183:
+      case 1186:
+      case 1189:
+      case 1192:
+      case 1195:
+      case 1198:
+      case 1201: // Rain
+        return Icons.grain;
+      case 1066:
+      case 1210:
+      case 1213:
+      case 1216:
+      case 1219:
+      case 1222:
+      case 1225:
+      case 1237:
+      case 1255:
+      case 1258:
+      case 1261:
+      case 1264: // Snow
+        return Icons.ac_unit;
+      case 1087:
+      case 1273:
+      case 1276:
+      case 1279:
+      case 1282: // Thunder
+        return Icons.flash_on;
       default:
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }
@@ -837,24 +882,51 @@ class _WeatherHeaderState extends State<WeatherHeader>
         return isDay ? Colors.yellow[300]! : Colors.blue[200]!;
       case 1003: // Partly cloudy
         return isDay ? Colors.orange[300]! : Colors.grey[300]!;
-      case 1006: case 1009: // Cloudy
-      return Colors.grey[300]!;
-      case 1030: case 1135: case 1147: // Mist/Fog
-      return Colors.grey[400]!;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
-      case 1198: case 1201: // Rain
-      return Colors.blue[300]!;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
-      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
-      return Colors.white;
-      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
-      return Colors.yellow[400]!;
+      case 1006:
+      case 1009: // Cloudy
+        return Colors.grey[300]!;
+      case 1030:
+      case 1135:
+      case 1147: // Mist/Fog
+        return Colors.grey[400]!;
+      case 1063:
+      case 1180:
+      case 1183:
+      case 1186:
+      case 1189:
+      case 1192:
+      case 1195:
+      case 1198:
+      case 1201: // Rain
+        return Colors.blue[300]!;
+      case 1066:
+      case 1210:
+      case 1213:
+      case 1216:
+      case 1219:
+      case 1222:
+      case 1225:
+      case 1237:
+      case 1255:
+      case 1258:
+      case 1261:
+      case 1264: // Snow
+        return Colors.white;
+      case 1087:
+      case 1273:
+      case 1276:
+      case 1279:
+      case 1282: // Thunder
+        return Colors.yellow[400]!;
       default:
         return isDay ? Colors.yellow[300]! : Colors.blue[200]!;
     }
   }
 
-  String _translateWeatherDescription(String description, AppLocalizations localizations) {
+  String _translateWeatherDescription(
+    String description,
+    AppLocalizations localizations,
+  ) {
     final cleanDescription = description.trim().toLowerCase();
 
     final Map<String, String> descriptionToKey = {

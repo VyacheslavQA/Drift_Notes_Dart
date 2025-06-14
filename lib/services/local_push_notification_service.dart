@@ -13,12 +13,12 @@ import '../models/notification_model.dart';
 
 class LocalPushNotificationService {
   static final LocalPushNotificationService _instance =
-  LocalPushNotificationService._internal();
+      LocalPushNotificationService._internal();
   factory LocalPushNotificationService() => _instance;
   LocalPushNotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notifications =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
 
   NotificationSoundSettings _soundSettings = const NotificationSoundSettings();
   bool _isInitialized = false;
@@ -30,7 +30,7 @@ class LocalPushNotificationService {
 
   // Stream для уведомления о нажатиях на уведомления
   final StreamController<String> _notificationTapStreamController =
-  StreamController<String>.broadcast();
+      StreamController<String>.broadcast();
 
   Stream<String> get notificationTapStream =>
       _notificationTapStreamController.stream;
@@ -57,7 +57,9 @@ class LocalPushNotificationService {
   Future<void> _initializeNotifications() async {
     try {
       // Настройки для Android
-      const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/launcher_icon',
+      );
 
       // Настройки для iOS
       const iosSettings = DarwinInitializationSettings(
@@ -101,7 +103,8 @@ class LocalPushNotificationService {
     try {
       // Проверяем настройки звука
       final shouldPlaySound = _soundSettings.shouldPlaySound();
-      final shouldVibrate = _soundSettings.vibrationEnabled && !_soundSettings.isQuietHours();
+      final shouldVibrate =
+          _soundSettings.vibrationEnabled && !_soundSettings.isQuietHours();
 
       // Настройки для Android
       final androidDetails = AndroidNotificationDetails(
@@ -154,7 +157,6 @@ class LocalPushNotificationService {
       }
 
       debugPrint('✅ Уведомление отправлено: ${notification.title}');
-
     } catch (e) {
       debugPrint('❌ Ошибка отправки уведомления: $e');
     }
@@ -217,7 +219,6 @@ class LocalPushNotificationService {
 
       // Сохраняем в SharedPreferences
       await _saveBadgeCount();
-
     } catch (e) {
       debugPrint('❌ Ошибка обновления бейджа: $e');
     }
@@ -249,7 +250,9 @@ class LocalPushNotificationService {
   NotificationSoundSettings get soundSettings => _soundSettings;
 
   /// Обновление настроек звука
-  Future<void> updateSoundSettings(NotificationSoundSettings newSettings) async {
+  Future<void> updateSoundSettings(
+    NotificationSoundSettings newSettings,
+  ) async {
     _soundSettings = newSettings;
     await _saveSoundSettings();
   }

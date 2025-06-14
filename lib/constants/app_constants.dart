@@ -10,7 +10,9 @@ class AppConstants {
   static const Color textColor = Color(0xFFE3D8B2); // Светло-бежевый
   static const Color accentColor = Color(0xFFE3D8B2); // Светло-бежевый
   static const Color primaryColor = Color(0xFF2E7D32); // Зелёный для кнопок
-  static const Color secondaryTextColor = Color(0xFFCCCCCC); // Серый для вторичного текста
+  static const Color secondaryTextColor = Color(
+    0xFFCCCCCC,
+  ); // Серый для вторичного текста
   static const Color cardColor = Color(0xFF12332E); // Цвет карточек
   static const Color bottomBarColor = Color(0xFF0B1F1D); // Цвет нижней панели
   static const Color dividerColor = Color(0xFF164C45); // Цвет разделителей
@@ -80,32 +82,92 @@ class AppConstants {
 
   // Города Казахстана
   static const List<String> kazakhstanCities = [
-    'Акколь', 'Аксу', 'Актау', 'Актобе', 'Алга', 'Алматы', 'Алтай', 'Аральск', 'Аркалык', 'Астана', 'Атбасар', 'Атырау',
-    'Байконур', 'Балхаш', 'Булаево',
+    'Акколь',
+    'Аксу',
+    'Актау',
+    'Актобе',
+    'Алга',
+    'Алматы',
+    'Алтай',
+    'Аральск',
+    'Аркалык',
+    'Астана',
+    'Атбасар',
+    'Атырау',
+    'Байконур',
+    'Балхаш',
+    'Булаево',
     'Державинск',
-    'Ерейментау', 'Есик',
-    'Жанаозен', 'Жанатас', 'Жаркент', 'Жезказган', 'Житикара',
-    'Зайсан', 'Зыряновск',
-    'Кандыагаш', 'Капшагай', 'Караганда', 'Каражал', 'Каратау', 'Каскелен', 'Кентау', 'Кокшетау', 'Костанай', 'Кызылорда',
+    'Ерейментау',
+    'Есик',
+    'Жанаозен',
+    'Жанатас',
+    'Жаркент',
+    'Жезказган',
+    'Житикара',
+    'Зайсан',
+    'Зыряновск',
+    'Кандыагаш',
+    'Капшагай',
+    'Караганда',
+    'Каражал',
+    'Каратау',
+    'Каскелен',
+    'Кентау',
+    'Кокшетау',
+    'Костанай',
+    'Кызылорда',
     'Ленгер',
     'Макинск',
-    'Павлодар', 'Петропавловск', 'Приозерск',
-    'Риддер', 'Рудный',
-    'Сарань', 'Сатпаев', 'Семей', 'Сергеевка', 'Степногорск',
-    'Талгар', 'Талдыкорган', 'Тараз', 'Текели', 'Темир', 'Темиртау', 'Туркестан',
-    'Уральск', 'Усть-Каменогорск',
+    'Павлодар',
+    'Петропавловск',
+    'Приозерск',
+    'Риддер',
+    'Рудный',
+    'Сарань',
+    'Сатпаев',
+    'Семей',
+    'Сергеевка',
+    'Степногорск',
+    'Талгар',
+    'Талдыкорган',
+    'Тараз',
+    'Текели',
+    'Темир',
+    'Темиртау',
+    'Туркестан',
+    'Уральск',
+    'Усть-Каменогорск',
     'Форт-Шевченко',
     'Хромтау',
-    'Шалкар', 'Шар', 'Шардара', 'Шахтинск', 'Шемонаиха', 'Шу', 'Шымкент',
+    'Шалкар',
+    'Шар',
+    'Шардара',
+    'Шахтинск',
+    'Шемонаиха',
+    'Шу',
+    'Шымкент',
     'Щучинск',
     'Экибастуз',
   ];
 
   // Города России
   static const List<String> russiaCities = [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
+    'Москва',
+    'Санкт-Петербург',
+    'Новосибирск',
+    'Екатеринбург',
+    'Казань',
+    'Нижний Новгород',
+    'Челябинск',
+    'Самара',
+    'Омск',
+    'Ростов-на-Дону',
+    'Уфа',
+    'Красноярск',
+    'Воронеж',
+    'Пермь',
+    'Волгоград',
   ];
 
   // Карта городов по странам
@@ -133,10 +195,7 @@ class AppConstants {
     color: textColor,
   );
 
-  static const TextStyle bodyStyle = TextStyle(
-    fontSize: 14,
-    color: textColor,
-  );
+  static const TextStyle bodyStyle = TextStyle(fontSize: 14, color: textColor);
 
   static const TextStyle captionStyle = TextStyle(
     fontSize: 12,
@@ -157,7 +216,10 @@ class AppConstants {
   static const Curve animationCurve = Curves.easeInOut;
 
   // Вспомогательный метод для получения переведенного названия типа рыбалки
-  static String getLocalizedFishingType(String fishingTypeKey, BuildContext context) {
+  static String getLocalizedFishingType(
+    String fishingTypeKey,
+    BuildContext context,
+  ) {
     try {
       final localizations = AppLocalizations.of(context);
       return localizations.translate(fishingTypeKey);
@@ -167,20 +229,32 @@ class AppConstants {
 
     // Fallback на русский
     switch (fishingTypeKey) {
-      case 'carp_fishing': return 'Карповая рыбалка';
-      case 'spinning': return 'Спиннинг';
-      case 'feeder': return 'Фидер';
-      case 'float_fishing': return 'Поплавочная';
-      case 'ice_fishing': return 'Зимняя рыбалка';
-      case 'fly_fishing': return 'Нахлыст';
-      case 'trolling': return 'Троллинг';
-      case 'other_fishing': return 'Другое';
-      default: return fishingTypeKey;
+      case 'carp_fishing':
+        return 'Карповая рыбалка';
+      case 'spinning':
+        return 'Спиннинг';
+      case 'feeder':
+        return 'Фидер';
+      case 'float_fishing':
+        return 'Поплавочная';
+      case 'ice_fishing':
+        return 'Зимняя рыбалка';
+      case 'fly_fishing':
+        return 'Нахлыст';
+      case 'trolling':
+        return 'Троллинг';
+      case 'other_fishing':
+        return 'Другое';
+      default:
+        return fishingTypeKey;
     }
   }
 
   // ДОБАВЛЕНО: Вспомогательный метод для получения переведенного уровня опыта
-  static String getLocalizedExperienceLevel(String experienceLevelKey, BuildContext context) {
+  static String getLocalizedExperienceLevel(
+    String experienceLevelKey,
+    BuildContext context,
+  ) {
     try {
       final localizations = AppLocalizations.of(context);
       return localizations.translate(experienceLevelKey);
@@ -190,12 +264,18 @@ class AppConstants {
 
     // Fallback на русский
     switch (experienceLevelKey) {
-      case 'novice': return 'Новичок';
-      case 'amateur': return 'Любитель';
-      case 'advanced': return 'Продвинутый';
-      case 'professional': return 'Профи';
-      case 'expert': return 'Эксперт';
-      default: return experienceLevelKey;
+      case 'novice':
+        return 'Новичок';
+      case 'amateur':
+        return 'Любитель';
+      case 'advanced':
+        return 'Продвинутый';
+      case 'professional':
+        return 'Профи';
+      case 'expert':
+        return 'Эксперт';
+      default:
+        return experienceLevelKey;
     }
   }
 }

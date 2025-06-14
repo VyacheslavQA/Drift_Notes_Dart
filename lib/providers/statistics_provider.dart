@@ -5,7 +5,6 @@ import '../models/statistics_models.dart';
 import '../models/fishing_note_model.dart';
 import '../repositories/fishing_note_repository.dart';
 
-
 class StatisticsProvider extends ChangeNotifier {
   late final FishingNoteRepository _fishingNoteRepository;
 
@@ -78,10 +77,7 @@ class StatisticsProvider extends ChangeNotifier {
 
   // Изменение пользовательского интервала дат
   void updateCustomDateRange(DateTime startDate, DateTime endDate) {
-    _customDateRange = CustomDateRange(
-      startDate: startDate,
-      endDate: endDate,
-    );
+    _customDateRange = CustomDateRange(startDate: startDate, endDate: endDate);
 
     // Если выбран пользовательский период, обновляем статистику
     if (_selectedPeriod == StatisticsPeriod.custom) {
@@ -109,45 +105,66 @@ class StatisticsProvider extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
 
     // Исключаем запланированные рыбалки (те, у которых дата начала в будущем)
-    final pastNotes = _allNotes.where((note) {
-      final noteStartDate = DateTime(note.date.year, note.date.month, note.date.day);
-      return !noteStartDate.isAfter(today);
-    }).toList();
+    final pastNotes =
+        _allNotes.where((note) {
+          final noteStartDate = DateTime(
+            note.date.year,
+            note.date.month,
+            note.date.day,
+          );
+          return !noteStartDate.isAfter(today);
+        }).toList();
 
     // Применяем фильтр по выбранному периоду
     switch (_selectedPeriod) {
       case StatisticsPeriod.week:
-      // Последние 7 дней
+        // Последние 7 дней
         final weekAgo = today.subtract(const Duration(days: 7));
         return pastNotes.where((note) {
-          final noteDate = DateTime(note.date.year, note.date.month, note.date.day);
+          final noteDate = DateTime(
+            note.date.year,
+            note.date.month,
+            note.date.day,
+          );
           return !noteDate.isBefore(weekAgo);
         }).toList();
 
       case StatisticsPeriod.month:
-      // Последние 30 дней
+        // Последние 30 дней
         final monthAgo = today.subtract(const Duration(days: 30));
         return pastNotes.where((note) {
-          final noteDate = DateTime(note.date.year, note.date.month, note.date.day);
+          final noteDate = DateTime(
+            note.date.year,
+            note.date.month,
+            note.date.day,
+          );
           return !noteDate.isBefore(monthAgo);
         }).toList();
 
       case StatisticsPeriod.year:
-      // Текущий год
+        // Текущий год
         final startOfYear = DateTime(now.year, 1, 1);
         return pastNotes.where((note) {
-          final noteDate = DateTime(note.date.year, note.date.month, note.date.day);
+          final noteDate = DateTime(
+            note.date.year,
+            note.date.month,
+            note.date.day,
+          );
           return !noteDate.isBefore(startOfYear);
         }).toList();
 
       case StatisticsPeriod.allTime:
-      // Все заметки без фильтрации
+        // Все заметки без фильтрации
         return pastNotes;
 
       case StatisticsPeriod.custom:
-      // Пользовательский интервал
+        // Пользовательский интервал
         return pastNotes.where((note) {
-          final noteDate = DateTime(note.date.year, note.date.month, note.date.day);
+          final noteDate = DateTime(
+            note.date.year,
+            note.date.month,
+            note.date.day,
+          );
           return _customDateRange.containsDate(noteDate);
         }).toList();
     }
@@ -188,7 +205,7 @@ class StatisticsProvider extends ChangeNotifier {
       while (!currentDate.isAfter(endDate)) {
         // Добавляем дату в формате строки YYYY-MM-DD в множество
         uniqueFishingDays.add(
-            '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}'
+          '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}',
         );
         currentDate = currentDate.add(const Duration(days: 1));
       }
@@ -218,7 +235,9 @@ class StatisticsProvider extends ChangeNotifier {
     for (var note in _filteredNotes) {
       for (var record in note.biteRecords) {
         // Проверяем, что это реализованная поклевка (пойманная рыба)
-        if (record.fishType.isNotEmpty && record.weight > 0 && record.weight > maxWeight) {
+        if (record.fishType.isNotEmpty &&
+            record.weight > 0 &&
+            record.weight > maxWeight) {
           maxWeight = record.weight;
           biggestFish = BiggestFishInfo(
             fishType: record.fishType,
@@ -237,7 +256,10 @@ class StatisticsProvider extends ChangeNotifier {
         ..sort((a, b) => b.date.compareTo(a.date));
 
       latestTrip = LatestTripInfo(
-        tripName: sortedNotes[0].title.isNotEmpty ? sortedNotes[0].title : sortedNotes[0].location,
+        tripName:
+            sortedNotes[0].title.isNotEmpty
+                ? sortedNotes[0].title
+                : sortedNotes[0].location,
         tripDate: sortedNotes[0].date,
       );
     }
@@ -247,7 +269,8 @@ class StatisticsProvider extends ChangeNotifier {
     if (totalFish > 0) {
       // Создаем словарь для подсчета рыбы по месяцам
       final Map<String, int> fishCountByMonth = {};
-      final Map<String, Map<String, int>> monthDetails = {}; // Для хранения года и номера месяца
+      final Map<String, Map<String, int>> monthDetails =
+          {}; // Для хранения года и номера месяца
 
       for (var note in _filteredNotes) {
         for (var record in note.biteRecords) {
@@ -260,7 +283,7 @@ class StatisticsProvider extends ChangeNotifier {
             if (!monthDetails.containsKey(key)) {
               monthDetails[key] = {
                 'month': record.time.month,
-                'year': record.time.year
+                'year': record.time.year,
               };
             }
           }

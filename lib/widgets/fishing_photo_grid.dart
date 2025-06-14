@@ -41,9 +41,10 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
     }
 
     // Ограничиваем количество отображаемых фото (для превью)
-    final displayedPhotos = widget.photoUrls.length > widget.maxDisplayed
-        ? widget.photoUrls.sublist(0, widget.maxDisplayed)
-        : widget.photoUrls;
+    final displayedPhotos =
+        widget.photoUrls.length > widget.maxDisplayed
+            ? widget.photoUrls.sublist(0, widget.maxDisplayed)
+            : widget.photoUrls;
 
     final hasMore = widget.photoUrls.length > widget.maxDisplayed;
 
@@ -124,7 +125,9 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                 fit: BoxFit.cover,
                 placeholder: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.textColor,
+                    ),
                     strokeWidth: 2.0,
                   ),
                 ),
@@ -139,7 +142,9 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        AppLocalizations.of(context).translate('error_loading_image'),
+                        AppLocalizations.of(
+                          context,
+                        ).translate('error_loading_image'),
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
@@ -194,8 +199,8 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
 
   // Отображение, когда нет фотографий
   Widget _buildEmptyState() {
-    final emptyText = widget.emptyText ??
-        AppLocalizations.of(context).translate('no_photos');
+    final emptyText =
+        widget.emptyText ?? AppLocalizations.of(context).translate('no_photos');
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -235,10 +240,11 @@ class _FishingPhotoGridState extends State<FishingPhotoGrid> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PhotoGalleryScreen(
-          photos: widget.photoUrls,
-          initialIndex: initialIndex,
-        ),
+        builder:
+            (context) => PhotoGalleryScreen(
+              photos: widget.photoUrls,
+              initialIndex: initialIndex,
+            ),
       ),
     );
   }

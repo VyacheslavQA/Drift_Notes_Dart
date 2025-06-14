@@ -9,11 +9,7 @@ class CenterButtonTooltip extends StatefulWidget {
   final Widget child;
   final VoidCallback? onDismiss;
 
-  const CenterButtonTooltip({
-    super.key,
-    required this.child,
-    this.onDismiss,
-  });
+  const CenterButtonTooltip({super.key, required this.child, this.onDismiss});
 
   @override
   State<CenterButtonTooltip> createState() => _CenterButtonTooltipState();
@@ -41,21 +37,13 @@ class _CenterButtonTooltipState extends State<CenterButtonTooltip>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _checkIfShouldShowTooltip() async {
@@ -273,9 +261,10 @@ class ArrowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
 
     final path = Path();
 

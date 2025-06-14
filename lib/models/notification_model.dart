@@ -1,14 +1,14 @@
 // Путь: lib/models/notification_model.dart
 
 enum NotificationType {
-  general,           // Общие уведомления
-  fishingReminder,   // Напоминания о рыбалке
+  general, // Общие уведомления
+  fishingReminder, // Напоминания о рыбалке
   tournamentReminder, // НОВЫЙ: Напоминания о турнирах
-  biteForecast,      // Прогнозы клева
-  weatherUpdate,     // Обновления погоды
-  newFeatures,       // Новые функции
-  systemUpdate,      // Системные обновления
-  policyUpdate,      // Обновления политики конфиденциальности и соглашений
+  biteForecast, // Прогнозы клева
+  weatherUpdate, // Обновления погоды
+  newFeatures, // Новые функции
+  systemUpdate, // Системные обновления
+  policyUpdate, // Обновления политики конфиденциальности и соглашений
 }
 
 class NotificationModel {
@@ -68,10 +68,12 @@ class NotificationModel {
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       type: NotificationType.values.firstWhere(
-            (e) => e.toString() == json['type'],
+        (e) => e.toString() == json['type'],
         orElse: () => NotificationType.general,
       ),
-      timestamp: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp: DateTime.parse(
+        json['timestamp'] ?? DateTime.now().toIso8601String(),
+      ),
       isRead: json['isRead'] ?? false,
       data: Map<String, dynamic>.from(json['data'] ?? {}),
     );

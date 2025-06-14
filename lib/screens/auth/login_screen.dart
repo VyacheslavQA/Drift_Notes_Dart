@@ -12,10 +12,7 @@ import '../../localization/app_localizations.dart';
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
 
-  const LoginScreen({
-    super.key,
-    this.onAuthSuccess,
-  });
+  const LoginScreen({super.key, this.onAuthSuccess});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -63,7 +60,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (savedEmail.isNotEmpty && savedPasswordHash.isNotEmpty) {
           // Расшифровываем пароль (в данном случае используем простое base64 декодирование)
           try {
-            final decodedPassword = utf8.decode(base64Decode(savedPasswordHash));
+            final decodedPassword = utf8.decode(
+              base64Decode(savedPasswordHash),
+            );
 
             setState(() {
               _emailController.text = savedEmail;
@@ -205,8 +204,8 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0A1F1C),  // Тёмно-зеленый
-              Color(0xFF071714),  // Более тёмный оттенок
+              Color(0xFF0A1F1C), // Тёмно-зеленый
+              Color(0xFF071714), // Более тёмный оттенок
             ],
           ),
         ),
@@ -226,7 +225,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.pop(context);
                     } else {
                       // Если не можем вернуться назад, переходим к экрану выбора авторизации
-                      Navigator.pushReplacementNamed(context, '/auth_selection');
+                      Navigator.pushReplacementNamed(
+                        context,
+                        '/auth_selection',
+                      );
                     }
                   },
                   padding: EdgeInsets.zero,
@@ -290,11 +292,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               decoration: InputDecoration(
                                 hintText: localizations.translate('email'),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFF12332E),
-                                prefixIcon: Icon(Icons.email, color: AppConstants.textColor),
+                                prefixIcon: Icon(
+                                  Icons.email,
+                                  color: AppConstants.textColor,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -320,18 +327,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 1.5,
                                   ),
                                 ),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 14, // Уменьшенный padding
                                 ),
                               ),
-                              validator: (value) => Validators.validateEmail(value, context),
+                              validator:
+                                  (value) =>
+                                      Validators.validateEmail(value, context),
                               textInputAction: TextInputAction.next,
                             ),
 
                             const SizedBox(height: 16), // Уменьшенный отступ
-
                             // Password поле - компактная версия
                             TextFormField(
                               controller: _passwordController,
@@ -342,14 +352,21 @@ class _LoginScreenState extends State<LoginScreen> {
                               decoration: InputDecoration(
                                 hintText: localizations.translate('password'),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFF12332E),
-                                prefixIcon: Icon(Icons.lock, color: AppConstants.textColor),
+                                prefixIcon: Icon(
+                                  Icons.lock,
+                                  color: AppConstants.textColor,
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                    _obscurePassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
                                     color: AppConstants.textColor,
                                   ),
                                   onPressed: () {
@@ -383,20 +400,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 1.5,
                                   ),
                                 ),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 14, // Уменьшенный padding
                                 ),
                               ),
                               obscureText: _obscurePassword,
-                              validator: (value) => Validators.validatePassword(value, context),
+                              validator:
+                                  (value) => Validators.validatePassword(
+                                    value,
+                                    context,
+                                  ),
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _login(),
                             ),
 
                             const SizedBox(height: 12), // Уменьшенный отступ
-
                             // Чекбокс "Запомнить меня" и "Забыли пароль?" в одной строке
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -418,7 +440,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         activeColor: AppConstants.primaryColor,
                                         checkColor: AppConstants.textColor,
                                         side: BorderSide(
-                                          color: AppConstants.textColor.withValues(alpha: 0.5),
+                                          color: AppConstants.textColor
+                                              .withValues(alpha: 0.5),
                                           width: 1.5,
                                         ),
                                       ),
@@ -444,13 +467,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 // Ссылка "Забыли пароль?"
                                 TextButton(
                                   onPressed: () {
-                                    Navigator.pushNamed(context, '/forgot_password');
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/forgot_password',
+                                    );
                                   },
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppConstants.textColor,
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: Text(
                                     localizations.translate('forgot_password'),
@@ -504,24 +531,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 disabledBackgroundColor: Colors.transparent,
                                 elevation: 0,
                               ),
-                              child: _isLoading
-                                  ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppConstants.textColor,
-                                  ),
-                                ),
-                              )
-                                  : Text(
-                                localizations.translate('login'),
-                                style: TextStyle(
-                                  fontSize: 16 * adaptiveTextScale,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child:
+                                  _isLoading
+                                      ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                AppConstants.textColor,
+                                              ),
+                                        ),
+                                      )
+                                      : Text(
+                                        localizations.translate('login'),
+                                        style: TextStyle(
+                                          fontSize: 16 * adaptiveTextScale,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                             ),
                           ),
 
@@ -532,18 +561,28 @@ class _LoginScreenState extends State<LoginScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                localizations.translate('no_account_register').split('?')[0] + '? ',
+                                localizations
+                                        .translate('no_account_register')
+                                        .split('?')[0] +
+                                    '? ',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 14 * adaptiveTextScale,
                                 ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/register');
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/register',
+                                  );
                                 },
                                 child: Text(
-                                  localizations.translate('no_account_register').split('? ')[1],
+                                  localizations
+                                      .translate('no_account_register')
+                                      .split('? ')[1],
                                   style: TextStyle(
                                     color: AppConstants.textColor,
                                     fontSize: 14 * adaptiveTextScale,

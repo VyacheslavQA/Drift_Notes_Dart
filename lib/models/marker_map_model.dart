@@ -28,22 +28,26 @@ class MarkerMapModel {
       id: id ?? json['id'] ?? '',
       userId: json['userId'] ?? '',
       name: json['name'] ?? '',
-      date: (json['date'] != null)
-          ? (json['date'] is Timestamp
-          ? (json['date'] as Timestamp).toDate()
-          : DateTime.fromMillisecondsSinceEpoch(json['date']))
-          : DateTime.now(),
+      date:
+          (json['date'] != null)
+              ? (json['date'] is Timestamp
+                  ? (json['date'] as Timestamp).toDate()
+                  : DateTime.fromMillisecondsSinceEpoch(json['date']))
+              : DateTime.now(),
       sector: json['sector'],
       // Поддерживаем старый формат для обратной совместимости
-      noteIds: json['noteIds'] != null
-          ? List<String>.from(json['noteIds'])
-          : (json['noteId'] != null ? [json['noteId']] : []),
-      noteNames: json['noteNames'] != null
-          ? List<String>.from(json['noteNames'])
-          : (json['noteName'] != null ? [json['noteName']] : []),
-      markers: json['markers'] != null
-          ? List<Map<String, dynamic>>.from(json['markers'])
-          : [],
+      noteIds:
+          json['noteIds'] != null
+              ? List<String>.from(json['noteIds'])
+              : (json['noteId'] != null ? [json['noteId']] : []),
+      noteNames:
+          json['noteNames'] != null
+              ? List<String>.from(json['noteNames'])
+              : (json['noteName'] != null ? [json['noteName']] : []),
+      markers:
+          json['markers'] != null
+              ? List<Map<String, dynamic>>.from(json['markers'])
+              : [],
     );
   }
 

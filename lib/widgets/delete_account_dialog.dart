@@ -83,7 +83,9 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 
   String _getValidationText(AppLocalizations localizations) {
     if (_isDeleteButtonEnabled) {
-      return _currentKeyboard == 'ru' ? 'Подтверждение принято' : 'Confirmation accepted';
+      return _currentKeyboard == 'ru'
+          ? 'Подтверждение принято'
+          : 'Confirmation accepted';
     } else {
       return _currentKeyboard == 'ru'
           ? 'Введите "удалить" для подтверждения'
@@ -97,16 +99,10 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 
     return AlertDialog(
       backgroundColor: AppConstants.surfaceColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.red,
-            size: 28,
-          ),
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -133,9 +129,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.red.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,10 +160,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
               // Инструкция по подтверждению
               Text(
                 _getConfirmationText(localizations),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: AppConstants.textColor, fontSize: 16),
               ),
 
               const SizedBox(height: 12),
@@ -225,20 +216,26 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: _isDeleteButtonEnabled ? Colors.red : AppConstants.primaryColor,
+                        color:
+                            _isDeleteButtonEnabled
+                                ? Colors.red
+                                : AppConstants.primaryColor,
                         width: 2,
                       ),
                     ),
                     prefixIcon: Icon(
                       _isDeleteButtonEnabled ? Icons.check_circle : Icons.edit,
-                      color: _isDeleteButtonEnabled ? Colors.green : AppConstants.textColor.withValues(alpha: 0.5),
+                      color:
+                          _isDeleteButtonEnabled
+                              ? Colors.green
+                              : AppConstants.textColor.withValues(alpha: 0.5),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                   textAlign: TextAlign.center,
                   autocorrect: false,
                   enableSuggestions: false,
@@ -251,18 +248,25 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
               // Статус валидации
               if (_confirmationController.text.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: _isDeleteButtonEnabled
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.1),
+                    color:
+                        _isDeleteButtonEnabled
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        _isDeleteButtonEnabled ? Icons.check_circle : Icons.error,
-                        color: _isDeleteButtonEnabled ? Colors.green : Colors.red,
+                        _isDeleteButtonEnabled
+                            ? Icons.check_circle
+                            : Icons.error,
+                        color:
+                            _isDeleteButtonEnabled ? Colors.green : Colors.red,
                         size: 16,
                       ),
                       const SizedBox(width: 8),
@@ -270,7 +274,10 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                         child: Text(
                           _getValidationText(localizations),
                           style: TextStyle(
-                            color: _isDeleteButtonEnabled ? Colors.green : Colors.red,
+                            color:
+                                _isDeleteButtonEnabled
+                                    ? Colors.green
+                                    : Colors.red,
                             fontSize: 12,
                           ),
                         ),
@@ -302,20 +309,25 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _isDeleteButtonEnabled
-                    ? () {
-                  // Добавляем тактильную обратную связь
-                  HapticFeedback.heavyImpact();
-                  Navigator.of(context).pop(true);
-                }
-                    : null,
+                onPressed:
+                    _isDeleteButtonEnabled
+                        ? () {
+                          // Добавляем тактильную обратную связь
+                          HapticFeedback.heavyImpact();
+                          Navigator.of(context).pop(true);
+                        }
+                        : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isDeleteButtonEnabled ? Colors.red : Colors.grey,
+                  backgroundColor:
+                      _isDeleteButtonEnabled ? Colors.red : Colors.grey,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 child: Text(
                   localizations.translate('delete_account'),

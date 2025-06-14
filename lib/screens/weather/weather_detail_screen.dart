@@ -132,19 +132,13 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 const SizedBox(height: 8),
                 Text(
                   _translateWeatherDescription(current.condition.text),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${localizations.translate('feels_like')} ${current.feelslikeC.round()}°C',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
               ],
             ),
@@ -209,12 +203,18 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                   children: [
                     Column(
                       children: [
-                        Icon(Icons.air, color: AppConstants.textColor, size: 32),
+                        Icon(
+                          Icons.air,
+                          color: AppConstants.textColor,
+                          size: 32,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           localizations.translate('speed'),
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 14,
                           ),
                         ),
@@ -230,12 +230,18 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                     ),
                     Column(
                       children: [
-                        Icon(Icons.explore, color: AppConstants.textColor, size: 32),
+                        Icon(
+                          Icons.explore,
+                          color: AppConstants.textColor,
+                          size: 32,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           localizations.translate('direction'),
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 14,
                           ),
                         ),
@@ -300,7 +306,11 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
             ),
             child: Column(
               children: [
-                Icon(Icons.brightness_2, color: AppConstants.textColor, size: 32),
+                Icon(
+                  Icons.brightness_2,
+                  color: AppConstants.textColor,
+                  size: 32,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   localizations.translate('moon_phase'),
@@ -342,10 +352,7 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
       return Center(
         child: Text(
           localizations.translate('no_hourly_data'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: AppConstants.textColor, fontSize: 16),
         ),
       );
     }
@@ -385,13 +392,18 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isCurrentHour
-                      ? AppConstants.primaryColor.withValues(alpha: 0.2)
-                      : AppConstants.surfaceColor,
+                  color:
+                      isCurrentHour
+                          ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                          : AppConstants.surfaceColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: isCurrentHour
-                      ? Border.all(color: AppConstants.primaryColor, width: 2)
-                      : null,
+                  border:
+                      isCurrentHour
+                          ? Border.all(
+                            color: AppConstants.primaryColor,
+                            width: 2,
+                          )
+                          : null,
                 ),
                 child: Row(
                   children: [
@@ -402,13 +414,19 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
-                          fontWeight: isCurrentHour ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isCurrentHour
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Icon(
-                      _getWeatherIcon(hour.condition.code, time.hour >= 6 && time.hour < 20),
+                      _getWeatherIcon(
+                        hour.condition.code,
+                        time.hour >= 6 && time.hour < 20,
+                      ),
                       color: AppConstants.textColor,
                       size: 24,
                     ),
@@ -428,7 +446,9 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                           Text(
                             _translateWeatherDescription(hour.condition.text),
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               fontSize: 14,
                             ),
                           ),
@@ -459,7 +479,9 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                         Text(
                           '${hour.windKph.round()} ${AppLocalizations.of(context).translate('km_h')}',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 12,
                           ),
                         ),
@@ -500,7 +522,9 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isToday ? localizations.translate('today') : _formatDateForLocale(date),
+                    isToday
+                        ? localizations.translate('today')
+                        : _formatDateForLocale(date),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 18,
@@ -533,7 +557,10 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               Row(
                 children: [
                   Icon(
-                    _getWeatherIcon(day.day.condition.code, true), // Для дневного прогноза используем дневную иконку
+                    _getWeatherIcon(
+                      day.day.condition.code,
+                      true,
+                    ), // Для дневного прогноза используем дневную иконку
                     color: AppConstants.textColor,
                     size: 32,
                   ),
@@ -553,8 +580,16 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildDayStatItem(Icons.wb_twilight, localizations.translate('sunrise'), day.astro.sunrise),
-                  _buildDayStatItem(Icons.nights_stay, localizations.translate('sunset'), day.astro.sunset),
+                  _buildDayStatItem(
+                    Icons.wb_twilight,
+                    localizations.translate('sunrise'),
+                    day.astro.sunrise,
+                  ),
+                  _buildDayStatItem(
+                    Icons.nights_stay,
+                    localizations.translate('sunset'),
+                    day.astro.sunset,
+                  ),
                   _buildDayStatItem(
                     Icons.brightness_2,
                     localizations.translate('moon_phase'),
@@ -597,7 +632,12 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
     );
   }
 
-  Widget _buildWeatherCard(String title, String value, IconData icon, String description) {
+  Widget _buildWeatherCard(
+    String title,
+    String value,
+    IconData icon,
+    String description,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -641,7 +681,12 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
     );
   }
 
-  Widget _buildAstroCard(String title, String time, IconData icon, Color color) {
+  Widget _buildAstroCard(
+    String title,
+    String time,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -692,7 +737,11 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
             children: [
               Column(
                 children: [
-                  Icon(Icons.thermostat, color: AppConstants.textColor, size: 24),
+                  Icon(
+                    Icons.thermostat,
+                    color: AppConstants.textColor,
+                    size: 24,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     localizations.translate('heat_index'),
@@ -736,7 +785,11 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            _getComfortDescription(current.tempC, current.humidity, current.windKph),
+            _getComfortDescription(
+              current.tempC,
+              current.humidity,
+              current.windKph,
+            ),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 14,
@@ -780,7 +833,8 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
     final t = tempC;
     final h = humidity.toDouble();
 
-    final hi = -8.78469475556 +
+    final hi =
+        -8.78469475556 +
         1.61139411 * t +
         2.33854883889 * h +
         -0.14611605 * t * h +
@@ -808,18 +862,42 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
       case 1003: // Partly cloudy
         return isDay ? Icons.wb_cloudy : Icons.cloud;
-      case 1006: case 1009: // Cloudy/Overcast
-      return Icons.cloud;
-      case 1030: case 1135: case 1147: // Mist/Fog
-      return Icons.cloud;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195:
-      case 1198: case 1201: // Rain
-      return Icons.grain;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225:
-      case 1237: case 1255: case 1258: case 1261: case 1264: // Snow
-      return Icons.ac_unit;
-      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
-      return Icons.flash_on;
+      case 1006:
+      case 1009: // Cloudy/Overcast
+        return Icons.cloud;
+      case 1030:
+      case 1135:
+      case 1147: // Mist/Fog
+        return Icons.cloud;
+      case 1063:
+      case 1180:
+      case 1183:
+      case 1186:
+      case 1189:
+      case 1192:
+      case 1195:
+      case 1198:
+      case 1201: // Rain
+        return Icons.grain;
+      case 1066:
+      case 1210:
+      case 1213:
+      case 1216:
+      case 1219:
+      case 1222:
+      case 1225:
+      case 1237:
+      case 1255:
+      case 1258:
+      case 1261:
+      case 1264: // Snow
+        return Icons.ac_unit;
+      case 1087:
+      case 1273:
+      case 1276:
+      case 1279:
+      case 1282: // Thunder
+        return Icons.flash_on;
       default:
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }
@@ -853,9 +931,11 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
       'heavy rain at times': 'weather_heavy_rain_at_times',
       'heavy rain': 'weather_heavy_rain',
       'light freezing rain': 'weather_light_freezing_rain',
-      'moderate or heavy freezing rain': 'weather_moderate_or_heavy_freezing_rain',
+      'moderate or heavy freezing rain':
+          'weather_moderate_or_heavy_freezing_rain',
       'light showers of ice pellets': 'weather_light_showers_of_ice_pellets',
-      'moderate or heavy showers of ice pellets': 'weather_moderate_or_heavy_showers_of_ice_pellets',
+      'moderate or heavy showers of ice pellets':
+          'weather_moderate_or_heavy_showers_of_ice_pellets',
       'patchy snow possible': 'weather_patchy_snow_possible',
       'patchy snow nearby': 'weather_patchy_snow_nearby',
       'patchy light snow': 'weather_patchy_light_snow',
@@ -866,21 +946,27 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen>
       'heavy snow': 'weather_heavy_snow',
       'ice pellets': 'weather_ice_pellets',
       'light snow showers': 'weather_light_snow_showers',
-      'moderate or heavy snow showers': 'weather_moderate_or_heavy_snow_showers',
-      'patchy light snow with thunder': 'weather_patchy_light_snow_with_thunder',
-      'moderate or heavy snow with thunder': 'weather_moderate_or_heavy_snow_with_thunder',
+      'moderate or heavy snow showers':
+          'weather_moderate_or_heavy_snow_showers',
+      'patchy light snow with thunder':
+          'weather_patchy_light_snow_with_thunder',
+      'moderate or heavy snow with thunder':
+          'weather_moderate_or_heavy_snow_with_thunder',
       'light rain shower': 'weather_light_rain_shower',
       'moderate or heavy rain shower': 'weather_moderate_or_heavy_rain_shower',
       'torrential rain shower': 'weather_torrential_rain_shower',
       'thundery outbreaks possible': 'weather_thundery_outbreaks_possible',
-      'patchy light rain with thunder': 'weather_patchy_light_rain_with_thunder',
-      'moderate or heavy rain with thunder': 'weather_moderate_or_heavy_rain_with_thunder',
+      'patchy light rain with thunder':
+          'weather_patchy_light_rain_with_thunder',
+      'moderate or heavy rain with thunder':
+          'weather_moderate_or_heavy_rain_with_thunder',
       'patchy sleet possible': 'weather_patchy_sleet_possible',
       'patchy sleet nearby': 'weather_patchy_sleet_nearby',
       'light sleet': 'weather_light_sleet',
       'moderate or heavy sleet': 'weather_moderate_or_heavy_sleet',
       'light sleet showers': 'weather_light_sleet_showers',
-      'moderate or heavy sleet showers': 'weather_moderate_or_heavy_sleet_showers',
+      'moderate or heavy sleet showers':
+          'weather_moderate_or_heavy_sleet_showers',
       'blowing snow': 'weather_blowing_snow',
       'blizzard': 'weather_blizzard',
       'fair': 'weather_fair',

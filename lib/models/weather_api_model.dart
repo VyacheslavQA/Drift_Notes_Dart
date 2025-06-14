@@ -15,9 +15,11 @@ class WeatherApiResponse {
     return WeatherApiResponse(
       location: Location.fromJson(json['location'] ?? {}),
       current: Current.fromJson(json['current'] ?? {}),
-      forecast: (json['forecast']?['forecastday'] as List<dynamic>?)
-          ?.map((item) => ForecastDay.fromJson(item))
-          .toList() ?? [],
+      forecast:
+          (json['forecast']?['forecastday'] as List<dynamic>?)
+              ?.map((item) => ForecastDay.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 
@@ -25,9 +27,7 @@ class WeatherApiResponse {
     return {
       'location': location.toJson(),
       'current': current.toJson(),
-      'forecast': {
-        'forecastday': forecast.map((day) => day.toJson()).toList(),
-      },
+      'forecast': {'forecastday': forecast.map((day) => day.toJson()).toList()},
     };
   }
 }
@@ -137,11 +137,7 @@ class Condition {
   final String icon;
   final int code;
 
-  Condition({
-    required this.text,
-    required this.icon,
-    required this.code,
-  });
+  Condition({required this.text, required this.icon, required this.code});
 
   factory Condition.fromJson(Map<String, dynamic> json) {
     return Condition(
@@ -152,11 +148,7 @@ class Condition {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'icon': icon,
-      'code': code,
-    };
+    return {'text': text, 'icon': icon, 'code': code};
   }
 }
 
@@ -178,9 +170,11 @@ class ForecastDay {
       date: json['date']?.toString() ?? '',
       day: Day.fromJson(json['day'] ?? {}),
       astro: Astro.fromJson(json['astro'] ?? {}),
-      hour: (json['hour'] as List<dynamic>?)
-          ?.map((item) => Hour.fromJson(item))
-          .toList() ?? [],
+      hour:
+          (json['hour'] as List<dynamic>?)
+              ?.map((item) => Hour.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 
@@ -230,7 +224,7 @@ class Hour {
   final String windDir;
   final int humidity;
   final double chanceOfRain;
-  final double pressureMb;  // ДОБАВИЛИ ЭТО ПОЛЕ
+  final double pressureMb; // ДОБАВИЛИ ЭТО ПОЛЕ
 
   Hour({
     required this.time,
@@ -240,7 +234,7 @@ class Hour {
     required this.windDir,
     required this.humidity,
     required this.chanceOfRain,
-    required this.pressureMb,  // ДОБАВИЛИ В КОНСТРУКТОР
+    required this.pressureMb, // ДОБАВИЛИ В КОНСТРУКТОР
   });
 
   factory Hour.fromJson(Map<String, dynamic> json) {
@@ -252,7 +246,9 @@ class Hour {
       windDir: json['wind_dir']?.toString() ?? '',
       humidity: (json['humidity'] as num?)?.toInt() ?? 0,
       chanceOfRain: (json['chance_of_rain'] as num?)?.toDouble() ?? 0.0,
-      pressureMb: (json['pressure_mb'] as num?)?.toDouble() ?? 1013.0,  // ДОБАВИЛИ ПАРСИНГ С ДЕФОЛТНЫМ ЗНАЧЕНИЕМ
+      pressureMb:
+          (json['pressure_mb'] as num?)?.toDouble() ??
+          1013.0, // ДОБАВИЛИ ПАРСИНГ С ДЕФОЛТНЫМ ЗНАЧЕНИЕМ
     );
   }
 
@@ -265,7 +261,7 @@ class Hour {
       'wind_dir': windDir,
       'humidity': humidity,
       'chance_of_rain': chanceOfRain,
-      'pressure_mb': pressureMb,  // ДОБАВИЛИ В JSON
+      'pressure_mb': pressureMb, // ДОБАВИЛИ В JSON
     };
   }
 }

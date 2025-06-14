@@ -52,11 +52,9 @@ class UserRepository {
       return Stream.value(null);
     }
 
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection('users').doc(userId).snapshots().map((
+      snapshot,
+    ) {
       if (!snapshot.exists) {
         return null;
       }
@@ -72,10 +70,10 @@ class UserRepository {
       throw Exception('Пользователь не авторизован');
     }
 
-    await _firestore.collection('users').doc(userId).set(
-      userData,
-      SetOptions(merge: true),
-    );
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .set(userData, SetOptions(merge: true));
   }
 
   // Обновление аватара пользователя
@@ -108,7 +106,9 @@ class UserRepository {
       try {
         await _auth.signOut();
       } catch (signOutError) {
-        debugPrint('❌ Критическая ошибка при выходе из Firebase: $signOutError');
+        debugPrint(
+          '❌ Критическая ошибка при выходе из Firebase: $signOutError',
+        );
       }
     }
   }

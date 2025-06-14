@@ -22,7 +22,8 @@ class ReminderSelectionWidget extends StatefulWidget {
   });
 
   @override
-  State<ReminderSelectionWidget> createState() => _ReminderSelectionWidgetState();
+  State<ReminderSelectionWidget> createState() =>
+      _ReminderSelectionWidgetState();
 }
 
 class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
@@ -97,9 +98,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor.withValues(alpha: 0.1)
-              : Colors.transparent,
+          color:
+              isSelected
+                  ? AppConstants.primaryColor.withValues(alpha: 0.1)
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -110,31 +112,35 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected
-                      ? AppConstants.primaryColor
-                      : AppConstants.textColor.withValues(alpha: 0.5),
+                  color:
+                      isSelected
+                          ? AppConstants.primaryColor
+                          : AppConstants.textColor.withValues(alpha: 0.5),
                   width: 2,
                 ),
-                color: isSelected
-                    ? AppConstants.primaryColor
-                    : Colors.transparent,
+                color:
+                    isSelected ? AppConstants.primaryColor : Colors.transparent,
               ),
-              child: isSelected
-                  ? Icon(
-                Icons.check,
-                size: 12,
-                color: AppConstants.textColor,
-              )
-                  : null,
+              child:
+                  isSelected
+                      ? Icon(
+                        Icons.check,
+                        size: 12,
+                        color: AppConstants.textColor,
+                      )
+                      : null,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 localizations.translate('reminder_none'),
                 style: TextStyle(
-                  color: isSelected
-                      ? AppConstants.textColor
-                      : AppConstants.textColor.withValues(alpha: widget.enabled ? 1.0 : 0.5),
+                  color:
+                      isSelected
+                          ? AppConstants.textColor
+                          : AppConstants.textColor.withValues(
+                            alpha: widget.enabled ? 1.0 : 0.5,
+                          ),
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
@@ -142,9 +148,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
             ),
             Icon(
               Icons.notifications_off,
-              color: isSelected
-                  ? AppConstants.primaryColor
-                  : AppConstants.textColor.withValues(alpha: 0.5),
+              color:
+                  isSelected
+                      ? AppConstants.primaryColor
+                      : AppConstants.textColor.withValues(alpha: 0.5),
               size: 18,
             ),
           ],
@@ -159,14 +166,18 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
     return Column(
       children: [
         InkWell(
-          onTap: widget.enabled ? () => _selectReminder(ReminderType.custom) : null,
+          onTap:
+              widget.enabled
+                  ? () => _selectReminder(ReminderType.custom)
+                  : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppConstants.primaryColor.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color:
+                  isSelected
+                      ? AppConstants.primaryColor.withValues(alpha: 0.1)
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -177,41 +188,49 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected
-                          ? AppConstants.primaryColor
-                          : AppConstants.textColor.withValues(alpha: 0.5),
+                      color:
+                          isSelected
+                              ? AppConstants.primaryColor
+                              : AppConstants.textColor.withValues(alpha: 0.5),
                       width: 2,
                     ),
-                    color: isSelected
-                        ? AppConstants.primaryColor
-                        : Colors.transparent,
+                    color:
+                        isSelected
+                            ? AppConstants.primaryColor
+                            : Colors.transparent,
                   ),
-                  child: isSelected
-                      ? Icon(
-                    Icons.check,
-                    size: 12,
-                    color: AppConstants.textColor,
-                  )
-                      : null,
+                  child:
+                      isSelected
+                          ? Icon(
+                            Icons.check,
+                            size: 12,
+                            color: AppConstants.textColor,
+                          )
+                          : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     localizations.translate('reminder_custom'),
                     style: TextStyle(
-                      color: isSelected
-                          ? AppConstants.textColor
-                          : AppConstants.textColor.withValues(alpha: widget.enabled ? 1.0 : 0.5),
+                      color:
+                          isSelected
+                              ? AppConstants.textColor
+                              : AppConstants.textColor.withValues(
+                                alpha: widget.enabled ? 1.0 : 0.5,
+                              ),
                       fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
                 Icon(
                   Icons.schedule,
-                  color: isSelected
-                      ? AppConstants.primaryColor
-                      : AppConstants.textColor.withValues(alpha: 0.5),
+                  color:
+                      isSelected
+                          ? AppConstants.primaryColor
+                          : AppConstants.textColor.withValues(alpha: 0.5),
                   size: 18,
                 ),
               ],
@@ -238,7 +257,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                 InkWell(
                   onTap: widget.enabled ? _selectDate : null,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: AppConstants.surfaceColor,
                       borderRadius: BorderRadius.circular(8),
@@ -262,14 +284,19 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                               Text(
                                 localizations.translate('select_date'),
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 12,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 _customDateTime != null
-                                    ? _formatDate(_customDateTime!, localizations)
+                                    ? _formatDate(
+                                      _customDateTime!,
+                                      localizations,
+                                    )
                                     : localizations.translate('tap_to_select'),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
@@ -296,7 +323,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                 InkWell(
                   onTap: widget.enabled ? _selectTime : null,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: AppConstants.surfaceColor,
                       borderRadius: BorderRadius.circular(8),
@@ -320,7 +350,9 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                               Text(
                                 localizations.translate('select_time'),
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 12,
                                 ),
                               ),
@@ -363,11 +395,7 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 16,
-                        ),
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -396,11 +424,7 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.error,
-                          color: Colors.red,
-                          size: 16,
-                        ),
+                        Icon(Icons.error, color: Colors.red, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -436,13 +460,15 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
 
   Future<void> _selectDate() async {
     final now = DateTime.now();
-    final eventStart = widget.eventStartDate ?? now.add(const Duration(days: 7));
+    final eventStart =
+        widget.eventStartDate ?? now.add(const Duration(days: 7));
 
     final selectedDate = await showDatePicker(
       context: context,
-      initialDate: _customDateTime?.isBefore(eventStart) == true
-          ? _customDateTime!
-          : now,
+      initialDate:
+          _customDateTime?.isBefore(eventStart) == true
+              ? _customDateTime!
+              : now,
       firstDate: now,
       lastDate: eventStart,
       builder: (context, child) {
@@ -487,9 +513,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
   Future<void> _selectTime() async {
     final selectedTime = await showTimePicker(
       context: context,
-      initialTime: _customDateTime != null
-          ? TimeOfDay.fromDateTime(_customDateTime!)
-          : const TimeOfDay(hour: 12, minute: 0),
+      initialTime:
+          _customDateTime != null
+              ? TimeOfDay.fromDateTime(_customDateTime!)
+              : const TimeOfDay(hour: 12, minute: 0),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -539,7 +566,8 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
     if (_customDateTime!.isBefore(now)) return false;
 
     // Проверяем что время до начала события
-    if (eventStart != null && _customDateTime!.isAfter(eventStart)) return false;
+    if (eventStart != null && _customDateTime!.isAfter(eventStart))
+      return false;
 
     return true;
   }
@@ -565,7 +593,10 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
   }
 
   // ИСПРАВЛЕНО: Добавлен параметр localizations
-  String _getFormattedDateTime(DateTime dateTime, AppLocalizations localizations) {
+  String _getFormattedDateTime(
+    DateTime dateTime,
+    AppLocalizations localizations,
+  ) {
     return '${_formatDate(dateTime, localizations)} ${localizations.translate('at')} ${_formatTime(dateTime)}'; // ИСПРАВЛЕНО: локализация "в"
   }
 }
@@ -588,7 +619,8 @@ class ReminderSelectionDialog extends StatefulWidget {
   });
 
   @override
-  State<ReminderSelectionDialog> createState() => _ReminderSelectionDialogState();
+  State<ReminderSelectionDialog> createState() =>
+      _ReminderSelectionDialogState();
 }
 
 class _ReminderSelectionDialogState extends State<ReminderSelectionDialog> {
@@ -608,9 +640,7 @@ class _ReminderSelectionDialogState extends State<ReminderSelectionDialog> {
 
     return AlertDialog(
       backgroundColor: AppConstants.surfaceColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         widget.title,
         style: TextStyle(
@@ -660,10 +690,13 @@ class _ReminderSelectionDialogState extends State<ReminderSelectionDialog> {
           ),
         ),
         ElevatedButton(
-          onPressed: _canConfirm() ? () => Navigator.pop(context, {
-            'reminderType': _selectedReminder,
-            'customDateTime': _customDateTime,
-          }) : null,
+          onPressed:
+              _canConfirm()
+                  ? () => Navigator.pop(context, {
+                    'reminderType': _selectedReminder,
+                    'customDateTime': _customDateTime,
+                  })
+                  : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppConstants.primaryColor,
             foregroundColor: AppConstants.textColor,
@@ -683,7 +716,8 @@ class _ReminderSelectionDialogState extends State<ReminderSelectionDialog> {
       final now = DateTime.now();
       if (_customDateTime!.isBefore(now)) return false;
 
-      if (widget.eventStartDate != null && _customDateTime!.isAfter(widget.eventStartDate!)) {
+      if (widget.eventStartDate != null &&
+          _customDateTime!.isAfter(widget.eventStartDate!)) {
         return false;
       }
     }
@@ -696,41 +730,47 @@ class _ReminderSelectionDialogState extends State<ReminderSelectionDialog> {
 class ReminderDialogs {
   /// Показать диалог выбора напоминания для турнира
   static Future<Map<String, dynamic>?> showTournamentReminderDialog(
-      BuildContext context, {
-        DateTime? eventStartDate,
-      }) async {
+    BuildContext context, {
+    DateTime? eventStartDate,
+  }) async {
     final localizations = AppLocalizations.of(context);
 
     return await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => ReminderSelectionDialog(
-        initialReminder: ReminderType.none,
-        title: localizations.translate('tournament_reminder_setup'),
-        description: localizations.translate('tournament_reminder_setup_desc'),
-        eventStartDate: eventStartDate,
-      ),
+      builder:
+          (context) => ReminderSelectionDialog(
+            initialReminder: ReminderType.none,
+            title: localizations.translate('tournament_reminder_setup'),
+            description: localizations.translate(
+              'tournament_reminder_setup_desc',
+            ),
+            eventStartDate: eventStartDate,
+          ),
     );
   }
 
   /// Показать диалог изменения напоминания
   static Future<Map<String, dynamic>?> showEditReminderDialog(
-      BuildContext context,
-      ReminderType currentReminder,
-      String eventTitle, {
-        DateTime? currentCustomDateTime,
-        DateTime? eventStartDate,
-      }) async {
+    BuildContext context,
+    ReminderType currentReminder,
+    String eventTitle, {
+    DateTime? currentCustomDateTime,
+    DateTime? eventStartDate,
+  }) async {
     final localizations = AppLocalizations.of(context);
 
     return await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => ReminderSelectionDialog(
-        initialReminder: currentReminder,
-        initialCustomDateTime: currentCustomDateTime,
-        title: localizations.translate('edit_reminder'),
-        description: localizations.translate('edit_reminder_desc').replaceAll('{event}', eventTitle),
-        eventStartDate: eventStartDate,
-      ),
+      builder:
+          (context) => ReminderSelectionDialog(
+            initialReminder: currentReminder,
+            initialCustomDateTime: currentCustomDateTime,
+            title: localizations.translate('edit_reminder'),
+            description: localizations
+                .translate('edit_reminder_desc')
+                .replaceAll('{event}', eventTitle),
+            eventStartDate: eventStartDate,
+          ),
     );
   }
 }

@@ -1,19 +1,19 @@
 // Путь: lib/models/weather_alert_model.dart
 
 enum WeatherAlertType {
-  pressureChange,        // Изменение давления
-  favorableConditions,   // Благоприятные условия для рыбалки
-  stormWarning,         // Предупреждение о грозе/непогоде
-  dailyForecast,        // Утренний прогноз дня
-  biteActivity,         // Высокая активность клева
-  windChange,           // Изменение ветра
-  temperatureChange,    // Резкое изменение температуры
+  pressureChange, // Изменение давления
+  favorableConditions, // Благоприятные условия для рыбалки
+  stormWarning, // Предупреждение о грозе/непогоде
+  dailyForecast, // Утренний прогноз дня
+  biteActivity, // Высокая активность клева
+  windChange, // Изменение ветра
+  temperatureChange, // Резкое изменение температуры
 }
 
 enum WeatherAlertPriority {
-  low,      // Обычная информация
-  medium,   // Важная информация
-  high,     // Критически важно
+  low, // Обычная информация
+  medium, // Важная информация
+  high, // Критически важно
 }
 
 class WeatherAlertModel {
@@ -76,16 +76,18 @@ class WeatherAlertModel {
     return WeatherAlertModel(
       id: json['id'] ?? '',
       type: WeatherAlertType.values.firstWhere(
-            (e) => e.toString() == json['type'],
+        (e) => e.toString() == json['type'],
         orElse: () => WeatherAlertType.dailyForecast,
       ),
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       priority: WeatherAlertPriority.values.firstWhere(
-            (e) => e.toString() == json['priority'],
+        (e) => e.toString() == json['priority'],
         orElse: () => WeatherAlertPriority.medium,
       ),
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['createdAt'] ?? DateTime.now().toIso8601String(),
+      ),
       data: Map<String, dynamic>.from(json['data'] ?? {}),
       isRead: json['isRead'] ?? false,
     );
@@ -137,7 +139,8 @@ class WeatherNotificationSettings {
 
   // Настройки времени
   final int dailyForecastHour; // Час для утреннего прогноза (0-23)
-  final int dailyForecastMinute; // Минуты для утреннего прогноза (0-59) - НОВОЕ ПОЛЕ
+  final int
+  dailyForecastMinute; // Минуты для утреннего прогноза (0-59) - НОВОЕ ПОЛЕ
   final double pressureThreshold; // Порог изменения давления (мм рт.ст.)
   final double temperatureThreshold; // Порог изменения температуры (°C)
   final double windSpeedThreshold; // Порог скорости ветра (м/с)
@@ -180,15 +183,19 @@ class WeatherNotificationSettings {
   }) {
     return WeatherNotificationSettings(
       enabled: enabled ?? this.enabled,
-      pressureChangeEnabled: pressureChangeEnabled ?? this.pressureChangeEnabled,
-      favorableConditionsEnabled: favorableConditionsEnabled ?? this.favorableConditionsEnabled,
+      pressureChangeEnabled:
+          pressureChangeEnabled ?? this.pressureChangeEnabled,
+      favorableConditionsEnabled:
+          favorableConditionsEnabled ?? this.favorableConditionsEnabled,
       stormWarningEnabled: stormWarningEnabled ?? this.stormWarningEnabled,
       dailyForecastEnabled: dailyForecastEnabled ?? this.dailyForecastEnabled,
       biteActivityEnabled: biteActivityEnabled ?? this.biteActivityEnabled,
       windChangeEnabled: windChangeEnabled ?? this.windChangeEnabled,
-      temperatureChangeEnabled: temperatureChangeEnabled ?? this.temperatureChangeEnabled,
+      temperatureChangeEnabled:
+          temperatureChangeEnabled ?? this.temperatureChangeEnabled,
       dailyForecastHour: dailyForecastHour ?? this.dailyForecastHour,
-      dailyForecastMinute: dailyForecastMinute ?? this.dailyForecastMinute, // НОВЫЙ ПАРАМЕТР
+      dailyForecastMinute:
+          dailyForecastMinute ?? this.dailyForecastMinute, // НОВЫЙ ПАРАМЕТР
       pressureThreshold: pressureThreshold ?? this.pressureThreshold,
       temperatureThreshold: temperatureThreshold ?? this.temperatureThreshold,
       windSpeedThreshold: windSpeedThreshold ?? this.windSpeedThreshold,
@@ -226,7 +233,9 @@ class WeatherNotificationSettings {
       windChangeEnabled: json['windChangeEnabled'] ?? false,
       temperatureChangeEnabled: json['temperatureChangeEnabled'] ?? false,
       dailyForecastHour: json['dailyForecastHour'] ?? 7,
-      dailyForecastMinute: json['dailyForecastMinute'] ?? 0, // НОВОЕ ПОЛЕ С ОБРАТНОЙ СОВМЕСТИМОСТЬЮ
+      dailyForecastMinute:
+          json['dailyForecastMinute'] ??
+          0, // НОВОЕ ПОЛЕ С ОБРАТНОЙ СОВМЕСТИМОСТЬЮ
       pressureThreshold: (json['pressureThreshold'] ?? 5.0).toDouble(),
       temperatureThreshold: (json['temperatureThreshold'] ?? 10.0).toDouble(),
       windSpeedThreshold: (json['windSpeedThreshold'] ?? 15.0).toDouble(),

@@ -60,22 +60,24 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
   // Метод для обновления маркеров на карте
   void _updateMapMarkers() {
     setState(() {
-      _markers = _markerData.map((data) {
-        return Marker(
-          markerId: MarkerId(data['id'].toString()),
-          position: LatLng(data['latitude'], data['longitude']),
-          infoWindow: InfoWindow(
-            title: data['name'] ?? 'Маркер',
-            snippet: data['depth'] != null
-                ? 'Глубина: ${data['depth']} м'
-                : 'Нажмите для подробностей',
-          ),
-          icon: _getMarkerIcon(data['type']),
-          onTap: () {
-            _showMarkerDetails(data);
-          },
-        );
-      }).toSet();
+      _markers =
+          _markerData.map((data) {
+            return Marker(
+              markerId: MarkerId(data['id'].toString()),
+              position: LatLng(data['latitude'], data['longitude']),
+              infoWindow: InfoWindow(
+                title: data['name'] ?? 'Маркер',
+                snippet:
+                    data['depth'] != null
+                        ? 'Глубина: ${data['depth']} м'
+                        : 'Нажмите для подробностей',
+              ),
+              icon: _getMarkerIcon(data['type']),
+              onTap: () {
+                _showMarkerDetails(data);
+              },
+            );
+          }).toSet();
     });
   }
 
@@ -88,10 +90,12 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       case 'sandbar':
         return BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueYellow);
+          BitmapDescriptor.hueYellow,
+        );
       case 'structure':
         return BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueOrange);
+          BitmapDescriptor.hueOrange,
+        );
       default:
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     }
@@ -256,9 +260,7 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
           ),
           content: Text(
             localizations.translate('delete_marker_confirmation'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-            ),
+            style: TextStyle(color: AppConstants.textColor),
           ),
           actions: [
             TextButton(
@@ -267,9 +269,7 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
               },
               child: Text(
                 localizations.translate('cancel'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                ),
+                style: TextStyle(color: AppConstants.textColor),
               ),
             ),
             TextButton(
@@ -279,9 +279,7 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
               },
               child: Text(
                 localizations.translate('delete'),
-                style: TextStyle(
-                  color: Colors.redAccent,
-                ),
+                style: TextStyle(color: Colors.redAccent),
               ),
             ),
           ],
@@ -308,7 +306,7 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
       _nameController.text = marker['name'] ?? '';
       _descriptionController.text = marker['description'] ?? '';
       _depthController.text =
-      marker['depth'] != null ? marker['depth'].toString() : '';
+          marker['depth'] != null ? marker['depth'].toString() : '';
     } else {
       // Если создаем новый маркер, очищаем поля
       _nameController.clear();
@@ -327,7 +325,9 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
             return AlertDialog(
               backgroundColor: AppConstants.cardColor,
               title: Text(
-                isEditing ? localizations.translate('edit_marker') : localizations.translate('new_marker'),
+                isEditing
+                    ? localizations.translate('edit_marker')
+                    : localizations.translate('new_marker'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontWeight: FontWeight.bold,
@@ -343,16 +343,20 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('marker_name'),
-                        labelStyle: TextStyle(color: AppConstants.textColor
-                            .withValues(alpha: 0.7)),
+                        labelStyle: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                        ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.textColor.withValues(
-                                  alpha: 0.5)),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.primaryColor),
+                            color: AppConstants.primaryColor,
+                          ),
                         ),
                       ),
                     ),
@@ -364,20 +368,25 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('depth_m'),
-                        labelStyle: TextStyle(color: AppConstants.textColor
-                            .withValues(alpha: 0.7)),
+                        labelStyle: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                        ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.textColor.withValues(
-                                  alpha: 0.5)),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.primaryColor),
+                            color: AppConstants.primaryColor,
+                          ),
                         ),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                        decimal: true,
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -387,16 +396,20 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                       style: TextStyle(color: AppConstants.textColor),
                       decoration: InputDecoration(
                         labelText: localizations.translate('description'),
-                        labelStyle: TextStyle(color: AppConstants.textColor
-                            .withValues(alpha: 0.7)),
+                        labelStyle: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                        ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.textColor.withValues(
-                                  alpha: 0.5)),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                         ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                              color: AppConstants.primaryColor),
+                            color: AppConstants.primaryColor,
+                          ),
                         ),
                       ),
                       maxLines: 3,
@@ -410,7 +423,8 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                           '${localizations.translate('marker_type')}:',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(
-                                alpha: 0.7),
+                              alpha: 0.7,
+                            ),
                             fontSize: 14,
                           ),
                         ),
@@ -423,22 +437,22 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildMarkerTypeOption(
-                            'default',
-                            localizations.translate('default') ?? 'Обычный',
-                            BitmapDescriptor.hueAzure,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
+                          'default',
+                          localizations.translate('default') ?? 'Обычный',
+                          BitmapDescriptor.hueAzure,
+                          selectedType,
+                          (value) {
+                            setState(() => selectedType = value);
+                          },
                         ),
                         _buildMarkerTypeOption(
-                            'dropoff',
-                            localizations.translate('dropoff') ?? 'Свал',
-                            BitmapDescriptor.hueRed,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
+                          'dropoff',
+                          localizations.translate('dropoff') ?? 'Свал',
+                          BitmapDescriptor.hueRed,
+                          selectedType,
+                          (value) {
+                            setState(() => selectedType = value);
+                          },
                         ),
                       ],
                     ),
@@ -447,22 +461,22 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildMarkerTypeOption(
-                            'weed',
-                            localizations.translate('weed') ?? 'Растительность',
-                            BitmapDescriptor.hueGreen,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
+                          'weed',
+                          localizations.translate('weed') ?? 'Растительность',
+                          BitmapDescriptor.hueGreen,
+                          selectedType,
+                          (value) {
+                            setState(() => selectedType = value);
+                          },
                         ),
                         _buildMarkerTypeOption(
-                            'sandbar',
-                            localizations.translate('sandbar') ?? 'Отмель',
-                            BitmapDescriptor.hueYellow,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
+                          'sandbar',
+                          localizations.translate('sandbar') ?? 'Отмель',
+                          BitmapDescriptor.hueYellow,
+                          selectedType,
+                          (value) {
+                            setState(() => selectedType = value);
+                          },
                         ),
                       ],
                     ),
@@ -470,13 +484,13 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                     Row(
                       children: [
                         _buildMarkerTypeOption(
-                            'structure',
-                            localizations.translate('structure') ?? 'Структура',
-                            BitmapDescriptor.hueOrange,
-                            selectedType,
-                                (value) {
-                              setState(() => selectedType = value);
-                            }
+                          'structure',
+                          localizations.translate('structure') ?? 'Структура',
+                          BitmapDescriptor.hueOrange,
+                          selectedType,
+                          (value) {
+                            setState(() => selectedType = value);
+                          },
                         ),
                       ],
                     ),
@@ -490,9 +504,7 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                   },
                   child: Text(
                     localizations.translate('cancel'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                    ),
+                    style: TextStyle(color: AppConstants.textColor),
                   ),
                 ),
                 TextButton(
@@ -505,7 +517,9 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
                     Navigator.of(context).pop();
                   },
                   child: Text(
-                    isEditing ? localizations.translate('save') : localizations.translate('add'),
+                    isEditing
+                        ? localizations.translate('save')
+                        : localizations.translate('add'),
                     style: TextStyle(
                       color: AppConstants.primaryColor,
                       fontWeight: FontWeight.bold,
@@ -521,11 +535,13 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
   }
 
   // Построение опции выбора типа маркера
-  Widget _buildMarkerTypeOption(String type,
-      String label,
-      double hue,
-      String selectedValue,
-      Function(String) onSelect) {
+  Widget _buildMarkerTypeOption(
+    String type,
+    String label,
+    double hue,
+    String selectedValue,
+    Function(String) onSelect,
+  ) {
     final isSelected = selectedValue == type;
 
     return GestureDetector(
@@ -533,9 +549,10 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor.withValues(alpha: 0.2)
-              : AppConstants.backgroundColor.withValues(alpha: 0.3),
+          color:
+              isSelected
+                  ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                  : AppConstants.backgroundColor.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppConstants.primaryColor : Colors.transparent,
@@ -577,9 +594,10 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
           'longitude': marker['longitude'],
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'depth': _depthController.text.isEmpty
-              ? null
-              : double.tryParse(_depthController.text),
+          'depth':
+              _depthController.text.isEmpty
+                  ? null
+                  : double.tryParse(_depthController.text),
           'type': type,
         };
         _updateMapMarkers();
@@ -595,21 +613,23 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
     setState(() {
       _markerData.add({
         'id': id,
-        'latitude': _selectedMarker != null
-            ? _selectedMarker!['latitude']
-            : widget.latitude,
-        'longitude': _selectedMarker != null
-            ? _selectedMarker!['longitude']
-            : widget.longitude,
-        'name': _nameController.text
-            .trim()
-            .isEmpty
-            ? '${localizations.translate('marker')} ${_markerData.length + 1}'
-            : _nameController.text.trim(),
+        'latitude':
+            _selectedMarker != null
+                ? _selectedMarker!['latitude']
+                : widget.latitude,
+        'longitude':
+            _selectedMarker != null
+                ? _selectedMarker!['longitude']
+                : widget.longitude,
+        'name':
+            _nameController.text.trim().isEmpty
+                ? '${localizations.translate('marker')} ${_markerData.length + 1}'
+                : _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'depth': _depthController.text.isEmpty
-            ? null
-            : double.tryParse(_depthController.text),
+        'depth':
+            _depthController.text.isEmpty
+                ? null
+                : double.tryParse(_depthController.text),
         'type': type,
       });
       _updateMapMarkers();
@@ -690,7 +710,8 @@ class GeoMarkerScreenState extends State<GeoMarkerScreen> {
               child: Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
-                      AppConstants.textColor),
+                    AppConstants.textColor,
+                  ),
                 ),
               ),
             ),

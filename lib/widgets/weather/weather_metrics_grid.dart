@@ -233,9 +233,10 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   Widget _buildMoonPhaseCard() {
     final localizations = AppLocalizations.of(context);
-    final moonPhase = widget.weather.forecast.isNotEmpty
-        ? widget.weather.forecast.first.astro.moonPhase
-        : 'Unknown';
+    final moonPhase =
+        widget.weather.forecast.isNotEmpty
+            ? widget.weather.forecast.first.astro.moonPhase
+            : 'Unknown';
 
     final moonInfo = _getMoonPhaseInfo(moonPhase, localizations);
 
@@ -324,10 +325,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   Widget _buildHumidityCard() {
     final localizations = AppLocalizations.of(context);
     final humidity = widget.weather.current.humidity;
-    final dewPoint = _calculateDewPoint(
-      widget.weather.current.tempC,
-      humidity,
-    );
+    final dewPoint = _calculateDewPoint(widget.weather.current.tempC, humidity);
     final humidityStatus = _getHumidityStatus(humidity, localizations);
 
     return Container(
@@ -432,7 +430,10 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     return 'falling';
   }
 
-  Map<String, dynamic> _getPressureStatus(double pressure, AppLocalizations localizations) {
+  Map<String, dynamic> _getPressureStatus(
+    double pressure,
+    AppLocalizations localizations,
+  ) {
     if (pressure >= 1010 && pressure <= 1025) {
       return {
         'color': Colors.green,
@@ -478,7 +479,10 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     }
   }
 
-  Map<String, dynamic> _getWindStatus(double windKph, AppLocalizations localizations) {
+  Map<String, dynamic> _getWindStatus(
+    double windKph,
+    AppLocalizations localizations,
+  ) {
     if (windKph < 10) {
       return {
         'color': Colors.green,
@@ -525,7 +529,10 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     return translations[direction] ?? direction;
   }
 
-  Map<String, dynamic> _getMoonPhaseInfo(String moonPhase, AppLocalizations localizations) {
+  Map<String, dynamic> _getMoonPhaseInfo(
+    String moonPhase,
+    AppLocalizations localizations,
+  ) {
     final phase = moonPhase.toLowerCase();
 
     if (phase.contains('new')) {
@@ -549,7 +556,8 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
         'impact': localizations.translate('normal').toUpperCase(),
         'description': localizations.translate('moderate_activity'),
       };
-    } else if (phase.contains('third quarter') || phase.contains('last quarter')) {
+    } else if (phase.contains('third quarter') ||
+        phase.contains('last quarter')) {
       return {
         'icon': '🌗',
         'color': Colors.blue,
@@ -598,18 +606,28 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final phase = moonPhase.toLowerCase();
 
     if (phase.contains('new')) return localizations.translate('moon_new_moon');
-    if (phase.contains('full')) return localizations.translate('moon_full_moon');
-    if (phase.contains('first quarter')) return localizations.translate('moon_first_quarter');
-    if (phase.contains('third quarter') || phase.contains('last quarter')) return localizations.translate('moon_last_quarter');
-    if (phase.contains('waxing crescent')) return localizations.translate('moon_waxing_crescent');
-    if (phase.contains('waning crescent')) return localizations.translate('moon_waning_crescent');
-    if (phase.contains('waxing gibbous')) return localizations.translate('moon_waxing_gibbous');
-    if (phase.contains('waning gibbous')) return localizations.translate('moon_waning_gibbous');
+    if (phase.contains('full'))
+      return localizations.translate('moon_full_moon');
+    if (phase.contains('first quarter'))
+      return localizations.translate('moon_first_quarter');
+    if (phase.contains('third quarter') || phase.contains('last quarter'))
+      return localizations.translate('moon_last_quarter');
+    if (phase.contains('waxing crescent'))
+      return localizations.translate('moon_waxing_crescent');
+    if (phase.contains('waning crescent'))
+      return localizations.translate('moon_waning_crescent');
+    if (phase.contains('waxing gibbous'))
+      return localizations.translate('moon_waxing_gibbous');
+    if (phase.contains('waning gibbous'))
+      return localizations.translate('moon_waning_gibbous');
 
     return localizations.translate('unknown_weather');
   }
 
-  Map<String, dynamic> _getHumidityStatus(int humidity, AppLocalizations localizations) {
+  Map<String, dynamic> _getHumidityStatus(
+    int humidity,
+    AppLocalizations localizations,
+  ) {
     if (humidity >= 40 && humidity <= 60) {
       return {
         'color': Colors.green,

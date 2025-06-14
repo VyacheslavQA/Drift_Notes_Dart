@@ -41,7 +41,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      await _firebaseService.sendPasswordResetEmail(_emailController.text.trim(), context);
+      await _firebaseService.sendPasswordResetEmail(
+        _emailController.text.trim(),
+        context,
+      );
 
       if (mounted) {
         setState(() {
@@ -76,10 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A1F1C),
-              Color(0xFF071714),
-            ],
+            colors: [Color(0xFF0A1F1C), Color(0xFF071714)],
           ),
         ),
         child: SafeArea(
@@ -114,7 +114,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   SizedBox(height: size.height * 0.04),
 
                   if (_isSent)
-                  // Сообщение об успешной отправке
+                    // Сообщение об успешной отправке
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -144,7 +144,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            localizations.translate('recovery_instructions_sent'),
+                            localizations.translate(
+                              'recovery_instructions_sent',
+                            ),
                             style: TextStyle(
                               fontSize: 16 * adaptiveTextScale,
                               color: AppConstants.textColor,
@@ -155,19 +157,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: () {
-                                Navigator.pushReplacementNamed(context, '/login');
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/login',
+                                );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2E7D32),
                                 foregroundColor: AppConstants.textColor,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
                                 ),
                               ),
                               child: Text(
                                 localizations.translate('return_to_login'),
-                                style: TextStyle(fontSize: 16 * adaptiveTextScale),
+                                style: TextStyle(
+                                  fontSize: 16 * adaptiveTextScale,
+                                ),
                               ),
                             ),
                           ),
@@ -201,7 +210,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             decoration: InputDecoration(
                               hintText: localizations.translate('email'),
                               hintStyle: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.5),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                               filled: true,
                               fillColor: const Color(0xFF12332E),
@@ -230,14 +241,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   width: 1.5,
                                 ),
                               ),
-                              errorStyle: const TextStyle(color: Colors.redAccent),
+                              errorStyle: const TextStyle(
+                                color: Colors.redAccent,
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 16,
                               ),
                             ),
                             keyboardType: TextInputType.emailAddress,
-                            validator: (value) => Validators.validateEmail(value, context),
+                            validator:
+                                (value) =>
+                                    Validators.validateEmail(value, context),
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _resetPassword(),
                           ),
@@ -262,7 +277,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                           ),
 
-                        SizedBox(height: _errorMessage.isNotEmpty ? size.height * 0.04 : size.height * 0.06),
+                        SizedBox(
+                          height:
+                              _errorMessage.isNotEmpty
+                                  ? size.height * 0.04
+                                  : size.height * 0.06,
+                        ),
 
                         // Кнопка отправки
                         SizedBox(
@@ -277,27 +297,30 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 borderRadius: BorderRadius.circular(28),
                               ),
                               padding: EdgeInsets.zero,
-                              disabledBackgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.5),
+                              disabledBackgroundColor: const Color(
+                                0xFF2E7D32,
+                              ).withValues(alpha: 0.5),
                               elevation: 0,
                             ),
-                            child: _isLoading
-                                ? SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: AppConstants.textColor,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                                : Text(
-                              localizations.translate('send'),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                height: 1.0,
-                              ),
-                            ),
+                            child:
+                                _isLoading
+                                    ? SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        color: AppConstants.textColor,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                    : Text(
+                                      localizations.translate('send'),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                        height: 1.0,
+                                      ),
+                                    ),
                           ),
                         ),
                       ],

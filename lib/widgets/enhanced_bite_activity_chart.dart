@@ -24,12 +24,12 @@ class EnhancedBiteActivityChart extends StatefulWidget {
   });
 
   @override
-  State<EnhancedBiteActivityChart> createState() => _EnhancedBiteActivityChartState();
+  State<EnhancedBiteActivityChart> createState() =>
+      _EnhancedBiteActivityChartState();
 }
 
 class _EnhancedBiteActivityChartState extends State<EnhancedBiteActivityChart>
     with TickerProviderStateMixin {
-
   late AnimationController _animationController;
   late AnimationController _glowController;
   late Animation<double> _animationValue;
@@ -66,10 +66,7 @@ class _EnhancedBiteActivityChartState extends State<EnhancedBiteActivityChart>
     );
 
     _glowAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(
-        parent: _glowController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
 
     _animationController.forward();
@@ -105,12 +102,14 @@ class _EnhancedBiteActivityChartState extends State<EnhancedBiteActivityChart>
     // Генерируем 24 точки активности (каждый час)
     for (int hour = 0; hour < 24; hour++) {
       final activity = _calculateHourlyActivity(hour);
-      _activityPoints.add(ActivityPoint(
-        hour: hour,
-        activity: activity,
-        zone: _getTimeZone(hour),
-        quality: _getActivityQuality(activity),
-      ));
+      _activityPoints.add(
+        ActivityPoint(
+          hour: hour,
+          activity: activity,
+          zone: _getTimeZone(hour),
+          quality: _getActivityQuality(activity),
+        ),
+      );
     }
 
     if (mounted) setState(() {});
@@ -188,14 +187,18 @@ class _EnhancedBiteActivityChartState extends State<EnhancedBiteActivityChart>
     if (factors != null) {
       final pressure = factors['pressure']?['value'] as double?;
       if (pressure != null) {
-        if (pressure > 0.7) baseActivity *= 1.15;
-        else if (pressure < 0.4) baseActivity *= 0.8;
+        if (pressure > 0.7)
+          baseActivity *= 1.15;
+        else if (pressure < 0.4)
+          baseActivity *= 0.8;
       }
 
       final wind = factors['wind']?['value'] as double?;
       if (wind != null) {
-        if (wind > 0.4 && wind < 0.8) baseActivity *= 1.1;
-        else if (wind < 0.3) baseActivity *= 0.85;
+        if (wind > 0.4 && wind < 0.8)
+          baseActivity *= 1.1;
+        else if (wind < 0.3)
+          baseActivity *= 0.85;
       }
 
       final moon = factors['moon']?['value'] as double?;
@@ -473,7 +476,11 @@ class BiteActivityPainter extends CustomPainter {
       stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
     );
 
-    final paint = Paint()..shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    final paint =
+        Paint()
+          ..shader = gradient.createShader(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+          );
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
   }
 
@@ -481,16 +488,20 @@ class BiteActivityPainter extends CustomPainter {
     if (activityPoints.length < 2) return;
 
     final path = Path();
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
 
     // Создаем путь кривой
     for (int i = 0; i < activityPoints.length; i++) {
       final point = activityPoints[i];
       final x = (i / (activityPoints.length - 1)) * size.width;
-      final y = size.height - (point.activity * animationProgress * size.height * 0.7) - size.height * 0.15;
+      final y =
+          size.height -
+          (point.activity * animationProgress * size.height * 0.7) -
+          size.height * 0.15;
 
       if (i == 0) {
         path.moveTo(x, y);
@@ -498,7 +509,10 @@ class BiteActivityPainter extends CustomPainter {
         // Используем плавные кривые
         final prevPoint = activityPoints[i - 1];
         final prevX = ((i - 1) / (activityPoints.length - 1)) * size.width;
-        final prevY = size.height - (prevPoint.activity * animationProgress * size.height * 0.7) - size.height * 0.15;
+        final prevY =
+            size.height -
+            (prevPoint.activity * animationProgress * size.height * 0.7) -
+            size.height * 0.15;
 
         final controlX = (prevX + x) / 2;
         path.quadraticBezierTo(controlX, prevY, x, y);
@@ -520,8 +534,11 @@ class BiteActivityPainter extends CustomPainter {
       ],
     );
 
-    final fillPaint = Paint()
-      ..shader = fillGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    final fillPaint =
+        Paint()
+          ..shader = fillGradient.createShader(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+          );
     canvas.drawPath(fillPath, fillPaint);
 
     // Рисуем основную кривую
@@ -532,14 +549,14 @@ class BiteActivityPainter extends CustomPainter {
         const Color(0xFFFF9800),
       ],
     );
-    paint.shader = curveGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    paint.shader = curveGradient.createShader(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+    );
     canvas.drawPath(path, paint);
   }
 
   void _drawTimeLabels(Canvas canvas, Size size) {
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     final times = ['00:00', '06:00', '12:00', '18:00', '00:00'];
     final zones = ['Night', 'Morning', 'Day', 'Evening', 'Night'];
@@ -574,23 +591,28 @@ class BiteActivityPainter extends CustomPainter {
         );
         textPainter.layout();
 
-        final zoneX = i == 0 ? x + 40 : (x + ((i + 1) / (times.length - 1)) * size.width) / 2;
-        textPainter.paint(
-          canvas,
-          Offset(zoneX - textPainter.width / 2, 20),
-        );
+        final zoneX =
+            i == 0
+                ? x + 40
+                : (x + ((i + 1) / (times.length - 1)) * size.width) / 2;
+        textPainter.paint(canvas, Offset(zoneX - textPainter.width / 2, 20));
       }
     }
   }
 
   void _drawAstronomicalEvents(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..style = PaintingStyle.fill;
 
     // Восход солнца
     if (sunriseHour != null) {
       final x = (sunriseHour! / 24) * size.width;
-      final y = size.height - (_getActivityAtHour(sunriseHour!) * animationProgress * size.height * 0.7) - size.height * 0.15;
+      final y =
+          size.height -
+          (_getActivityAtHour(sunriseHour!) *
+              animationProgress *
+              size.height *
+              0.7) -
+          size.height * 0.15;
 
       // Анимированное свечение
       paint.color = Colors.orange.withValues(alpha: 0.3 * glowAnimation);
@@ -603,7 +625,13 @@ class BiteActivityPainter extends CustomPainter {
     // Закат
     if (sunsetHour != null) {
       final x = (sunsetHour! / 24) * size.width;
-      final y = size.height - (_getActivityAtHour(sunsetHour!) * animationProgress * size.height * 0.7) - size.height * 0.15;
+      final y =
+          size.height -
+          (_getActivityAtHour(sunsetHour!) *
+              animationProgress *
+              size.height *
+              0.7) -
+          size.height * 0.15;
 
       // Анимированное свечение
       paint.color = Colors.indigo.withValues(alpha: 0.3 * glowAnimation);
@@ -622,7 +650,10 @@ class BiteActivityPainter extends CustomPainter {
       if (point.quality == ActivityQuality.noActivity) continue;
 
       final x = (i / (activityPoints.length - 1)) * size.width;
-      final y = size.height - (point.activity * animationProgress * size.height * 0.7) - size.height * 0.15;
+      final y =
+          size.height -
+          (point.activity * animationProgress * size.height * 0.7) -
+          size.height * 0.15;
 
       // Точка активности
       final paint = Paint()..style = PaintingStyle.fill;
@@ -646,12 +677,18 @@ class BiteActivityPainter extends CustomPainter {
         final labelY = y - 25;
 
         // Фон для текста
-        final bgPaint = Paint()
-          ..color = Colors.white.withValues(alpha: 0.9)
-          ..style = PaintingStyle.fill;
+        final bgPaint =
+            Paint()
+              ..color = Colors.white.withValues(alpha: 0.9)
+              ..style = PaintingStyle.fill;
 
         final bgRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(labelX - 8, labelY - 2, textPainter.width + 16, textPainter.height + 4),
+          Rect.fromLTWH(
+            labelX - 8,
+            labelY - 2,
+            textPainter.width + 16,
+            textPainter.height + 4,
+          ),
           const Radius.circular(12),
         );
         canvas.drawRRect(bgRect, bgPaint);
@@ -667,7 +704,13 @@ class BiteActivityPainter extends CustomPainter {
     }
   }
 
-  void _drawIcon(Canvas canvas, Offset center, IconData iconData, Color color, double size) {
+  void _drawIcon(
+    Canvas canvas,
+    Offset center,
+    IconData iconData,
+    Color color,
+    double size,
+  ) {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),

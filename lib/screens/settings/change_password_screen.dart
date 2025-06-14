@@ -69,7 +69,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         setState(() {
-          _successMessage = localizations.translate('password_changed_successfully');
+          _successMessage = localizations.translate(
+            'password_changed_successfully',
+          );
           _errorMessage = '';
         });
 
@@ -81,7 +83,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         // Показываем уведомление
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('password_changed_successfully')),
+            content: Text(
+              localizations.translate('password_changed_successfully'),
+            ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
@@ -102,7 +106,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         if (e is FirebaseAuthException) {
           switch (e.code) {
             case 'wrong-password':
-              errorMessage = localizations.translate('current_password_incorrect');
+              errorMessage = localizations.translate(
+                'current_password_incorrect',
+              );
               break;
             case 'weak-password':
               errorMessage = localizations.translate('weak_password');
@@ -145,7 +151,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(localizations.translate('password_reset_email_sent')),
+              content: Text(
+                localizations.translate('password_reset_email_sent'),
+              ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),
@@ -202,10 +210,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 // Текущий пароль
                 TextFormField(
                   controller: _currentPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: localizations.translate('current_password'),
                     labelStyle: TextStyle(
@@ -246,7 +251,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                        _obscureCurrentPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppConstants.textColor,
                       ),
                       onPressed: () {
@@ -259,7 +266,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   obscureText: _obscureCurrentPassword,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return localizations.translate('please_enter_current_password');
+                      return localizations.translate(
+                        'please_enter_current_password',
+                      );
                     }
                     return null;
                   },
@@ -271,16 +280,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 // Новый пароль
                 TextFormField(
                   controller: _newPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: localizations.translate('new_password'),
                     labelStyle: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                     ),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: AppConstants.textColor,
+                    ),
                     filled: true,
                     fillColor: AppConstants.surfaceColor,
                     enabledBorder: OutlineInputBorder(
@@ -315,7 +324,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                        _obscureNewPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppConstants.textColor,
                       ),
                       onPressed: () {
@@ -326,7 +337,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                   ),
                   obscureText: _obscureNewPassword,
-                  validator: (value) => Validators.validatePassword(value, context),
+                  validator:
+                      (value) => Validators.validatePassword(value, context),
                   textInputAction: TextInputAction.next,
                 ),
 
@@ -335,16 +347,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 // Подтверждение нового пароля
                 TextFormField(
                   controller: _confirmPasswordController,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: localizations.translate('confirm_new_password'),
                     labelStyle: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                     ),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: AppConstants.textColor,
+                    ),
                     filled: true,
                     fillColor: AppConstants.surfaceColor,
                     enabledBorder: OutlineInputBorder(
@@ -379,7 +391,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                        _obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppConstants.textColor,
                       ),
                       onPressed: () {
@@ -390,11 +404,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                   ),
                   obscureText: _obscureConfirmPassword,
-                  validator: (value) => Validators.validateConfirmPassword(
-                    value,
-                    _newPasswordController.text,
-                    context,
-                  ),
+                  validator:
+                      (value) => Validators.validateConfirmPassword(
+                        value,
+                        _newPasswordController.text,
+                        context,
+                      ),
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _changePassword(),
                 ),
@@ -466,11 +481,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.error,
-                          color: Colors.red,
-                          size: 24,
-                        ),
+                        const Icon(Icons.error, color: Colors.red, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -503,22 +514,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       padding: EdgeInsets.zero,
                       elevation: 0,
                     ),
-                    child: _isLoading
-                        ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: AppConstants.textColor,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                        : Text(
-                      localizations.translate('change_password'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child:
+                        _isLoading
+                            ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: AppConstants.textColor,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                            : Text(
+                              localizations.translate('change_password'),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                   ),
                 ),
 

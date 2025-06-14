@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для централизованного управления офлайн хранилищем данных
 class OfflineStorageService {
-  static final OfflineStorageService _instance = OfflineStorageService._internal();
+  static final OfflineStorageService _instance =
+      OfflineStorageService._internal();
 
   factory OfflineStorageService() {
     return _instance;
@@ -21,7 +22,8 @@ class OfflineStorageService {
   static const String _offlineNotesUpdatesKey = 'offline_note_updates';
   static const String _offlinePhotosKey = 'offline_fishing_photos';
   static const String _offlineMarkerMapsKey = 'offline_marker_maps';
-  static const String _offlineMarkerMapsUpdatesKey = 'offline_marker_map_updates';
+  static const String _offlineMarkerMapsUpdatesKey =
+      'offline_marker_map_updates';
   static const String _mapsToDeleteKey = 'maps_to_delete';
   static const String _notesToDeleteKey = 'notes_to_delete';
   static const String _statisticsCacheKey = 'cached_statistics';
@@ -50,7 +52,8 @@ class OfflineStorageService {
   Future<void> saveOfflineNote(Map<String, dynamic> noteData) async {
     try {
       final prefs = await preferences;
-      List<String> offlineNotesJson = prefs.getStringList(_offlineNotesKey) ?? [];
+      List<String> offlineNotesJson =
+          prefs.getStringList(_offlineNotesKey) ?? [];
 
       // Проверяем, есть ли уже заметка с таким ID
       final noteId = noteData['id'];
@@ -68,7 +71,9 @@ class OfflineStorageService {
             // Обновляем существующую заметку
             updatedNotes.add(jsonEncode(noteData));
             noteExists = true;
-            debugPrint('📝 Обновлена существующая заметка $noteId в офлайн хранилище');
+            debugPrint(
+              '📝 Обновлена существующая заметка $noteId в офлайн хранилище',
+            );
           } else {
             updatedNotes.add(noteJson);
           }
@@ -89,9 +94,11 @@ class OfflineStorageService {
       debugPrint('✅ Заметка $noteId сохранена в офлайн хранилище');
 
       // Удаляем из списка обновлений, так как мы теперь имеем полную копию заметки
-      String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
+      String offlineUpdatesJson =
+          prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
       try {
-        Map<String, dynamic> updates = jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
+        Map<String, dynamic> updates =
+            jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
         if (updates.containsKey(noteId.toString())) {
           updates.remove(noteId.toString());
           await prefs.setString(_offlineNotesUpdatesKey, jsonEncode(updates));
@@ -107,10 +114,14 @@ class OfflineStorageService {
   }
 
   /// Сохранить обновление заметки
-  Future<void> saveNoteUpdate(String noteId, Map<String, dynamic> noteData) async {
+  Future<void> saveNoteUpdate(
+    String noteId,
+    Map<String, dynamic> noteData,
+  ) async {
     try {
       final prefs = await preferences;
-      String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
+      String offlineUpdatesJson =
+          prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
       Map<String, dynamic> updates;
 
       try {
@@ -129,7 +140,10 @@ class OfflineStorageService {
   }
 
   /// Сохранить пути к фотографиям для заметки
-  Future<void> saveOfflinePhotoPaths(String noteId, List<String> photoPaths) async {
+  Future<void> saveOfflinePhotoPaths(
+    String noteId,
+    List<String> photoPaths,
+  ) async {
     try {
       final prefs = await preferences;
       String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
@@ -143,7 +157,9 @@ class OfflineStorageService {
 
       photosMap[noteId] = photoPaths;
       await prefs.setString(_offlinePhotosKey, jsonEncode(photosMap));
-      debugPrint('Пути к фото для заметки $noteId сохранены (${photoPaths.length} фото)');
+      debugPrint(
+        'Пути к фото для заметки $noteId сохранены (${photoPaths.length} фото)',
+      );
     } catch (e) {
       debugPrint('Ошибка при сохранении путей к фото: $e');
       rethrow;
@@ -178,7 +194,8 @@ class OfflineStorageService {
   Future<void> saveOfflineMarkerMap(Map<String, dynamic> mapData) async {
     try {
       final prefs = await preferences;
-      List<String> offlineMapsJson = prefs.getStringList(_offlineMarkerMapsKey) ?? [];
+      List<String> offlineMapsJson =
+          prefs.getStringList(_offlineMarkerMapsKey) ?? [];
 
       // Проверяем, есть ли уже карта с таким ID
       final mapId = mapData['id'];
@@ -210,10 +227,14 @@ class OfflineStorageService {
   }
 
   /// Сохранить обновление маркерной карты
-  Future<void> saveMarkerMapUpdate(String mapId, Map<String, dynamic> mapData) async {
+  Future<void> saveMarkerMapUpdate(
+    String mapId,
+    Map<String, dynamic> mapData,
+  ) async {
     try {
       final prefs = await preferences;
-      String offlineUpdatesJson = prefs.getString(_offlineMarkerMapsUpdatesKey) ?? '{}';
+      String offlineUpdatesJson =
+          prefs.getString(_offlineMarkerMapsUpdatesKey) ?? '{}';
       Map<String, dynamic> updates;
 
       try {
@@ -487,7 +508,8 @@ class OfflineStorageService {
   Future<void> clearUpdates(bool isMarkerMap) async {
     try {
       final prefs = await preferences;
-      final key = isMarkerMap ? _offlineMarkerMapsUpdatesKey : _offlineNotesUpdatesKey;
+      final key =
+          isMarkerMap ? _offlineMarkerMapsUpdatesKey : _offlineNotesUpdatesKey;
 
       await prefs.setString(key, '{}');
     } catch (e) {
@@ -519,7 +541,8 @@ class OfflineStorageService {
       // Удаляем пути к фото для этой заметки
       String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
       try {
-        Map<String, dynamic> photosMap = jsonDecode(offlinePhotosJson) as Map<String, dynamic>;
+        Map<String, dynamic> photosMap =
+            jsonDecode(offlinePhotosJson) as Map<String, dynamic>;
         photosMap.remove(noteId);
         await prefs.setString(_offlinePhotosKey, jsonEncode(photosMap));
       } catch (e) {
@@ -613,7 +636,8 @@ class OfflineStorageService {
         await prefs.setStringList(_offlineNotesKey, updatedNotes);
 
         // Удаляем соответствующие данные
-        String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
+        String offlineUpdatesJson =
+            prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
         try {
           Map<String, dynamic> updates = jsonDecode(offlineUpdatesJson);
           updates.remove(noteId);

@@ -56,7 +56,9 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
       final languageCode = localizations.locale.languageCode;
 
       // НОВОЕ: Используем селективную проверку согласий
-      final consentResult = await _consentService.checkUserConsents(languageCode);
+      final consentResult = await _consentService.checkUserConsents(
+        languageCode,
+      );
 
       if (mounted) {
         setState(() {
@@ -64,7 +66,9 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
           _isLoading = false;
         });
 
-        debugPrint('📋 Проверка обновлений в Help: hasChanges=${consentResult.hasChanges}');
+        debugPrint(
+          '📋 Проверка обновлений в Help: hasChanges=${consentResult.hasChanges}',
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка проверки обновлений соглашений: $e');
@@ -213,7 +217,9 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                           Text(
                             localizations.translate('version'),
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               fontSize: 12,
                             ),
                           ),
@@ -237,7 +243,9 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                           Text(
                             localizations.translate('size'),
                             style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               fontSize: 12,
                             ),
                           ),
@@ -262,7 +270,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  Widget _buildUserGuideButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildUserGuideButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -298,7 +309,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('user_guide') ?? 'Руководство пользователя',
+                    localizations.translate('user_guide') ??
+                        'Руководство пользователя',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -320,16 +332,20 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   /// НОВЫЙ ВИДЖЕТ: Кнопка принятых соглашений с уведомлениями
-  Widget _buildAcceptedAgreementsButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildAcceptedAgreementsButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _hasAgreementUpdates
-              ? Colors.orange.withOpacity(0.5)
-              : AppConstants.textColor.withValues(alpha: 0.1),
+          color:
+              _hasAgreementUpdates
+                  ? Colors.orange.withOpacity(0.5)
+                  : AppConstants.textColor.withValues(alpha: 0.1),
           width: _hasAgreementUpdates ? 2 : 1,
         ),
       ),
@@ -358,14 +374,20 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: _hasAgreementUpdates
-                            ? Colors.orange.withOpacity(0.2)
-                            : AppConstants.primaryColor.withValues(alpha: 0.2),
+                        color:
+                            _hasAgreementUpdates
+                                ? Colors.orange.withOpacity(0.2)
+                                : AppConstants.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.assignment_turned_in,
-                        color: _hasAgreementUpdates ? Colors.orange : AppConstants.textColor,
+                        color:
+                            _hasAgreementUpdates
+                                ? Colors.orange
+                                : AppConstants.textColor,
                         size: 24,
                       ),
                     ),
@@ -391,7 +413,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        localizations.translate('accepted_agreements') ?? 'Принятые соглашения',
+                        localizations.translate('accepted_agreements') ??
+                            'Принятые соглашения',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -401,14 +424,24 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _hasAgreementUpdates
-                            ? (localizations.translate('new_agreement_version_available') ?? 'Доступна новая версия соглашений')
-                            : (localizations.translate('agreement_status') ?? 'Статус принятых соглашений'),
+                            ? (localizations.translate(
+                                  'new_agreement_version_available',
+                                ) ??
+                                'Доступна новая версия соглашений')
+                            : (localizations.translate('agreement_status') ??
+                                'Статус принятых соглашений'),
                         style: TextStyle(
-                          color: _hasAgreementUpdates
-                              ? Colors.orange
-                              : AppConstants.textColor.withValues(alpha: 0.7),
+                          color:
+                              _hasAgreementUpdates
+                                  ? Colors.orange
+                                  : AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                           fontSize: 12,
-                          fontWeight: _hasAgreementUpdates ? FontWeight.w500 : FontWeight.normal,
+                          fontWeight:
+                              _hasAgreementUpdates
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -419,7 +452,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                   children: [
                     if (_hasAgreementUpdates)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
@@ -449,7 +485,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  Widget _buildTermsOfServiceButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildTermsOfServiceButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -485,7 +524,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('terms_of_service') ?? 'Пользовательское соглашение',
+                    localizations.translate('terms_of_service') ??
+                        'Пользовательское соглашение',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -506,7 +546,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  Widget _buildPrivacyPolicyButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildPrivacyPolicyButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -542,7 +585,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    localizations.translate('privacy_policy') ?? 'Политика конфиденциальности',
+                    localizations.translate('privacy_policy') ??
+                        'Политика конфиденциальности',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -564,7 +608,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   /// Кнопка истории версий документов
-  Widget _buildDocumentVersionHistoryButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildDocumentVersionHistoryButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -603,7 +650,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        localizations.translate('version_history') ?? 'История версий',
+                        localizations.translate('version_history') ??
+                            'История версий',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 16,
@@ -612,7 +660,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        localizations.translate('version_history_description') ?? 'Просмотр изменений в документах',
+                        localizations.translate(
+                              'version_history_description',
+                            ) ??
+                            'Просмотр изменений в документах',
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 12,
@@ -635,109 +686,127 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   /// Показывает меню выбора документа для просмотра истории версий
-  void _showDocumentVersionsMenu(BuildContext context, AppLocalizations localizations) {
+  void _showDocumentVersionsMenu(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Заголовок
-            Row(
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.history,
-                  color: AppConstants.primaryColor,
-                  size: 24,
+                // Заголовок
+                Row(
+                  children: [
+                    Icon(
+                      Icons.history,
+                      color: AppConstants.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      localizations.translate('version_history') ??
+                          'История версий',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
+
+                const SizedBox(height: 8),
+
                 Text(
-                  localizations.translate('version_history') ?? 'История версий',
+                  localizations.translate('select_document_for_history') ??
+                      'Выберите документ для просмотра истории версий',
                   style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
                   ),
                 ),
+
+                const SizedBox(height: 20),
+
+                // Политика конфиденциальности
+                _buildDocumentHistoryOption(
+                  context,
+                  localizations,
+                  title:
+                      localizations.translate('privacy_policy') ??
+                      'Политика конфиденциальности',
+                  description:
+                      localizations.translate(
+                        'privacy_policy_history_description',
+                      ) ??
+                      'Просмотр истории изменений политики конфиденциальности',
+                  icon: Icons.security,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => const DocumentVersionHistoryScreen(
+                              documentType: 'privacy_policy',
+                            ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Пользовательское соглашение
+                _buildDocumentHistoryOption(
+                  context,
+                  localizations,
+                  title:
+                      localizations.translate('terms_of_service') ??
+                      'Пользовательское соглашение',
+                  description:
+                      localizations.translate('terms_history_description') ??
+                      'Просмотр истории изменений пользовательского соглашения',
+                  icon: Icons.description,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => const DocumentVersionHistoryScreen(
+                              documentType: 'terms_of_service',
+                            ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 20),
               ],
             ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              localizations.translate('select_document_for_history') ?? 'Выберите документ для просмотра истории версий',
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 14,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Политика конфиденциальности
-            _buildDocumentHistoryOption(
-              context,
-              localizations,
-              title: localizations.translate('privacy_policy') ?? 'Политика конфиденциальности',
-              description: localizations.translate('privacy_policy_history_description') ?? 'Просмотр истории изменений политики конфиденциальности',
-              icon: Icons.security,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DocumentVersionHistoryScreen(
-                      documentType: 'privacy_policy',
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            // Пользовательское соглашение
-            _buildDocumentHistoryOption(
-              context,
-              localizations,
-              title: localizations.translate('terms_of_service') ?? 'Пользовательское соглашение',
-              description: localizations.translate('terms_history_description') ?? 'Просмотр истории изменений пользовательского соглашения',
-              icon: Icons.description,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DocumentVersionHistoryScreen(
-                      documentType: 'terms_of_service',
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   /// Опция для выбора документа
   Widget _buildDocumentHistoryOption(
-      BuildContext context,
-      AppLocalizations localizations, {
-        required String title,
-        required String description,
-        required IconData icon,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context,
+    AppLocalizations localizations, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -759,11 +828,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 color: AppConstants.primaryColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                icon,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              child: Icon(icon, color: AppConstants.primaryColor, size: 20),
             ),
 
             const SizedBox(width: 12),
@@ -837,15 +902,15 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  Widget _buildContactButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildContactButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () => _sendEmail(context),
-        icon: Icon(
-          Icons.email_outlined,
-          color: AppConstants.textColor,
-        ),
+        icon: Icon(Icons.email_outlined, color: AppConstants.textColor),
         label: Text(
           localizations.translate('contact_us_button'),
           style: TextStyle(
@@ -869,34 +934,30 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   void _openUserGuide(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const UserGuideScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const UserGuideScreen()),
     );
   }
 
   void _openTermsOfService(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const TermsOfServiceScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
     );
   }
 
   void _openPrivacyPolicy(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const PrivacyPolicyScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
     );
   }
 
   Future<void> _sendEmail(BuildContext context) async {
     final localizations = AppLocalizations.of(context);
 
-    final subject = Uri.encodeComponent(localizations.translate('email_subject'));
+    final subject = Uri.encodeComponent(
+      localizations.translate('email_subject'),
+    );
     final body = Uri.encodeComponent(localizations.translate('email_body'));
 
     final emailUrl = 'mailto:$supportEmail?subject=$subject&body=$body';

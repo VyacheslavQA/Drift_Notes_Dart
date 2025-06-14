@@ -23,7 +23,12 @@ class BiteForecastService {
 
     try {
       // Анализируем все факторы
-      final factors = await _analyzeAllFactors(weather, latitude, longitude, context);
+      final factors = await _analyzeAllFactors(
+        weather,
+        latitude,
+        longitude,
+        context,
+      );
 
       // Рассчитываем общую активность
       final overallActivity = _calculateOverallActivity(factors);
@@ -37,9 +42,15 @@ class BiteForecastService {
       final tips = _generateTips(factors, weather, context);
 
       // Находим оптимальные временные окна
-      final bestTimeWindows = _findOptimalTimeWindows(weather, factors, context);
+      final bestTimeWindows = _findOptimalTimeWindows(
+        weather,
+        factors,
+        context,
+      );
 
-      debugPrint('✅ Прогноз клева рассчитан: $scorePoints баллов, уровень: $level');
+      debugPrint(
+        '✅ Прогноз клева рассчитан: $scorePoints баллов, уровень: $level',
+      );
 
       return BiteForecastModel(
         overallActivity: overallActivity,
@@ -59,9 +70,12 @@ class BiteForecastService {
         overallActivity: 0.5,
         scorePoints: 50,
         level: BiteForecastLevel.moderate,
-        recommendation: context != null
-            ? AppLocalizations.of(context).translate('moderate_conditions_recommendation')
-            : 'Умеренные условия для рыбалки',
+        recommendation:
+            context != null
+                ? AppLocalizations.of(
+                  context,
+                ).translate('moderate_conditions_recommendation')
+                : 'Умеренные условия для рыбалки',
         tips: [],
         factors: {},
         bestTimeWindows: [],
@@ -72,11 +86,11 @@ class BiteForecastService {
 
   /// Анализ всех факторов, влияющих на клев
   Future<Map<String, BiteFactor>> _analyzeAllFactors(
-      WeatherApiResponse weather,
-      double latitude,
-      double longitude,
-      BuildContext? context,
-      ) async {
+    WeatherApiResponse weather,
+    double latitude,
+    double longitude,
+    BuildContext? context,
+  ) async {
     final factors = <String, BiteFactor>{};
 
     try {
@@ -102,7 +116,6 @@ class BiteForecastService {
       factors['humidity'] = _analyzeHumidity(weather);
 
       debugPrint('🔍 Проанализировано факторов: ${factors.length}');
-
     } catch (e) {
       debugPrint('❌ Ошибка при анализе факторов: $e');
     }
@@ -397,10 +410,10 @@ class BiteForecastService {
 
   /// Генерация основной рекомендации
   String _generateRecommendation(
-      Map<String, BiteFactor> factors,
-      BiteForecastLevel level,
-      BuildContext? context,
-      ) {
+    Map<String, BiteFactor> factors,
+    BiteForecastLevel level,
+    BuildContext? context,
+  ) {
     if (context == null) {
       switch (level) {
         case BiteForecastLevel.excellent:
@@ -434,51 +447,60 @@ class BiteForecastService {
 
   /// Генерация практических советов
   List<String> _generateTips(
-      Map<String, BiteFactor> factors,
-      WeatherApiResponse weather,
-      BuildContext? context,
-      ) {
+    Map<String, BiteFactor> factors,
+    WeatherApiResponse weather,
+    BuildContext? context,
+  ) {
     final tips = <String>[];
 
     try {
       // Советы по давлению
       final pressure = factors['pressure'];
       if (pressure != null && pressure.value < 0.5) {
-        tips.add(context != null
-            ? AppLocalizations.of(context).translate('low_pressure_tip')
-            : 'При низком давлении ловите на глубине');
+        tips.add(
+          context != null
+              ? AppLocalizations.of(context).translate('low_pressure_tip')
+              : 'При низком давлении ловите на глубине',
+        );
       }
 
       // Советы по ветру
       final wind = factors['wind'];
       if (wind != null) {
         if (wind.value > 0.7) {
-          tips.add(context != null
-              ? AppLocalizations.of(context).translate('good_wind_tip')
-              : 'Хороший ветер - ловите с наветренной стороны');
+          tips.add(
+            context != null
+                ? AppLocalizations.of(context).translate('good_wind_tip')
+                : 'Хороший ветер - ловите с наветренной стороны',
+          );
         } else if (wind.value < 0.4) {
-          tips.add(context != null
-              ? AppLocalizations.of(context).translate('calm_weather_tip')
-              : 'В штиль используйте легкие приманки');
+          tips.add(
+            context != null
+                ? AppLocalizations.of(context).translate('calm_weather_tip')
+                : 'В штиль используйте легкие приманки',
+          );
         }
       }
 
       // Советы по времени
       final timeOfDay = factors['timeOfDay'];
       if (timeOfDay != null && timeOfDay.value > 0.8) {
-        tips.add(context != null
-            ? AppLocalizations.of(context).translate('golden_hour_tip')
-            : 'Золотое время - используйте активные приманки');
+        tips.add(
+          context != null
+              ? AppLocalizations.of(context).translate('golden_hour_tip')
+              : 'Золотое время - используйте активные приманки',
+        );
       }
 
       // Советы по температуре
       final temp = factors['temperature'];
       if (temp != null && temp.value < 0.5) {
-        tips.add(context != null
-            ? AppLocalizations.of(context).translate('cold_weather_tip')
-            : 'В холодную погоду рыба менее активна - замедлите проводку');
+        tips.add(
+          context != null
+              ? AppLocalizations.of(context).translate('cold_weather_tip')
+              : 'В холодную погоду рыба менее активна - замедлите проводку',
+        );
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка при генерации советов: $e');
     }
@@ -488,10 +510,10 @@ class BiteForecastService {
 
   /// Поиск оптимальных временных окон
   List<OptimalTimeWindow> _findOptimalTimeWindows(
-      WeatherApiResponse weather,
-      Map<String, BiteFactor> factors,
-      BuildContext? context,
-      ) {
+    WeatherApiResponse weather,
+    Map<String, BiteFactor> factors,
+    BuildContext? context,
+  ) {
     final windows = <OptimalTimeWindow>[];
     final now = DateTime.now();
 
@@ -502,41 +524,54 @@ class BiteForecastService {
         final sunriseTime = _parseTime(astro.sunrise, now);
 
         if (sunriseTime != null) {
-          windows.add(OptimalTimeWindow(
-            startTime: sunriseTime.subtract(const Duration(hours: 1)),
-            endTime: sunriseTime.add(const Duration(hours: 2)),
-            activity: 0.85,
-            reason: context != null
-                ? AppLocalizations.of(context).translate('sunrise_activity_reason')
-                : 'Утренняя активность рыбы',
-            recommendations: [
-              context != null
-                  ? AppLocalizations.of(context).translate('morning_bait_recommendation')
-                  : 'Используйте яркие приманки'
-            ],
-          ));
+          windows.add(
+            OptimalTimeWindow(
+              startTime: sunriseTime.subtract(const Duration(hours: 1)),
+              endTime: sunriseTime.add(const Duration(hours: 2)),
+              activity: 0.85,
+              reason:
+                  context != null
+                      ? AppLocalizations.of(
+                        context,
+                      ).translate('sunrise_activity_reason')
+                      : 'Утренняя активность рыбы',
+              recommendations: [
+                context != null
+                    ? AppLocalizations.of(
+                      context,
+                    ).translate('morning_bait_recommendation')
+                    : 'Используйте яркие приманки',
+              ],
+            ),
+          );
         }
 
         // Вечернее окно (закат)
         final sunsetTime = _parseTime(astro.sunset, now);
 
         if (sunsetTime != null) {
-          windows.add(OptimalTimeWindow(
-            startTime: sunsetTime.subtract(const Duration(hours: 2)),
-            endTime: sunsetTime.add(const Duration(hours: 1)),
-            activity: 0.9,
-            reason: context != null
-                ? AppLocalizations.of(context).translate('sunset_activity_reason')
-                : 'Вечерняя активность рыбы',
-            recommendations: [
-              context != null
-                  ? AppLocalizations.of(context).translate('evening_bait_recommendation')
-                  : 'Попробуйте поверхностные приманки'
-            ],
-          ));
+          windows.add(
+            OptimalTimeWindow(
+              startTime: sunsetTime.subtract(const Duration(hours: 2)),
+              endTime: sunsetTime.add(const Duration(hours: 1)),
+              activity: 0.9,
+              reason:
+                  context != null
+                      ? AppLocalizations.of(
+                        context,
+                      ).translate('sunset_activity_reason')
+                      : 'Вечерняя активность рыбы',
+              recommendations: [
+                context != null
+                    ? AppLocalizations.of(
+                      context,
+                    ).translate('evening_bait_recommendation')
+                    : 'Попробуйте поверхностные приманки',
+              ],
+            ),
+          );
         }
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка при поиске оптимальных окон: $e');
     }
@@ -566,7 +601,13 @@ class BiteForecastService {
           }
         }
 
-        return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
+        return DateTime(
+          baseDate.year,
+          baseDate.month,
+          baseDate.day,
+          hour,
+          minute,
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка парсинга времени "$timeStr": $e');

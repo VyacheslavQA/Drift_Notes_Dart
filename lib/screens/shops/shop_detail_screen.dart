@@ -9,10 +9,7 @@ import '../../localization/app_localizations.dart';
 class ShopDetailScreen extends StatelessWidget {
   final ShopModel shop;
 
-  const ShopDetailScreen({
-    super.key,
-    required this.shop,
-  });
+  const ShopDetailScreen({super.key, required this.shop});
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +50,7 @@ class ShopDetailScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Услуги (если есть)
-              if (shop.services.isNotEmpty)
-                _buildServicesCard(localizations),
+              if (shop.services.isNotEmpty) _buildServicesCard(localizations),
 
               const SizedBox(height: 16),
 
@@ -187,16 +183,18 @@ class ShopDetailScreen extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: isActive
-                ? AppConstants.primaryColor.withValues(alpha: 0.2)
-                : AppConstants.textColor.withValues(alpha: 0.1),
+            color:
+                isActive
+                    ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                    : AppConstants.textColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             icon,
-            color: isActive
-                ? AppConstants.primaryColor
-                : AppConstants.textColor.withValues(alpha: 0.5),
+            color:
+                isActive
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withValues(alpha: 0.5),
             size: 24,
           ),
         ),
@@ -204,9 +202,10 @@ class ShopDetailScreen extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: isActive
-                ? AppConstants.textColor
-                : AppConstants.textColor.withValues(alpha: 0.5),
+            color:
+                isActive
+                    ? AppConstants.textColor
+                    : AppConstants.textColor.withValues(alpha: 0.5),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -243,7 +242,9 @@ class ShopDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            localizations.translate(shop.description), // вместо shop.description
+            localizations.translate(
+              shop.description,
+            ), // вместо shop.description
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 16,
@@ -281,31 +282,31 @@ class ShopDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...shop.services.map((serviceKey) =>
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: AppConstants.primaryColor,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        localizations.translate(serviceKey), // Переводим услуги
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.8),
-                          fontSize: 14,
-                          height: 1.3,
-                        ),
+          ...shop.services.map(
+            (serviceKey) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: AppConstants.primaryColor,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      localizations.translate(serviceKey), // Переводим услуги
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        height: 1.3,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
           ),
         ],
       ),
@@ -325,7 +326,11 @@ class ShopDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.contact_mail, color: AppConstants.primaryColor, size: 20),
+              Icon(
+                Icons.contact_mail,
+                color: AppConstants.primaryColor,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 localizations.translate('contacts'),
@@ -433,14 +438,14 @@ class ShopDetailScreen extends StatelessWidget {
                     Text(
                       value,
                       style: TextStyle(
-                        color: onTap != null
-                            ? AppConstants.primaryColor
-                            : AppConstants.textColor,
+                        color:
+                            onTap != null
+                                ? AppConstants.primaryColor
+                                : AppConstants.textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        decoration: onTap != null
-                            ? TextDecoration.underline
-                            : null,
+                        decoration:
+                            onTap != null ? TextDecoration.underline : null,
                       ),
                     ),
                   ],
@@ -459,7 +464,10 @@ class ShopDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, AppLocalizations localizations) {
+  Widget _buildActionButtons(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(

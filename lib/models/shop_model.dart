@@ -84,9 +84,10 @@ class ShopModel {
       city: json['city'] as String?,
       latitude: json['latitude'] as double?,
       longitude: json['longitude'] as double?,
-      workingHours: json['workingHours'] != null
-          ? Map<String, String>.from(json['workingHours'])
-          : null,
+      workingHours:
+          json['workingHours'] != null
+              ? Map<String, String>.from(json['workingHours'])
+              : null,
       services: List<String>.from(json['services'] ?? []),
       hasDelivery: json['hasDelivery'] as bool? ?? false,
       hasOnlineStore: json['hasOnlineStore'] as bool? ?? false,
@@ -175,12 +176,12 @@ class ShopModel {
 
 // Специализации магазинов
 enum ShopSpecialization {
-  carpFishing,    // Карповая рыбалка
-  spinning,       // Спиннинг
-  feeder,         // Фидер
-  floatFishing,   // Поплавочная рыбалка
-  iceFishing,     // Зимняя рыбалка
-  universal,      // Универсальный
+  carpFishing, // Карповая рыбалка
+  spinning, // Спиннинг
+  feeder, // Фидер
+  floatFishing, // Поплавочная рыбалка
+  iceFishing, // Зимняя рыбалка
+  universal, // Универсальный
 }
 
 extension ShopSpecializationExtension on ShopSpecialization {
@@ -238,9 +239,9 @@ extension ShopSpecializationExtension on ShopSpecialization {
 
 // Статусы магазинов
 enum ShopStatus {
-  regular,      // Обычный
-  recommended,  // Рекомендуемый
-  premium,      // Премиум
+  regular, // Обычный
+  recommended, // Рекомендуемый
+  premium, // Премиум
 }
 
 extension ShopStatusExtension on ShopStatus {

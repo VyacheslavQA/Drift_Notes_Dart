@@ -63,16 +63,19 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _runSourceCheck,
-                icon: _isLoading
-                    ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-                    : const Icon(Icons.refresh, size: 24),
+                icon:
+                    _isLoading
+                        ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Icon(Icons.refresh, size: 24),
                 label: Text(
                   _isLoading ? 'ПРОВЕРЯЕМ...' : 'ПРОВЕРИТЬ ИСТОЧНИК',
                   style: const TextStyle(
@@ -153,11 +156,7 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
               color: _statusColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              sourceIcon,
-              size: 48,
-              color: _statusColor,
-            ),
+            child: Icon(sourceIcon, size: 48, color: _statusColor),
           ),
 
           const SizedBox(height: 16),
@@ -288,10 +287,7 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          emoji,
-          style: const TextStyle(fontSize: 20),
-        ),
+        Text(emoji, style: const TextStyle(fontSize: 20)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -377,7 +373,8 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
             _predictionSource = 'ИИ (OpenAI)';
             _statusMessage = 'ИИ работает ✨';
             _statusColor = Colors.green;
-            _detailsMessage = 'Модель: ${testResult['model'] ?? 'gpt-3.5-turbo'}\n'
+            _detailsMessage =
+                'Модель: ${testResult['model'] ?? 'gpt-3.5-turbo'}\n'
                 'Время ответа: ${testResult['response_time'] ?? 'н/д'}мс';
           });
         } else {
@@ -385,7 +382,8 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
             _predictionSource = 'Алгоритм';
             _statusMessage = 'ИИ недоступен';
             _statusColor = Colors.blue;
-            _detailsMessage = 'Причина: ${testResult['error'] ?? 'Неизвестная ошибка'}';
+            _detailsMessage =
+                'Причина: ${testResult['error'] ?? 'Неизвестная ошибка'}';
           });
         }
       } else {

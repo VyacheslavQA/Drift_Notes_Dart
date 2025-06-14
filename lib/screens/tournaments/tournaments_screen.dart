@@ -62,10 +62,16 @@ class _TournamentsScreenState extends State<TournamentsScreen>
         filtered = filtered.where((t) => t.isPast).toList();
         break;
       case TournamentFilter.carpFishing:
-        filtered = filtered.where((t) => t.fishingType == FishingType.carpFishing).toList();
+        filtered =
+            filtered
+                .where((t) => t.fishingType == FishingType.carpFishing)
+                .toList();
         break;
       case TournamentFilter.casting:
-        filtered = filtered.where((t) => t.fishingType == FishingType.casting).toList();
+        filtered =
+            filtered
+                .where((t) => t.fishingType == FishingType.casting)
+                .toList();
         break;
       case TournamentFilter.all:
         break;
@@ -74,11 +80,15 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     // Применяем поиск
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
-      filtered = filtered.where((t) =>
-      t.name.toLowerCase().contains(query) ||
-          t.location.toLowerCase().contains(query) ||
-          t.organizer.toLowerCase().contains(query)
-      ).toList();
+      filtered =
+          filtered
+              .where(
+                (t) =>
+                    t.name.toLowerCase().contains(query) ||
+                    t.location.toLowerCase().contains(query) ||
+                    t.organizer.toLowerCase().contains(query),
+              )
+              .toList();
     }
 
     // Сортируем по дате
@@ -153,7 +163,7 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                 _onFilterChanged(TournamentFilter.past);
                 break;
               case 4:
-              // Покажем фильтры по типам рыбалки
+                // Покажем фильтры по типам рыбалки
                 break;
             }
           },
@@ -176,18 +186,21 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                   Icons.search,
                   color: AppConstants.textColor.withValues(alpha: 0.7),
                 ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                  ),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged('');
-                  },
-                )
-                    : null,
+                suffixIcon:
+                    _searchQuery.isNotEmpty
+                        ? IconButton(
+                          icon: Icon(
+                            Icons.clear,
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                        : null,
                 filled: true,
                 fillColor: const Color(0xFF12332E),
                 border: OutlineInputBorder(
@@ -224,12 +237,18 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                 ),
                 _buildStatItem(
                   localizations.translate('carp_short'),
-                  _tournaments.where((t) => t.fishingType == FishingType.carpFishing).length.toString(),
+                  _tournaments
+                      .where((t) => t.fishingType == FishingType.carpFishing)
+                      .length
+                      .toString(),
                   Icons.water,
                 ),
                 _buildStatItem(
                   localizations.translate('casting_short'),
-                  _tournaments.where((t) => t.fishingType == FishingType.casting).length.toString(),
+                  _tournaments
+                      .where((t) => t.fishingType == FishingType.casting)
+                      .length
+                      .toString(),
                   Icons.gps_fixed,
                 ),
                 _buildStatItem(
@@ -249,9 +268,15 @@ class _TournamentsScreenState extends State<TournamentsScreen>
               controller: _tabController,
               children: [
                 _buildTournamentsList(_filteredTournaments),
-                _buildTournamentsList(_tournaments.where((t) => t.isFuture).toList()),
-                _buildTournamentsList(_tournaments.where((t) => t.isActive).toList()),
-                _buildTournamentsList(_tournaments.where((t) => t.isPast).toList()),
+                _buildTournamentsList(
+                  _tournaments.where((t) => t.isFuture).toList(),
+                ),
+                _buildTournamentsList(
+                  _tournaments.where((t) => t.isActive).toList(),
+                ),
+                _buildTournamentsList(
+                  _tournaments.where((t) => t.isPast).toList(),
+                ),
                 _buildFishingTypesView(),
               ],
             ),
@@ -304,29 +329,38 @@ class _TournamentsScreenState extends State<TournamentsScreen>
 
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: fishingTypesOrder.map((fishingType) {
-        final count = fishingStats[fishingType] ?? 0;
-        final tournaments = _tournaments.where((t) => t.fishingType == fishingType).toList();
+      children:
+          fishingTypesOrder.map((fishingType) {
+            final count = fishingStats[fishingType] ?? 0;
+            final tournaments =
+                _tournaments
+                    .where((t) => t.fishingType == fishingType)
+                    .toList();
 
-        // Показываем только те типы, для которых есть турниры
-        if (count == 0) return const SizedBox.shrink();
+            // Показываем только те типы, для которых есть турниры
+            if (count == 0) return const SizedBox.shrink();
 
-        return Column(
-          children: [
-            _buildFishingTypeCard(
-              fishingType,
-              count,
-              tournaments,
-              localizations,
-            ),
-            const SizedBox(height: 12),
-          ],
-        );
-      }).toList(),
+            return Column(
+              children: [
+                _buildFishingTypeCard(
+                  fishingType,
+                  count,
+                  tournaments,
+                  localizations,
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }).toList(),
     );
   }
 
-  Widget _buildFishingTypeCard(FishingType fishingType, int count, List<TournamentModel> tournaments, AppLocalizations localizations) {
+  Widget _buildFishingTypeCard(
+    FishingType fishingType,
+    int count,
+    List<TournamentModel> tournaments,
+    AppLocalizations localizations,
+  ) {
     return Card(
       color: AppConstants.surfaceColor,
       child: ExpansionTile(
@@ -361,34 +395,42 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             color: AppConstants.textColor.withValues(alpha: 0.7),
           ),
         ),
-        children: tournaments.map((tournament) => ListTile(
-          title: Text(
-            tournament.name,
-            style: TextStyle(color: AppConstants.textColor),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            '${tournament.formattedDate} • ${tournament.location}',
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: Text(
-            tournament.category.icon,
-            style: const TextStyle(fontSize: 20),
-          ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TournamentDetailScreen(tournament: tournament),
-              ),
-            );
-          },
-        )).toList(),
+        children:
+            tournaments
+                .map(
+                  (tournament) => ListTile(
+                    title: Text(
+                      tournament.name,
+                      style: TextStyle(color: AppConstants.textColor),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '${tournament.formattedDate} • ${tournament.location}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text(
+                      tournament.category.icon,
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => TournamentDetailScreen(
+                                tournament: tournament,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                )
+                .toList(),
       ),
     );
   }
@@ -444,7 +486,10 @@ class _TournamentsScreenState extends State<TournamentsScreen>
               // Заголовок месяца
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
                 margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
@@ -461,7 +506,9 @@ class _TournamentsScreenState extends State<TournamentsScreen>
               ),
 
               // Турниры месяца
-              ...monthTournaments.map((tournament) => _buildTournamentCard(tournament, localizations)),
+              ...monthTournaments.map(
+                (tournament) => _buildTournamentCard(tournament, localizations),
+              ),
 
               const SizedBox(height: 16),
             ],
@@ -471,15 +518,19 @@ class _TournamentsScreenState extends State<TournamentsScreen>
     );
   }
 
-  Widget _buildTournamentCard(TournamentModel tournament, AppLocalizations localizations) {
+  Widget _buildTournamentCard(
+    TournamentModel tournament,
+    AppLocalizations localizations,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: tournament.isActive
-            ? Border.all(color: Colors.green, width: 2)
-            : null,
+        border:
+            tournament.isActive
+                ? Border.all(color: Colors.green, width: 2)
+                : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -489,7 +540,8 @@ class _TournamentsScreenState extends State<TournamentsScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => TournamentDetailScreen(tournament: tournament),
+                builder:
+                    (context) => TournamentDetailScreen(tournament: tournament),
               ),
             );
           },
@@ -546,13 +598,18 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                             runSpacing: 4,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppConstants.primaryColor,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  localizations.translate(tournament.fishingType.localizationKey),
+                                  localizations.translate(
+                                    tournament.fishingType.localizationKey,
+                                  ),
                                   style: TextStyle(
                                     color: AppConstants.textColor,
                                     fontSize: 10,
@@ -561,9 +618,14 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                                  color: AppConstants.primaryColor.withValues(
+                                    alpha: 0.3,
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Row(
@@ -575,7 +637,9 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      localizations.translate(tournament.category.localizationKey),
+                                      localizations.translate(
+                                        tournament.category.localizationKey,
+                                      ),
                                       style: TextStyle(
                                         color: AppConstants.textColor,
                                         fontSize: 10,
@@ -587,13 +651,18 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                               ),
                               if (tournament.isActive)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.green,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    localizations.translate('active').toUpperCase(),
+                                    localizations
+                                        .translate('active')
+                                        .toUpperCase(),
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 9,
@@ -622,7 +691,9 @@ class _TournamentsScreenState extends State<TournamentsScreen>
                         Text(
                           '${tournament.duration}${localizations.translate('hours')}',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 11,
                           ),
                         ),
@@ -690,11 +761,4 @@ class _TournamentsScreenState extends State<TournamentsScreen>
   }
 }
 
-enum TournamentFilter {
-  all,
-  upcoming,
-  active,
-  past,
-  carpFishing,
-  casting,
-}
+enum TournamentFilter { all, upcoming, active, past, carpFishing, casting }

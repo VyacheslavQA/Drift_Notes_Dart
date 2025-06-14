@@ -49,7 +49,9 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
         print('❌ Failed to load $fileName: $e');
         // Если файл для текущего языка не найден, загружаем русскую версию
         try {
-          guideText = await rootBundle.loadString('assets/user_guide/user_guide_ru.txt');
+          guideText = await rootBundle.loadString(
+            'assets/user_guide/user_guide_ru.txt',
+          );
           print('✅ Successfully loaded fallback Russian version');
         } catch (e2) {
           print('❌ Failed to load Russian version: $e2');
@@ -96,34 +98,37 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-        ),
-      )
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            _guideText,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              height: 1.6,
-            ),
-          ),
-        ),
-      ),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppConstants.textColor,
+                  ),
+                ),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppConstants.textColor.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _guideText,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ),
     );
   }
 }

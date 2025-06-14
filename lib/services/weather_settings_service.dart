@@ -4,11 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 enum TemperatureUnit { celsius, fahrenheit }
+
 enum WindSpeedUnit { ms, kmh, mph }
+
 enum PressureUnit { mmhg, hpa, inhg }
 
 class WeatherSettingsService {
-  static final WeatherSettingsService _instance = WeatherSettingsService._internal();
+  static final WeatherSettingsService _instance =
+      WeatherSettingsService._internal();
   factory WeatherSettingsService() => _instance;
   WeatherSettingsService._internal();
 
@@ -16,7 +19,8 @@ class WeatherSettingsService {
   static const String _temperatureUnitKey = 'weather_temperature_unit';
   static const String _windSpeedUnitKey = 'weather_wind_speed_unit';
   static const String _pressureUnitKey = 'weather_pressure_unit';
-  static const String _barometerCalibrationKey = 'weather_barometer_calibration';
+  static const String _barometerCalibrationKey =
+      'weather_barometer_calibration';
 
   // Настройки по умолчанию
   TemperatureUnit _temperatureUnit = TemperatureUnit.celsius;
@@ -55,7 +59,9 @@ class WeatherSettingsService {
       // Калибровка барометра
       _barometerCalibration = prefs.getDouble(_barometerCalibrationKey) ?? 0.0;
 
-      debugPrint('🌤️ Настройки погоды загружены: T:$_temperatureUnit, W:$_windSpeedUnit, P:$_pressureUnit');
+      debugPrint(
+        '🌤️ Настройки погоды загружены: T:$_temperatureUnit, W:$_windSpeedUnit, P:$_pressureUnit',
+      );
     } catch (e) {
       debugPrint('❌ Ошибка загрузки настроек погоды: $e');
     }
@@ -215,14 +221,20 @@ class WeatherSettingsService {
   // Форматирование скорости ветра с единицей
   String formatWindSpeed(double kmh, {bool showUnit = true, int decimals = 0}) {
     final converted = convertWindSpeed(kmh);
-    final formatted = decimals == 0 ? converted.round().toString() : converted.toStringAsFixed(decimals);
+    final formatted =
+        decimals == 0
+            ? converted.round().toString()
+            : converted.toStringAsFixed(decimals);
     return showUnit ? '$formatted ${getWindSpeedUnitSymbol()}' : formatted;
   }
 
   // Форматирование давления с единицей
   String formatPressure(double mbar, {bool showUnit = true, int decimals = 0}) {
     final converted = convertPressure(mbar);
-    final formatted = decimals == 0 ? converted.round().toString() : converted.toStringAsFixed(decimals);
+    final formatted =
+        decimals == 0
+            ? converted.round().toString()
+            : converted.toStringAsFixed(decimals);
     return showUnit ? '$formatted ${getPressureUnitSymbol()}' : formatted;
   }
 }

@@ -15,7 +15,8 @@ class BiteRecordScreen extends StatefulWidget {
   final BiteRecord? initialRecord; // Параметр для редактирования
   final int dayIndex; // Добавлен параметр для выбранного дня
   final DateTime? fishingStartDate; // Дата начала рыбалки
-  final DateTime? fishingEndDate; // Дата окончания рыбалки (может быть null для однодневной)
+  final DateTime?
+  fishingEndDate; // Дата окончания рыбалки (может быть null для однодневной)
   final bool isMultiDay; // Флаг многодневной рыбалки
 
   const BiteRecordScreen({
@@ -31,7 +32,8 @@ class BiteRecordScreen extends StatefulWidget {
   State<BiteRecordScreen> createState() => _BiteRecordScreenState();
 }
 
-class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBindingObserver {
+class _BiteRecordScreenState extends State<BiteRecordScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fishTypeController;
   late TextEditingController _weightController;
@@ -63,20 +65,26 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
 
     // Инициализация контроллеров
     _fishTypeController = TextEditingController(
-        text: _isEditing ? widget.initialRecord!.fishType : '');
+      text: _isEditing ? widget.initialRecord!.fishType : '',
+    );
 
     _weightController = TextEditingController(
-        text: _isEditing && widget.initialRecord!.weight > 0
-            ? widget.initialRecord!.weight.toString()
-            : '');
+      text:
+          _isEditing && widget.initialRecord!.weight > 0
+              ? widget.initialRecord!.weight.toString()
+              : '',
+    );
 
     _lengthController = TextEditingController(
-        text: _isEditing && widget.initialRecord!.length > 0
-            ? widget.initialRecord!.length.toString()
-            : '');
+      text:
+          _isEditing && widget.initialRecord!.length > 0
+              ? widget.initialRecord!.length.toString()
+              : '',
+    );
 
     _notesController = TextEditingController(
-        text: _isEditing ? widget.initialRecord!.notes : '');
+      text: _isEditing ? widget.initialRecord!.notes : '',
+    );
 
     // Установка времени
     if (_isEditing) {
@@ -119,11 +127,17 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
 
     final now = DateTime.now();
     final nowDate = DateTime(now.year, now.month, now.day);
-    final lastDate = DateTime(_lastCheckedDate!.year, _lastCheckedDate!.month, _lastCheckedDate!.day);
+    final lastDate = DateTime(
+      _lastCheckedDate!.year,
+      _lastCheckedDate!.month,
+      _lastCheckedDate!.day,
+    );
 
     // Если календарный день изменился
     if (!nowDate.isAtSameMomentAs(lastDate)) {
-      debugPrint('🗓️ Обнаружена смена календарного дня: ${DateFormat('dd.MM.yyyy').format(lastDate)} → ${DateFormat('dd.MM.yyyy').format(nowDate)}');
+      debugPrint(
+        '🗓️ Обнаружена смена календарного дня: ${DateFormat('dd.MM.yyyy').format(lastDate)} → ${DateFormat('dd.MM.yyyy').format(nowDate)}',
+      );
 
       // Обновляем последнюю проверенную дату
       _lastCheckedDate = now;
@@ -136,7 +150,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
         setState(() {
           _selectedDayIndex = newDayIndex;
         });
-        debugPrint('🗓️ Автоматически переключились на день ${_selectedDayIndex + 1}');
+        debugPrint(
+          '🗓️ Автоматически переключились на день ${_selectedDayIndex + 1}',
+        );
       }
     }
   }
@@ -192,7 +208,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
     // Ищем соответствующий день в списке дней рыбалки
     for (int i = 0; i < _fishingDays.length; i++) {
       if (_fishingDays[i].isAtSameMomentAs(todayDate)) {
-        debugPrint('🗓️ Автоматически выбран день ${i + 1} (${DateFormat('dd.MM.yyyy').format(_fishingDays[i])})');
+        debugPrint(
+          '🗓️ Автоматически выбран день ${i + 1} (${DateFormat('dd.MM.yyyy').format(_fishingDays[i])})',
+        );
         return i;
       }
     }
@@ -206,7 +224,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
       }
       // Если сегодня после окончания рыбалки - выбираем последний день
       else if (todayDate.isAfter(_fishingDays.last)) {
-        debugPrint('🗓️ Сегодня после окончания рыбалки, выбран последний день');
+        debugPrint(
+          '🗓️ Сегодня после окончания рыбалки, выбран последний день',
+        );
         return _fishingDays.length - 1;
       }
     }
@@ -271,14 +291,18 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
         setState(() {
           // Добавляем новые фото к уже существующим
           _selectedPhotos.addAll(
-              pickedFiles.map((xFile) => File(xFile.path)).toList()
+            pickedFiles.map((xFile) => File(xFile.path)).toList(),
           );
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.translate('error_selecting_images')}: $e')),
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_selecting_images')}: $e',
+            ),
+          ),
         );
       }
     }
@@ -303,7 +327,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.translate('error_taking_photo')}: $e')),
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_taking_photo')}: $e',
+            ),
+          ),
         );
       }
     }
@@ -332,12 +360,15 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
       for (var photo in _selectedPhotos) {
         try {
           final bytes = await photo.readAsBytes();
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_selectedPhotos.indexOf(photo)}.jpg';
+          final fileName =
+              '${DateTime.now().millisecondsSinceEpoch}_${_selectedPhotos.indexOf(photo)}.jpg';
           final userId = _firebaseService.currentUserId;
 
           if (userId == null) {
             if (mounted) {
-              throw Exception(AppLocalizations.of(context).translate('user_not_found'));
+              throw Exception(
+                AppLocalizations.of(context).translate('user_not_found'),
+              );
             }
             return [];
           }
@@ -354,7 +385,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${AppLocalizations.of(context).translate('error_loading_image')}: $e')),
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_loading_image')}: $e',
+            ),
+          ),
         );
       }
       return [];
@@ -414,7 +449,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
+          SnackBar(
+            content: Text('${localizations.translate('error_saving')}: $e'),
+          ),
         );
       }
     } finally {
@@ -430,43 +467,41 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
 
     showDialog(
       context: context,
-      builder: (BuildContext context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          localizations.translate('delete_bite_record'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('delete_bite_confirmation'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              localizations.translate('cancel'),
+      builder:
+          (BuildContext context) => AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            title: Text(
+              localizations.translate('delete_bite_record'),
               style: TextStyle(
                 color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Закрываем диалог
-              Navigator.pop(context, 'delete'); // Возвращаем команду удаления
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+            content: Text(
+              localizations.translate('delete_bite_confirmation'),
+              style: TextStyle(color: AppConstants.textColor),
             ),
-            child: Text(localizations.translate('delete')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  localizations.translate('cancel'),
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Закрываем диалог
+                  Navigator.pop(
+                    context,
+                    'delete',
+                  ); // Возвращаем команду удаления
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(localizations.translate('delete')),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -478,7 +513,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          _isEditing ? localizations.translate('edit_bite') : localizations.translate('new_bite'),
+          _isEditing
+              ? localizations.translate('edit_bite')
+              : localizations.translate('new_bite'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -538,7 +575,8 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                           color: AppConstants.textColor,
                         ),
                         items: List.generate(_totalFishingDays, (index) {
-                          final isToday = _fishingDays.isNotEmpty &&
+                          final isToday =
+                              _fishingDays.isNotEmpty &&
                               index < _fishingDays.length &&
                               _isToday(_fishingDays[index]);
 
@@ -551,15 +589,23 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                                     _getDayName(index),
                                     style: TextStyle(
                                       color: AppConstants.textColor,
-                                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                                      fontWeight:
+                                          isToday
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
                                     ),
                                   ),
                                 ),
                                 if (isToday)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.2),
+                                      color: Colors.green.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -606,17 +652,17 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                 GestureDetector(
                   onTap: () => _selectTime(context),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF12332E),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.access_time,
-                          color: AppConstants.textColor,
-                        ),
+                        Icon(Icons.access_time, color: AppConstants.textColor),
                         const SizedBox(width: 12),
                         Text(
                           DateFormat('HH:mm').format(_selectedTime),
@@ -647,7 +693,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                     fillColor: const Color(0xFF12332E),
                     filled: true,
                     hintText: localizations.translate('specify_fish_type'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                    hintStyle: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -669,7 +717,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader(localizations.translate('weight_kg')),
+                          _buildSectionHeader(
+                            localizations.translate('weight_kg'),
+                          ),
                           TextFormField(
                             controller: _weightController,
                             style: TextStyle(color: AppConstants.textColor),
@@ -677,7 +727,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                               fillColor: const Color(0xFF12332E),
                               filled: true,
                               hintText: localizations.translate('weight'),
-                              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -687,13 +741,17 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                                 color: AppConstants.textColor,
                               ),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
                                 // Проверяем, что введено корректное число
                                 final weightText = value.replaceAll(',', '.');
                                 if (double.tryParse(weightText) == null) {
-                                  return localizations.translate('enter_correct_number');
+                                  return localizations.translate(
+                                    'enter_correct_number',
+                                  );
                                 }
                               }
                               return null;
@@ -708,7 +766,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader(localizations.translate('length_cm')),
+                          _buildSectionHeader(
+                            localizations.translate('length_cm'),
+                          ),
                           TextFormField(
                             controller: _lengthController,
                             style: TextStyle(color: AppConstants.textColor),
@@ -716,7 +776,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                               fillColor: const Color(0xFF12332E),
                               filled: true,
                               hintText: localizations.translate('length'),
-                              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -726,13 +790,17 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                                 color: AppConstants.textColor,
                               ),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
                                 // Проверяем запятую в точку для корректного парсинга
                                 final lengthText = value.replaceAll(',', '.');
                                 if (double.tryParse(lengthText) == null) {
-                                  return localizations.translate('enter_correct_number');
+                                  return localizations.translate(
+                                    'enter_correct_number',
+                                  );
                                 }
                               }
                               return null;
@@ -754,8 +822,12 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                   decoration: InputDecoration(
                     fillColor: const Color(0xFF12332E),
                     filled: true,
-                    hintText: localizations.translate('additional_notes_fishing'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                    hintText: localizations.translate(
+                      'additional_notes_fishing',
+                    ),
+                    hintStyle: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -807,14 +879,20 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                 // Отображение существующих фото
                 if (_existingPhotoUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  _buildSectionHeader(localizations.translate('existing_photos')),
+                  _buildSectionHeader(
+                    localizations.translate('existing_photos'),
+                  ),
                   SizedBox(
                     height: 100,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: _existingPhotoUrls.length,
                       itemBuilder: (context, index) {
-                        return _buildPhotoItem(_existingPhotoUrls[index], index, true);
+                        return _buildPhotoItem(
+                          _existingPhotoUrls[index],
+                          index,
+                          true,
+                        );
                       },
                     ),
                   ),
@@ -830,7 +908,11 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                       scrollDirection: Axis.horizontal,
                       itemCount: _selectedPhotos.length,
                       itemBuilder: (context, index) {
-                        return _buildPhotoItem(_selectedPhotos[index].path, index, false);
+                        return _buildPhotoItem(
+                          _selectedPhotos[index].path,
+                          index,
+                          false,
+                        );
                       },
                     ),
                   ),
@@ -850,7 +932,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                     ),
                   ),
                   child: Text(
-                    _isEditing ? localizations.translate('save_changes_btn') : localizations.translate('add_bite_btn'),
+                    _isEditing
+                        ? localizations.translate('save_changes_btn')
+                        : localizations.translate('add_bite_btn'),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -898,9 +982,10 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             image: DecorationImage(
-              image: isExisting
-                  ? NetworkImage(source) as ImageProvider
-                  : FileImage(File(source)),
+              image:
+                  isExisting
+                      ? NetworkImage(source) as ImageProvider
+                      : FileImage(File(source)),
               fit: BoxFit.cover,
             ),
           ),
@@ -916,11 +1001,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen> with WidgetsBinding
                 color: Colors.black.withValues(alpha: 0.7),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
             ),
           ),
         ),

@@ -13,7 +13,8 @@ import '../services/weather/weather_service.dart';
 import '../models/weather_api_model.dart';
 
 class AIBitePredictionService {
-  static final AIBitePredictionService _instance = AIBitePredictionService._internal();
+  static final AIBitePredictionService _instance =
+      AIBitePredictionService._internal();
   factory AIBitePredictionService() => _instance;
   AIBitePredictionService._internal();
 
@@ -51,7 +52,9 @@ class AIBitePredictionService {
       if (_cache.containsKey(cacheKey)) {
         final cached = _cache[cacheKey]!;
         if (DateTime.now().difference(cached.generatedAt).inMinutes < 30) {
-          debugPrint('🤖 ИИ прогноз из кэша (${cached.bestPrediction.dataSource})');
+          debugPrint(
+            '🤖 ИИ прогноз из кэша (${cached.bestPrediction.dataSource})',
+          );
           return cached;
         }
       }
@@ -100,9 +103,10 @@ class AIBitePredictionService {
       // Сохраняем в кэш
       _cache[cacheKey] = multiPrediction;
 
-      debugPrint('✅ Прогноз готов. Источник: $finalDataSource. Лучший: ${multiPrediction.bestFishingType}');
+      debugPrint(
+        '✅ Прогноз готов. Источник: $finalDataSource. Лучший: ${multiPrediction.bestFishingType}',
+      );
       return multiPrediction;
-
     } catch (e) {
       debugPrint('❌ Ошибка прогноза: $e');
       return _getFallbackPrediction(weather, userHistory, latitude, longitude);
@@ -158,10 +162,14 @@ class AIBitePredictionService {
       // Возвращаем прогноз для конкретного типа
       final prediction = multiPrediction.allPredictions[fishingType];
       if (prediction == null) {
-        throw Exception('Не удалось получить прогноз для типа рыбалки: $fishingType');
+        throw Exception(
+          'Не удалось получить прогноз для типа рыбалки: $fishingType',
+        );
       }
 
-      debugPrint('✅ Прогноз для $fishingType готов: ${prediction.overallScore} баллов');
+      debugPrint(
+        '✅ Прогноз для $fishingType готов: ${prediction.overallScore} баллов',
+      );
       return prediction;
     } catch (e) {
       debugPrint('❌ Ошибка получения прогноза для $fishingType: $e');
@@ -173,12 +181,15 @@ class AIBitePredictionService {
   bool _isOpenAIConfigured() {
     try {
       final key = ApiKeys.openAIKey;
-      final isConfigured = key.isNotEmpty &&
+      final isConfigured =
+          key.isNotEmpty &&
           key != 'YOUR_OPENAI_API_KEY_HERE' &&
           key.startsWith('sk-') &&
           key.length > 20;
 
-      debugPrint('🔑 OpenAI ключ проверка: длина=${key.length}, начинается с sk-=${key.startsWith('sk-')}, настроен=$isConfigured');
+      debugPrint(
+        '🔑 OpenAI ключ проверка: длина=${key.length}, начинается с sk-=${key.startsWith('sk-')}, настроен=$isConfigured',
+      );
       return isConfigured;
     } catch (e) {
       debugPrint('❌ Ошибка проверки OpenAI ключа: $e');
@@ -187,7 +198,9 @@ class AIBitePredictionService {
   }
 
   /// Базовый OpenAI запрос (общий метод) - ИСПРАВЛЕН
-  Future<Map<String, dynamic>?> _makeOpenAIRequest(List<Map<String, String>> messages) async {
+  Future<Map<String, dynamic>?> _makeOpenAIRequest(
+    List<Map<String, String>> messages,
+  ) async {
     if (!_isOpenAIConfigured()) {
       debugPrint('🚫 OpenAI не настроен');
       return null;
@@ -201,24 +214,28 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'system',
-            'content': 'Ты эксперт по рыбалке. Отвечай развернуто на русском языке с конкретными советами.',
+            'content':
+                'Ты эксперт по рыбалке. Отвечай развернуто на русском языке с конкретными советами.',
           },
           ...messages,
         ],
         'max_tokens': 400, // УВЕЛИЧЕНО с 150 до 400
-        'temperature': 0.7, // УВЕЛИЧЕНО с 0.3 до 0.7 для более естественных ответов
+        'temperature':
+            0.7, // УВЕЛИЧЕНО с 0.3 до 0.7 для более естественных ответов
       };
 
-      final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json',
-          'Accept-Charset': 'utf-8',
-        },
-        body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО с 15 до 30 секунд
+      final response = await http
+          .post(
+            Uri.parse('https://api.openai.com/v1/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer ${ApiKeys.openAIKey}',
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+              'Accept-Charset': 'utf-8',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО с 15 до 30 секунд
 
       if (response.statusCode == 200) {
         final decodedBody = utf8.decode(response.bodyBytes);
@@ -233,13 +250,16 @@ class AIBitePredictionService {
         _lastAIRequestSuccessful = true;
         _lastAIError = '';
 
-        debugPrint('✅ OpenAI ответ получен успешно (finish_reason: $finishReason)');
+        debugPrint(
+          '✅ OpenAI ответ получен успешно (finish_reason: $finishReason)',
+        );
         return data;
       } else {
         final decodedBody = utf8.decode(response.bodyBytes);
         final errorData = json.decode(decodedBody);
         _lastAIRequestSuccessful = false;
-        _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
+        _lastAIError =
+            'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
 
         debugPrint('❌ OpenAI ошибка: $_lastAIError');
         return null;
@@ -256,10 +276,12 @@ class AIBitePredictionService {
   Future<List<String>> getWindFishingRecommendations(String prompt) async {
     try {
       final response = await _makeOpenAIRequest([
-        {'role': 'user', 'content': prompt}
+        {'role': 'user', 'content': prompt},
       ]);
 
-      if (response != null && response['choices'] != null && response['choices'].isNotEmpty) {
+      if (response != null &&
+          response['choices'] != null &&
+          response['choices'].isNotEmpty) {
         final content = response['choices'][0]['message']['content'] as String?;
 
         if (content != null && content.isNotEmpty) {
@@ -272,22 +294,24 @@ class AIBitePredictionService {
           // Сначала пробуем разделить по номерам
           final numberedLines = cleanContent.split(RegExp(r'\d+\.\s*'));
           if (numberedLines.length > 1) {
-            recommendations = numberedLines
-                .skip(1) // Пропускаем первый пустой элемент
-                .map((line) => line.trim())
-                .where((line) => line.isNotEmpty && line.length > 5)
-                .take(6) // УВЕЛИЧЕНО до 6 рекомендаций
-                .toList();
+            recommendations =
+                numberedLines
+                    .skip(1) // Пропускаем первый пустой элемент
+                    .map((line) => line.trim())
+                    .where((line) => line.isNotEmpty && line.length > 5)
+                    .take(6) // УВЕЛИЧЕНО до 6 рекомендаций
+                    .toList();
           }
 
           // Если нумерованных пунктов нет, разбиваем по переносам строк
           if (recommendations.isEmpty) {
-            recommendations = cleanContent
-                .split('\n')
-                .map((line) => line.trim())
-                .where((line) => line.isNotEmpty && line.length > 5)
-                .take(6)
-                .toList();
+            recommendations =
+                cleanContent
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .where((line) => line.isNotEmpty && line.length > 5)
+                    .take(6)
+                    .toList();
           }
 
           // Если и так не получилось, возвращаем весь ответ как одну рекомендацию
@@ -296,7 +320,9 @@ class AIBitePredictionService {
           }
 
           debugPrint('✅ Получено ${recommendations.length} рекомендаций от ИИ');
-          return recommendations.isNotEmpty ? recommendations : ['Рекомендации успешно получены от ИИ'];
+          return recommendations.isNotEmpty
+              ? recommendations
+              : ['Рекомендации успешно получены от ИИ'];
         }
       }
 
@@ -329,7 +355,8 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'user',
-            'content': 'Ответь одной короткой фразой на русском: "API работает корректно"',
+            'content':
+                'Ответь одной короткой фразой на русском: "API работает корректно"',
           },
         ],
         'max_tokens': 20, // Для теста достаточно
@@ -338,16 +365,18 @@ class AIBitePredictionService {
 
       debugPrint('🔍 Request body: ${json.encode(requestBody)}');
 
-      final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json',
-          'Accept-Charset': 'utf-8',
-        },
-        body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('https://api.openai.com/v1/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer ${ApiKeys.openAIKey}',
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+              'Accept-Charset': 'utf-8',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30));
 
       debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
       debugPrint('🔍 Response headers: ${response.headers}');
@@ -358,7 +387,8 @@ class AIBitePredictionService {
         debugPrint('🔍 Decoded response body: $decodedBody');
 
         final data = json.decode(decodedBody);
-        final answer = data['choices'][0]['message']['content'].toString().trim();
+        final answer =
+            data['choices'][0]['message']['content'].toString().trim();
         final finishReason = data['choices'][0]['finish_reason'];
 
         debugPrint('🔍 Final answer: $answer');
@@ -374,13 +404,15 @@ class AIBitePredictionService {
           'response': answer,
           'finish_reason': finishReason,
           'configured': true,
-          'response_time': DateTime.now().difference(_lastAIRequestTime!).inMilliseconds,
+          'response_time':
+              DateTime.now().difference(_lastAIRequestTime!).inMilliseconds,
         };
       } else {
         final decodedBody = utf8.decode(response.bodyBytes);
         final errorData = json.decode(decodedBody);
         _lastAIRequestSuccessful = false;
-        _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
+        _lastAIError =
+            'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
 
         return {
           'success': false,
@@ -394,20 +426,16 @@ class AIBitePredictionService {
       _lastAIError = e.toString();
 
       debugPrint('❌ OpenAI тест ошибка: $e');
-      return {
-        'success': false,
-        'error': e.toString(),
-        'configured': true,
-      };
+      return {'success': false, 'error': e.toString(), 'configured': true};
     }
   }
 
   /// Сбор данных пользователя для анализа
   Future<Map<String, dynamic>> _collectUserData(
-      List<FishingNoteModel>? userHistory,
-      double latitude,
-      double longitude,
-      ) async {
+    List<FishingNoteModel>? userHistory,
+    double latitude,
+    double longitude,
+  ) async {
     debugPrint('📊 Собираем данные пользователя...');
 
     if (userHistory == null || userHistory.isEmpty) {
@@ -422,20 +450,26 @@ class AIBitePredictionService {
     }
 
     // Анализируем историю пользователя
-    final successfulTrips = userHistory.where((note) =>
-    note.biteRecords.isNotEmpty &&
-        note.biteRecords.any((bite) => bite.weight > 0)
-    ).toList();
+    final successfulTrips =
+        userHistory
+            .where(
+              (note) =>
+                  note.biteRecords.isNotEmpty &&
+                  note.biteRecords.any((bite) => bite.weight > 0),
+            )
+            .toList();
 
     // Найдем поездки рядом с текущим местоположением
-    final locationTrips = userHistory.where((note) {
-      return _calculateDistance(
-        note.latitude,
-        note.longitude,
-        latitude,
-        longitude,
-      ) < 50; // В радиусе 50 км
-    }).toList();
+    final locationTrips =
+        userHistory.where((note) {
+          return _calculateDistance(
+                note.latitude,
+                note.longitude,
+                latitude,
+                longitude,
+              ) <
+              50; // В радиусе 50 км
+        }).toList();
 
     // Анализ успешных условий
     final successfulConditions = <Map<String, dynamic>>[];
@@ -444,7 +478,10 @@ class AIBitePredictionService {
         'fishing_type': trip.fishingType,
         'time_of_day': trip.date.hour,
         'season': _getSeason(trip.date),
-        'catch_weight': trip.biteRecords.fold(0.0, (sum, bite) => sum + bite.weight),
+        'catch_weight': trip.biteRecords.fold(
+          0.0,
+          (sum, bite) => sum + bite.weight,
+        ),
         'bite_count': trip.biteRecords.length,
         'duration_hours': trip.endDate?.difference(trip.date).inHours ?? 8,
       });
@@ -453,12 +490,13 @@ class AIBitePredictionService {
     // Предпочитаемые типы рыбалки
     final typeFrequency = <String, int>{};
     for (final trip in userHistory) {
-      typeFrequency[trip.fishingType] = (typeFrequency[trip.fishingType] ?? 0) + 1;
+      typeFrequency[trip.fishingType] =
+          (typeFrequency[trip.fishingType] ?? 0) + 1;
     }
 
-    final preferredTypes = typeFrequency.entries
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final preferredTypes =
+        typeFrequency.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     return {
       'has_data': true,
@@ -468,10 +506,12 @@ class AIBitePredictionService {
       'preferred_types': preferredTypes.take(3).map((e) => e.key).toList(),
       'successful_conditions': successfulConditions,
       'location_familiarity': locationTrips.length / userHistory.length,
-      'avg_trip_duration': userHistory
-          .map((trip) => trip.endDate?.difference(trip.date).inHours ?? 0)
-          .where((duration) => duration > 0)
-          .fold(0.0, (sum, duration) => sum + duration) / userHistory.length,
+      'avg_trip_duration':
+          userHistory
+              .map((trip) => trip.endDate?.difference(trip.date).inHours ?? 0)
+              .where((duration) => duration > 0)
+              .fold(0.0, (sum, duration) => sum + duration) /
+          userHistory.length,
       'favorite_seasons': _analyzeFavoriteSeasons(userHistory),
       'best_times': _analyzeBestTimes(successfulTrips),
     };
@@ -585,7 +625,10 @@ class AIBitePredictionService {
         'temp_optimal_min': 8.0,
         'temp_optimal_max': 25.0,
         'pressure_sensitivity': 0.7,
-        'season_bonus': _getSeasonBonus('float_fishing', _getSeason(targetDate)),
+        'season_bonus': _getSeasonBonus(
+          'float_fishing',
+          _getSeason(targetDate),
+        ),
         'base_score': 55.0,
       },
       'ice_fishing': {
@@ -595,7 +638,10 @@ class AIBitePredictionService {
         'temp_optimal_max': 5.0,
         'pressure_sensitivity': 1.2,
         'season_bonus': _getSeasonBonus('ice_fishing', _getSeason(targetDate)),
-        'base_score': current.tempC <= 0 ? 60.0 : 10.0, // Кардинально разные скоры зимой и летом
+        'base_score':
+            current.tempC <= 0
+                ? 60.0
+                : 10.0, // Кардинально разные скоры зимой и летом
       },
       'fly_fishing': {
         'name': 'Нахлыст',
@@ -617,7 +663,9 @@ class AIBitePredictionService {
       },
     };
 
-    debugPrint('🎣 Генерируем прогнозы для ${fishingTypes.length} типов рыбалки...');
+    debugPrint(
+      '🎣 Генерируем прогнозы для ${fishingTypes.length} типов рыбалки...',
+    );
 
     for (final entry in fishingTypes.entries) {
       final type = entry.key;
@@ -690,13 +738,13 @@ class AIBitePredictionService {
 
   /// Генерация прогноза для конкретного типа рыбалки
   AIBitePrediction _generatePredictionForType(
-      String fishingType,
-      Map<String, dynamic> config,
-      WeatherApiResponse weather,
-      Map<String, dynamic> userData,
-      Map<String, dynamic> weatherAnalysis,
-      bool useAI,
-      ) {
+    String fishingType,
+    Map<String, dynamic> config,
+    WeatherApiResponse weather,
+    Map<String, dynamic> userData,
+    Map<String, dynamic> weatherAnalysis,
+    bool useAI,
+  ) {
     // Начинаем с базового скора для типа
     double score = config['base_score'] as double;
     final factors = <BiteFactorAnalysis>[];
@@ -708,14 +756,19 @@ class AIBitePredictionService {
     final seasonBonus = config['season_bonus'] as double;
     score += seasonBonus;
     if (seasonBonus != 0) {
-      factors.add(BiteFactorAnalysis(
-        name: 'Сезон',
-        value: _getSeason(DateTime.now()),
-        impact: seasonBonus.round(),
-        weight: 0.9,
-        description: seasonBonus > 0 ? 'Благоприятный сезон для ${config['name']}' : 'Неблагоприятный сезон',
-        isPositive: seasonBonus > 0,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Сезон',
+          value: _getSeason(DateTime.now()),
+          impact: seasonBonus.round(),
+          weight: 0.9,
+          description:
+              seasonBonus > 0
+                  ? 'Благоприятный сезон для ${config['name']}'
+                  : 'Неблагоприятный сезон',
+          isPositive: seasonBonus > 0,
+        ),
+      );
     }
 
     // Анализ ветра с конкретными штрафами
@@ -724,26 +777,31 @@ class AIBitePredictionService {
     if (windKph <= windTolerance) {
       final windBonus = windKph <= windTolerance * 0.5 ? 15.0 : 10.0;
       score += windBonus;
-      factors.add(BiteFactorAnalysis(
-        name: 'Ветер',
-        value: '${windKph.round()} км/ч',
-        impact: windBonus.round(),
-        weight: 0.8,
-        description: 'Подходящий ветер для ${config['name']}',
-        isPositive: true,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Ветер',
+          value: '${windKph.round()} км/ч',
+          impact: windBonus.round(),
+          weight: 0.8,
+          description: 'Подходящий ветер для ${config['name']}',
+          isPositive: true,
+        ),
+      );
     } else {
       final excess = windKph - windTolerance;
-      final windPenalty = -math.min(excess * 2, 30.0); // Максимальный штраф 30 баллов
+      final windPenalty =
+          -math.min(excess * 2, 30.0); // Максимальный штраф 30 баллов
       score += windPenalty;
-      factors.add(BiteFactorAnalysis(
-        name: 'Ветер',
-        value: '${windKph.round()} км/ч',
-        impact: windPenalty.round(),
-        weight: 0.8,
-        description: 'Слишком сильный ветер для ${config['name']}',
-        isPositive: false,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Ветер',
+          value: '${windKph.round()} км/ч',
+          impact: windPenalty.round(),
+          weight: 0.8,
+          description: 'Слишком сильный ветер для ${config['name']}',
+          isPositive: false,
+        ),
+      );
       tips.add('При сильном ветре ищите защищенные места');
     }
 
@@ -755,14 +813,16 @@ class AIBitePredictionService {
     if (temp >= tempMin && temp <= tempMax) {
       final tempBonus = 15.0;
       score += tempBonus;
-      factors.add(BiteFactorAnalysis(
-        name: 'Температура',
-        value: '${temp.round()}°C',
-        impact: tempBonus.round(),
-        weight: 0.7,
-        description: 'Оптимальная температура для ${config['name']}',
-        isPositive: true,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Температура',
+          value: '${temp.round()}°C',
+          impact: tempBonus.round(),
+          weight: 0.7,
+          description: 'Оптимальная температура для ${config['name']}',
+          isPositive: true,
+        ),
+      );
     } else {
       double tempPenalty;
       if (temp < tempMin) {
@@ -771,14 +831,19 @@ class AIBitePredictionService {
         tempPenalty = -math.min((temp - tempMax) * 2, 20.0);
       }
       score += tempPenalty;
-      factors.add(BiteFactorAnalysis(
-        name: 'Температура',
-        value: '${temp.round()}°C',
-        impact: tempPenalty.round(),
-        weight: 0.7,
-        description: temp < tempMin ? 'Слишком холодно для ${config['name']}' : 'Слишком жарко',
-        isPositive: false,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Температура',
+          value: '${temp.round()}°C',
+          impact: tempPenalty.round(),
+          weight: 0.7,
+          description:
+              temp < tempMin
+                  ? 'Слишком холодно для ${config['name']}'
+                  : 'Слишком жарко',
+          isPositive: false,
+        ),
+      );
 
       if (temp < tempMin) {
         tips.add('В холодную погоду рыба менее активна - замедлите проводку');
@@ -793,27 +858,35 @@ class AIBitePredictionService {
     if (pressure >= 1010 && pressure <= 1025) {
       final pressureBonus = 12 * pressureSensitivity;
       score += pressureBonus;
-      factors.add(BiteFactorAnalysis(
-        name: 'Атмосферное давление',
-        value: '${pressure.round()} мб',
-        impact: pressureBonus.round(),
-        weight: pressureSensitivity,
-        description: 'Стабильное давление способствует клеву',
-        isPositive: true,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Атмосферное давление',
+          value: '${pressure.round()} мб',
+          impact: pressureBonus.round(),
+          weight: pressureSensitivity,
+          description: 'Стабильное давление способствует клеву',
+          isPositive: true,
+        ),
+      );
     } else {
-      final pressurePenalty = pressure < 1000
-          ? -18 * pressureSensitivity
-          : -12 * pressureSensitivity;
+      final pressurePenalty =
+          pressure < 1000
+              ? -18 * pressureSensitivity
+              : -12 * pressureSensitivity;
       score += pressurePenalty;
-      factors.add(BiteFactorAnalysis(
-        name: 'Атмосферное давление',
-        value: '${pressure.round()} мб',
-        impact: pressurePenalty.round(),
-        weight: pressureSensitivity,
-        description: pressure < 1000 ? 'Низкое давление снижает активность' : 'Высокое давление неблагоприятно',
-        isPositive: false,
-      ));
+      factors.add(
+        BiteFactorAnalysis(
+          name: 'Атмосферное давление',
+          value: '${pressure.round()} мб',
+          impact: pressurePenalty.round(),
+          weight: pressureSensitivity,
+          description:
+              pressure < 1000
+                  ? 'Низкое давление снижает активность'
+                  : 'Высокое давление неблагоприятно',
+          isPositive: false,
+        ),
+      );
       tips.add('При изменении давления рыба может быть пассивной');
     }
 
@@ -822,14 +895,16 @@ class AIBitePredictionService {
       final preferredTypes = userData['preferred_types'] as List<dynamic>;
       if (preferredTypes.contains(fishingType)) {
         score += 8;
-        factors.add(BiteFactorAnalysis(
-          name: 'Персональная история',
-          value: 'Предпочитаемый тип',
-          impact: 8,
-          weight: 0.6,
-          description: 'Вы часто используете этот тип рыбалки',
-          isPositive: true,
-        ));
+        factors.add(
+          BiteFactorAnalysis(
+            name: 'Персональная история',
+            value: 'Предпочитаемый тип',
+            impact: 8,
+            weight: 0.6,
+            description: 'Вы часто используете этот тип рыбалки',
+            isPositive: true,
+          ),
+        );
       }
     }
 
@@ -863,7 +938,11 @@ class AIBitePredictionService {
       activityLevel: activityLevel,
       confidence: useAI ? 0.9 : 0.8,
       recommendation: recommendation,
-      detailedAnalysis: _generateDetailedAnalysis(fishingType, factors, weather),
+      detailedAnalysis: _generateDetailedAnalysis(
+        fishingType,
+        factors,
+        weather,
+      ),
       factors: factors,
       bestTimeWindows: timeWindows,
       tips: tips,
@@ -875,10 +954,10 @@ class AIBitePredictionService {
 
   /// Улучшение прогноза с помощью OpenAI - ИСПРАВЛЕНО
   Future<bool> _enhanceWithOpenAI(
-      Map<String, AIBitePrediction> predictions,
-      WeatherApiResponse weather,
-      Map<String, dynamic> userData,
-      ) async {
+    Map<String, AIBitePrediction> predictions,
+    WeatherApiResponse weather,
+    Map<String, dynamic> userData,
+  ) async {
     if (!_isOpenAIConfigured()) {
       debugPrint('🚫 OpenAI не настроен, пропускаем улучшение');
       return false;
@@ -896,12 +975,10 @@ class AIBitePredictionService {
         'messages': [
           {
             'role': 'system',
-            'content': 'Ты эксперт по рыбалке. Проанализируй условия и дай практические советы на русском языке.',
+            'content':
+                'Ты эксперт по рыбалке. Проанализируй условия и дай практические советы на русском языке.',
           },
-          {
-            'role': 'user',
-            'content': prompt,
-          },
+          {'role': 'user', 'content': prompt},
         ],
         'max_tokens': 300, // УВЕЛИЧЕНО с 200 до 300
         'temperature': 0.6, // УВЕЛИЧЕНО с 0.3 до 0.6
@@ -909,16 +986,18 @@ class AIBitePredictionService {
 
       debugPrint('🔍 Request body: ${json.encode(requestBody)}');
 
-      final response = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer ${ApiKeys.openAIKey}',
-          'Content-Type': 'application/json; charset=utf-8',
-          'Accept': 'application/json',
-          'Accept-Charset': 'utf-8',
-        },
-        body: json.encode(requestBody),
-      ).timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО таймаут
+      final response = await http
+          .post(
+            Uri.parse('https://api.openai.com/v1/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer ${ApiKeys.openAIKey}',
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+              'Accept-Charset': 'utf-8',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30)); // УВЕЛИЧЕНО таймаут
 
       debugPrint('🌐 OpenAI ответ: статус ${response.statusCode}');
 
@@ -940,12 +1019,12 @@ class AIBitePredictionService {
 
         debugPrint('✅ OpenAI улучшение применено успешно');
         return true;
-
       } else {
         final decodedBody = utf8.decode(response.bodyBytes);
         final errorData = json.decode(decodedBody);
         _lastAIRequestSuccessful = false;
-        _lastAIError = 'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
+        _lastAIError =
+            'HTTP ${response.statusCode}: ${errorData['error']?['message'] ?? 'Unknown error'}';
 
         debugPrint('❌ OpenAI ошибка: $_lastAIError');
         return false;
@@ -961,17 +1040,20 @@ class AIBitePredictionService {
 
   /// Обработка ответа от AI и улучшение прогнозов - УЛУЧШЕНО
   void _processAIResponse(
-      Map<String, AIBitePrediction> predictions,
-      String aiResponse,
-      WeatherApiResponse weather,
-      ) {
+    Map<String, AIBitePrediction> predictions,
+    String aiResponse,
+    WeatherApiResponse weather,
+  ) {
     try {
       debugPrint('🔍 Processing AI response: $aiResponse');
 
       // Добавляем AI советы к лучшему прогнозу
-      final bestType = predictions.entries
-          .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b)
-          .key;
+      final bestType =
+          predictions.entries
+              .reduce(
+                (a, b) => a.value.overallScore > b.value.overallScore ? a : b,
+              )
+              .key;
 
       if (predictions[bestType] != null) {
         final enhanced = predictions[bestType]!;
@@ -982,12 +1064,13 @@ class AIBitePredictionService {
         // Проверяем, что ответ не пустой и содержательный
         if (cleanResponse.isNotEmpty && cleanResponse.length > 10) {
           // Разбиваем ответ на отдельные советы, если они есть
-          final aiTips = cleanResponse
-              .split(RegExp(r'[.!]\s+'))
-              .map((tip) => tip.trim())
-              .where((tip) => tip.isNotEmpty && tip.length > 5)
-              .take(3) // Максимум 3 совета
-              .toList();
+          final aiTips =
+              cleanResponse
+                  .split(RegExp(r'[.!]\s+'))
+                  .map((tip) => tip.trim())
+                  .where((tip) => tip.isNotEmpty && tip.length > 5)
+                  .take(3) // Максимум 3 совета
+                  .toList();
 
           if (aiTips.isNotEmpty) {
             // Добавляем каждый совет отдельно
@@ -1005,24 +1088,36 @@ class AIBitePredictionService {
     } catch (e) {
       debugPrint('⚠️ Ошибка обработки AI ответа: $e');
       // Добавляем базовый совет, если обработка не удалась
-      final bestType = predictions.entries
-          .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b)
-          .key;
+      final bestType =
+          predictions.entries
+              .reduce(
+                (a, b) => a.value.overallScore > b.value.overallScore ? a : b,
+              )
+              .key;
 
       if (predictions[bestType] != null) {
-        predictions[bestType]!.tips.insert(0, '🧠 Анализ улучшен искусственным интеллектом');
+        predictions[bestType]!.tips.insert(
+          0,
+          '🧠 Анализ улучшен искусственным интеллектом',
+        );
       }
     }
   }
 
   /// Обновление источника данных для всех прогнозов
-  void _updateDataSource(Map<String, AIBitePrediction> predictions, String dataSource) {
+  void _updateDataSource(
+    Map<String, AIBitePrediction> predictions,
+    String dataSource,
+  ) {
     for (final prediction in predictions.values) {
       // Обновляем поля через reflection или создаем новый объект
       // Поскольку AIBitePrediction immutable, обновляем через tips
       if (dataSource == 'enhanced_ai') {
         if (!prediction.tips.any((tip) => tip.contains('🧠 ИИ'))) {
-          prediction.tips.insert(0, '🧠 Анализ улучшен искусственным интеллектом');
+          prediction.tips.insert(
+            0,
+            '🧠 Анализ улучшен искусственным интеллектом',
+          );
         }
       }
     }
@@ -1030,21 +1125,24 @@ class AIBitePredictionService {
 
   /// Создание мультитипового прогноза
   MultiFishingTypePrediction _createMultiPrediction(
-      Map<String, AIBitePrediction> predictions,
-      List<String>? preferredTypes,
-      WeatherApiResponse weather,
-      bool aiEnhanced,
-      ) {
+    Map<String, AIBitePrediction> predictions,
+    List<String>? preferredTypes,
+    WeatherApiResponse weather,
+    bool aiEnhanced,
+  ) {
     // Сортируем по скору
-    final sortedPredictions = predictions.entries.toList()
-      ..sort((a, b) => b.value.overallScore.compareTo(a.value.overallScore));
+    final sortedPredictions =
+        predictions.entries.toList()..sort(
+          (a, b) => b.value.overallScore.compareTo(a.value.overallScore),
+        );
 
     // Определяем лучший тип с учетом предпочтений пользователя
     String bestType = sortedPredictions.first.key;
 
     if (preferredTypes != null && preferredTypes.isNotEmpty) {
       for (final preferred in preferredTypes) {
-        if (predictions.containsKey(preferred) && predictions[preferred]!.overallScore >= 40) {
+        if (predictions.containsKey(preferred) &&
+            predictions[preferred]!.overallScore >= 40) {
           bestType = preferred;
           break;
         }
@@ -1055,9 +1153,15 @@ class AIBitePredictionService {
     final comparison = _createComparisonAnalysis(predictions);
 
     // Генерируем общие рекомендации
-    final generalRecommendations = _generateGeneralRecommendations(predictions, bestType, aiEnhanced);
+    final generalRecommendations = _generateGeneralRecommendations(
+      predictions,
+      bestType,
+      aiEnhanced,
+    );
 
-    debugPrint('🏆 Лучший тип рыбалки: $bestType (${predictions[bestType]!.overallScore} баллов)');
+    debugPrint(
+      '🏆 Лучший тип рыбалки: $bestType (${predictions[bestType]!.overallScore} баллов)',
+    );
 
     return MultiFishingTypePrediction(
       bestFishingType: bestType,
@@ -1098,32 +1202,42 @@ class AIBitePredictionService {
     }
   }
 
-  List<OptimalTimeWindow> _generateTimeWindows(WeatherApiResponse weather, String fishingType) {
+  List<OptimalTimeWindow> _generateTimeWindows(
+    WeatherApiResponse weather,
+    String fishingType,
+  ) {
     final now = DateTime.now();
     final windows = <OptimalTimeWindow>[];
 
     // Утреннее окно
-    windows.add(OptimalTimeWindow(
-      startTime: now.copyWith(hour: 6, minute: 0),
-      endTime: now.copyWith(hour: 8, minute: 30),
-      activity: 0.85,
-      reason: 'Утренняя активность рыбы',
-      recommendations: ['Используйте активные приманки'],
-    ));
+    windows.add(
+      OptimalTimeWindow(
+        startTime: now.copyWith(hour: 6, minute: 0),
+        endTime: now.copyWith(hour: 8, minute: 30),
+        activity: 0.85,
+        reason: 'Утренняя активность рыбы',
+        recommendations: ['Используйте активные приманки'],
+      ),
+    );
 
     // Вечернее окно
-    windows.add(OptimalTimeWindow(
-      startTime: now.copyWith(hour: 18, minute: 0),
-      endTime: now.copyWith(hour: 20, minute: 30),
-      activity: 0.9,
-      reason: 'Вечерняя активность рыбы',
-      recommendations: ['Попробуйте поверхностные приманки'],
-    ));
+    windows.add(
+      OptimalTimeWindow(
+        startTime: now.copyWith(hour: 18, minute: 0),
+        endTime: now.copyWith(hour: 20, minute: 30),
+        activity: 0.9,
+        reason: 'Вечерняя активность рыбы',
+        recommendations: ['Попробуйте поверхностные приманки'],
+      ),
+    );
 
     return windows;
   }
 
-  List<String> _generateTipsForType(String fishingType, WeatherApiResponse weather) {
+  List<String> _generateTipsForType(
+    String fishingType,
+    WeatherApiResponse weather,
+  ) {
     final tips = <String>[];
 
     switch (fishingType) {
@@ -1172,7 +1286,11 @@ class AIBitePredictionService {
     return ActivityLevel.veryPoor;
   }
 
-  String _generateRecommendation(String fishingType, double score, List<BiteFactorAnalysis> factors) {
+  String _generateRecommendation(
+    String fishingType,
+    double score,
+    List<BiteFactorAnalysis> factors,
+  ) {
     if (score >= 80) {
       return 'Отличные условия для ${_getFishingTypeName(fishingType)}! Самое время отправляться на рыбалку.';
     } else if (score >= 60) {
@@ -1184,7 +1302,11 @@ class AIBitePredictionService {
     }
   }
 
-  String _generateDetailedAnalysis(String fishingType, List<BiteFactorAnalysis> factors, WeatherApiResponse weather) {
+  String _generateDetailedAnalysis(
+    String fishingType,
+    List<BiteFactorAnalysis> factors,
+    WeatherApiResponse weather,
+  ) {
     final analysis = StringBuffer();
     analysis.write('Анализ условий для ${_getFishingTypeName(fishingType)}: ');
 
@@ -1194,7 +1316,9 @@ class AIBitePredictionService {
     if (positiveFactors > negativeFactors) {
       analysis.write('Преобладают благоприятные факторы. ');
     } else if (negativeFactors > positiveFactors) {
-      analysis.write('Есть неблагоприятные факторы, которые могут снизить активность рыбы. ');
+      analysis.write(
+        'Есть неблагоприятные факторы, которые могут снизить активность рыбы. ',
+      );
     } else {
       analysis.write('Смешанные условия - успех зависит от техники и опыта. ');
     }
@@ -1206,17 +1330,24 @@ class AIBitePredictionService {
     return analysis.toString();
   }
 
-  ComparisonAnalysis _createComparisonAnalysis(Map<String, AIBitePrediction> predictions) {
-    final rankings = predictions.entries.map((e) => FishingTypeRanking(
-      fishingType: e.key,
-      typeName: _getFishingTypeName(e.key),
-      icon: _getFishingTypeIcon(e.key),
-      score: e.value.overallScore,
-      activityLevel: e.value.activityLevel,
-      shortRecommendation: e.value.recommendation,
-      keyFactors: e.value.factors.take(3).map((f) => f.name).toList(),
-    )).toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+  ComparisonAnalysis _createComparisonAnalysis(
+    Map<String, AIBitePrediction> predictions,
+  ) {
+    final rankings =
+        predictions.entries
+            .map(
+              (e) => FishingTypeRanking(
+                fishingType: e.key,
+                typeName: _getFishingTypeName(e.key),
+                icon: _getFishingTypeIcon(e.key),
+                score: e.value.overallScore,
+                activityLevel: e.value.activityLevel,
+                shortRecommendation: e.value.recommendation,
+                keyFactors: e.value.factors.take(3).map((f) => f.name).toList(),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.score.compareTo(a.score));
 
     return ComparisonAnalysis(
       rankings: rankings,
@@ -1226,7 +1357,11 @@ class AIBitePredictionService {
     );
   }
 
-  List<String> _generateGeneralRecommendations(Map<String, AIBitePrediction> predictions, String bestType, bool aiEnhanced) {
+  List<String> _generateGeneralRecommendations(
+    Map<String, AIBitePrediction> predictions,
+    String bestType,
+    bool aiEnhanced,
+  ) {
     final recommendations = <String>[];
     final bestPrediction = predictions[bestType]!;
 
@@ -1242,7 +1377,9 @@ class AIBitePredictionService {
     if (bestPrediction.overallScore >= 80) {
       recommendations.add('Отличные условия - не упустите возможность!');
     } else if (bestPrediction.overallScore < 40) {
-      recommendations.add('Подумайте о переносе рыбалки на более благоприятное время');
+      recommendations.add(
+        'Подумайте о переносе рыбалки на более благоприятное время',
+      );
     }
 
     return recommendations;
@@ -1255,13 +1392,21 @@ class AIBitePredictionService {
       windSpeed: weather.current.windKph,
       humidity: weather.current.humidity,
       condition: weather.current.condition.text,
-      moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
+      moonPhase:
+          weather.forecast.isNotEmpty
+              ? weather.forecast.first.astro.moonPhase
+              : 'Unknown',
     );
   }
 
-  String _buildOpenAIPrompt(Map<String, AIBitePrediction> predictions, WeatherApiResponse weather, Map<String, dynamic> userData) {
-    final bestType = predictions.entries
-        .reduce((a, b) => a.value.overallScore > b.value.overallScore ? a : b);
+  String _buildOpenAIPrompt(
+    Map<String, AIBitePrediction> predictions,
+    WeatherApiResponse weather,
+    Map<String, dynamic> userData,
+  ) {
+    final bestType = predictions.entries.reduce(
+      (a, b) => a.value.overallScore > b.value.overallScore ? a : b,
+    );
 
     return '''
 Условия рыбалки:
@@ -1275,11 +1420,11 @@ class AIBitePredictionService {
 
   /// Fallback прогноз при ошибках
   MultiFishingTypePrediction _getFallbackPrediction(
-      WeatherApiResponse weather,
-      List<FishingNoteModel>? userHistory,
-      double latitude,
-      double longitude,
-      ) {
+    WeatherApiResponse weather,
+    List<FishingNoteModel>? userHistory,
+    double latitude,
+    double longitude,
+  ) {
     final fallbackPredictions = <String, AIBitePrediction>{};
 
     // Создаем простые fallback прогнозы с разными скорами
@@ -1309,9 +1454,8 @@ class AIBitePredictionService {
       );
     }
 
-    final bestType = fallbackScores.entries
-        .reduce((a, b) => a.value > b.value ? a : b)
-        .key;
+    final bestType =
+        fallbackScores.entries.reduce((a, b) => a.value > b.value ? a : b).key;
 
     return MultiFishingTypePrediction(
       bestFishingType: bestType,
@@ -1324,21 +1468,29 @@ class AIBitePredictionService {
           typeName: _getFishingTypeName(bestType),
           icon: _getFishingTypeIcon(bestType),
           score: fallbackScores[bestType]!,
-          activityLevel: _determineActivityLevel(fallbackScores[bestType]!.toDouble()),
+          activityLevel: _determineActivityLevel(
+            fallbackScores[bestType]!.toDouble(),
+          ),
           shortRecommendation: 'Базовые условия',
           keyFactors: [],
         ),
         alternativeOptions: [],
         worstOptions: [],
       ),
-      generalRecommendations: ['📊 Базовый режим из-за ошибки анализа', 'Используйте стандартные подходы к рыбалке'],
+      generalRecommendations: [
+        '📊 Базовый режим из-за ошибки анализа',
+        'Используйте стандартные подходы к рыбалке',
+      ],
       weatherSummary: WeatherSummary(
         temperature: weather.current.tempC,
         pressure: weather.current.pressureMb,
         windSpeed: weather.current.windKph,
         humidity: weather.current.humidity,
         condition: weather.current.condition.text,
-        moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
+        moonPhase:
+            weather.forecast.isNotEmpty
+                ? weather.forecast.first.astro.moonPhase
+                : 'Unknown',
       ),
       generatedAt: DateTime.now(),
     );
@@ -1350,13 +1502,21 @@ class AIBitePredictionService {
     return 'ai_${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}_${date.year}${date.month}${date.day}${date.hour}';
   }
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double earthRadius = 6371; // км
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) *
-            math.sin(dLon / 2) * math.sin(dLon / 2);
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
     final c = 2 * math.asin(math.sqrt(a));
     return earthRadius * c;
   }
@@ -1386,8 +1546,8 @@ class AIBitePredictionService {
       hourCounts[trip.date.hour] = (hourCounts[trip.date.hour] ?? 0) + 1;
     }
 
-    final sortedHours = hourCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedHours =
+        hourCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     return sortedHours.take(5).map((e) => e.key).toList();
   }
@@ -1436,20 +1596,15 @@ class AIBitePredictionService {
   /// Очистка старого кэша
   void clearOldCache() {
     final now = DateTime.now();
-    _cache.removeWhere((key, value) =>
-    now.difference(value.generatedAt).inHours > 2 // Кэш актуален 2 часа
+    _cache.removeWhere(
+      (key, value) =>
+          now.difference(value.generatedAt).inHours > 2, // Кэш актуален 2 часа
     );
   }
 }
 
 // Enums остаются прежними
-enum ActivityLevel {
-  excellent,
-  good,
-  moderate,
-  poor,
-  veryPoor,
-}
+enum ActivityLevel { excellent, good, moderate, poor, veryPoor }
 
 extension ActivityLevelExtension on ActivityLevel {
   String get displayName {

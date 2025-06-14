@@ -21,7 +21,8 @@ class UserConsentStatus {
   });
 
   /// Проверяет, приняты ли все необходимые согласия
-  bool get hasAllConsents => privacyPolicyAccepted && termsOfServiceAccepted && isVersionCurrent;
+  bool get hasAllConsents =>
+      privacyPolicyAccepted && termsOfServiceAccepted && isVersionCurrent;
 
   /// Проверяет, есть ли обновления в соглашениях
   bool get hasUpdates => !isVersionCurrent;
@@ -32,9 +33,10 @@ class UserConsentStatus {
       privacyPolicyAccepted: json['privacyPolicyAccepted'] ?? false,
       termsOfServiceAccepted: json['termsOfServiceAccepted'] ?? false,
       consentVersion: json['consentVersion'],
-      consentTimestamp: json['consentTimestamp'] != null
-          ? DateTime.parse(json['consentTimestamp'])
-          : null,
+      consentTimestamp:
+          json['consentTimestamp'] != null
+              ? DateTime.parse(json['consentTimestamp'])
+              : null,
       consentLanguage: json['consentLanguage'],
       isVersionCurrent: json['isVersionCurrent'] ?? false,
       currentVersion: json['currentVersion'],
@@ -84,9 +86,10 @@ class DocumentVersion {
   factory DocumentVersion.fromJson(Map<String, dynamic> json) {
     return DocumentVersion(
       version: json['version'] ?? '1.0.0',
-      releaseDate: json['releaseDate'] != null
-          ? DateTime.parse(json['releaseDate'])
-          : DateTime.now(),
+      releaseDate:
+          json['releaseDate'] != null
+              ? DateTime.parse(json['releaseDate'])
+              : DateTime.now(),
       documentType: json['documentType'] ?? 'unknown',
       language: json['language'] ?? 'ru',
       description: json['description'],
@@ -112,9 +115,13 @@ class DocumentVersion {
   String getLocalizedDocumentType() {
     switch (documentType) {
       case 'privacy_policy':
-        return language == 'ru' ? 'Политика конфиденциальности' : 'Privacy Policy';
+        return language == 'ru'
+            ? 'Политика конфиденциальности'
+            : 'Privacy Policy';
       case 'terms_of_service':
-        return language == 'ru' ? 'Пользовательское соглашение' : 'Terms of Service';
+        return language == 'ru'
+            ? 'Пользовательское соглашение'
+            : 'Terms of Service';
       default:
         return documentType;
     }

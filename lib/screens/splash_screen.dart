@@ -172,7 +172,9 @@ class _SplashScreenState extends State<SplashScreen>
       ]),
       builder: (context, child) {
         return Transform.scale(
-          scale: _scaleAnimation.value * (_isLoading ? 1.0 : _pulseAnimation.value),
+          scale:
+              _scaleAnimation.value *
+              (_isLoading ? 1.0 : _pulseAnimation.value),
           child: Container(
             width: screenSize.width * 0.8,
             height: 56,
@@ -202,9 +204,10 @@ class _SplashScreenState extends State<SplashScreen>
                   // Основной фон кнопки
                   Container(
                     decoration: BoxDecoration(
-                      color: _isPressed
-                          ? AppConstants.textColor.withOpacity(0.15)
-                          : Colors.transparent,
+                      color:
+                          _isPressed
+                              ? AppConstants.textColor.withOpacity(0.15)
+                              : Colors.transparent,
                       borderRadius: BorderRadius.circular(28.0),
                       border: Border.all(
                         color: AppConstants.textColor,
@@ -238,43 +241,46 @@ class _SplashScreenState extends State<SplashScreen>
 
                   // Содержимое кнопки
                   Center(
-                    child: _isLoading
-                        ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Transform.rotate(
-                          angle: _loadingRotation.value * 2 * 3.14159,
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppConstants.textColor,
+                    child:
+                        _isLoading
+                            ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Transform.rotate(
+                                  angle: _loadingRotation.value * 2 * 3.14159,
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppConstants.textColor,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  localizations.translate('biting'),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppConstants.textColor.withOpacity(
+                                      0.9,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                            : Text(
+                              localizations.translate('enter'),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppConstants.textColor,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          localizations.translate('biting'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppConstants.textColor.withOpacity(0.9),
-                          ),
-                        ),
-                      ],
-                    )
-                        : Text(
-                      localizations.translate('enter'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppConstants.textColor,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
                   ),
 
                   // Overlay для эффекта нажатия
@@ -331,7 +337,11 @@ class _SplashScreenState extends State<SplashScreen>
                 Text(
                   'Drift Notes',
                   style: TextStyle(
-                    fontSize: 54 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                    fontSize:
+                        54 *
+                        (textScaler.scale(1.0) > 1.2
+                            ? 1.2 / textScaler.scale(1.0)
+                            : 1),
                     fontWeight: FontWeight.bold,
                     color: AppConstants.textColor,
                   ),
@@ -345,7 +355,11 @@ class _SplashScreenState extends State<SplashScreen>
                     localizations.translate('your_personal_fishing_journal'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                      fontSize:
+                          20 *
+                          (textScaler.scale(1.0) > 1.2
+                              ? 1.2 / textScaler.scale(1.0)
+                              : 1),
                       color: Colors.white,
                     ),
                   ),
@@ -359,7 +373,11 @@ class _SplashScreenState extends State<SplashScreen>
                     localizations.translate('remember_great_trips'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                      fontSize:
+                          20 *
+                          (textScaler.scale(1.0) > 1.2
+                              ? 1.2 / textScaler.scale(1.0)
+                              : 1),
                       color: Colors.white,
                     ),
                   ),

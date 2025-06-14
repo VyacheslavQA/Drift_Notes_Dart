@@ -121,51 +121,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     break;
                 }
               },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'add_test',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.add_alert, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Тест уведомления',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      value: 'add_test',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.add_alert, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Тест уведомления',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'clear_all',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.clear_all, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          localizations.translate('clear_all_data'),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    ),
+                    PopupMenuItem(
+                      value: 'clear_all',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.clear_all, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              localizations.translate('clear_all_data'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
             ),
           ],
         ],
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          color: AppConstants.textColor,
-        ),
-      )
-          : _notifications.isEmpty
-          ? _buildEmptyState(localizations)
-          : _buildNotificationsList(),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(color: AppConstants.textColor),
+              )
+              : _notifications.isEmpty
+              ? _buildEmptyState(localizations)
+              : _buildNotificationsList(),
     );
   }
 
@@ -245,11 +245,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: const Icon(
-          Icons.delete,
-          color: Colors.white,
-          size: 28,
-        ),
+        child: const Icon(Icons.delete, color: Colors.white, size: 28),
       ),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
@@ -258,25 +254,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: notification.isRead
-              ? AppConstants.surfaceColor
-              : AppConstants.surfaceColor.withValues(alpha: 0.9),
+          color:
+              notification.isRead
+                  ? AppConstants.surfaceColor
+                  : AppConstants.surfaceColor.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
-          border: notification.isRead
-              ? null
-              : Border.all(
-            color: Color(notification.typeColor).withValues(alpha: 0.5),
-            width: 2,
-          ),
-          boxShadow: notification.isRead
-              ? null
-              : [
-            BoxShadow(
-              color: Color(notification.typeColor).withValues(alpha: 0.1),
-              blurRadius: 8,
-              spreadRadius: 2,
-            ),
-          ],
+          border:
+              notification.isRead
+                  ? null
+                  : Border.all(
+                    color: Color(notification.typeColor).withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+          boxShadow:
+              notification.isRead
+                  ? null
+                  : [
+                    BoxShadow(
+                      color: Color(
+                        notification.typeColor,
+                      ).withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
         ),
         child: InkWell(
           onTap: () {
@@ -296,7 +297,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Color(notification.typeColor).withValues(alpha: 0.15),
+                    color: Color(
+                      notification.typeColor,
+                    ).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -321,9 +324,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               notification.title,
                               style: TextStyle(
                                 color: AppConstants.textColor,
-                                fontWeight: notification.isRead
-                                    ? FontWeight.w500
-                                    : FontWeight.bold,
+                                fontWeight:
+                                    notification.isRead
+                                        ? FontWeight.w500
+                                        : FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
@@ -335,7 +339,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               Text(
                                 _getFormattedTime(notification.timestamp),
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.6),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.6,
+                                  ),
                                   fontSize: 12,
                                 ),
                               ),
@@ -373,9 +379,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                       // Тип уведомления
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: Color(notification.typeColor).withValues(alpha: 0.1),
+                          color: Color(
+                            notification.typeColor,
+                          ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -419,118 +430,141 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // Для других типов уведомлений показываем диалог
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Color(notification.typeColor).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getNotificationIcon(notification.type),
-                color: Color(notification.typeColor),
-                size: 24,
-              ),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                notification.title,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              notification.message,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 16,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
+            title: Row(
               children: [
-                Icon(
-                  Icons.access_time,
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  size: 16,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Color(
+                      notification.typeColor,
+                    ).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _getNotificationIcon(notification.type),
+                    color: Color(notification.typeColor),
+                    size: 24,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  DateFormat('dd.MM.yyyy HH:mm').format(notification.timestamp),
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    notification.title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
-            // ИСПРАВЛЕНО: Убираем отображение технических данных для уведомлений о турнирах
-            if (notification.data.isNotEmpty && notification.type != NotificationType.tournamentReminder) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppConstants.backgroundColor.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notification.message,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                Row(
                   children: [
+                    Icon(
+                      Icons.access_time,
+                      color: AppConstants.textColor.withValues(alpha: 0.6),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
-                      localizations.translate('additional_data'),
+                      DateFormat(
+                        'dd.MM.yyyy HH:mm',
+                      ).format(notification.timestamp),
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Фильтруем технические поля
-                    ...notification.data.entries
-                        .where((entry) => !['sourceId', 'eventId', 'eventType', 'eventTitle'].contains(entry.key))
-                        .map((entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        '${entry.key}: ${entry.value}',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 12,
-                        ),
-                      ),
-                    )),
                   ],
+                ),
+                // ИСПРАВЛЕНО: Убираем отображение технических данных для уведомлений о турнирах
+                if (notification.data.isNotEmpty &&
+                    notification.type !=
+                        NotificationType.tournamentReminder) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppConstants.backgroundColor.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localizations.translate('additional_data'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.8,
+                            ),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Фильтруем технические поля
+                        ...notification.data.entries
+                            .where(
+                              (entry) =>
+                                  ![
+                                    'sourceId',
+                                    'eventId',
+                                    'eventType',
+                                    'eventTitle',
+                                  ].contains(entry.key),
+                            )
+                            .map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  '${entry.key}: ${entry.value}',
+                                  style: TextStyle(
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  localizations.translate('close'),
+                  style: TextStyle(color: AppConstants.textColor),
                 ),
               ),
             ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              localizations.translate('close'),
-              style: TextStyle(color: AppConstants.textColor),
-            ),
           ),
-        ],
-      ),
     );
   }
 
@@ -539,38 +573,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          localizations.translate('clear_all_notifications_title'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('clear_all_notifications_message'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              localizations.translate('cancel'),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            title: Text(
+              localizations.translate('clear_all_notifications_title'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              localizations.translate('clear_all_notifications_message'),
               style: TextStyle(color: AppConstants.textColor),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  localizations.translate('cancel'),
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(localizations.translate('clear')),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: Text(localizations.translate('clear')),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {

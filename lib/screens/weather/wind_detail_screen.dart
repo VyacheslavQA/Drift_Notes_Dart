@@ -34,7 +34,8 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   late Animation<double> _compassAnimation;
 
   final WeatherSettingsService _weatherSettings = WeatherSettingsService();
-  final AIBitePredictionService _aiService = AIBitePredictionService(); // ДОБАВЛЕНО
+  final AIBitePredictionService _aiService =
+      AIBitePredictionService(); // ДОБАВЛЕНО
 
   List<FlSpot> _windSpeedSpots = [];
   List<String> _timeLabels = [];
@@ -78,10 +79,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
     );
 
     _compassAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _compassController,
-        curve: Curves.elasticOut,
-      ),
+      CurvedAnimation(parent: _compassController, curve: Curves.elasticOut),
     );
 
     _animationController.forward();
@@ -115,7 +113,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
 Формат: просто список рекомендаций без нумерации.
 ''';
 
-      final recommendations = await _aiService.getWindFishingRecommendations(prompt);
+      final recommendations = await _aiService.getWindFishingRecommendations(
+        prompt,
+      );
 
       if (mounted) {
         setState(() {
@@ -259,10 +259,13 @@ class _WindDetailScreenState extends State<WindDetailScreen>
         actions: [
           IconButton(
             icon: Icon(
-              _isLoadingRecommendations ? Icons.hourglass_bottom : Icons.smart_toy,
+              _isLoadingRecommendations
+                  ? Icons.hourglass_bottom
+                  : Icons.smart_toy,
               color: AppConstants.textColor,
             ),
-            onPressed: _isLoadingRecommendations ? null : _loadAIRecommendations,
+            onPressed:
+                _isLoadingRecommendations ? null : _loadAIRecommendations,
             tooltip: 'Обновить ИИ-рекомендации',
           ),
         ],
@@ -348,7 +351,10 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   Widget _buildCurrentWindCard(Current currentWind) {
     final localizations = AppLocalizations.of(context);
     final windSpeed = _weatherSettings.convertWindSpeed(currentWind.windKph);
-    final windSpeedFormatted = _weatherSettings.formatWindSpeed(currentWind.windKph, showUnit: false);
+    final windSpeedFormatted = _weatherSettings.formatWindSpeed(
+      currentWind.windKph,
+      showUnit: false,
+    );
 
     return Container(
       width: double.infinity,
@@ -363,10 +369,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.blue.withValues(alpha: 0.3),
-          width: 2,
-        ),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 2),
       ),
       child: Column(
         children: [
@@ -378,11 +381,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                   color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.air,
-                  color: Colors.blue,
-                  size: 32,
-                ),
+                child: const Icon(Icons.air, color: Colors.blue, size: 32),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -448,7 +447,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                         child: Text(
                           _weatherSettings.getWindSpeedUnitSymbol(),
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                           ),
@@ -479,7 +480,10 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _getLocalizedWindDirection(currentWind.windDir, localizations),
+                    _getLocalizedWindDirection(
+                      currentWind.windDir,
+                      localizations,
+                    ),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 48,
@@ -507,10 +511,14 @@ class _WindDetailScreenState extends State<WindDetailScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: _getWindStatusColor(currentWind.windKph).withValues(alpha: 0.2),
+              color: _getWindStatusColor(
+                currentWind.windKph,
+              ).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _getWindStatusColor(currentWind.windKph).withValues(alpha: 0.5),
+                color: _getWindStatusColor(
+                  currentWind.windKph,
+                ).withValues(alpha: 0.5),
                 width: 1,
               ),
             ),
@@ -609,7 +617,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                     // ОБНОВЛЕННАЯ стрелка ветра с улучшенным дизайном
                     Center(
                       child: Transform.rotate(
-                        angle: _getWindAngle(currentWind.windDir) * _compassAnimation.value,
+                        angle:
+                            _getWindAngle(currentWind.windDir) *
+                            _compassAnimation.value,
                         child: CustomPaint(
                           size: const Size(80, 80),
                           painter: WindArrowPainter(),
@@ -625,10 +635,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                         decoration: BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.3),
@@ -723,11 +730,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
         children: [
           Row(
             children: [
-              Icon(
-                Icons.analytics,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              Icon(Icons.analytics, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 localizations.translate('wind_speed_trend'),
@@ -757,10 +760,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
               child: Row(
                 children: [
                   // Зафиксированная левая шкала
-                  SizedBox(
-                    width: 60,
-                    child: _buildFixedYAxis(),
-                  ),
+                  SizedBox(width: 60, child: _buildFixedYAxis()),
                   // Скроллируемая область графика
                   Expanded(
                     child: SingleChildScrollView(
@@ -775,15 +775,23 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                               horizontalInterval: 2,
                               getDrawingHorizontalLine: (value) {
                                 return FlLine(
-                                  color: AppConstants.textColor.withValues(alpha: 0.1),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   strokeWidth: 1,
                                 );
                               },
                             ),
                             titlesData: FlTitlesData(
-                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
@@ -791,7 +799,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                                   interval: 6,
                                   getTitlesWidget: (value, meta) {
                                     final index = value.toInt();
-                                    if (index >= 0 && index < _timeLabels.length && _timeLabels[index].isNotEmpty) {
+                                    if (index >= 0 &&
+                                        index < _timeLabels.length &&
+                                        _timeLabels[index].isNotEmpty) {
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Column(
@@ -799,15 +809,18 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                                             Text(
                                               _timeLabels[index],
                                               style: TextStyle(
-                                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                                color: AppConstants.textColor
+                                                    .withValues(alpha: 0.7),
                                                 fontSize: 9,
                                               ),
                                             ),
-                                            if (index < _dayLabels.length && _dayLabels[index].isNotEmpty)
+                                            if (index < _dayLabels.length &&
+                                                _dayLabels[index].isNotEmpty)
                                               Text(
                                                 _dayLabels[index],
                                                 style: TextStyle(
-                                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                                  color: AppConstants.textColor
+                                                      .withValues(alpha: 0.5),
                                                   fontSize: 8,
                                                 ),
                                               ),
@@ -830,7 +843,12 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                                 isStrokeCapRound: true,
                                 dotData: FlDotData(
                                   show: true,
-                                  getDotPainter: (spot, percent, barData, index) {
+                                  getDotPainter: (
+                                    spot,
+                                    percent,
+                                    barData,
+                                    index,
+                                  ) {
                                     return FlDotCirclePainter(
                                       radius: 3,
                                       color: Colors.blue,
@@ -855,9 +873,13 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                             lineTouchData: LineTouchData(
                               enabled: true,
                               touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (touchedSpot) => AppConstants.surfaceColor.withValues(alpha: 0.9),
+                                getTooltipColor:
+                                    (touchedSpot) => AppConstants.surfaceColor
+                                        .withValues(alpha: 0.9),
                                 tooltipBorder: BorderSide(
-                                  color: AppConstants.primaryColor.withValues(alpha: 0.5),
+                                  color: AppConstants.primaryColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   width: 1,
                                 ),
                                 tooltipRoundedRadius: 8,
@@ -877,7 +899,11 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                               ),
                             ),
                             minY: 0,
-                            maxY: _windSpeedSpots.map((spot) => spot.y).reduce(math.max) + 2,
+                            maxY:
+                                _windSpeedSpots
+                                    .map((spot) => spot.y)
+                                    .reduce(math.max) +
+                                2,
                           ),
                         ),
                       ),
@@ -892,9 +918,10 @@ class _WindDetailScreenState extends State<WindDetailScreen>
   }
 
   Widget _buildFixedYAxis() {
-    final maxY = _windSpeedSpots.isNotEmpty
-        ? _windSpeedSpots.map((spot) => spot.y).reduce(math.max) + 2
-        : 10.0;
+    final maxY =
+        _windSpeedSpots.isNotEmpty
+            ? _windSpeedSpots.map((spot) => spot.y).reduce(math.max) + 2
+            : 10.0;
 
     final interval = 2.0;
     final steps = (maxY / interval).ceil();
@@ -942,11 +969,7 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                   color: impact['color'].withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.set_meal,
-                  color: impact['color'],
-                  size: 20,
-                ),
+                child: Icon(Icons.set_meal, color: impact['color'], size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1092,7 +1115,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.primaryColor,
+                    ),
                   ),
                 ),
             ],
@@ -1105,7 +1130,9 @@ class _WindDetailScreenState extends State<WindDetailScreen>
               child: Row(
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.primaryColor,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -1190,27 +1217,57 @@ class _WindDetailScreenState extends State<WindDetailScreen>
 
   // Вспомогательные методы
 
-  String _getLocalizedWindDirection(String direction, AppLocalizations localizations) {
+  String _getLocalizedWindDirection(
+    String direction,
+    AppLocalizations localizations,
+  ) {
     if (localizations.locale.languageCode == 'en') {
       const Map<String, String> englishDirections = {
-        'N': 'N', 'NNE': 'N', 'NE': 'NE', 'ENE': 'E',
-        'E': 'E', 'ESE': 'E', 'SE': 'SE', 'SSE': 'S',
-        'S': 'S', 'SSW': 'S', 'SW': 'SW', 'WSW': 'W',
-        'W': 'W', 'WNW': 'W', 'NW': 'NW', 'NNW': 'N',
+        'N': 'N',
+        'NNE': 'N',
+        'NE': 'NE',
+        'ENE': 'E',
+        'E': 'E',
+        'ESE': 'E',
+        'SE': 'SE',
+        'SSE': 'S',
+        'S': 'S',
+        'SSW': 'S',
+        'SW': 'SW',
+        'WSW': 'W',
+        'W': 'W',
+        'WNW': 'W',
+        'NW': 'NW',
+        'NNW': 'N',
       };
       return englishDirections[direction] ?? 'N';
     } else {
       const Map<String, String> russianDirections = {
-        'N': 'С', 'NNE': 'С', 'NE': 'СВ', 'ENE': 'В',
-        'E': 'В', 'ESE': 'В', 'SE': 'ЮВ', 'SSE': 'Ю',
-        'S': 'Ю', 'SSW': 'Ю', 'SW': 'ЮЗ', 'WSW': 'З',
-        'W': 'З', 'WNW': 'З', 'NW': 'СЗ', 'NNW': 'С',
+        'N': 'С',
+        'NNE': 'С',
+        'NE': 'СВ',
+        'ENE': 'В',
+        'E': 'В',
+        'ESE': 'В',
+        'SE': 'ЮВ',
+        'SSE': 'Ю',
+        'S': 'Ю',
+        'SSW': 'Ю',
+        'SW': 'ЮЗ',
+        'WSW': 'З',
+        'W': 'З',
+        'WNW': 'З',
+        'NW': 'СЗ',
+        'NNW': 'С',
       };
       return russianDirections[direction] ?? 'С';
     }
   }
 
-  String _translateWindDirection(String direction, AppLocalizations localizations) {
+  String _translateWindDirection(
+    String direction,
+    AppLocalizations localizations,
+  ) {
     final Map<String, String> translations = {
       'N': localizations.translate('wind_n'),
       'NNE': localizations.translate('wind_nne'),
@@ -1249,25 +1306,52 @@ class _WindDetailScreenState extends State<WindDetailScreen>
 
   double _getWindAngle(String direction) {
     final Map<String, double> angles = {
-      'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
-      'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
-      'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
-      'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5,
+      'N': 0,
+      'NNE': 22.5,
+      'NE': 45,
+      'ENE': 67.5,
+      'E': 90,
+      'ESE': 112.5,
+      'SE': 135,
+      'SSE': 157.5,
+      'S': 180,
+      'SSW': 202.5,
+      'SW': 225,
+      'WSW': 247.5,
+      'W': 270,
+      'WNW': 292.5,
+      'NW': 315,
+      'NNW': 337.5,
     };
     return (angles[direction] ?? 0) * math.pi / 180;
   }
 
   String _getWindDegrees(String direction) {
     final Map<String, int> degrees = {
-      'N': 0, 'NNE': 23, 'NE': 45, 'ENE': 68,
-      'E': 90, 'ESE': 113, 'SE': 135, 'SSE': 158,
-      'S': 180, 'SSW': 203, 'SW': 225, 'WSW': 248,
-      'W': 270, 'WNW': 293, 'NW': 315, 'NNW': 338,
+      'N': 0,
+      'NNE': 23,
+      'NE': 45,
+      'ENE': 68,
+      'E': 90,
+      'ESE': 113,
+      'SE': 135,
+      'SSE': 158,
+      'S': 180,
+      'SSW': 203,
+      'SW': 225,
+      'WSW': 248,
+      'W': 270,
+      'WNW': 293,
+      'NW': 315,
+      'NNW': 338,
     };
     return degrees[direction]?.toString() ?? '0';
   }
 
-  String _getBestFishingSide(String windDirection, AppLocalizations localizations) {
+  String _getBestFishingSide(
+    String windDirection,
+    AppLocalizations localizations,
+  ) {
     final Map<String, String> bestSides = {
       'N': localizations.translate('south_side'),
       'NE': localizations.translate('southwest_side'),
@@ -1341,13 +1425,15 @@ class CompassPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint linePaint = Paint()
-      ..color = textColor.withValues(alpha: 0.5)
-      ..strokeWidth = 1;
+    final Paint linePaint =
+        Paint()
+          ..color = textColor.withValues(alpha: 0.5)
+          ..strokeWidth = 1;
 
-    final Paint mainLinePaint = Paint()
-      ..color = textColor.withValues(alpha: 0.8)
-      ..strokeWidth = 2;
+    final Paint mainLinePaint =
+        Paint()
+          ..color = textColor.withValues(alpha: 0.8)
+          ..strokeWidth = 2;
 
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 30;
@@ -1389,8 +1475,14 @@ class CompassPainter extends CustomPainter {
       );
       textPainter.layout();
 
-      final textX = center.dx + (radius + 20) * math.cos(angle - math.pi / 2) - textPainter.width / 2;
-      final textY = center.dy + (radius + 20) * math.sin(angle - math.pi / 2) - textPainter.height / 2;
+      final textX =
+          center.dx +
+          (radius + 20) * math.cos(angle - math.pi / 2) -
+          textPainter.width / 2;
+      final textY =
+          center.dy +
+          (radius + 20) * math.sin(angle - math.pi / 2) -
+          textPainter.height / 2;
 
       textPainter.paint(canvas, Offset(textX, textY));
     }
@@ -1403,11 +1495,7 @@ class CompassPainter extends CustomPainter {
       final endX = center.dx + radius * math.cos(angle - math.pi / 2);
       final endY = center.dy + radius * math.sin(angle - math.pi / 2);
 
-      canvas.drawLine(
-        Offset(startX, startY),
-        Offset(endX, endY),
-        linePaint,
-      );
+      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), linePaint);
     }
   }
 
@@ -1419,13 +1507,15 @@ class CompassPainter extends CustomPainter {
 class WindArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint arrowPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.fill;
+    final Paint arrowPaint =
+        Paint()
+          ..color = Colors.red
+          ..style = PaintingStyle.fill;
 
-    final Paint shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
+    final Paint shadowPaint =
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.3)
+          ..style = PaintingStyle.fill;
 
     final center = Offset(size.width / 2, size.height / 2);
 
@@ -1445,28 +1535,64 @@ class WindArrowPainter extends CustomPainter {
     // Основная стрелка
     arrowPath.moveTo(center.dx, tipY); // Острие вверх
     arrowPath.lineTo(center.dx - tipWidth, tipY + 12); // Левое плечо
-    arrowPath.lineTo(center.dx - tailWidth/2, tipY + 12); // Левая сторона тела
-    arrowPath.lineTo(center.dx - tailWidth/2, tailY - 8); // Левая сторона хвоста
+    arrowPath.lineTo(
+      center.dx - tailWidth / 2,
+      tipY + 12,
+    ); // Левая сторона тела
+    arrowPath.lineTo(
+      center.dx - tailWidth / 2,
+      tailY - 8,
+    ); // Левая сторона хвоста
     arrowPath.lineTo(center.dx - tailWidth, tailY); // Левый хвост
     arrowPath.lineTo(center.dx, tailY - 6); // Центр хвоста
     arrowPath.lineTo(center.dx + tailWidth, tailY); // Правый хвост
-    arrowPath.lineTo(center.dx + tailWidth/2, tailY - 8); // Правая сторона хвоста
-    arrowPath.lineTo(center.dx + tailWidth/2, tipY + 12); // Правая сторона тела
+    arrowPath.lineTo(
+      center.dx + tailWidth / 2,
+      tailY - 8,
+    ); // Правая сторона хвоста
+    arrowPath.lineTo(
+      center.dx + tailWidth / 2,
+      tipY + 12,
+    ); // Правая сторона тела
     arrowPath.lineTo(center.dx + tipWidth, tipY + 12); // Правое плечо
     arrowPath.close();
 
     // Тень стрелки (смещенная)
     final shadowOffset = const Offset(2, 2);
     shadowPath.moveTo(center.dx + shadowOffset.dx, tipY + shadowOffset.dy);
-    shadowPath.lineTo(center.dx - tipWidth + shadowOffset.dx, tipY + 12 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx - tailWidth/2 + shadowOffset.dx, tipY + 12 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx - tailWidth/2 + shadowOffset.dx, tailY - 8 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx - tailWidth + shadowOffset.dx, tailY + shadowOffset.dy);
+    shadowPath.lineTo(
+      center.dx - tipWidth + shadowOffset.dx,
+      tipY + 12 + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx - tailWidth / 2 + shadowOffset.dx,
+      tipY + 12 + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx - tailWidth / 2 + shadowOffset.dx,
+      tailY - 8 + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx - tailWidth + shadowOffset.dx,
+      tailY + shadowOffset.dy,
+    );
     shadowPath.lineTo(center.dx + shadowOffset.dx, tailY - 6 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx + tailWidth + shadowOffset.dx, tailY + shadowOffset.dy);
-    shadowPath.lineTo(center.dx + tailWidth/2 + shadowOffset.dx, tailY - 8 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx + tailWidth/2 + shadowOffset.dx, tipY + 12 + shadowOffset.dy);
-    shadowPath.lineTo(center.dx + tipWidth + shadowOffset.dx, tipY + 12 + shadowOffset.dy);
+    shadowPath.lineTo(
+      center.dx + tailWidth + shadowOffset.dx,
+      tailY + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx + tailWidth / 2 + shadowOffset.dx,
+      tailY - 8 + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx + tailWidth / 2 + shadowOffset.dx,
+      tipY + 12 + shadowOffset.dy,
+    );
+    shadowPath.lineTo(
+      center.dx + tipWidth + shadowOffset.dx,
+      tipY + 12 + shadowOffset.dy,
+    );
     shadowPath.close();
 
     // Рисуем тень
@@ -1476,10 +1602,11 @@ class WindArrowPainter extends CustomPainter {
     canvas.drawPath(arrowPath, arrowPaint);
 
     // Добавляем белую обводку
-    final Paint strokePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final Paint strokePaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
 
     canvas.drawPath(arrowPath, strokePaint);
   }

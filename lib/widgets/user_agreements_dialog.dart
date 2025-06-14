@@ -55,7 +55,9 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
         });
 
         debugPrint('🔍 Результат проверки согласий: $result');
-        debugPrint('🔧 Инициализация: privacy=$_privacyPolicyAccepted, terms=$_termsOfServiceAccepted');
+        debugPrint(
+          '🔧 Инициализация: privacy=$_privacyPolicyAccepted, terms=$_termsOfServiceAccepted',
+        );
 
         // ИСПРАВЛЕНО: Если все документы актуальны, автоматически закрываем диалог
         if (result.allValid) {
@@ -91,18 +93,14 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
   /// Показывает политику конфиденциальности
   void _showPrivacyPolicy() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const PrivacyPolicyScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
     );
   }
 
   /// Показывает пользовательское соглашение
   void _showTermsOfService() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const TermsOfServiceScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
     );
   }
 
@@ -115,8 +113,12 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     final needsTerms = _consentResult!.needTermsOfService;
 
     debugPrint('🔍 Проверка перед сохранением:');
-    debugPrint('   needsPrivacy: $needsPrivacy, accepted: $_privacyPolicyAccepted');
-    debugPrint('   needsTerms: $needsTerms, accepted: $_termsOfServiceAccepted');
+    debugPrint(
+      '   needsPrivacy: $needsPrivacy, accepted: $_privacyPolicyAccepted',
+    );
+    debugPrint(
+      '   needsTerms: $needsTerms, accepted: $_termsOfServiceAccepted',
+    );
 
     if ((needsPrivacy && !_privacyPolicyAccepted) ||
         (needsTerms && !_termsOfServiceAccepted)) {
@@ -139,7 +141,9 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
           termsOfServiceAccepted: needsTerms ? _termsOfServiceAccepted : null,
         );
 
-        debugPrint('💾 Селективное сохранение: Privacy=${needsPrivacy ? _privacyPolicyAccepted : 'skip'}, Terms=${needsTerms ? _termsOfServiceAccepted : 'skip'}');
+        debugPrint(
+          '💾 Селективное сохранение: Privacy=${needsPrivacy ? _privacyPolicyAccepted : 'skip'}, Terms=${needsTerms ? _termsOfServiceAccepted : 'skip'}',
+        );
       } else {
         // Если ничего не нужно принимать (не должно происходить в этом диалоге)
         debugPrint('⚠️ Неожиданная ситуация: нечего сохранять');
@@ -206,19 +210,29 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     List<String> needed = [];
 
     if (_consentResult!.needPrivacyPolicy && !_privacyPolicyAccepted) {
-      needed.add(localizations.translate('privacy_policy') ?? 'политику конфиденциальности');
+      needed.add(
+        localizations.translate('privacy_policy') ??
+            'политику конфиденциальности',
+      );
     }
 
     if (_consentResult!.needTermsOfService && !_termsOfServiceAccepted) {
-      needed.add(localizations.translate('terms_of_service') ?? 'пользовательское соглашение');
+      needed.add(
+        localizations.translate('terms_of_service') ??
+            'пользовательское соглашение',
+      );
     }
 
     if (needed.isEmpty) {
-      message = localizations.translate('agreements_required') ?? 'Необходимо принять соглашения для продолжения';
+      message =
+          localizations.translate('agreements_required') ??
+          'Необходимо принять соглашения для продолжения';
     } else if (needed.length == 1) {
-      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed[0]}';
+      message =
+          '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed[0]}';
     } else {
-      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed.join(' и ')}';
+      message =
+          '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${needed.join(' и ')}';
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -235,7 +249,10 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     final localizations = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(localizations.translate('error_saving_agreements') ?? 'Ошибка сохранения согласий. Попробуйте снова.'),
+        content: Text(
+          localizations.translate('error_saving_agreements') ??
+              'Ошибка сохранения согласий. Попробуйте снова.',
+        ),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
       ),
@@ -249,18 +266,24 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
 
     // Если нужно принять оба документа - общий заголовок
-    if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return localizations.translate('agreements_update_title') ?? 'Обновление соглашений';
+    if (_consentResult!.needPrivacyPolicy &&
+        _consentResult!.needTermsOfService) {
+      return localizations.translate('agreements_update_title') ??
+          'Обновление соглашений';
     }
 
     // Если только политика конфиденциальности
-    if (_consentResult!.needPrivacyPolicy && !_consentResult!.needTermsOfService) {
-      return localizations.translate('privacy_policy_update_title') ?? 'Обновление политики конфиденциальности';
+    if (_consentResult!.needPrivacyPolicy &&
+        !_consentResult!.needTermsOfService) {
+      return localizations.translate('privacy_policy_update_title') ??
+          'Обновление политики конфиденциальности';
     }
 
     // Если только пользовательское соглашение
-    if (!_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return localizations.translate('terms_update_title') ?? 'Обновление пользовательского соглашения';
+    if (!_consentResult!.needPrivacyPolicy &&
+        _consentResult!.needTermsOfService) {
+      return localizations.translate('terms_update_title') ??
+          'Обновление пользовательского соглашения';
     }
 
     return localizations.translate('agreements_title') ?? 'Соглашения';
@@ -274,19 +297,22 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
 
     // Если нужно принять оба документа
-    if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
+    if (_consentResult!.needPrivacyPolicy &&
+        _consentResult!.needTermsOfService) {
       return localizations.translate('both_agreements_updated') ??
           'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
     }
 
     // Если только политика конфиденциальности
-    if (_consentResult!.needPrivacyPolicy && !_consentResult!.needTermsOfService) {
+    if (_consentResult!.needPrivacyPolicy &&
+        !_consentResult!.needTermsOfService) {
       return localizations.translate('privacy_policy_updated') ??
           'Обновилась политика конфиденциальности. Для продолжения работы необходимо принять новую версию.';
     }
 
     // Если только пользовательское соглашение
-    if (!_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
+    if (!_consentResult!.needPrivacyPolicy &&
+        _consentResult!.needTermsOfService) {
       return localizations.translate('terms_updated') ??
           'Обновилось пользовательское соглашение. Для продолжения работы необходимо принять новую версию.';
     }
@@ -302,12 +328,15 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
 
     // Если нужно принять оба документа
-    if (_consentResult!.needPrivacyPolicy && _consentResult!.needTermsOfService) {
-      return localizations.translate('accept_all_updates') ?? 'Принять все обновления';
+    if (_consentResult!.needPrivacyPolicy &&
+        _consentResult!.needTermsOfService) {
+      return localizations.translate('accept_all_updates') ??
+          'Принять все обновления';
     }
 
     // Если только один документ
-    if (_consentResult!.needPrivacyPolicy || _consentResult!.needTermsOfService) {
+    if (_consentResult!.needPrivacyPolicy ||
+        _consentResult!.needTermsOfService) {
       return localizations.translate('accept_update') ?? 'Принять обновление';
     }
 
@@ -319,8 +348,10 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     if (_consentResult == null) return false;
 
     // Кнопка активна если все НУЖНЫЕ документы приняты
-    final privacyOk = !_consentResult!.needPrivacyPolicy || _privacyPolicyAccepted;
-    final termsOk = !_consentResult!.needTermsOfService || _termsOfServiceAccepted;
+    final privacyOk =
+        !_consentResult!.needPrivacyPolicy || _privacyPolicyAccepted;
+    final termsOk =
+        !_consentResult!.needTermsOfService || _termsOfServiceAccepted;
 
     return privacyOk && termsOk;
   }
@@ -337,7 +368,9 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
         onWillPop: () async => false,
         child: Dialog(
           backgroundColor: AppConstants.backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Container(
             constraints: BoxConstraints(
               maxWidth: screenSize.width * 0.9,
@@ -349,7 +382,10 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 16),
-                  Text(localizations.translate('checking_agreements') ?? 'Проверка соглашений...'),
+                  Text(
+                    localizations.translate('checking_agreements') ??
+                        'Проверка соглашений...',
+                  ),
                 ],
               ),
             ),
@@ -385,7 +421,9 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                 child: Column(
                   children: [
                     Icon(
-                      _consentResult?.hasChanges == true ? Icons.update : Icons.security,
+                      _consentResult?.hasChanges == true
+                          ? Icons.update
+                          : Icons.security,
                       color: AppConstants.primaryColor,
                       size: 48,
                     ),
@@ -393,7 +431,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                     Text(
                       _getDialogTitle(localizations),
                       style: TextStyle(
-                        fontSize: 22 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            22 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         fontWeight: FontWeight.bold,
                         color: AppConstants.textColor,
                       ),
@@ -403,7 +445,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                     Text(
                       _getDialogDescription(localizations),
                       style: TextStyle(
-                        fontSize: 14 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            14 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         color: AppConstants.textColor.withOpacity(0.8),
                       ),
                       textAlign: TextAlign.center,
@@ -423,12 +469,20 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                       if (_consentResult?.needPrivacyPolicy == true) ...[
                         _buildAgreementCheckbox(
                           value: _privacyPolicyAccepted,
-                          onChanged: (value) => setState(() => _privacyPolicyAccepted = value ?? false),
-                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                          linkText: localizations.translate('privacy_policy') ?? 'Политикой конфиденциальности',
+                          onChanged:
+                              (value) => setState(
+                                () => _privacyPolicyAccepted = value ?? false,
+                              ),
+                          text:
+                              localizations.translate('i_agree_to') ??
+                              'Я согласен с',
+                          linkText:
+                              localizations.translate('privacy_policy') ??
+                              'Политикой конфиденциальности',
                           onLinkTap: _showPrivacyPolicy,
                           version: _consentResult?.currentPrivacyVersion,
-                          isUpdated: _consentResult?.savedPrivacyVersion != null,
+                          isUpdated:
+                              _consentResult?.savedPrivacyVersion != null,
                           oldVersion: _consentResult?.savedPrivacyVersion,
                         ),
                         const SizedBox(height: 16),
@@ -438,9 +492,16 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                       if (_consentResult?.needTermsOfService == true) ...[
                         _buildAgreementCheckbox(
                           value: _termsOfServiceAccepted,
-                          onChanged: (value) => setState(() => _termsOfServiceAccepted = value ?? false),
-                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                          linkText: localizations.translate('terms_of_service') ?? 'Пользовательским соглашением',
+                          onChanged:
+                              (value) => setState(
+                                () => _termsOfServiceAccepted = value ?? false,
+                              ),
+                          text:
+                              localizations.translate('i_agree_to') ??
+                              'Я согласен с',
+                          linkText:
+                              localizations.translate('terms_of_service') ??
+                              'Пользовательским соглашением',
                           onLinkTap: _showTermsOfService,
                           version: _consentResult?.currentTermsVersion,
                           isUpdated: _consentResult?.savedTermsVersion != null,
@@ -451,23 +512,34 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
                       // ИСПРАВЛЕНО: Информация о том, что осталось действующим
                       if (_consentResult != null &&
-                          (!_consentResult!.needPrivacyPolicy || !_consentResult!.needTermsOfService)) ...[
+                          (!_consentResult!.needPrivacyPolicy ||
+                              !_consentResult!.needTermsOfService)) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: Colors.green.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.withOpacity(0.3)),
+                            border: Border.all(
+                              color: Colors.green.withOpacity(0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _buildValidDocumentsText(localizations),
                                   style: TextStyle(
-                                    fontSize: 12 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                                    fontSize:
+                                        12 *
+                                        (textScaler.scale(1.0) > 1.2
+                                            ? 1.2 / textScaler.scale(1.0)
+                                            : 1),
                                     color: Colors.green.shade700,
                                   ),
                                 ),
@@ -486,17 +558,31 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                           // ОБНОВЛЕНО: Кнопка отмены теперь записывает отказ
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isProcessing ? null : _handleDeclineAgreements,
+                              onPressed:
+                                  _isProcessing
+                                      ? null
+                                      : _handleDeclineAgreements,
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.red.withOpacity(0.7)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                side: BorderSide(
+                                  color: Colors.red.withOpacity(0.7),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                               child: Text(
-                                localizations.translate('decline') ?? 'Отклонить',
+                                localizations.translate('decline') ??
+                                    'Отклонить',
                                 style: TextStyle(
                                   color: Colors.red,
-                                  fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                                  fontSize:
+                                      16 *
+                                      (textScaler.scale(1.0) > 1.2
+                                          ? 1.2 / textScaler.scale(1.0)
+                                          : 1),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -508,31 +594,48 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                           // ИСПРАВЛЕНО: Кнопка принятия с правильной логикой активации
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: (_isProcessing || !_canAccept()) ? null : _handleAcceptAgreements,
+                              onPressed:
+                                  (_isProcessing || !_canAccept())
+                                      ? null
+                                      : _handleAcceptAgreements,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppConstants.primaryColor,
-                                disabledBackgroundColor: AppConstants.primaryColor.withOpacity(0.3),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: _isProcessing
-                                  ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                disabledBackgroundColor: AppConstants
+                                    .primaryColor
+                                    .withOpacity(0.3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
                                 ),
-                              )
-                                  : Text(
-                                _getAcceptButtonText(localizations),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                                  fontWeight: FontWeight.bold,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                textAlign: TextAlign.center,
                               ),
+                              child:
+                                  _isProcessing
+                                      ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                      : Text(
+                                        _getAcceptButtonText(localizations),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize:
+                                              16 *
+                                              (textScaler.scale(1.0) > 1.2
+                                                  ? 1.2 / textScaler.scale(1.0)
+                                                  : 1),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                             ),
                           ),
                         ],
@@ -555,15 +658,27 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     List<String> validDocs = [];
 
     if (!_consentResult!.needPrivacyPolicy) {
-      final version = _consentResult!.savedPrivacyVersion ?? _consentResult!.currentPrivacyVersion;
-      validDocs.add(localizations.translate('privacy_policy_remains_valid')?.replaceAll('{version}', version) ??
-          'Политика конфиденциальности v$version остается действующей');
+      final version =
+          _consentResult!.savedPrivacyVersion ??
+          _consentResult!.currentPrivacyVersion;
+      validDocs.add(
+        localizations
+                .translate('privacy_policy_remains_valid')
+                ?.replaceAll('{version}', version) ??
+            'Политика конфиденциальности v$version остается действующей',
+      );
     }
 
     if (!_consentResult!.needTermsOfService) {
-      final version = _consentResult!.savedTermsVersion ?? _consentResult!.currentTermsVersion;
-      validDocs.add(localizations.translate('terms_remains_valid')?.replaceAll('{version}', version) ??
-          'Пользовательское соглашение v$version остается действующим');
+      final version =
+          _consentResult!.savedTermsVersion ??
+          _consentResult!.currentTermsVersion;
+      validDocs.add(
+        localizations
+                .translate('terms_remains_valid')
+                ?.replaceAll('{version}', version) ??
+            'Пользовательское соглашение v$version остается действующим',
+      );
     }
 
     return validDocs.join('. ');
@@ -587,7 +702,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
       decoration: BoxDecoration(
         color: isUpdated ? Colors.blue.withOpacity(0.05) : null,
         borderRadius: BorderRadius.circular(8),
-        border: isUpdated ? Border.all(color: Colors.blue.withOpacity(0.2)) : null,
+        border:
+            isUpdated ? Border.all(color: Colors.blue.withOpacity(0.2)) : null,
       ),
       padding: const EdgeInsets.all(8),
       child: Row(
@@ -621,7 +737,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                     text: TextSpan(
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 14 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            14 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         height: 1.4,
                       ),
                       children: [
@@ -651,7 +771,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                           Text(
                             localizations.translate('updated') ?? 'ОБНОВЛЕНО',
                             style: TextStyle(
-                              fontSize: 11 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                              fontSize:
+                                  11 *
+                                  (textScaler.scale(1.0) > 1.2
+                                      ? 1.2 / textScaler.scale(1.0)
+                                      : 1),
                               color: Colors.blue,
                               fontWeight: FontWeight.bold,
                             ),
@@ -664,7 +788,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                                 ? 'v$oldVersion → v$version'
                                 : '${localizations.translate('version') ?? 'версия'} $version',
                             style: TextStyle(
-                              fontSize: 11 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                              fontSize:
+                                  11 *
+                                  (textScaler.scale(1.0) > 1.2
+                                      ? 1.2 / textScaler.scale(1.0)
+                                      : 1),
                               color: AppConstants.textColor.withOpacity(0.6),
                               fontStyle: FontStyle.italic,
                             ),

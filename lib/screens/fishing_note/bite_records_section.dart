@@ -40,15 +40,15 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     if (widget.note.isMultiDay && widget.note.endDate != null) {
       // Создаем список всех дней рыбалки
       DateTime currentDay = DateTime(
-          widget.note.date.year,
-          widget.note.date.month,
-          widget.note.date.day
+        widget.note.date.year,
+        widget.note.date.month,
+        widget.note.date.day,
       );
 
       DateTime endDay = DateTime(
-          widget.note.endDate!.year,
-          widget.note.endDate!.month,
-          widget.note.endDate!.day
+        widget.note.endDate!.year,
+        widget.note.endDate!.month,
+        widget.note.endDate!.day,
       );
 
       // Добавляем все дни включительно от начальной до конечной даты
@@ -64,9 +64,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     }
 
     // Фильтруем записи по выбранному дню
-    final selectedDayRecords = widget.note.biteRecords
-        .where((record) => record.dayIndex == _selectedDayIndex)
-        .toList();
+    final selectedDayRecords =
+        widget.note.biteRecords
+            .where((record) => record.dayIndex == _selectedDayIndex)
+            .toList();
 
     // Сортируем записи по времени
     final sortedRecords = List<BiteRecord>.from(selectedDayRecords)
@@ -105,7 +106,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                   borderRadius: BorderRadius.circular(20),
                   onTap: () => _addBiteRecord(context),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -174,7 +178,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
           )
         else
           Column(
-            children: sortedRecords.map((record) => _buildBiteRecordCard(context, record)).toList(),
+            children:
+                sortedRecords
+                    .map((record) => _buildBiteRecordCard(context, record))
+                    .toList(),
           ),
       ],
     );
@@ -206,18 +213,13 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: AppConstants.textColor,
-            ),
+            icon: Icon(Icons.arrow_drop_down, color: AppConstants.textColor),
             items: List.generate(totalDays, (index) {
               return DropdownMenuItem<int>(
                 value: index,
                 child: Text(
                   _getDayName(index, days[index]),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor),
                 ),
               );
             }),
@@ -239,12 +241,13 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BiteRecordScreen(
-          dayIndex: _selectedDayIndex,
-          fishingStartDate: widget.note.date,
-          fishingEndDate: widget.note.endDate,
-          isMultiDay: widget.note.isMultiDay,
-        ),
+        builder:
+            (context) => BiteRecordScreen(
+              dayIndex: _selectedDayIndex,
+              fishingStartDate: widget.note.date,
+              fishingEndDate: widget.note.endDate,
+              isMultiDay: widget.note.isMultiDay,
+            ),
       ),
     );
 
@@ -258,13 +261,14 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BiteRecordScreen(
-          initialRecord: record,
-          dayIndex: record.dayIndex,
-          fishingStartDate: widget.note.date,
-          fishingEndDate: widget.note.endDate,
-          isMultiDay: widget.note.isMultiDay,
-        ),
+        builder:
+            (context) => BiteRecordScreen(
+              initialRecord: record,
+              dayIndex: record.dayIndex,
+              fishingStartDate: widget.note.date,
+              fishingEndDate: widget.note.endDate,
+              isMultiDay: widget.note.isMultiDay,
+            ),
       ),
     );
 
@@ -294,9 +298,7 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFF12332E),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => _editBiteRecord(context, record),
         borderRadius: BorderRadius.circular(12),
@@ -329,7 +331,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                         if (isCaught) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
@@ -346,7 +351,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                         ] else ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
@@ -392,14 +400,18 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           children: [
                             Icon(
                               Icons.scale,
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               size: 16,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${record.weight} ${localizations.translate('kg')}',
                               style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.9),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.9,
+                                ),
                               ),
                             ),
                           ],
@@ -411,14 +423,18 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
                           children: [
                             Icon(
                               Icons.straighten,
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                               size: 16,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${record.length} см',
                               style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.9),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.9,
+                                ),
                               ),
                             ),
                           ],
@@ -495,7 +511,10 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
   }
 
   // Построение графика поклёвок
-  Widget _buildBiteRecordsTimeline(BuildContext context, List<BiteRecord> records) {
+  Widget _buildBiteRecordsTimeline(
+    BuildContext context,
+    List<BiteRecord> records,
+  ) {
     // Создаем временную шкалу от 00:00 до 23:59
     const hoursInDay = 24;
 
@@ -542,43 +561,38 @@ class _BiteRecordsSectionState extends State<BiteRecordsSection> {
 
     showDialog(
       context: context,
-      builder: (BuildContext context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          localizations.translate('delete_bite_record'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('delete_bite_confirmation'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              localizations.translate('cancel'),
+      builder:
+          (BuildContext context) => AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            title: Text(
+              localizations.translate('delete_bite_record'),
               style: TextStyle(
                 color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onDeleteRecord(record.id);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+            content: Text(
+              localizations.translate('delete_bite_confirmation'),
+              style: TextStyle(color: AppConstants.textColor),
             ),
-            child: Text(localizations.translate('delete')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  localizations.translate('cancel'),
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onDeleteRecord(record.id);
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(localizations.translate('delete')),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -595,9 +609,10 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3)
-      ..strokeWidth = 1.0;
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.3)
+          ..strokeWidth = 1.0;
 
     // Рисуем горизонтальную линию
     canvas.drawLine(
@@ -631,23 +646,21 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       // Используем разные цвета для пойманных рыб и просто поклевок
       final Color dotColor = isCaught ? Colors.green : Colors.red;
 
-      final dotPaint = Paint()
-        ..color = dotColor
-        ..style = PaintingStyle.fill;
+      final dotPaint =
+          Paint()
+            ..color = dotColor
+            ..style = PaintingStyle.fill;
 
       // Рисуем кружок для поклевки
-      canvas.drawCircle(
-        Offset(position, size.height / 2),
-        7,
-        dotPaint,
-      );
+      canvas.drawCircle(Offset(position, size.height / 2), 7, dotPaint);
 
       // Для пойманных рыб рисуем обводку, размер которой зависит от веса
       if (isCaught) {
-        final weightPaint = Paint()
-          ..color = Colors.orange
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
+        final weightPaint =
+            Paint()
+              ..color = Colors.orange
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0;
 
         // Максимальный вес для отображения (15 кг)
         const maxWeight = 15.0;
@@ -656,7 +669,8 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         const maxRadius = 18.0;
 
         final weight = record.weight.clamp(0.1, maxWeight);
-        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
+        final radius =
+            minRadius + (weight / maxWeight) * (maxRadius - minRadius);
 
         canvas.drawCircle(
           Offset(position, size.height / 2),

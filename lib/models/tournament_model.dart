@@ -51,7 +51,8 @@ class TournamentModel {
   // Проверка, идет ли сейчас турнир
   bool get isActive {
     final now = DateTime.now();
-    return now.isAfter(startDate) && now.isBefore(endDate ?? startDate.add(Duration(hours: duration)));
+    return now.isAfter(startDate) &&
+        now.isBefore(endDate ?? startDate.add(Duration(hours: duration)));
   }
 
   // Проверка, будет ли турнир в будущем
@@ -74,14 +75,14 @@ class TournamentModel {
 
 // Типы рыбалки
 enum FishingType {
-  carpFishing,    // Карповая рыбалка
-  casting,        // Кастинг
-  spinning,       // Спиннинг
-  feeder,         // Фидер
-  floatFishing,   // Поплавочная
-  iceFishing,     // Зимняя рыбалка
-  flyFishing,     // Нахлыст
-  other,          // Другое
+  carpFishing, // Карповая рыбалка
+  casting, // Кастинг
+  spinning, // Спиннинг
+  feeder, // Фидер
+  floatFishing, // Поплавочная
+  iceFishing, // Зимняя рыбалка
+  flyFishing, // Нахлыст
+  other, // Другое
 }
 
 extension FishingTypeExtension on FishingType {
@@ -176,10 +177,10 @@ extension FishingTypeExtension on FishingType {
 
 // Категории турниров (для отображения типа)
 enum TournamentCategory {
-  championship,   // Чемпионат
-  cup,           // Кубок
-  league,        // Лига
-  tournament,    // Турнир
+  championship, // Чемпионат
+  cup, // Кубок
+  league, // Лига
+  tournament, // Турнир
 }
 
 extension TournamentCategoryExtension on TournamentCategory {

@@ -20,7 +20,8 @@ class FishingTypeDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<FishingTypeDetailScreen> createState() => _FishingTypeDetailScreenState();
+  State<FishingTypeDetailScreen> createState() =>
+      _FishingTypeDetailScreenState();
 }
 
 class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
@@ -72,7 +73,8 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          localizations.translate(widget.typeInfo['nameKey']!) ?? widget.typeInfo['name']!,
+          localizations.translate(widget.typeInfo['nameKey']!) ??
+              widget.typeInfo['name']!,
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 20,
@@ -423,8 +425,8 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
               ),
             ),
             const SizedBox(height: 12),
-            ...widget.prediction.topPositiveFactors.map((factor) =>
-                _buildFactorCard(factor, true)
+            ...widget.prediction.topPositiveFactors.map(
+              (factor) => _buildFactorCard(factor, true),
             ),
             const SizedBox(height: 16),
           ],
@@ -440,8 +442,8 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
               ),
             ),
             const SizedBox(height: 12),
-            ...widget.prediction.topNegativeFactors.map((factor) =>
-                _buildFactorCard(factor, false)
+            ...widget.prediction.topNegativeFactors.map(
+              (factor) => _buildFactorCard(factor, false),
             ),
           ],
         ],
@@ -463,10 +465,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
       ),
       child: Row(
         children: [
-          Text(
-            factor.icon,
-            style: const TextStyle(fontSize: 16),
-          ),
+          Text(factor.icon, style: const TextStyle(fontSize: 16)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -551,9 +550,9 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
           ),
           const SizedBox(height: 16),
 
-          ...widget.prediction.bestTimeWindows.take(3).map((window) =>
-              _buildTimeWindowCard(window)
-          ),
+          ...widget.prediction.bestTimeWindows
+              .take(3)
+              .map((window) => _buildTimeWindowCard(window)),
         ],
       ),
     );
@@ -573,10 +572,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
       ),
       child: Row(
         children: [
-          Text(
-            window.timeIcon,
-            style: const TextStyle(fontSize: 24),
-          ),
+          Text(window.timeIcon, style: const TextStyle(fontSize: 24)),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -672,36 +668,40 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
           ),
           const SizedBox(height: 16),
 
-          ...widget.prediction.tips.asMap().entries.map((entry) =>
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        entry.value,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 15,
-                          height: 1.4,
+          ...widget.prediction.tips
+              .asMap()
+              .entries
+              .map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 15,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               )
-          ).toList(),
+              .toList(),
         ],
       ),
     );

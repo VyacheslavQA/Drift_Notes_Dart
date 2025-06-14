@@ -49,7 +49,9 @@ class Validators {
 
     // Проверка на отсутствие специфичных символов, кроме разрешенных
     // Разрешаем только буквы, цифры и некоторые специальные символы
-    final RegExp allowedCharsRegex = RegExp(r'^[a-zA-Z0-9@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
+    final RegExp allowedCharsRegex = RegExp(
+      r'^[a-zA-Z0-9@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$',
+    );
 
     if (!allowedCharsRegex.hasMatch(value)) {
       return context != null
@@ -78,7 +80,11 @@ class Validators {
   }
 
   // Проверка подтверждения пароля
-  static String? validateConfirmPassword(String? value, String password, [BuildContext? context]) {
+  static String? validateConfirmPassword(
+    String? value,
+    String password, [
+    BuildContext? context,
+  ]) {
     if (value == null || value.isEmpty) {
       return context != null
           ? AppLocalizations.of(context).translate('please_confirm_password')

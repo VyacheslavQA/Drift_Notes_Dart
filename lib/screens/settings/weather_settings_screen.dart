@@ -192,7 +192,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
                 child: _buildUnitOption(
                   title: localizations.translate('celsius'),
                   subtitle: '°C',
-                  isSelected: _selectedTemperatureUnit == TemperatureUnit.celsius,
+                  isSelected:
+                      _selectedTemperatureUnit == TemperatureUnit.celsius,
                   onTap: () => _updateTemperatureUnit(TemperatureUnit.celsius),
                 ),
               ),
@@ -201,8 +202,10 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
                 child: _buildUnitOption(
                   title: localizations.translate('fahrenheit'),
                   subtitle: '°F',
-                  isSelected: _selectedTemperatureUnit == TemperatureUnit.fahrenheit,
-                  onTap: () => _updateTemperatureUnit(TemperatureUnit.fahrenheit),
+                  isSelected:
+                      _selectedTemperatureUnit == TemperatureUnit.fahrenheit,
+                  onTap:
+                      () => _updateTemperatureUnit(TemperatureUnit.fahrenheit),
                 ),
               ),
             ],
@@ -388,7 +391,10 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               ),
               const SizedBox(width: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -420,14 +426,16 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppConstants.primaryColor.withValues(alpha: 0.2)
-              : AppConstants.backgroundColor.withValues(alpha: 0.5),
+          color:
+              isSelected
+                  ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                  : AppConstants.backgroundColor.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected
-                ? AppConstants.primaryColor
-                : AppConstants.textColor.withValues(alpha: 0.2),
+            color:
+                isSelected
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -436,9 +444,10 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             Text(
               title,
               style: TextStyle(
-                color: isSelected
-                    ? AppConstants.primaryColor
-                    : AppConstants.textColor,
+                color:
+                    isSelected
+                        ? AppConstants.primaryColor
+                        : AppConstants.textColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -447,9 +456,10 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
             Text(
               subtitle,
               style: TextStyle(
-                color: isSelected
-                    ? AppConstants.primaryColor.withValues(alpha: 0.8)
-                    : AppConstants.textColor.withValues(alpha: 0.6),
+                color:
+                    isSelected
+                        ? AppConstants.primaryColor.withValues(alpha: 0.8)
+                        : AppConstants.textColor.withValues(alpha: 0.6),
                 fontSize: 11,
               ),
               textAlign: TextAlign.center,

@@ -7,11 +7,11 @@ import '../localization/app_localizations.dart';
 
 // Период для фильтрации статистики
 enum StatisticsPeriod {
-  week,     // Неделя
-  month,    // Месяц
-  year,     // Год
-  allTime,  // Всё время
-  custom    // Пользовательский интервал
+  week, // Неделя
+  month, // Месяц
+  year, // Год
+  allTime, // Всё время
+  custom, // Пользовательский интервал
 }
 
 // Модель для пользовательского интервала дат
@@ -19,16 +19,10 @@ class CustomDateRange {
   final DateTime startDate;
   final DateTime endDate;
 
-  CustomDateRange({
-    required this.startDate,
-    required this.endDate,
-  });
+  CustomDateRange({required this.startDate, required this.endDate});
 
   // Копирование с частичным обновлением
-  CustomDateRange copyWith({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) {
+  CustomDateRange copyWith({DateTime? startDate, DateTime? endDate}) {
     return CustomDateRange(
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
@@ -38,7 +32,11 @@ class CustomDateRange {
   // Проверка, входит ли дата в пользовательский интервал
   bool containsDate(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
     final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day);
 
     return !normalizedDate.isBefore(normalizedStart) &&
@@ -145,7 +143,10 @@ class BiggestFishInfo {
     final weightText = weight.toStringAsFixed(1).replaceAll('.0', '');
     final dateText = DateFormatter.formatDate(catchDate, context);
 
-    String fishName = fishType.isNotEmpty ? fishType : AppLocalizations.of(context).translate('fish');
+    String fishName =
+        fishType.isNotEmpty
+            ? fishType
+            : AppLocalizations.of(context).translate('fish');
     return '$weightText ${AppLocalizations.of(context).translate('kg')} — $fishName, $dateText';
   }
 
@@ -164,10 +165,7 @@ class LatestTripInfo {
   final String tripName;
   final DateTime tripDate;
 
-  LatestTripInfo({
-    required this.tripName,
-    required this.tripDate,
-  });
+  LatestTripInfo({required this.tripName, required this.tripDate});
 
   // Форматированный вывод с поддержкой локализации
   String getFormattedText(BuildContext context) {

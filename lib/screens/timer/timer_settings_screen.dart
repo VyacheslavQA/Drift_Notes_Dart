@@ -12,10 +12,8 @@ import '../../localization/app_localizations.dart';
 class TimerSettingsScreen extends StatefulWidget {
   final String timerId;
 
-  const TimerSettingsScreen({
-    Key? key,
-    required this.timerId,
-  }) : super(key: key);
+  const TimerSettingsScreen({Key? key, required this.timerId})
+    : super(key: key);
 
   @override
   State<TimerSettingsScreen> createState() => _TimerSettingsScreenState();
@@ -40,11 +38,8 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
 
     // Находим нужный таймер
     _timer = _timerProvider.timers.firstWhere(
-          (timer) => timer.id == widget.timerId,
-      orElse: () => FishingTimerModel(
-        id: widget.timerId,
-        name: 'Таймер',
-      ),
+      (timer) => timer.id == widget.timerId,
+      orElse: () => FishingTimerModel(id: widget.timerId, name: 'Таймер'),
     );
 
     _nameController = TextEditingController(text: _timer.name);
@@ -317,53 +312,60 @@ class _TimerSettingsScreenState extends State<TimerSettingsScreen> {
     ];
 
     return Column(
-      children: sounds.map((sound) {
-        final isSelected = _selectedSound == sound['file'];
-        final isPlaying = _playingSound == sound['file'];
+      children:
+          sounds.map((sound) {
+            final isSelected = _selectedSound == sound['file'];
+            final isPlaying = _playingSound == sound['file'];
 
-        return ListTile(
-          title: Text(
-            sound['name']!,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          leading: Icon(
-            isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-            color: isSelected ? _selectedColor : Colors.white60,
-          ),
-          trailing: IconButton(
-            icon: Icon(
-                isPlaying ? Icons.stop_circle : Icons.play_circle_outline,
-                color: isPlaying ? Colors.red : Colors.white70
-            ),
-            onPressed: () {
-              _toggleSoundPreview(sound['file']!);
-
-              // Показываем уведомление
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isPlaying
-                      ? '${localizations.translate('stopping')}: ${sound['name']}'
-                      : '${localizations.translate('playing')}: ${sound['name']}'
-                  ),
-                  duration: Duration(seconds: 1),
+            return ListTile(
+              title: Text(
+                sound['name']!,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
-              );
-            },
-          ),
-          onTap: () {
-            setState(() {
-              _selectedSound = sound['file']!;
-            });
-          },
-          tileColor: isSelected ? AppConstants.surfaceColor.withOpacity(0.3) : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        );
-      }).toList(),
+              ),
+              leading: Icon(
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: isSelected ? _selectedColor : Colors.white60,
+              ),
+              trailing: IconButton(
+                icon: Icon(
+                  isPlaying ? Icons.stop_circle : Icons.play_circle_outline,
+                  color: isPlaying ? Colors.red : Colors.white70,
+                ),
+                onPressed: () {
+                  _toggleSoundPreview(sound['file']!);
+
+                  // Показываем уведомление
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isPlaying
+                            ? '${localizations.translate('stopping')}: ${sound['name']}'
+                            : '${localizations.translate('playing')}: ${sound['name']}',
+                      ),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+              ),
+              onTap: () {
+                setState(() {
+                  _selectedSound = sound['file']!;
+                });
+              },
+              tileColor:
+                  isSelected
+                      ? AppConstants.surfaceColor.withOpacity(0.3)
+                      : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+          }).toList(),
     );
   }
 }

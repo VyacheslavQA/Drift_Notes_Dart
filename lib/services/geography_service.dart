@@ -24,7 +24,7 @@ class GeographyService {
     try {
       // Загружаем JSON файл
       final jsonString = await rootBundle.loadString(
-          'assets/localization/geography/geography_$languageCode.json'
+        'assets/localization/geography/geography_$languageCode.json',
       );
       final Map<String, dynamic> data = json.decode(jsonString);
 
@@ -34,7 +34,9 @@ class GeographyService {
       debugPrint('🌍 Географические данные загружены для языка: $languageCode');
       return data;
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки географических данных для $languageCode: $e');
+      debugPrint(
+        '❌ Ошибка загрузки географических данных для $languageCode: $e',
+      );
 
       // Fallback на русский язык
       if (languageCode != 'ru') {
@@ -72,9 +74,9 @@ class GeographyService {
 
   /// Получить список локализованных городов для указанной страны
   Future<List<String>> getLocalizedCitiesForCountry(
-      String countryName,
-      BuildContext context
-      ) async {
+    String countryName,
+    BuildContext context,
+  ) async {
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
@@ -110,7 +112,10 @@ class GeographyService {
   }
 
   /// Получить ключ страны по её локализованному названию
-  Future<String?> getCountryKeyByName(String countryName, BuildContext context) async {
+  Future<String?> getCountryKeyByName(
+    String countryName,
+    BuildContext context,
+  ) async {
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
@@ -133,10 +138,10 @@ class GeographyService {
 
   /// Получить ключ города по его локализованному названию и стране
   Future<String?> getCityKeyByName(
-      String cityName,
-      String countryName,
-      BuildContext context
-      ) async {
+    String cityName,
+    String countryName,
+    BuildContext context,
+  ) async {
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
@@ -172,7 +177,10 @@ class GeographyService {
   }
 
   /// Получить локализованное название страны по ключу
-  Future<String?> getCountryNameByKey(String countryKey, BuildContext context) async {
+  Future<String?> getCountryNameByKey(
+    String countryKey,
+    BuildContext context,
+  ) async {
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
@@ -189,10 +197,10 @@ class GeographyService {
 
   /// Получить локализованное название города по ключу
   Future<String?> getCityNameByKey(
-      String cityKey,
-      String countryKey,
-      BuildContext context
-      ) async {
+    String cityKey,
+    String countryKey,
+    BuildContext context,
+  ) async {
     try {
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;

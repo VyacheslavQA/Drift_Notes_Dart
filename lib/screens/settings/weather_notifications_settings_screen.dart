@@ -11,11 +11,14 @@ class WeatherNotificationsSettingsScreen extends StatefulWidget {
   const WeatherNotificationsSettingsScreen({super.key});
 
   @override
-  State<WeatherNotificationsSettingsScreen> createState() => _WeatherNotificationsSettingsScreenState();
+  State<WeatherNotificationsSettingsScreen> createState() =>
+      _WeatherNotificationsSettingsScreenState();
 }
 
-class _WeatherNotificationsSettingsScreenState extends State<WeatherNotificationsSettingsScreen> {
-  final WeatherNotificationService _notificationService = WeatherNotificationService();
+class _WeatherNotificationsSettingsScreenState
+    extends State<WeatherNotificationsSettingsScreen> {
+  final WeatherNotificationService _notificationService =
+      WeatherNotificationService();
   late WeatherNotificationSettings _settings;
   bool _isLoading = true;
 
@@ -66,7 +69,9 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
         ),
         body: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppConstants.primaryColor,
+            ),
           ),
         ),
       );
@@ -109,18 +114,22 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               localizations.translate('pressure_change_notifications_desc'),
               Icons.speed,
               _settings.pressureChangeEnabled,
-                  (value) => setState(() {
+              (value) => setState(() {
                 _settings = _settings.copyWith(pressureChangeEnabled: value);
               }),
             ),
 
             _buildNotificationTypeCard(
               localizations.translate('favorable_conditions_notifications'),
-              localizations.translate('favorable_conditions_notifications_desc'),
+              localizations.translate(
+                'favorable_conditions_notifications_desc',
+              ),
               Icons.wb_sunny,
               _settings.favorableConditionsEnabled,
-                  (value) => setState(() {
-                _settings = _settings.copyWith(favorableConditionsEnabled: value);
+              (value) => setState(() {
+                _settings = _settings.copyWith(
+                  favorableConditionsEnabled: value,
+                );
               }),
             ),
 
@@ -129,7 +138,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               localizations.translate('storm_warning_notifications_desc'),
               Icons.warning,
               _settings.stormWarningEnabled,
-                  (value) => setState(() {
+              (value) => setState(() {
                 _settings = _settings.copyWith(stormWarningEnabled: value);
               }),
             ),
@@ -139,7 +148,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               localizations.translate('daily_forecast_notifications_desc'),
               Icons.today,
               _settings.dailyForecastEnabled,
-                  (value) => setState(() {
+              (value) => setState(() {
                 _settings = _settings.copyWith(dailyForecastEnabled: value);
               }),
             ),
@@ -157,7 +166,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
                 'мм рт.ст.',
                 1.0,
                 20.0,
-                    (value) => setState(() {
+                (value) => setState(() {
                   _settings = _settings.copyWith(pressureThreshold: value);
                 }),
               ),
@@ -167,8 +176,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
             // Временные настройки
             _buildSectionHeader(localizations.translate('time_settings')),
 
-            if (_settings.dailyForecastEnabled)
-              _buildDetailedTimeSetting(),
+            if (_settings.dailyForecastEnabled) _buildDetailedTimeSetting(),
 
             const SizedBox(height: 24),
 
@@ -256,12 +264,12 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
   }
 
   Widget _buildNotificationTypeCard(
-      String title,
-      String description,
-      IconData icon,
-      bool value,
-      Function(bool) onChanged,
-      ) {
+    String title,
+    String description,
+    IconData icon,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -307,14 +315,14 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
   }
 
   Widget _buildThresholdSetting(
-      String title,
-      String description,
-      double value,
-      String unit,
-      double min,
-      double max,
-      Function(double) onChanged,
-      ) {
+    String title,
+    String description,
+    double value,
+    String unit,
+    double min,
+    double max,
+    Function(double) onChanged,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -356,7 +364,10 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               ),
               const SizedBox(width: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -467,12 +478,15 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
       ),
       isScrollControlled: true, // Позволяет контролировать размер
       builder: (context) {
-        final bottomPadding = MediaQuery.of(context).viewInsets.bottom +
+        final bottomPadding =
+            MediaQuery.of(context).viewInsets.bottom +
             MediaQuery.of(context).padding.bottom;
 
         return SafeArea(
           child: Container(
-            padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 20),
+            padding: EdgeInsets.only(
+              bottom: bottomPadding > 0 ? bottomPadding : 20,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -506,7 +520,13 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
                   height: 200,
                   child: CupertinoDatePicker(
                     mode: CupertinoDatePickerMode.time,
-                    initialDateTime: DateTime(2024, 1, 1, _settings.dailyForecastHour, _settings.dailyForecastMinute),
+                    initialDateTime: DateTime(
+                      2024,
+                      1,
+                      1,
+                      _settings.dailyForecastHour,
+                      _settings.dailyForecastMinute,
+                    ),
                     minuteInterval: 5,
                     use24hFormat: true,
                     onDateTimeChanged: (DateTime newTime) {
@@ -569,7 +589,9 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(localizations.translate('weather_check_completed')),
+                    content: Text(
+                      localizations.translate('weather_check_completed'),
+                    ),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -596,7 +618,9 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(localizations.translate('daily_forecast_sent')),
+                    content: Text(
+                      localizations.translate('daily_forecast_sent'),
+                    ),
                     backgroundColor: Colors.green,
                   ),
                 );

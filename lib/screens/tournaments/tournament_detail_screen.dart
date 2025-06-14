@@ -11,10 +11,7 @@ import '../../widgets/reminder_selection_widget.dart';
 class TournamentDetailScreen extends StatefulWidget {
   final TournamentModel tournament;
 
-  const TournamentDetailScreen({
-    super.key,
-    required this.tournament,
-  });
+  const TournamentDetailScreen({super.key, required this.tournament});
 
   @override
   State<TournamentDetailScreen> createState() => _TournamentDetailScreenState();
@@ -36,21 +33,26 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   Future<void> _checkIfInCalendar() async {
     try {
       final calendarService = CalendarEventService();
-      final isInCalendar = await calendarService.isTournamentInCalendar(widget.tournament.id);
+      final isInCalendar = await calendarService.isTournamentInCalendar(
+        widget.tournament.id,
+      );
 
       // Получаем текущий тип напоминания если турнир в календаре
       if (isInCalendar) {
         final events = await calendarService.getCalendarEvents();
         final tournamentEvent = events.firstWhere(
-              (e) => e.sourceId == widget.tournament.id && e.type == CalendarEventType.tournament,
-          orElse: () => CalendarEvent(
-            id: '',
-            title: '',
-            startDate: DateTime.now(),
-            endDate: DateTime.now(),
-            type: CalendarEventType.tournament,
-            reminderType: ReminderType.none,
-          ),
+          (e) =>
+              e.sourceId == widget.tournament.id &&
+              e.type == CalendarEventType.tournament,
+          orElse:
+              () => CalendarEvent(
+                id: '',
+                title: '',
+                startDate: DateTime.now(),
+                endDate: DateTime.now(),
+                type: CalendarEventType.tournament,
+                reminderType: ReminderType.none,
+              ),
         );
         _currentReminderType = tournamentEvent.reminderType;
         _currentCustomDateTime = tournamentEvent.customReminderDateTime;
@@ -224,7 +226,9 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            localizations.translate(widget.tournament.fishingType.localizationKey),
+                            localizations.translate(
+                              widget.tournament.fishingType.localizationKey,
+                            ),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -238,7 +242,9 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                            color: AppConstants.primaryColor.withValues(
+                              alpha: 0.3,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -250,7 +256,9 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                localizations.translate(widget.tournament.category.localizationKey),
+                                localizations.translate(
+                                  widget.tournament.category.localizationKey,
+                                ),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
                                   fontSize: 12,
@@ -438,7 +446,11 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.location_on, color: AppConstants.primaryColor, size: 24),
+              Icon(
+                Icons.location_on,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
               const SizedBox(width: 12),
               Text(
                 localizations.translate('venue'),
@@ -554,7 +566,9 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              localizations.translate(widget.tournament.fishingType.localizationKey),
+              localizations.translate(
+                widget.tournament.fishingType.localizationKey,
+              ),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: 16,
@@ -603,14 +617,16 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
             children: [
               Expanded(
                 child: _buildInfoItem(
-                    localizations.translate('month'),
-                    widget.tournament.month
+                  localizations.translate('month'),
+                  widget.tournament.month,
                 ),
               ),
               Expanded(
                 child: _buildInfoItem(
-                    localizations.translate('category'),
-                    localizations.translate(widget.tournament.category.localizationKey)
+                  localizations.translate('category'),
+                  localizations.translate(
+                    widget.tournament.category.localizationKey,
+                  ),
                 ),
               ),
             ],
@@ -619,8 +635,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           const SizedBox(height: 12),
 
           _buildInfoItem(
-              localizations.translate('status'),
-              _getTournamentStatus(localizations)
+            localizations.translate('status'),
+            _getTournamentStatus(localizations),
           ),
         ],
       ),
@@ -658,7 +674,10 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, AppLocalizations localizations) {
+  Widget _buildActionButtons(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     return Column(
       children: [
         // Кнопка создания заметки
@@ -693,12 +712,17 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _isUpdatingCalendar ? null : () => _editReminder(context, localizations),
+              onPressed:
+                  _isUpdatingCalendar
+                      ? null
+                      : () => _editReminder(context, localizations),
               icon: const Icon(Icons.edit_notifications),
               label: Text(localizations.translate('edit_reminder')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppConstants.textColor,
-                side: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                side: BorderSide(
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -746,7 +770,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
 
   // ИСПРАВЛЕНО: Добавлена локализация для дат
   String _getCurrentReminderDescription(AppLocalizations localizations) {
-    if (_currentReminderType == ReminderType.custom && _currentCustomDateTime != null) {
+    if (_currentReminderType == ReminderType.custom &&
+        _currentCustomDateTime != null) {
       final date = _currentCustomDateTime!;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -757,12 +782,16 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
       if (reminderDate == today) {
         dateStr = localizations.translate('today'); // ИСПРАВЛЕНО: локализация
       } else if (reminderDate == tomorrow) {
-        dateStr = localizations.translate('tomorrow'); // ИСПРАВЛЕНО: локализация
+        dateStr = localizations.translate(
+          'tomorrow',
+        ); // ИСПРАВЛЕНО: локализация
       } else {
-        dateStr = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+        dateStr =
+            '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
       }
 
-      final timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      final timeStr =
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
       return '$dateStr ${localizations.translate('at')} $timeStr'; // ИСПРАВЛЕНО: локализация "в"
     }
@@ -770,7 +799,10 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     return localizations.translate(_currentReminderType.localizationKey);
   }
 
-  Widget _buildCalendarButton(BuildContext context, AppLocalizations localizations) {
+  Widget _buildCalendarButton(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
     if (_isCheckingCalendar) {
       return OutlinedButton.icon(
         onPressed: null,
@@ -779,13 +811,17 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           height: 16,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor.withValues(alpha: 0.5)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppConstants.textColor.withValues(alpha: 0.5),
+            ),
           ),
         ),
         label: Text(localizations.translate('loading')),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppConstants.textColor.withValues(alpha: 0.5),
-          side: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+          side: BorderSide(
+            color: AppConstants.textColor.withValues(alpha: 0.5),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -796,17 +832,21 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
 
     if (_isInCalendar) {
       return OutlinedButton.icon(
-        onPressed: _isUpdatingCalendar ? null : () => _removeFromCalendar(context, localizations),
-        icon: _isUpdatingCalendar
-            ? SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-          ),
-        )
-            : const Icon(Icons.event_busy),
+        onPressed:
+            _isUpdatingCalendar
+                ? null
+                : () => _removeFromCalendar(context, localizations),
+        icon:
+            _isUpdatingCalendar
+                ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  ),
+                )
+                : const Icon(Icons.event_busy),
         label: Text(localizations.translate('remove_from_calendar')),
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.red,
@@ -819,17 +859,23 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
       );
     } else {
       return OutlinedButton.icon(
-        onPressed: _isUpdatingCalendar ? null : () => _addToCalendar(context, localizations),
-        icon: _isUpdatingCalendar
-            ? SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-          ),
-        )
-            : const Icon(Icons.calendar_today),
+        onPressed:
+            _isUpdatingCalendar
+                ? null
+                : () => _addToCalendar(context, localizations),
+        icon:
+            _isUpdatingCalendar
+                ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppConstants.textColor,
+                    ),
+                  ),
+                )
+                : const Icon(Icons.calendar_today),
         label: Text(localizations.translate('add_to_calendar')),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppConstants.textColor,
@@ -843,8 +889,12 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     }
   }
 
-  void _copyTournamentInfo(BuildContext context, AppLocalizations localizations) {
-    final text = '''
+  void _copyTournamentInfo(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
+    final text =
+        '''
 ${widget.tournament.category.icon} ${widget.tournament.name}
 
 📅 ${localizations.translate('date')}: ${widget.tournament.formattedDate}
@@ -883,7 +933,10 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
     );
   }
 
-  void _addToCalendar(BuildContext context, AppLocalizations localizations) async {
+  void _addToCalendar(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) async {
     setState(() {
       _isUpdatingCalendar = true;
     });
@@ -925,7 +978,9 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('tournament_added_to_calendar')),
+            content: Text(
+              localizations.translate('tournament_added_to_calendar'),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -946,7 +1001,10 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
     }
   }
 
-  void _editReminder(BuildContext context, AppLocalizations localizations) async {
+  void _editReminder(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) async {
     try {
       final result = await ReminderDialogs.showEditReminderDialog(
         context,
@@ -963,7 +1021,8 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
       final newReminderType = result['reminderType'] as ReminderType;
       final newCustomDateTime = result['customDateTime'] as DateTime?;
 
-      if (newReminderType == _currentReminderType && newCustomDateTime == _currentCustomDateTime) {
+      if (newReminderType == _currentReminderType &&
+          newCustomDateTime == _currentCustomDateTime) {
         return; // Ничего не изменилось
       }
 
@@ -1011,7 +1070,10 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
     }
   }
 
-  void _removeFromCalendar(BuildContext context, AppLocalizations localizations) async {
+  void _removeFromCalendar(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) async {
     setState(() {
       _isUpdatingCalendar = true;
     });
@@ -1031,7 +1093,9 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('tournament_removed_from_calendar')),
+            content: Text(
+              localizations.translate('tournament_removed_from_calendar'),
+            ),
             backgroundColor: Colors.green,
           ),
         );

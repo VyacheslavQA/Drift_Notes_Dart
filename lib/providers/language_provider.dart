@@ -54,14 +54,19 @@ class LanguageProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('🌐 Смена языка с ${_currentLocale.languageCode} на ${newLocale.languageCode}');
+    debugPrint(
+      '🌐 Смена языка с ${_currentLocale.languageCode} на ${newLocale.languageCode}',
+    );
 
     _currentLocale = newLocale;
 
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefsKey, newLocale.languageCode);
-      await prefs.setBool(_systemLanguageKey, false); // Отключаем системный язык
+      await prefs.setBool(
+        _systemLanguageKey,
+        false,
+      ); // Отключаем системный язык
 
       debugPrint('✅ Язык сохранен в настройках: ${newLocale.languageCode}');
     } catch (e) {
@@ -114,7 +119,9 @@ class LanguageProvider extends ChangeNotifier {
         return Locale(deviceLocale.languageCode);
       }
 
-      debugPrint('⚠️ Системный язык не поддерживается, используем русский по умолчанию');
+      debugPrint(
+        '⚠️ Системный язык не поддерживается, используем русский по умолчанию',
+      );
       // Если не поддерживается, возвращаем русский по умолчанию
       return const Locale('ru', 'RU');
     } catch (e) {
@@ -138,7 +145,11 @@ class LanguageProvider extends ChangeNotifier {
   // Получение списка поддерживаемых языков
   List<Map<String, String>> getSupportedLanguages() {
     return [
-      {'code': 'system', 'name': 'Системный язык', 'nativeName': 'System Language'},
+      {
+        'code': 'system',
+        'name': 'Системный язык',
+        'nativeName': 'System Language',
+      },
       {'code': 'ru', 'name': 'Русский', 'nativeName': 'Russian'},
       {'code': 'en', 'name': 'English', 'nativeName': 'Английский'},
     ];

@@ -130,7 +130,9 @@ void main() async {
 
     // ДИАГНОСТИКА ПЕРЕД ОЧИСТКОЙ
     final statusBefore = await consentService.getUserConsentStatus();
-    debugPrint('🔍 ДО очистки: Privacy=${statusBefore.privacyPolicyAccepted}, Terms=${statusBefore.termsOfServiceAccepted}');
+    debugPrint(
+      '🔍 ДО очистки: Privacy=${statusBefore.privacyPolicyAccepted}, Terms=${statusBefore.termsOfServiceAccepted}',
+    );
     debugPrint('🔍 ДО очистки: Version=${statusBefore.consentVersion}');
 
     // ОЧИСТКА
@@ -139,9 +141,10 @@ void main() async {
 
     // ДИАГНОСТИКА ПОСЛЕ ОЧИСТКИ
     final statusAfter = await consentService.getUserConsentStatus();
-    debugPrint('🔍 ПОСЛЕ очистки: Privacy=${statusAfter.privacyPolicyAccepted}, Terms=${statusAfter.termsOfServiceAccepted}');
+    debugPrint(
+      '🔍 ПОСЛЕ очистки: Privacy=${statusAfter.privacyPolicyAccepted}, Terms=${statusAfter.termsOfServiceAccepted}',
+    );
     debugPrint('🔍 ПОСЛЕ очистки: Version=${statusAfter.consentVersion}');
-
   } catch (e) {
     debugPrint('❌ Ошибка создания UserConsentService: $e');
   }
@@ -173,10 +176,14 @@ void main() async {
     // Добавление слушателя для запуска синхронизации при появлении сети
     networkMonitor.addConnectionListener((isConnected) {
       if (isConnected) {
-        debugPrint('🌐 Соединение с интернетом восстановлено, запускаем синхронизацию');
+        debugPrint(
+          '🌐 Соединение с интернетом восстановлено, запускаем синхронизацию',
+        );
         SyncService().syncAll();
       } else {
-        debugPrint('🔴 Соединение с интернетом потеряно, переход в офлайн режим');
+        debugPrint(
+          '🔴 Соединение с интернетом потеряно, переход в офлайн режим',
+        );
       }
     });
 
@@ -209,7 +216,8 @@ class DriftNotesApp extends StatefulWidget {
   State<DriftNotesApp> createState() => _DriftNotesAppState();
 }
 
-class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserver {
+class _DriftNotesAppState extends State<DriftNotesApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final _firebaseService = FirebaseService();
 
@@ -292,12 +300,17 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
       final pushService = LocalPushNotificationService();
 
       // Обрабатываем нажатия на уведомления
-      pushService.notificationTapStream.listen((payload) {
-        debugPrint('📱 Приложение: получено нажатие на уведомление: $payload');
-        _handleNotificationTap(payload);
-      }, onError: (error) {
-        debugPrint('❌ Ошибка в stream уведомлений: $error');
-      });
+      pushService.notificationTapStream.listen(
+        (payload) {
+          debugPrint(
+            '📱 Приложение: получено нажатие на уведомление: $payload',
+          );
+          _handleNotificationTap(payload);
+        },
+        onError: (error) {
+          debugPrint('❌ Ошибка в stream уведомлений: $error');
+        },
+      );
 
       debugPrint('✅ Обработчики уведомлений настроены');
     } catch (e) {
@@ -360,7 +373,6 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
         // Fallback - переходим к уведомлениям
         _navigateToNotifications();
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
     }
@@ -377,8 +389,8 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
 
       // Ищем уведомление по ID
       final notification = notifications.firstWhere(
-              (n) => n.id == notificationId,
-          orElse: () => throw Exception('Notification not found')
+        (n) => n.id == notificationId,
+        orElse: () => throw Exception('Notification not found'),
       );
 
       debugPrint('📱 Найдено уведомление: ${notification.title}');
@@ -395,7 +407,6 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
         debugPrint('❌ Source ID не найден в данных уведомления');
         _navigateToNotifications();
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка обработки уведомления о турнире: $e');
       _navigateToNotifications();
@@ -408,10 +419,6 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     _navigatorKey.currentState?.pushNamed('/notifications');
   }
 
-  void _navigateToTournaments() {
-    debugPrint('🏆 Переход к турнирам');
-    _navigatorKey.currentState?.pushNamed('/tournaments');
-  }
 
   // ИСПРАВЛЕНО: Переход к конкретному турниру
   void _navigateToTournamentDetail(String tournamentId) {
@@ -443,7 +450,6 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
       );
 
       debugPrint('✅ Успешный переход к турниру: ${tournament.name}');
-
     } catch (e) {
       debugPrint('❌ Ошибка перехода к турниру: $e');
       // Fallback - переходим к уведомлениям
@@ -481,10 +487,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
           type: 'create_note',
           localizedTitle: 'Создать заметку',
         ),
-        const ShortcutItem(
-          type: 'view_notes',
-          localizedTitle: 'Мои заметки',
-        ),
+        const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
       ]);
 
       // Обрабатываем нажатия на быстрые действия
@@ -504,7 +507,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
 
     // Обработка deep links когда приложение уже запущено
     appLinks.uriLinkStream.listen(
-          (Uri uri) {
+      (Uri uri) {
         debugPrint('🔗 Deep link получен: $uri');
         _handleDeepLink(uri);
       },
@@ -531,7 +534,9 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
   }
 
   void _handleDeepLink(Uri uri) {
-    debugPrint('🔍 Обработка deep link: ${uri.scheme}://${uri.host}${uri.path}');
+    debugPrint(
+      '🔍 Обработка deep link: ${uri.scheme}://${uri.host}${uri.path}',
+    );
 
     if (uri.scheme == 'driftnotes') {
       switch (uri.host) {
@@ -559,9 +564,14 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
 
     // Проверяем авторизацию
     if (!_firebaseService.isUserLoggedIn) {
-      debugPrint('🔐 Пользователь не авторизован, сохраняем действие и переходим к авторизации');
+      debugPrint(
+        '🔐 Пользователь не авторизован, сохраняем действие и переходим к авторизации',
+      );
       _pendingAction = actionType;
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil('/auth_selection', (route) => false);
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/auth_selection',
+        (route) => false,
+      );
       return;
     }
 
@@ -591,7 +601,10 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     debugPrint('📝 Переход к созданию заметки');
 
     // Сначала переходим на главный экран
-    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+    );
 
     // Небольшая задержка для завершения навигации
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -609,7 +622,10 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     debugPrint('📋 Переход к просмотру заметок');
 
     // Сначала переходим на главный экран
-    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+    );
 
     // Небольшая задержка для завершения навигации
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -716,7 +732,9 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
               try {
                 ScheduledReminderService().setContext(context);
               } catch (e) {
-                debugPrint('❌ Ошибка установки контекста сервиса напоминаний в builder: $e');
+                debugPrint(
+                  '❌ Ошибка установки контекста сервиса напоминаний в builder: $e',
+                );
               }
             });
 
@@ -742,15 +760,15 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
                 fontWeight: FontWeight.bold,
                 color: AppConstants.textColor,
               ),
-              iconTheme: IconThemeData(
-                color: AppConstants.textColor,
-              ),
+              iconTheme: IconThemeData(color: AppConstants.textColor),
             ),
             cardTheme: CardTheme(
               color: AppConstants.cardColor,
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusMedium,
+                ),
               ),
               shadowColor: Colors.black.withValues(alpha: 0.2),
             ),
@@ -768,7 +786,9 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
                 backgroundColor: AppConstants.primaryColor,
                 foregroundColor: AppConstants.textColor,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.borderRadiusMedium,
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
@@ -777,28 +797,37 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: AppConstants.textColor,
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: AppConstants.surfaceColor,
-              hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+              hintStyle: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.5),
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusSmall,
+                ),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusSmall,
+                ),
                 borderSide: BorderSide(color: AppConstants.textColor),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusSmall,
+                ),
                 borderSide: const BorderSide(color: Colors.redAccent),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
             ),
             pageTransitionsTheme: const PageTransitionsTheme(
               builders: {
@@ -823,19 +852,23 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
           // Определение маршрутов для навигации
           routes: {
             '/splash': (context) => const SplashScreen(),
-            '/auth_selection': (context) => AuthSelectionScreenWithCallback(
-              onAuthSuccess: () => executePendingAction(),
-            ),
-            '/login': (context) => LoginScreenWithCallback(
-              onAuthSuccess: () => executePendingAction(),
-            ),
-            '/register': (context) => RegisterScreenWithCallback(
-              onAuthSuccess: () => executePendingAction(),
-            ),
+            '/auth_selection':
+                (context) => AuthSelectionScreenWithCallback(
+                  onAuthSuccess: () => executePendingAction(),
+                ),
+            '/login':
+                (context) => LoginScreenWithCallback(
+                  onAuthSuccess: () => executePendingAction(),
+                ),
+            '/register':
+                (context) => RegisterScreenWithCallback(
+                  onAuthSuccess: () => executePendingAction(),
+                ),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
             '/help_contact': (context) => const HelpContactScreen(),
-            '/settings/accepted_agreements': (context) => const AcceptedAgreementsScreen(),
+            '/settings/accepted_agreements':
+                (context) => const AcceptedAgreementsScreen(),
           },
         );
       },
@@ -847,16 +880,15 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
 class SplashScreenWithPendingAction extends StatefulWidget {
   final VoidCallback onAppReady;
 
-  const SplashScreenWithPendingAction({
-    super.key,
-    required this.onAppReady,
-  });
+  const SplashScreenWithPendingAction({super.key, required this.onAppReady});
 
   @override
-  State<SplashScreenWithPendingAction> createState() => _SplashScreenWithPendingActionState();
+  State<SplashScreenWithPendingAction> createState() =>
+      _SplashScreenWithPendingActionState();
 }
 
-class _SplashScreenWithPendingActionState extends State<SplashScreenWithPendingAction> {
+class _SplashScreenWithPendingActionState
+    extends State<SplashScreenWithPendingAction> {
   @override
   void initState() {
     super.initState();
@@ -890,10 +922,7 @@ class AuthSelectionScreenWithCallback extends StatelessWidget {
 class LoginScreenWithCallback extends StatelessWidget {
   final VoidCallback onAuthSuccess;
 
-  const LoginScreenWithCallback({
-    super.key,
-    required this.onAuthSuccess,
-  });
+  const LoginScreenWithCallback({super.key, required this.onAuthSuccess});
 
   @override
   Widget build(BuildContext context) {
@@ -904,10 +933,7 @@ class LoginScreenWithCallback extends StatelessWidget {
 class RegisterScreenWithCallback extends StatelessWidget {
   final VoidCallback onAuthSuccess;
 
-  const RegisterScreenWithCallback({
-    super.key,
-    required this.onAuthSuccess,
-  });
+  const RegisterScreenWithCallback({super.key, required this.onAuthSuccess});
 
   @override
   Widget build(BuildContext context) {

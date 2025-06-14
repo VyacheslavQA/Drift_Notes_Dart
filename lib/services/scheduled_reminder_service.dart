@@ -10,7 +10,8 @@ import '../models/notification_model.dart';
 import '../localization/app_localizations.dart';
 
 class ScheduledReminderService {
-  static final ScheduledReminderService _instance = ScheduledReminderService._internal();
+  static final ScheduledReminderService _instance =
+      ScheduledReminderService._internal();
   factory ScheduledReminderService() => _instance;
   ScheduledReminderService._internal();
 
@@ -56,7 +57,9 @@ class ScheduledReminderService {
     Map<String, dynamic> data = const {},
   }) async {
     try {
-      debugPrint('⏰ Планируем напоминание: $title на ${_formatDateTime(reminderDateTime)}');
+      debugPrint(
+        '⏰ Планируем напоминание: $title на ${_formatDateTime(reminderDateTime)}',
+      );
 
       // Проверяем, что время в будущем
       final now = DateTime.now();
@@ -85,7 +88,9 @@ class ScheduledReminderService {
 
       // Вычисляем задержку
       final delay = reminderDateTime.difference(now);
-      debugPrint('⏰ Задержка до срабатывания: ${delay.inMinutes} минут ${delay.inSeconds % 60} секунд');
+      debugPrint(
+        '⏰ Задержка до срабатывания: ${delay.inMinutes} минут ${delay.inSeconds % 60} секунд',
+      );
 
       // Создаем таймер
       final timer = Timer(delay, () {
@@ -95,7 +100,6 @@ class ScheduledReminderService {
       _activeTimers[id] = timer;
 
       debugPrint('✅ Напоминание запланировано: $title');
-
     } catch (e) {
       debugPrint('❌ Ошибка планирования напоминания: $e');
     }
@@ -156,7 +160,8 @@ class ScheduledReminderService {
 
       // Получаем локализованный заголовок если возможно
       String title = reminder.title;
-      if (_context != null && reminder.type == NotificationType.tournamentReminder) {
+      if (_context != null &&
+          reminder.type == NotificationType.tournamentReminder) {
         try {
           final localizations = AppLocalizations.of(_context!);
           title = localizations.translate('tournament_reminder_title');
@@ -172,7 +177,8 @@ class ScheduledReminderService {
           title: title,
           message: reminder.message,
           data: {
-            'sourceId': reminder.data['sourceId'] ?? '', // ID турнира для навигации
+            'sourceId':
+                reminder.data['sourceId'] ?? '', // ID турнира для навигации
             'eventId': reminder.data['eventId'] ?? '',
             'eventType': reminder.data['eventType'] ?? '',
             'eventTitle': reminder.data['eventTitle'] ?? reminder.title,
@@ -185,7 +191,8 @@ class ScheduledReminderService {
           title: title,
           message: reminder.message,
           data: {
-            'sourceId': reminder.data['sourceId'] ?? '', // ID заметки для навигации
+            'sourceId':
+                reminder.data['sourceId'] ?? '', // ID заметки для навигации
             'eventId': reminder.data['eventId'] ?? '',
             'eventType': reminder.data['eventType'] ?? '',
             'eventTitle': reminder.data['eventTitle'] ?? reminder.title,
@@ -207,8 +214,9 @@ class ScheduledReminderService {
       _scheduledReminders.remove(reminder.id);
       await _saveScheduledReminders();
 
-      debugPrint('✅ Уведомление отправлено и напоминание удалено: ${reminder.title}');
-
+      debugPrint(
+        '✅ Уведомление отправлено и напоминание удалено: ${reminder.title}',
+      );
     } catch (e) {
       debugPrint('❌ Ошибка срабатывания напоминания: $e');
     }
@@ -248,7 +256,6 @@ class ScheduledReminderService {
       }
 
       debugPrint('📂 Загружено напоминаний: ${_scheduledReminders.length}');
-
     } catch (e) {
       debugPrint('❌ Ошибка загрузки напоминаний: $e');
     }
@@ -275,7 +282,6 @@ class ScheduledReminderService {
       }
 
       debugPrint('🔄 Восстановлено таймеров: ${_activeTimers.length}');
-
     } catch (e) {
       debugPrint('❌ Ошибка восстановления таймеров: $e');
     }
@@ -285,9 +291,10 @@ class ScheduledReminderService {
   Future<void> _saveScheduledReminders() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final remindersJson = _scheduledReminders.values
-          .map((reminder) => json.encode(reminder.toJson()))
-          .toList();
+      final remindersJson =
+          _scheduledReminders.values
+              .map((reminder) => json.encode(reminder.toJson()))
+              .toList();
 
       await prefs.setStringList(_scheduledRemindersKey, remindersJson);
     } catch (e) {
@@ -317,9 +324,10 @@ class ScheduledReminderService {
   /// Получить статистику
   Map<String, dynamic> getStatistics() {
     final now = DateTime.now();
-    final activeCount = _scheduledReminders.values
-        .where((r) => r.reminderDateTime.isAfter(now))
-        .length;
+    final activeCount =
+        _scheduledReminders.values
+            .where((r) => r.reminderDateTime.isAfter(now))
+            .length;
 
     return {
       'totalScheduled': _scheduledReminders.length,
@@ -381,13 +389,17 @@ class ScheduledReminder {
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       message: json['message'] ?? '',
-      reminderDateTime: DateTime.fromMillisecondsSinceEpoch(json['reminderDateTime'] ?? 0),
+      reminderDateTime: DateTime.fromMillisecondsSinceEpoch(
+        json['reminderDateTime'] ?? 0,
+      ),
       type: NotificationType.values.firstWhere(
-            (e) => e.toString() == json['type'],
+        (e) => e.toString() == json['type'],
         orElse: () => NotificationType.general,
       ),
       data: Map<String, dynamic>.from(json['data'] ?? {}),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt'] ?? DateTime.now().millisecondsSinceEpoch),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        json['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      ),
     );
   }
 }

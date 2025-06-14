@@ -4,11 +4,11 @@ import 'dart:convert';
 
 /// Типы системных звуков для уведомлений
 enum NotificationSoundType {
-  defaultSound,    // Звук по умолчанию
-  notification,    // Звук уведомления
-  alarm,          // Звук будильника
-  ringtone,       // Мелодия звонка
-  silent,         // Беззвучный режим
+  defaultSound, // Звук по умолчанию
+  notification, // Звук уведомления
+  alarm, // Звук будильника
+  ringtone, // Мелодия звонка
+  silent, // Беззвучный режим
 }
 
 /// Модель настроек звуков уведомлений
@@ -43,7 +43,7 @@ class NotificationSoundSettings {
     this.volume = 0.8,
     this.quietHoursEnabled = true,
     this.quietHoursStart = 22, // 22:00
-    this.quietHoursEnd = 7,    // 07:00
+    this.quietHoursEnd = 7, // 07:00
     this.badgeEnabled = true,
     this.vibrationEnabled = true,
   });
@@ -144,7 +144,7 @@ class NotificationSoundSettings {
     return NotificationSoundSettings(
       soundEnabled: json['soundEnabled'] ?? true,
       soundType: NotificationSoundType.values.firstWhere(
-            (e) => e.toString() == json['soundType'],
+        (e) => e.toString() == json['soundType'],
         orElse: () => NotificationSoundType.defaultSound,
       ),
       volume: (json['volume'] ?? 0.8).toDouble(),
@@ -179,16 +179,16 @@ class NotificationSoundSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is NotificationSoundSettings &&
-              runtimeType == other.runtimeType &&
-              soundEnabled == other.soundEnabled &&
-              soundType == other.soundType &&
-              volume == other.volume &&
-              quietHoursEnabled == other.quietHoursEnabled &&
-              quietHoursStart == other.quietHoursStart &&
-              quietHoursEnd == other.quietHoursEnd &&
-              badgeEnabled == other.badgeEnabled &&
-              vibrationEnabled == other.vibrationEnabled;
+      other is NotificationSoundSettings &&
+          runtimeType == other.runtimeType &&
+          soundEnabled == other.soundEnabled &&
+          soundType == other.soundType &&
+          volume == other.volume &&
+          quietHoursEnabled == other.quietHoursEnabled &&
+          quietHoursStart == other.quietHoursStart &&
+          quietHoursEnd == other.quietHoursEnd &&
+          badgeEnabled == other.badgeEnabled &&
+          vibrationEnabled == other.vibrationEnabled;
 
   @override
   int get hashCode =>

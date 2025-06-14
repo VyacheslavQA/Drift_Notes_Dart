@@ -46,11 +46,7 @@ class HourlyForecast extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.schedule,
-                color: AppConstants.primaryColor,
-                size: 20,
-              ),
+              Icon(Icons.schedule, color: AppConstants.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 localizations.translate('hourly_forecast'),
@@ -81,13 +77,20 @@ class HourlyForecast extends StatelessWidget {
                     margin: const EdgeInsets.only(right: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isCurrentHour
-                          ? AppConstants.primaryColor.withValues(alpha: 0.2)
-                          : AppConstants.backgroundColor.withValues(alpha: 0.5),
+                      color:
+                          isCurrentHour
+                              ? AppConstants.primaryColor.withValues(alpha: 0.2)
+                              : AppConstants.backgroundColor.withValues(
+                                alpha: 0.5,
+                              ),
                       borderRadius: BorderRadius.circular(12),
-                      border: isCurrentHour
-                          ? Border.all(color: AppConstants.primaryColor, width: 2)
-                          : null,
+                      border:
+                          isCurrentHour
+                              ? Border.all(
+                                color: AppConstants.primaryColor,
+                                width: 2,
+                              )
+                              : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -106,7 +109,10 @@ class HourlyForecast extends StatelessWidget {
                           size: 20,
                         ),
                         Text(
-                          weatherSettings.formatTemperature(hour.tempC, showUnit: false),
+                          weatherSettings.formatTemperature(
+                            hour.tempC,
+                            showUnit: false,
+                          ),
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 14,
@@ -178,16 +184,37 @@ class HourlyForecast extends StatelessWidget {
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
       case 1003: // Partly cloudy
         return isDay ? Icons.wb_cloudy : Icons.cloud;
-      case 1006: case 1009: // Cloudy/Overcast
-      return Icons.cloud;
-      case 1030: case 1135: case 1147: // Mist/Fog
-      return Icons.cloud;
-      case 1063: case 1180: case 1183: case 1186: case 1189: case 1192: case 1195: case 1198: case 1201: // Rain
-      return Icons.grain;
-      case 1066: case 1210: case 1213: case 1216: case 1219: case 1222: case 1225: // Snow
-      return Icons.ac_unit;
-      case 1087: case 1273: case 1276: case 1279: case 1282: // Thunder
-      return Icons.flash_on;
+      case 1006:
+      case 1009: // Cloudy/Overcast
+        return Icons.cloud;
+      case 1030:
+      case 1135:
+      case 1147: // Mist/Fog
+        return Icons.cloud;
+      case 1063:
+      case 1180:
+      case 1183:
+      case 1186:
+      case 1189:
+      case 1192:
+      case 1195:
+      case 1198:
+      case 1201: // Rain
+        return Icons.grain;
+      case 1066:
+      case 1210:
+      case 1213:
+      case 1216:
+      case 1219:
+      case 1222:
+      case 1225: // Snow
+        return Icons.ac_unit;
+      case 1087:
+      case 1273:
+      case 1276:
+      case 1279:
+      case 1282: // Thunder
+        return Icons.flash_on;
       default:
         return isDay ? Icons.wb_sunny : Icons.nights_stay;
     }

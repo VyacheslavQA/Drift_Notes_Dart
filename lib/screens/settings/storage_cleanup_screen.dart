@@ -81,7 +81,9 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${localizations.translate('note_deleted_by_id')}: $noteId'),
+              content: Text(
+                '${localizations.translate('note_deleted_by_id')}: $noteId',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -91,7 +93,9 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${localizations.translate('note_not_found_by_id')}: $noteId'),
+              content: Text(
+                '${localizations.translate('note_not_found_by_id')}: $noteId',
+              ),
               backgroundColor: Colors.orange,
             ),
           );
@@ -103,7 +107,9 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${localizations.translate('error_deleting_note_by_id')}: $e'),
+            content: Text(
+              '${localizations.translate('error_deleting_note_by_id')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -166,11 +172,17 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                         decoration: InputDecoration(
                           labelText: localizations.translate('note_id'),
                           labelStyle: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
-                          hintText: localizations.translate('enter_note_id_to_delete'),
+                          hintText: localizations.translate(
+                            'enter_note_id_to_delete',
+                          ),
                           hintStyle: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.5),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                           filled: true,
                           fillColor: const Color(0xFF12332E),
@@ -192,7 +204,9 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.delete),
-                          label: Text(localizations.translate('delete_note_by_id')),
+                          label: Text(
+                            localizations.translate('delete_note_by_id'),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
@@ -249,18 +263,25 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                   itemCount: _offlineNotes.length,
                   itemBuilder: (context, index) {
                     final note = _offlineNotes[index];
-                    final noteId = note['id'] ?? localizations.translate('no_id');
-                    String title = note['title'] ?? note['location'] ?? localizations.translate('no_title');
+                    final noteId =
+                        note['id'] ?? localizations.translate('no_id');
+                    String title =
+                        note['title'] ??
+                        note['location'] ??
+                        localizations.translate('no_title');
 
                     // Пытаемся получить дату заметки
                     String date = localizations.translate('no_date');
                     try {
                       if (note['date'] != null) {
-                        final timestamp = note['date'] is int
-                            ? note['date']
-                            : int.tryParse(note['date'].toString()) ?? 0;
+                        final timestamp =
+                            note['date'] is int
+                                ? note['date']
+                                : int.tryParse(note['date'].toString()) ?? 0;
                         if (timestamp > 0) {
-                          final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+                          final dateTime = DateTime.fromMillisecondsSinceEpoch(
+                            timestamp,
+                          );
                           date = DateFormat('dd.MM.yyyy').format(dateTime);
                         }
                       }
@@ -282,7 +303,9 @@ class StorageCleanupScreenState extends State<StorageCleanupScreen> {
                         subtitle: Text(
                           'ID: $noteId\n${localizations.translate('date')}: $date',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                         trailing: IconButton(

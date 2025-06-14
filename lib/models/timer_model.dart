@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 class FishingTimerModel {
   String id;
   String name;
-  Duration duration;      // Общая длительность
+  Duration duration; // Общая длительность
   Duration remainingTime; // Оставшееся время для обратного отсчета
   bool isRunning;
   DateTime? startTime;
-  bool isCountdown;       // Флаг для определения режима (обычный/обратный отсчет)
+  bool isCountdown; // Флаг для определения режима (обычный/обратный отсчет)
   Color timerColor;
   String alertSound;
 
@@ -44,7 +44,8 @@ class FishingTimerModel {
       remainingTime: remainingTime ?? this.remainingTime,
       isRunning: isRunning ?? this.isRunning,
       startTime: startTime ?? this.startTime,
-      isCountdown: true, // Всегда в режиме обратного отсчета независимо от параметра isCountdown
+      isCountdown:
+          true, // Всегда в режиме обратного отсчета независимо от параметра isCountdown
       timerColor: timerColor ?? this.timerColor,
       alertSound: alertSound ?? this.alertSound,
     );
@@ -61,7 +62,8 @@ class FishingTimerModel {
       'startTime': startTime?.millisecondsSinceEpoch,
       'isCountdown': true, // Всегда true
       // ignore: deprecated_member_use
-      'timerColor': timerColor.value, // Используем .value до появления альтернативы
+      'timerColor':
+          timerColor.value, // Используем .value до появления альтернативы
       'alertSound': alertSound,
     };
   }
@@ -74,9 +76,10 @@ class FishingTimerModel {
       duration: Duration(seconds: json['duration'] ?? 0),
       remainingTime: Duration(seconds: json['remainingTime'] ?? 0),
       isRunning: json['isRunning'] ?? false,
-      startTime: json['startTime'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
-          : null,
+      startTime:
+          json['startTime'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
+              : null,
       isCountdown: true, // Всегда true, независимо от значения в JSON
       // ignore: deprecated_member_use
       timerColor: Color(json['timerColor'] ?? Colors.green.value),

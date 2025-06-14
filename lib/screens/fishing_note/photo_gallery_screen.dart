@@ -52,10 +52,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         ),
         title: Text(
           '${localizations.translate('photo_number')} ${_currentIndex + 1}/${widget.photos.length}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 18),
         ),
       ),
       body: GestureDetector(
@@ -80,17 +77,15 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   fit: BoxFit.contain,
                   placeholder: Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppConstants.textColor,
+                      ),
                     ),
                   ),
                   errorWidget: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                        size: 48,
-                      ),
+                      const Icon(Icons.error, color: Colors.red, size: 48),
                       const SizedBox(height: 16),
                       Text(
                         localizations.translate('error_loading_image'),

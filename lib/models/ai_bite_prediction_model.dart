@@ -30,9 +30,13 @@ class MultiFishingTypePrediction {
       allPredictions: (json['allPredictions'] as Map<String, dynamic>? ?? {})
           .map((key, value) => MapEntry(key, AIBitePrediction.fromJson(value))),
       comparison: ComparisonAnalysis.fromJson(json['comparison'] ?? {}),
-      generalRecommendations: List<String>.from(json['generalRecommendations'] ?? []),
+      generalRecommendations: List<String>.from(
+        json['generalRecommendations'] ?? [],
+      ),
       weatherSummary: WeatherSummary.fromJson(json['weatherSummary'] ?? {}),
-      generatedAt: DateTime.parse(json['generatedAt'] ?? DateTime.now().toIso8601String()),
+      generatedAt: DateTime.parse(
+        json['generatedAt'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -40,7 +44,9 @@ class MultiFishingTypePrediction {
     return {
       'bestFishingType': bestFishingType,
       'bestPrediction': bestPrediction.toJson(),
-      'allPredictions': allPredictions.map((key, value) => MapEntry(key, value.toJson())),
+      'allPredictions': allPredictions.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
       'comparison': comparison.toJson(),
       'generalRecommendations': generalRecommendations,
       'weatherSummary': weatherSummary.toJson(),
@@ -85,16 +91,19 @@ class ComparisonAnalysis {
 
   factory ComparisonAnalysis.fromJson(Map<String, dynamic> json) {
     return ComparisonAnalysis(
-      rankings: (json['rankings'] as List<dynamic>? ?? [])
-          .map((item) => FishingTypeRanking.fromJson(item))
-          .toList(),
+      rankings:
+          (json['rankings'] as List<dynamic>? ?? [])
+              .map((item) => FishingTypeRanking.fromJson(item))
+              .toList(),
       bestOverall: FishingTypeRanking.fromJson(json['bestOverall'] ?? {}),
-      alternativeOptions: (json['alternativeOptions'] as List<dynamic>? ?? [])
-          .map((item) => FishingTypeRanking.fromJson(item))
-          .toList(),
-      worstOptions: (json['worstOptions'] as List<dynamic>? ?? [])
-          .map((item) => FishingTypeRanking.fromJson(item))
-          .toList(),
+      alternativeOptions:
+          (json['alternativeOptions'] as List<dynamic>? ?? [])
+              .map((item) => FishingTypeRanking.fromJson(item))
+              .toList(),
+      worstOptions:
+          (json['worstOptions'] as List<dynamic>? ?? [])
+              .map((item) => FishingTypeRanking.fromJson(item))
+              .toList(),
     );
   }
 
@@ -150,7 +159,7 @@ class FishingTypeRanking {
       icon: json['icon'] ?? '🎣',
       score: json['score'] ?? 0,
       activityLevel: ActivityLevel.values.firstWhere(
-            (e) => e.toString() == json['activityLevel'],
+        (e) => e.toString() == json['activityLevel'],
         orElse: () => ActivityLevel.moderate,
       ),
       shortRecommendation: json['shortRecommendation'] ?? '',
@@ -300,20 +309,24 @@ class AIBitePrediction {
     return AIBitePrediction(
       overallScore: json['overallScore'] ?? 0,
       activityLevel: ActivityLevel.values.firstWhere(
-            (e) => e.toString() == json['activityLevel'],
+        (e) => e.toString() == json['activityLevel'],
         orElse: () => ActivityLevel.moderate,
       ),
       confidence: (json['confidence'] ?? 0.0).toDouble(),
       recommendation: json['recommendation'] ?? '',
       detailedAnalysis: json['detailedAnalysis'] ?? '',
-      factors: (json['factors'] as List<dynamic>? ?? [])
-          .map((item) => BiteFactorAnalysis.fromJson(item))
-          .toList(),
-      bestTimeWindows: (json['bestTimeWindows'] as List<dynamic>? ?? [])
-          .map((item) => OptimalTimeWindow.fromJson(item))
-          .toList(),
+      factors:
+          (json['factors'] as List<dynamic>? ?? [])
+              .map((item) => BiteFactorAnalysis.fromJson(item))
+              .toList(),
+      bestTimeWindows:
+          (json['bestTimeWindows'] as List<dynamic>? ?? [])
+              .map((item) => OptimalTimeWindow.fromJson(item))
+              .toList(),
       tips: List<String>.from(json['tips'] ?? []),
-      generatedAt: DateTime.parse(json['generatedAt'] ?? DateTime.now().toIso8601String()),
+      generatedAt: DateTime.parse(
+        json['generatedAt'] ?? DateTime.now().toIso8601String(),
+      ),
       dataSource: json['dataSource'] ?? 'unknown',
       modelVersion: json['modelVersion'] ?? '1.0.0',
       fishingType: json['fishingType'] ?? '', // ДОБАВЛЕНО
@@ -339,18 +352,14 @@ class AIBitePrediction {
 
   /// Получить топ-3 позитивных фактора
   List<BiteFactorAnalysis> get topPositiveFactors {
-    return factors
-        .where((f) => f.isPositive)
-        .toList()
+    return factors.where((f) => f.isPositive).toList()
       ..sort((a, b) => b.impact.compareTo(a.impact))
       ..take(3);
   }
 
   /// Получить топ-3 негативных фактора
   List<BiteFactorAnalysis> get topNegativeFactors {
-    return factors
-        .where((f) => !f.isPositive)
-        .toList()
+    return factors.where((f) => !f.isPositive).toList()
       ..sort((a, b) => a.impact.compareTo(b.impact))
       ..take(3);
   }
@@ -359,8 +368,9 @@ class AIBitePrediction {
   BiteFactorAnalysis? get mostImportantFactor {
     if (factors.isEmpty) return null;
 
-    return factors.reduce((a, b) =>
-    (a.impact.abs() * a.weight) > (b.impact.abs() * b.weight) ? a : b
+    return factors.reduce(
+      (a, b) =>
+          (a.impact.abs() * a.weight) > (b.impact.abs() * b.weight) ? a : b,
     );
   }
 
@@ -387,8 +397,8 @@ class AIBitePrediction {
 
     final now = DateTime.now();
 
-    return bestTimeWindows.any((window) =>
-    now.isAfter(window.startTime) && now.isBefore(window.endTime)
+    return bestTimeWindows.any(
+      (window) => now.isAfter(window.startTime) && now.isBefore(window.endTime),
     );
   }
 
@@ -479,7 +489,8 @@ class BiteFactorAnalysis {
   /// Получить текстовое описание силы влияния
   String get impactDescription {
     final absImpact = impact.abs();
-    if (absImpact >= 15) return isPositive ? 'Сильно помогает' : 'Сильно мешает';
+    if (absImpact >= 15)
+      return isPositive ? 'Сильно помогает' : 'Сильно мешает';
     if (absImpact >= 8) return isPositive ? 'Помогает' : 'Мешает';
     if (absImpact >= 3) return isPositive ? 'Слегка помогает' : 'Слегка мешает';
     return 'Нейтрально';
@@ -649,7 +660,9 @@ class AIUserPreferences {
 
   factory AIUserPreferences.fromJson(Map<String, dynamic> json) {
     return AIUserPreferences(
-      preferredFishingTypes: List<String>.from(json['preferredFishingTypes'] ?? []),
+      preferredFishingTypes: List<String>.from(
+        json['preferredFishingTypes'] ?? [],
+      ),
       typeWeights: Map<String, double>.from(json['typeWeights'] ?? {}),
       enableCloudAI: json['enableCloudAI'] ?? true,
       enablePersonalization: json['enablePersonalization'] ?? true,
@@ -682,10 +695,12 @@ class AIUserPreferences {
     bool? enableNotifications,
   }) {
     return AIUserPreferences(
-      preferredFishingTypes: preferredFishingTypes ?? this.preferredFishingTypes,
+      preferredFishingTypes:
+          preferredFishingTypes ?? this.preferredFishingTypes,
       typeWeights: typeWeights ?? this.typeWeights,
       enableCloudAI: enableCloudAI ?? this.enableCloudAI,
-      enablePersonalization: enablePersonalization ?? this.enablePersonalization,
+      enablePersonalization:
+          enablePersonalization ?? this.enablePersonalization,
       maxRecommendations: maxRecommendations ?? this.maxRecommendations,
       showDetailedFactors: showDetailedFactors ?? this.showDetailedFactors,
       enableNotifications: enableNotifications ?? this.enableNotifications,
@@ -714,7 +729,8 @@ class AIUserPreferences {
   /// Удалить предпочитаемый тип рыбалки
   AIUserPreferences removePreferredType(String fishingType) {
     return copyWith(
-      preferredFishingTypes: preferredFishingTypes.where((type) => type != fishingType).toList(),
+      preferredFishingTypes:
+          preferredFishingTypes.where((type) => type != fishingType).toList(),
     );
   }
 

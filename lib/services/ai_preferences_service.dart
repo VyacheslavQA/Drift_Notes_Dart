@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 class AIPreferencesService {
-  static final AIPreferencesService _instance = AIPreferencesService._internal();
+  static final AIPreferencesService _instance =
+      AIPreferencesService._internal();
   factory AIPreferencesService() => _instance;
   AIPreferencesService._internal();
 

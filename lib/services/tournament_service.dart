@@ -11,7 +11,9 @@ class TournamentService {
   // НОВЫЙ МЕТОД: Получить турнир по ID
   TournamentModel? getTournamentById(String id) {
     try {
-      return getAllTournaments().firstWhere((tournament) => tournament.id == id);
+      return getAllTournaments().firstWhere(
+        (tournament) => tournament.id == id,
+      );
     } catch (e) {
       debugPrint('❌ Турнир с ID $id не найден');
       return null;
@@ -24,7 +26,8 @@ class TournamentService {
       // ЯНВАРЬ
       TournamentModel(
         id: 'jan_1',
-        name: 'Чемпионат г. Алматы по спортивному подледному лову рыбы на мормышку',
+        name:
+            'Чемпионат г. Алматы по спортивному подледному лову рыбы на мормышку',
         startDate: DateTime(2025, 1, 17),
         endDate: DateTime(2025, 1, 19),
         duration: 48,
@@ -498,7 +501,8 @@ class TournamentService {
       ),
       TournamentModel(
         id: 'sep_8',
-        name: 'Чемпионат г. Алматы по спортивному лову рыбы на поплавочную удочку',
+        name:
+            'Чемпионат г. Алматы по спортивному лову рыбы на поплавочную удочку',
         startDate: DateTime(2025, 9, 20),
         endDate: DateTime(2025, 9, 21),
         duration: 24,
@@ -544,7 +548,8 @@ class TournamentService {
       ),
       TournamentModel(
         id: 'oct_2',
-        name: 'Чемпионат г. Алматы по спортивному лову рыбы на спиннинг с лодок',
+        name:
+            'Чемпионат г. Алматы по спортивному лову рыбы на спиннинг с лодок',
         startDate: DateTime(2025, 10, 3),
         endDate: DateTime(2025, 10, 5),
         duration: 48,
@@ -588,7 +593,8 @@ class TournamentService {
       ),
       TournamentModel(
         id: 'oct_6',
-        name: 'Кубок РК по спортивному лову на спиннинг с лодок памяти Болата Турлыханова',
+        name:
+            'Кубок РК по спортивному лову на спиннинг с лодок памяти Болата Турлыханова',
         startDate: DateTime(2025, 10, 23),
         endDate: DateTime(2025, 10, 26),
         duration: 72,
@@ -614,7 +620,8 @@ class TournamentService {
       // ДЕКАБРЬ
       TournamentModel(
         id: 'dec_1',
-        name: 'Международный турнир по спортивному лову рыбы со льда на мормышку "Ice Masters 2025"',
+        name:
+            'Международный турнир по спортивному лову рыбы со льда на мормышку "Ice Masters 2025"',
         startDate: DateTime(2025, 12, 18),
         endDate: DateTime(2025, 12, 21),
         duration: 72,
@@ -628,7 +635,9 @@ class TournamentService {
 
   // Фильтры по типу рыбалки
   List<TournamentModel> getTournamentsByFishingType(FishingType fishingType) {
-    return getAllTournaments().where((t) => t.fishingType == fishingType).toList();
+    return getAllTournaments()
+        .where((t) => t.fishingType == fishingType)
+        .toList();
   }
 
   // Фильтры по категории турнира
@@ -657,11 +666,14 @@ class TournamentService {
   // Поиск турниров
   List<TournamentModel> searchTournaments(String query) {
     final lowercaseQuery = query.toLowerCase();
-    return getAllTournaments().where((t) =>
-    t.name.toLowerCase().contains(lowercaseQuery) ||
-        t.location.toLowerCase().contains(lowercaseQuery) ||
-        t.organizer.toLowerCase().contains(lowercaseQuery)
-    ).toList();
+    return getAllTournaments()
+        .where(
+          (t) =>
+              t.name.toLowerCase().contains(lowercaseQuery) ||
+              t.location.toLowerCase().contains(lowercaseQuery) ||
+              t.organizer.toLowerCase().contains(lowercaseQuery),
+        )
+        .toList();
   }
 
   // Получить статистику по типам рыбалки
@@ -681,8 +693,11 @@ class TournamentService {
     final now = DateTime.now();
     final nextMonth = now.add(const Duration(days: 30));
 
-    return getAllTournaments().where((t) =>
-    t.startDate.isAfter(now) && t.startDate.isBefore(nextMonth)
-    ).toList()..sort((a, b) => a.startDate.compareTo(b.startDate));
+    return getAllTournaments()
+        .where(
+          (t) => t.startDate.isAfter(now) && t.startDate.isBefore(nextMonth),
+        )
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
   }
 }

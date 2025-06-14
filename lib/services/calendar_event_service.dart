@@ -8,14 +8,16 @@ import 'scheduled_reminder_service.dart';
 import '../models/notification_model.dart';
 
 class CalendarEventService {
-  static final CalendarEventService _instance = CalendarEventService._internal();
+  static final CalendarEventService _instance =
+      CalendarEventService._internal();
   factory CalendarEventService() => _instance;
   CalendarEventService._internal();
 
   static const String _calendarEventsKey = 'calendar_events';
 
   // Интеграция с сервисом точных напоминаний
-  final ScheduledReminderService _scheduledReminderService = ScheduledReminderService();
+  final ScheduledReminderService _scheduledReminderService =
+      ScheduledReminderService();
 
   /// Добавить турнир в календарь
   Future<void> addTournamentToCalendar({
@@ -32,9 +34,12 @@ class CalendarEventService {
         id: 'tournament_${tournament.id}',
         title: tournament.name,
         startDate: tournament.startDate,
-        endDate: tournament.endDate ?? tournament.startDate.add(Duration(hours: tournament.duration)),
+        endDate:
+            tournament.endDate ??
+            tournament.startDate.add(Duration(hours: tournament.duration)),
         location: tournament.location,
-        description: 'Организатор: ${tournament.organizer}\nТип рыбалки: ${tournament.fishingType.displayName}\nКатегория: ${tournament.category.displayName}',
+        description:
+            'Организатор: ${tournament.organizer}\nТип рыбалки: ${tournament.fishingType.displayName}\nКатегория: ${tournament.category.displayName}',
         type: CalendarEventType.tournament,
         reminderType: reminderType,
         customReminderDateTime: customReminderDateTime,
@@ -79,7 +84,9 @@ class CalendarEventService {
         id: 'fishing_note_$noteId',
         title: title,
         startDate: startDate,
-        endDate: endDate ?? startDate.add(const Duration(hours: 8)), // по умолчанию 8 часов
+        endDate:
+            endDate ??
+            startDate.add(const Duration(hours: 8)), // по умолчанию 8 часов
         location: location,
         description: 'Запланированная рыбалка',
         type: CalendarEventType.fishing,
@@ -149,7 +156,8 @@ class CalendarEventService {
 
       return targetDate.isAtSameMomentAs(eventStartDate) ||
           targetDate.isAtSameMomentAs(eventEndDate) ||
-          (targetDate.isAfter(eventStartDate) && targetDate.isBefore(eventEndDate));
+          (targetDate.isAfter(eventStartDate) &&
+              targetDate.isBefore(eventEndDate));
     }).toList();
   }
 
@@ -168,8 +176,8 @@ class CalendarEventService {
 
       // Находим событие для отмены напоминания
       final eventToRemove = events.firstWhere(
-              (e) => e.id == eventId,
-          orElse: () => throw Exception('Event not found')
+        (e) => e.id == eventId,
+        orElse: () => throw Exception('Event not found'),
       );
 
       events.removeWhere((e) => e.id == eventId);
@@ -188,17 +196,26 @@ class CalendarEventService {
   /// Проверить, добавлен ли турнир в календарь
   Future<bool> isTournamentInCalendar(String tournamentId) async {
     final events = await getCalendarEvents();
-    return events.any((e) => e.sourceId == tournamentId && e.type == CalendarEventType.tournament);
+    return events.any(
+      (e) =>
+          e.sourceId == tournamentId && e.type == CalendarEventType.tournament,
+    );
   }
 
   /// Проверить, добавлена ли заметка о рыбалке в календарь
   Future<bool> isFishingNoteInCalendar(String noteId) async {
     final events = await getCalendarEvents();
-    return events.any((e) => e.sourceId == noteId && e.type == CalendarEventType.fishing);
+    return events.any(
+      (e) => e.sourceId == noteId && e.type == CalendarEventType.fishing,
+    );
   }
 
   /// Обновить напоминание для события
-  Future<void> updateEventReminder(String eventId, ReminderType newReminderType, {DateTime? customReminderDateTime}) async {
+  Future<void> updateEventReminder(
+    String eventId,
+    ReminderType newReminderType, {
+    DateTime? customReminderDateTime,
+  }) async {
     try {
       final events = await getCalendarEvents();
       final eventIndex = events.indexWhere((e) => e.id == eventId);
@@ -267,18 +284,21 @@ class CalendarEventService {
       }
 
       // Определяем тип уведомления
-      final notificationType = event.type == CalendarEventType.tournament
-          ? NotificationType.tournamentReminder
-          : NotificationType.fishingReminder;
+      final notificationType =
+          event.type == CalendarEventType.tournament
+              ? NotificationType.tournamentReminder
+              : NotificationType.fishingReminder;
 
       // Создаем сообщение
       String title, message;
       if (event.type == CalendarEventType.tournament) {
         title = 'Напоминание о турнире';
-        message = '${event.title} начнется ${_formatEventTime(event.startDate)}';
+        message =
+            '${event.title} начнется ${_formatEventTime(event.startDate)}';
       } else {
         title = 'Напоминание о рыбалке';
-        message = '${event.title} запланирована на ${_formatEventTime(event.startDate)}';
+        message =
+            '${event.title} запланирована на ${_formatEventTime(event.startDate)}';
       }
 
       if (event.location != null && event.location!.isNotEmpty) {
@@ -298,8 +318,10 @@ class CalendarEventService {
         reminderDateTime: reminderTime,
         type: notificationType,
         data: {
-          'sourceId': event.sourceId ?? '', // Чистый ID турнира (например, jun_1)
-          'eventId': event.id, // ID события календаря (например, tournament_jun_1)
+          'sourceId':
+              event.sourceId ?? '', // Чистый ID турнира (например, jun_1)
+          'eventId':
+              event.id, // ID события календаря (например, tournament_jun_1)
           'eventType': event.type.toString(),
           'eventTitle': event.title,
           'location': event.location ?? '',
@@ -307,8 +329,9 @@ class CalendarEventService {
       );
 
       debugPrint('✅ Точное напоминание запланировано для: ${event.title}');
-      debugPrint('✅ С данными: sourceId=${event.sourceId}, eventId=${event.id}');
-
+      debugPrint(
+        '✅ С данными: sourceId=${event.sourceId}, eventId=${event.id}',
+      );
     } catch (e) {
       debugPrint('❌ Ошибка планирования напоминания: $e');
     }
@@ -325,7 +348,10 @@ class CalendarEventService {
   }
 
   /// НОВЫЙ: Обновить напоминание для события
-  Future<void> _updateEventReminderSchedule(CalendarEvent oldEvent, CalendarEvent newEvent) async {
+  Future<void> _updateEventReminderSchedule(
+    CalendarEvent oldEvent,
+    CalendarEvent newEvent,
+  ) async {
     try {
       await _cancelEventReminder(oldEvent);
       await _scheduleEventReminder(newEvent);
@@ -348,10 +374,12 @@ class CalendarEventService {
     } else if (eventDate == tomorrow) {
       dateStr = 'завтра';
     } else {
-      dateStr = '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year}';
+      dateStr =
+          '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year}';
     }
 
-    final timeStr = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
 
     return '$dateStr в $timeStr';
   }
@@ -408,9 +436,12 @@ class CalendarEvent {
       description: json['description'] as String?,
       type: _parseEventType(json['type'] as String),
       reminderType: _parseReminderType(json['reminderType'] as String),
-      customReminderDateTime: json['customReminderDateTime'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['customReminderDateTime'] as int)
-          : null,
+      customReminderDateTime:
+          json['customReminderDateTime'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(
+                json['customReminderDateTime'] as int,
+              )
+              : null,
       sourceId: json['sourceId'] as String?,
     );
   }
@@ -516,10 +547,12 @@ class CalendarEvent {
       } else if (reminderDate == tomorrow) {
         dateStr = 'завтра';
       } else {
-        dateStr = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+        dateStr =
+            '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
       }
 
-      final timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      final timeStr =
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
       return '$dateStr в $timeStr';
     }
@@ -528,15 +561,12 @@ class CalendarEvent {
   }
 }
 
-enum CalendarEventType {
-  tournament,
-  fishing,
-}
+enum CalendarEventType { tournament, fishing }
 
 // УПРОЩЕННЫЙ ENUM ТИПОВ НАПОМИНАНИЙ
 enum ReminderType {
-  none,    // Без напоминания
-  custom,  // Настроить время
+  none, // Без напоминания
+  custom, // Настроить время
 }
 
 // РАСШИРЕНИЕ ДЛЯ ПОЛУЧЕНИЯ ЛОКАЛИЗОВАННЫХ НАЗВАНИЙ ТИПОВ НАПОМИНАНИЙ

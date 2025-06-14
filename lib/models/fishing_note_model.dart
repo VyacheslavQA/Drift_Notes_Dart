@@ -65,32 +65,44 @@ class FishingNoteModel {
       location: json['location'] ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
-      date: (json['date'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(json['date'])
-          : DateTime.now(),
-      endDate: (json['endDate'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(json['endDate'])
-          : null,
+      date:
+          (json['date'] != null)
+              ? DateTime.fromMillisecondsSinceEpoch(json['date'])
+              : DateTime.now(),
+      endDate:
+          (json['endDate'] != null)
+              ? DateTime.fromMillisecondsSinceEpoch(json['endDate'])
+              : null,
       isMultiDay: json['isMultiDay'] ?? false,
       tackle: json['tackle'] ?? '',
       notes: json['notes'] ?? '',
       photoUrls: List<String>.from(json['photoUrls'] ?? []),
       fishingType: json['fishingType'] ?? '',
-      weather: json['weather'] != null
-          ? FishingWeather.fromJson(json['weather'])
-          : null,
-      biteRecords: (json['biteRecords'] != null)
-          ? List<BiteRecord>.from(
-          json['biteRecords'].map((x) => BiteRecord.fromJson(x)))
-          : [],
-      dayBiteMaps: (json['dayBiteMaps'] != null)
-          ? Map<String, List<String>>.from(json['dayBiteMaps'].map(
-              (key, value) => MapEntry(key, List<String>.from(value))))
-          : {},
-      fishingSpots: List<String>.from(json['fishingSpots'] ?? ['Основная точка']),
-      mapMarkers: (json['mapMarkers'] != null)
-          ? List<Map<String, dynamic>>.from(json['mapMarkers'])
-          : [],
+      weather:
+          json['weather'] != null
+              ? FishingWeather.fromJson(json['weather'])
+              : null,
+      biteRecords:
+          (json['biteRecords'] != null)
+              ? List<BiteRecord>.from(
+                json['biteRecords'].map((x) => BiteRecord.fromJson(x)),
+              )
+              : [],
+      dayBiteMaps:
+          (json['dayBiteMaps'] != null)
+              ? Map<String, List<String>>.from(
+                json['dayBiteMaps'].map(
+                  (key, value) => MapEntry(key, List<String>.from(value)),
+                ),
+              )
+              : {},
+      fishingSpots: List<String>.from(
+        json['fishingSpots'] ?? ['Основная точка'],
+      ),
+      mapMarkers:
+          (json['mapMarkers'] != null)
+              ? List<Map<String, dynamic>>.from(json['mapMarkers'])
+              : [],
       coverPhotoUrl: json['coverPhotoUrl'] ?? '',
       coverCropSettings: json['coverCropSettings'],
       title: json['title'] ?? '',
@@ -98,9 +110,10 @@ class FishingNoteModel {
       // ЧТЕНИЕ ПОЛЕЙ НАПОМИНАНИЙ
       reminderEnabled: json['reminderEnabled'] ?? false,
       reminderType: _parseReminderType(json['reminderType'] as String?),
-      reminderTime: (json['reminderTime'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(json['reminderTime'])
-          : null,
+      reminderTime:
+          (json['reminderTime'] != null)
+              ? DateTime.fromMillisecondsSinceEpoch(json['reminderTime'])
+              : null,
     );
   }
 
@@ -198,7 +211,7 @@ class FishingNoteModel {
         return ReminderType.none;
       case 'ReminderType.custom':
         return ReminderType.custom;
-    // Обратная совместимость со старыми значениями
+      // Обратная совместимость со старыми значениями
       case 'ReminderType.thirtyMinutes':
       case 'ReminderType.oneHour':
       case 'ReminderType.twoHours':
@@ -313,9 +326,10 @@ class FishingWeather {
       weatherDescription: json['weatherDescription'] ?? '',
       cloudCover: json['cloudCover'] ?? 0,
       moonPhase: json['moonPhase'] ?? '',
-      observationTime: (json['observationTime'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(json['observationTime'])
-          : DateTime.now(),
+      observationTime:
+          (json['observationTime'] != null)
+              ? DateTime.fromMillisecondsSinceEpoch(json['observationTime'])
+              : DateTime.now(),
       sunrise: json['sunrise'] ?? '',
       sunset: json['sunset'] ?? '',
       isDay: json['isDay'] ?? true,
@@ -367,18 +381,18 @@ class BiteRecord {
   factory BiteRecord.fromJson(Map<String, dynamic> json) {
     return BiteRecord(
       id: json['id'] ?? '',
-      time: (json['time'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(json['time'])
-          : DateTime.now(),
+      time:
+          (json['time'] != null)
+              ? DateTime.fromMillisecondsSinceEpoch(json['time'])
+              : DateTime.now(),
       fishType: json['fishType'] ?? '',
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
       length: (json['length'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] ?? '',
       dayIndex: json['dayIndex'] ?? 0,
       spotIndex: json['spotIndex'] ?? 0,
-      photoUrls: json['photoUrls'] != null
-          ? List<String>.from(json['photoUrls'])
-          : [],
+      photoUrls:
+          json['photoUrls'] != null ? List<String>.from(json['photoUrls']) : [],
     );
   }
 

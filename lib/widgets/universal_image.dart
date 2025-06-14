@@ -102,17 +102,22 @@ class UniversalImage extends StatelessWidget {
         memCacheHeight: height?.toInt(),
         maxWidthDiskCache: 800, // Ограничиваем размер кэша для экономии памяти
         fadeInDuration: const Duration(milliseconds: 200),
-        placeholder: (context, url) => placeholder ?? _buildPlaceholderOrError(context),
+        placeholder:
+            (context, url) => placeholder ?? _buildPlaceholderOrError(context),
         errorWidget: (context, url, error) {
           debugPrint('🚫 Ошибка при загрузке сетевого изображения: $error');
-          return errorWidget ?? _buildPlaceholderOrError(context, isError: true);
+          return errorWidget ??
+              _buildPlaceholderOrError(context, isError: true);
         },
       ),
     );
   }
 
   /// Построение заглушки или виджета ошибки
-  Widget _buildPlaceholderOrError(BuildContext context, {bool isError = false}) {
+  Widget _buildPlaceholderOrError(
+    BuildContext context, {
+    bool isError = false,
+  }) {
     return Container(
       width: width,
       height: height,
@@ -121,29 +126,36 @@ class UniversalImage extends StatelessWidget {
         borderRadius: borderRadius ?? BorderRadius.zero,
       ),
       child: Center(
-        child: isError
-            ? errorWidget ?? Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.broken_image_outlined,
-              color: Colors.grey[400],
-              size: 40,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              AppLocalizations.of(context).translate('photo_unavailable'),
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
-            ),
-          ],
-        )
-            : placeholder ?? CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-          strokeWidth: 2.0,
-        ),
+        child:
+            isError
+                ? errorWidget ??
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.grey[400],
+                          size: 40,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppLocalizations.of(
+                            context,
+                          ).translate('photo_unavailable'),
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    )
+                : placeholder ??
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppConstants.textColor,
+                      ),
+                      strokeWidth: 2.0,
+                    ),
       ),
     );
   }

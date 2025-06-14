@@ -94,16 +94,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
               // Редактировать информацию
               ListTile(
-                leading: Icon(
-                  Icons.edit,
-                  color: AppConstants.primaryColor,
-                ),
+                leading: Icon(Icons.edit, color: AppConstants.primaryColor),
                 title: Text(
                   localizations.translate('edit_map_info'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -128,7 +122,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(localizations.translate('feature_coming_soon')),
+                      content: Text(
+                        localizations.translate('feature_coming_soon'),
+                      ),
                       backgroundColor: AppConstants.primaryColor,
                     ),
                   );
@@ -139,16 +135,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
               // Удалить карту
               ListTile(
-                leading: const Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ),
+                leading: const Icon(Icons.delete, color: Colors.red),
                 title: Text(
                   localizations.translate('delete_map'),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -176,15 +166,16 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     // Предварительно выбираем привязанные заметки
     for (String noteId in map.noteIds) {
       final note = _notes.firstWhere(
-            (n) => n.id == noteId,
-        orElse: () => FishingNoteModel(
-          id: '',
-          userId: '',
-          location: '',
-          fishingType: '',
-          date: DateTime.now(),
-          // ИСПРАВЛЕНО: убрали все неправильные поля, оставили только обязательные
-        ),
+        (n) => n.id == noteId,
+        orElse:
+            () => FishingNoteModel(
+              id: '',
+              userId: '',
+              location: '',
+              fishingType: '',
+              date: DateTime.now(),
+              // ИСПРАВЛЕНО: убрали все неправильные поля, оставили только обязательные
+            ),
       );
       if (note.id.isNotEmpty) {
         selectedNotes.add(note);
@@ -254,13 +245,24 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: nameController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText: '${localizations.translate('map_name')}*',
-                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                labelText:
+                                    '${localizations.translate('map_name')}*',
+                                labelStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
                                 ),
                               ),
                             ),
@@ -274,7 +276,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                   context: context,
                                   initialDate: selectedDate,
                                   firstDate: DateTime(2020),
-                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
                                   builder: (context, child) {
                                     return Theme(
                                       data: Theme.of(context).copyWith(
@@ -285,7 +289,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           onSurface: AppConstants.textColor,
                                         ),
                                         dialogTheme: DialogThemeData(
-                                          backgroundColor: AppConstants.backgroundColor,
+                                          backgroundColor:
+                                              AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -300,11 +305,15 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                                      color: AppConstants.textColor.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1,
                                     ),
                                   ),
@@ -341,13 +350,24 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: sectorController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
-                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                labelText:
+                                    '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                labelStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
                                 ),
                               ),
                             ),
@@ -359,7 +379,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               Text(
                                 '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 14,
                                 ),
                               ),
@@ -368,63 +390,80 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                               // Показываем список заметок с чекбоксами
                               Container(
-                                constraints: const BoxConstraints(maxHeight: 200),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+                                  color: AppConstants.backgroundColor
+                                      .withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: AppConstants.textColor.withValues(alpha: 0.2),
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     width: 1,
                                   ),
                                 ),
-                                child: _notes.isEmpty
-                                    ? Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Text(
-                                      localizations.translate('no_notes'),
-                                      style: TextStyle(
-                                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                    : ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: _notes.length,
-                                  itemBuilder: (context, index) {
-                                    final note = _notes[index];
-                                    final title = note.title.isNotEmpty ? note.title : note.location;
-                                    final isSelected = selectedNotes.contains(note);
+                                child:
+                                    _notes.isEmpty
+                                        ? Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(
+                                              localizations.translate(
+                                                'no_notes',
+                                              ),
+                                              style: TextStyle(
+                                                color: AppConstants.textColor
+                                                    .withValues(alpha: 0.7),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        : ListView.builder(
+                                          shrinkWrap: true,
+                                          itemCount: _notes.length,
+                                          itemBuilder: (context, index) {
+                                            final note = _notes[index];
+                                            final title =
+                                                note.title.isNotEmpty
+                                                    ? note.title
+                                                    : note.location;
+                                            final isSelected = selectedNotes
+                                                .contains(note);
 
-                                    return CheckboxListTile(
-                                      title: Text(
-                                        title,
-                                        style: TextStyle(
-                                          color: AppConstants.textColor,
-                                          fontSize: 14,
+                                            return CheckboxListTile(
+                                              title: Text(
+                                                title,
+                                                style: TextStyle(
+                                                  color: AppConstants.textColor,
+                                                  fontSize: 14,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              value: isSelected,
+                                              onChanged: (bool? value) {
+                                                dialogSetState(() {
+                                                  if (value == true) {
+                                                    selectedNotes.add(note);
+                                                  } else {
+                                                    selectedNotes.remove(note);
+                                                  }
+                                                });
+                                              },
+                                              activeColor:
+                                                  AppConstants.primaryColor,
+                                              checkColor:
+                                                  AppConstants.textColor,
+                                              dense: true,
+                                              controlAffinity:
+                                                  ListTileControlAffinity
+                                                      .leading,
+                                            );
+                                          },
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      value: isSelected,
-                                      onChanged: (bool? value) {
-                                        dialogSetState(() {
-                                          if (value == true) {
-                                            selectedNotes.add(note);
-                                          } else {
-                                            selectedNotes.remove(note);
-                                          }
-                                        });
-                                      },
-                                      activeColor: AppConstants.primaryColor,
-                                      checkColor: AppConstants.textColor,
-                                      dense: true,
-                                      controlAffinity: ListTileControlAffinity.leading,
-                                    );
-                                  },
-                                ),
                               ),
 
                               if (selectedNotes.isNotEmpty) ...[
@@ -450,7 +489,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(
-                            color: AppConstants.textColor.withValues(alpha: 0.1),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.1,
+                            ),
                             width: 1,
                           ),
                         ),
@@ -464,9 +505,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             },
                             child: Text(
                               localizations.translate('cancel'),
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                              ),
+                              style: TextStyle(color: AppConstants.textColor),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -474,7 +513,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             onPressed: () {
                               if (nameController.text.trim().isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(localizations.translate('map_name_required'))),
+                                  SnackBar(
+                                    content: Text(
+                                      localizations.translate(
+                                        'map_name_required',
+                                      ),
+                                    ),
+                                  ),
                                 );
                                 return;
                               }
@@ -483,12 +528,23 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               final updatedMap = map.copyWith(
                                 name: nameController.text.trim(),
                                 date: selectedDate,
-                                sector: sectorController.text.trim().isEmpty
-                                    ? null
-                                    : sectorController.text.trim(),
-                                noteIds: selectedNotes.map((note) => note.id).toList(),
-                                noteNames: selectedNotes.map((note) =>
-                                note.title.isNotEmpty ? note.title : note.location).toList(),
+                                sector:
+                                    sectorController.text.trim().isEmpty
+                                        ? null
+                                        : sectorController.text.trim(),
+                                noteIds:
+                                    selectedNotes
+                                        .map((note) => note.id)
+                                        .toList(),
+                                noteNames:
+                                    selectedNotes
+                                        .map(
+                                          (note) =>
+                                              note.title.isNotEmpty
+                                                  ? note.title
+                                                  : note.location,
+                                        )
+                                        .toList(),
                               );
 
                               Navigator.pop(context, updatedMap);
@@ -498,9 +554,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             ),
                             child: Text(
                               localizations.translate('save'),
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                              ),
+                              style: TextStyle(color: AppConstants.textColor),
                             ),
                           ),
                         ],
@@ -553,40 +607,35 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.cardColor,
-        title: Text(
-          localizations.translate('delete_map'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('delete_map_confirmation'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              localizations.translate('cancel'),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.cardColor,
+            title: Text(
+              localizations.translate('delete_map'),
               style: TextStyle(
                 color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+            content: Text(
+              localizations.translate('delete_map_confirmation'),
+              style: TextStyle(color: AppConstants.textColor),
             ),
-            child: Text(localizations.translate('delete')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  localizations.translate('cancel'),
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(localizations.translate('delete')),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -598,7 +647,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(localizations.translate('map_deleted_successfully')),
+              content: Text(
+                localizations.translate('map_deleted_successfully'),
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -611,7 +662,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${localizations.translate('error_deleting_map')}: $e'),
+              content: Text(
+                '${localizations.translate('error_deleting_map')}: $e',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -691,13 +744,24 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: nameController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText: '${localizations.translate('map_name')}*',
-                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                labelText:
+                                    '${localizations.translate('map_name')}*',
+                                labelStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
                                 ),
                               ),
                             ),
@@ -711,7 +775,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                   context: context,
                                   initialDate: selectedDate,
                                   firstDate: DateTime(2020),
-                                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
                                   builder: (context, child) {
                                     return Theme(
                                       data: Theme.of(context).copyWith(
@@ -722,7 +788,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           onSurface: AppConstants.textColor,
                                         ),
                                         dialogTheme: DialogThemeData(
-                                          backgroundColor: AppConstants.backgroundColor,
+                                          backgroundColor:
+                                              AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -737,11 +804,15 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                                      color: AppConstants.textColor.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1,
                                     ),
                                   ),
@@ -778,13 +849,24 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: sectorController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
-                                labelStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.7)),
+                                labelText:
+                                    '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                labelStyle: TextStyle(
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: AppConstants.primaryColor),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
                                 ),
                               ),
                             ),
@@ -796,7 +878,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               Text(
                                 '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 14,
                                 ),
                               ),
@@ -805,63 +889,80 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                               // Показываем список заметок с чекбоксами
                               Container(
-                                constraints: const BoxConstraints(maxHeight: 200),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+                                  color: AppConstants.backgroundColor
+                                      .withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: AppConstants.textColor.withValues(alpha: 0.2),
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     width: 1,
                                   ),
                                 ),
-                                child: _notes.isEmpty
-                                    ? Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Text(
-                                      localizations.translate('no_notes'),
-                                      style: TextStyle(
-                                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                    : ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: _notes.length,
-                                  itemBuilder: (context, index) {
-                                    final note = _notes[index];
-                                    final title = note.title.isNotEmpty ? note.title : note.location;
-                                    final isSelected = selectedNotes.contains(note);
+                                child:
+                                    _notes.isEmpty
+                                        ? Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(
+                                              localizations.translate(
+                                                'no_notes',
+                                              ),
+                                              style: TextStyle(
+                                                color: AppConstants.textColor
+                                                    .withValues(alpha: 0.7),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        : ListView.builder(
+                                          shrinkWrap: true,
+                                          itemCount: _notes.length,
+                                          itemBuilder: (context, index) {
+                                            final note = _notes[index];
+                                            final title =
+                                                note.title.isNotEmpty
+                                                    ? note.title
+                                                    : note.location;
+                                            final isSelected = selectedNotes
+                                                .contains(note);
 
-                                    return CheckboxListTile(
-                                      title: Text(
-                                        title,
-                                        style: TextStyle(
-                                          color: AppConstants.textColor,
-                                          fontSize: 14,
+                                            return CheckboxListTile(
+                                              title: Text(
+                                                title,
+                                                style: TextStyle(
+                                                  color: AppConstants.textColor,
+                                                  fontSize: 14,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              value: isSelected,
+                                              onChanged: (bool? value) {
+                                                dialogSetState(() {
+                                                  if (value == true) {
+                                                    selectedNotes.add(note);
+                                                  } else {
+                                                    selectedNotes.remove(note);
+                                                  }
+                                                });
+                                              },
+                                              activeColor:
+                                                  AppConstants.primaryColor,
+                                              checkColor:
+                                                  AppConstants.textColor,
+                                              dense: true,
+                                              controlAffinity:
+                                                  ListTileControlAffinity
+                                                      .leading,
+                                            );
+                                          },
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      value: isSelected,
-                                      onChanged: (bool? value) {
-                                        dialogSetState(() {
-                                          if (value == true) {
-                                            selectedNotes.add(note);
-                                          } else {
-                                            selectedNotes.remove(note);
-                                          }
-                                        });
-                                      },
-                                      activeColor: AppConstants.primaryColor,
-                                      checkColor: AppConstants.textColor,
-                                      dense: true,
-                                      controlAffinity: ListTileControlAffinity.leading,
-                                    );
-                                  },
-                                ),
                               ),
 
                               if (selectedNotes.isNotEmpty) ...[
@@ -887,7 +988,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(
-                            color: AppConstants.textColor.withValues(alpha: 0.1),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.1,
+                            ),
                             width: 1,
                           ),
                         ),
@@ -901,9 +1004,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             },
                             child: Text(
                               localizations.translate('cancel'),
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                              ),
+                              style: TextStyle(color: AppConstants.textColor),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -911,7 +1012,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             onPressed: () {
                               if (nameController.text.trim().isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(localizations.translate('required_field'))),
+                                  SnackBar(
+                                    content: Text(
+                                      localizations.translate('required_field'),
+                                    ),
+                                  ),
                                 );
                                 return;
                               }
@@ -922,12 +1027,23 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 userId: '',
                                 name: nameController.text.trim(),
                                 date: selectedDate,
-                                sector: sectorController.text.trim().isEmpty
-                                    ? null
-                                    : sectorController.text.trim(),
-                                noteIds: selectedNotes.map((note) => note.id).toList(),
-                                noteNames: selectedNotes.map((note) =>
-                                note.title.isNotEmpty ? note.title : note.location).toList(),
+                                sector:
+                                    sectorController.text.trim().isEmpty
+                                        ? null
+                                        : sectorController.text.trim(),
+                                noteIds:
+                                    selectedNotes
+                                        .map((note) => note.id)
+                                        .toList(),
+                                noteNames:
+                                    selectedNotes
+                                        .map(
+                                          (note) =>
+                                              note.title.isNotEmpty
+                                                  ? note.title
+                                                  : note.location,
+                                        )
+                                        .toList(),
                                 markers: [],
                               );
 
@@ -938,9 +1054,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             ),
                             child: Text(
                               localizations.translate('add'),
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                              ),
+                              style: TextStyle(color: AppConstants.textColor),
                             ),
                           ),
                         ],
@@ -978,7 +1092,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           setState(() => _isLoading = false);
           final localizations = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${localizations.translate('error_saving')}: $e')),
+            SnackBar(
+              content: Text('${localizations.translate('error_saving')}: $e'),
+            ),
           );
         }
       }
@@ -994,10 +1110,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       appBar: AppBar(
         title: Text(
           localizations.translate('marker_maps'),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1005,11 +1118,12 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: localizations.translate('loading'),
-        child: _errorMessage != null
-            ? _buildErrorState()
-            : _maps.isEmpty
-            ? _buildEmptyState()
-            : _buildMapsList(),
+        child:
+            _errorMessage != null
+                ? _buildErrorState()
+                : _maps.isEmpty
+                ? _buildEmptyState()
+                : _buildMapsList(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateMapDialog,
@@ -1027,18 +1141,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            color: Colors.red,
-            size: 48,
-          ),
+          Icon(Icons.error_outline, color: Colors.red, size: 48),
           const SizedBox(height: 16),
           Text(
             _errorMessage!,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: AppConstants.textColor, fontSize: 16),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -1123,9 +1230,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: AppConstants.cardColor,
       child: InkWell(
         onTap: () {
@@ -1150,7 +1255,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                          color: AppConstants.primaryColor.withValues(
+                            alpha: 0.2,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -1181,7 +1288,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             Text(
                               DateFormat('dd.MM.yyyy').format(map.date),
                               style: TextStyle(
-                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                color: AppConstants.textColor.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 14,
                               ),
                             ),
@@ -1191,12 +1300,19 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                       // Количество маркеров
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                          color: AppConstants.primaryColor.withValues(
+                            alpha: 0.1,
+                          ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                            color: AppConstants.primaryColor.withValues(
+                              alpha: 0.3,
+                            ),
                             width: 1,
                           ),
                         ),
@@ -1222,7 +1338,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         children: [
                           Icon(
                             Icons.grid_on,
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -1292,7 +1410,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
   String _getMarkersText(int count, AppLocalizations localizations) {
     if (localizations.locale.languageCode == 'en') {
-      return count == 1 ? localizations.translate('marker') : localizations.translate('markers');
+      return count == 1
+          ? localizations.translate('marker')
+          : localizations.translate('markers');
     }
 
     // Русская логика склонений

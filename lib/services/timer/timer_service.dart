@@ -17,8 +17,10 @@ class TimerService {
   final Map<String, bool> _isPlayingAlert = {};
 
   // Стримы для обновления UI
-  final _timerStreamController = StreamController<List<FishingTimerModel>>.broadcast();
-  Stream<List<FishingTimerModel>> get timersStream => _timerStreamController.stream;
+  final _timerStreamController =
+      StreamController<List<FishingTimerModel>>.broadcast();
+  Stream<List<FishingTimerModel>> get timersStream =>
+      _timerStreamController.stream;
 
   bool _isInitialized = false;
 
@@ -27,10 +29,10 @@ class TimerService {
 
   // Цвета таймеров
   static final Map<String, Color> timerColors = {
-    'green': const Color(0xFF2E7D32),   // Зеленый
-    'red': const Color(0xFFD32F2F),     // Красный
-    'orange': const Color(0xFFFF8F00),  // Оранжевый
-    'blue': const Color(0xFF1976D2),    // Синий
+    'green': const Color(0xFF2E7D32), // Зеленый
+    'red': const Color(0xFFD32F2F), // Красный
+    'orange': const Color(0xFFFF8F00), // Оранжевый
+    'blue': const Color(0xFF1976D2), // Синий
   };
 
   // Звуки оповещений и их соответствующие ресурсы
@@ -66,10 +68,12 @@ class TimerService {
   // Создание таймеров по умолчанию с ключами локализации
   Future<void> _createDefaultTimers() async {
     for (int i = 1; i <= 4; i++) {
-      _timers.add(FishingTimerModel(
-        id: i.toString(),
-        name: 'timer_$i', // Сохраняем ключ локализации
-      ));
+      _timers.add(
+        FishingTimerModel(
+          id: i.toString(),
+          name: 'timer_$i', // Сохраняем ключ локализации
+        ),
+      );
     }
     await _saveTimers();
     debugPrint('Созданы таймеры по умолчанию с ключами локализации');
@@ -86,7 +90,9 @@ class TimerService {
       if (_shouldMigrateTimerName(timer.name, timer.id)) {
         _timers[i] = timer.copyWith(name: 'timer_${timer.id}');
         needsSave = true;
-        debugPrint('Мигрировали таймер ${timer.id}: "${timer.name}" -> "timer_${timer.id}"');
+        debugPrint(
+          'Мигрировали таймер ${timer.id}: "${timer.name}" -> "timer_${timer.id}"',
+        );
       }
     }
 
@@ -100,8 +106,14 @@ class TimerService {
   bool _shouldMigrateTimerName(String currentName, String timerId) {
     // Список старых русских названий, которые нужно заменить
     final oldRussianNames = [
-      'Таймер 1', 'Таймер 2', 'Таймер 3', 'Таймер 4',
-      'Timer 1', 'Timer 2', 'Timer 3', 'Timer 4',
+      'Таймер 1',
+      'Таймер 2',
+      'Таймер 3',
+      'Таймер 4',
+      'Timer 1',
+      'Timer 2',
+      'Timer 3',
+      'Timer 4',
     ];
 
     // Если название уже является ключом локализации, не мигрируем
@@ -131,10 +143,7 @@ class TimerService {
     if (index == -1) return;
 
     final now = DateTime.now();
-    _timers[index] = _timers[index].copyWith(
-      isRunning: true,
-      startTime: now,
-    );
+    _timers[index] = _timers[index].copyWith(isRunning: true, startTime: now);
 
     // Запускаем таймер
     final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -209,7 +218,9 @@ class TimerService {
       } else {
         // Если звук не найден, воспроизводим звук по умолчанию
         debugPrint('Звук не найден, воспроизведение звука по умолчанию');
-        await _alertPlayers[timerId]!.play(AssetSource(alertSoundResources['default_alert.mp3']!));
+        await _alertPlayers[timerId]!.play(
+          AssetSource(alertSoundResources['default_alert.mp3']!),
+        );
       }
     } catch (e) {
       debugPrint('Ошибка при воспроизведении звука: $e');
@@ -257,8 +268,11 @@ class TimerService {
     // Если таймер был запущен, сохраняем оставшееся время
     if (_timers[index].isRunning && _timers[index].startTime != null) {
       final elapsed = DateTime.now().difference(_timers[index].startTime!);
-      final remainingTimeInSeconds = _timers[index].remainingTime.inSeconds - elapsed.inSeconds;
-      final newRemainingTime = Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
+      final remainingTimeInSeconds =
+          _timers[index].remainingTime.inSeconds - elapsed.inSeconds;
+      final newRemainingTime = Duration(
+        seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0,
+      );
 
       _timers[index] = _timers[index].copyWith(
         isRunning: false,
@@ -313,7 +327,8 @@ class TimerService {
   }
 
   // Обновление настроек таймера
-  void updateTimerSettings(String id, {
+  void updateTimerSettings(
+    String id, {
     String? name,
     Color? timerColor,
     String? alertSound,
@@ -348,15 +363,18 @@ class TimerService {
     final elapsed = DateTime.now().difference(timer.startTime!);
 
     // Для обратного отсчета вычитаем прошедшее время
-    final remainingTimeInSeconds = timer.remainingTime.inSeconds - elapsed.inSeconds;
-    return Duration(seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0);
+    final remainingTimeInSeconds =
+        timer.remainingTime.inSeconds - elapsed.inSeconds;
+    return Duration(
+      seconds: remainingTimeInSeconds > 0 ? remainingTimeInSeconds : 0,
+    );
   }
 
   // Сохранение таймеров
   Future<void> _saveTimers() async {
     final prefs = await SharedPreferences.getInstance();
-    final List<String> timersJson = _timers.map((timer) =>
-        jsonEncode(timer.toJson())).toList();
+    final List<String> timersJson =
+        _timers.map((timer) => jsonEncode(timer.toJson())).toList();
 
     await prefs.setStringList('fishing_timers', timersJson);
   }
@@ -421,7 +439,8 @@ class TimerService {
 
     _timers[index] = _timers[index].copyWith(
       duration: duration,
-      remainingTime: duration, // Устанавливаем оставшееся время равным общей длительности
+      remainingTime:
+          duration, // Устанавливаем оставшееся время равным общей длительности
     );
 
     // Сохраняем состояние

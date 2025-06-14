@@ -52,8 +52,10 @@ class _TimersScreenState extends State<TimersScreen> {
     final localizations = AppLocalizations.of(context);
 
     // Если название является ключом локализации для стандартных таймеров, переводим его
-    if (timerName == 'timer_1' || timerName == 'timer_2' ||
-        timerName == 'timer_3' || timerName == 'timer_4') {
+    if (timerName == 'timer_1' ||
+        timerName == 'timer_2' ||
+        timerName == 'timer_3' ||
+        timerName == 'timer_4') {
       return localizations.translate(timerName);
     }
 
@@ -87,37 +89,59 @@ class _TimersScreenState extends State<TimersScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.surfaceColor,
-        title: Text(
-          localizations.translate('select_time'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.surfaceColor,
+            title: Text(
+              localizations.translate('select_time'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTimeOption(
+                  localizations.translate('30_minutes'),
+                  Duration(minutes: 30),
+                  timerId,
+                ),
+                _buildTimeOption(
+                  localizations.translate('1_hour'),
+                  Duration(hours: 1),
+                  timerId,
+                ),
+                _buildTimeOption(
+                  localizations.translate('1_5_hours'),
+                  Duration(hours: 1, minutes: 30),
+                  timerId,
+                ),
+                _buildTimeOption(
+                  localizations.translate('2_hours'),
+                  Duration(hours: 2),
+                  timerId,
+                ),
+                _buildTimeOption(
+                  localizations.translate('3_hours'),
+                  Duration(hours: 3),
+                  timerId,
+                ),
+                _buildTimeOption(
+                  localizations.translate('other'),
+                  null,
+                  timerId,
+                ),
+              ],
+            ),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildTimeOption(localizations.translate('30_minutes'), Duration(minutes: 30), timerId),
-            _buildTimeOption(localizations.translate('1_hour'), Duration(hours: 1), timerId),
-            _buildTimeOption(localizations.translate('1_5_hours'), Duration(hours: 1, minutes: 30), timerId),
-            _buildTimeOption(localizations.translate('2_hours'), Duration(hours: 2), timerId),
-            _buildTimeOption(localizations.translate('3_hours'), Duration(hours: 3), timerId),
-            _buildTimeOption(localizations.translate('other'), null, timerId),
-          ],
-        ),
-      ),
     );
   }
 
   // Построение опции времени для диалога
   Widget _buildTimeOption(String label, Duration? duration, String timerId) {
     return ListTile(
-      title: Text(
-        label,
-        style: TextStyle(color: AppConstants.textColor),
-      ),
+      title: Text(label, style: TextStyle(color: AppConstants.textColor)),
       onTap: () {
         Navigator.pop(context);
 
@@ -143,148 +167,170 @@ class _TimersScreenState extends State<TimersScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: AppConstants.surfaceColor,
-            title: Text(
-              localizations.translate('set_time'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                backgroundColor: AppConstants.surfaceColor,
+                title: Text(
+                  localizations.translate('set_time'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Часы
-                    Column(
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        IconButton(
-                          icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
-                          onPressed: () {
-                            setDialogState(() {
-                              _hours = (_hours + 1) % 24;
-                            });
-                          },
-                        ),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppConstants.backgroundColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _hours.toString().padLeft(2, '0'),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                        // Часы
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.arrow_upward,
+                                color: AppConstants.textColor,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  _hours = (_hours + 1) % 24;
+                                });
+                              },
                             ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
-                          onPressed: () {
-                            setDialogState(() {
-                              _hours = (_hours - 1 + 24) % 24;
-                            });
-                          },
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppConstants.backgroundColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _hours.toString().padLeft(2, '0'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.arrow_downward,
+                                color: AppConstants.textColor,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  _hours = (_hours - 1 + 24) % 24;
+                                });
+                              },
+                            ),
+                            Text(
+                              localizations.translate('hours'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ],
                         ),
                         Text(
-                          localizations.translate('hours'),
-                          style: TextStyle(color: AppConstants.textColor),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      ':',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Минуты
-                    Column(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.arrow_upward, color: AppConstants.textColor),
-                          onPressed: () {
-                            setDialogState(() {
-                              _minutes = (_minutes + 1) % 60;
-                            });
-                          },
-                        ),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppConstants.backgroundColor,
-                            borderRadius: BorderRadius.circular(8),
+                          ':',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Text(
-                            _minutes.toString().padLeft(2, '0'),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        // Минуты
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.arrow_upward,
+                                color: AppConstants.textColor,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  _minutes = (_minutes + 1) % 60;
+                                });
+                              },
                             ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.arrow_downward, color: AppConstants.textColor),
-                          onPressed: () {
-                            setDialogState(() {
-                              _minutes = (_minutes - 1 + 60) % 60;
-                            });
-                          },
-                        ),
-                        Text(
-                          localizations.translate('minutes'),
-                          style: TextStyle(color: AppConstants.textColor),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppConstants.backgroundColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _minutes.toString().padLeft(2, '0'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.arrow_downward,
+                                color: AppConstants.textColor,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  _minutes = (_minutes - 1 + 60) % 60;
+                                });
+                              },
+                            ),
+                            Text(
+                              localizations.translate('minutes'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      localizations.translate('cancel'),
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
 
-                  // Проверяем, что выбрано хотя бы какое-то время
-                  if (_hours > 0 || _minutes > 0) {
-                    final duration = Duration(hours: _hours, minutes: _minutes);
-                    _timerProvider.setTimerDuration(timerId, duration);
-                    _timerProvider.startTimer(timerId);
-                  } else {
-                    // Показываем сообщение, если время не выбрано
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(localizations.translate('set_time_greater_than_zero'))),
-                    );
-                  }
-                },
-                child: Text(
-                  localizations.translate('set'),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+                      // Проверяем, что выбрано хотя бы какое-то время
+                      if (_hours > 0 || _minutes > 0) {
+                        final duration = Duration(
+                          hours: _hours,
+                          minutes: _minutes,
+                        );
+                        _timerProvider.setTimerDuration(timerId, duration);
+                        _timerProvider.startTimer(timerId);
+                      } else {
+                        // Показываем сообщение, если время не выбрано
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              localizations.translate(
+                                'set_time_greater_than_zero',
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(
+                      localizations.translate('set'),
+                      style: TextStyle(color: AppConstants.textColor),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
     );
   }
 
@@ -332,7 +378,9 @@ class _TimersScreenState extends State<TimersScreen> {
                 itemCount: timers.length,
                 itemBuilder: (context, index) {
                   final timer = timers[index];
-                  final currentDuration = _timerProvider.getCurrentDuration(timer.id);
+                  final currentDuration = _timerProvider.getCurrentDuration(
+                    timer.id,
+                  );
 
                   return _buildTimerCard(timer, currentDuration);
                 },
@@ -402,7 +450,9 @@ class _TimersScreenState extends State<TimersScreen> {
             child: LinearProgressIndicator(
               value: progressValue,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(timer.timerColor.withValues(alpha: 0.7)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                timer.timerColor.withValues(alpha: 0.7),
+              ),
               minHeight: 2,
             ),
           ),
@@ -430,7 +480,9 @@ class _TimersScreenState extends State<TimersScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: Text(
-                      timer.isRunning ? localizations.translate('stop') : localizations.translate('start'),
+                      timer.isRunning
+                          ? localizations.translate('stop')
+                          : localizations.translate('start'),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -472,7 +524,9 @@ class _TimersScreenState extends State<TimersScreen> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => TimerSettingsScreen(timerId: timer.id),
+                          builder:
+                              (context) =>
+                                  TimerSettingsScreen(timerId: timer.id),
                         ),
                       );
                     },

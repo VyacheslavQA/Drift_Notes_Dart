@@ -8,7 +8,8 @@ class TimerProvider extends ChangeNotifier {
   final TimerService _timerService = TimerService();
 
   List<FishingTimerModel> get timers => _timerService.timers;
-  Stream<List<FishingTimerModel>> get timersStream => _timerService.timersStream;
+  Stream<List<FishingTimerModel>> get timersStream =>
+      _timerService.timersStream;
 
   // Инициализация провайдера
   Future<void> initialize() async {
@@ -41,7 +42,8 @@ class TimerProvider extends ChangeNotifier {
   }
 
   // Обновление настроек таймера - убираем параметр isCountdown
-  void updateTimerSettings(String id, {
+  void updateTimerSettings(
+    String id, {
     String? name,
     Color? timerColor,
     String? alertSound,

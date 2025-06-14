@@ -14,7 +14,8 @@ class ShopsScreen extends StatefulWidget {
   State<ShopsScreen> createState() => _ShopsScreenState();
 }
 
-class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin {
+class _ShopsScreenState extends State<ShopsScreen>
+    with TickerProviderStateMixin {
   final ShopService _shopService = ShopService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -102,18 +103,21 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
                   Icons.search,
                   color: AppConstants.textColor.withValues(alpha: 0.7),
                 ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                  ),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearchChanged('');
-                  },
-                )
-                    : null,
+                suffixIcon:
+                    _searchQuery.isNotEmpty
+                        ? IconButton(
+                          icon: Icon(
+                            Icons.clear,
+                            color: AppConstants.textColor.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                        : null,
                 filled: true,
                 fillColor: const Color(0xFF12332E),
                 border: OutlineInputBorder(
@@ -133,9 +137,7 @@ class _ShopsScreenState extends State<ShopsScreen> with TickerProviderStateMixin
           ),
 
           // Список магазинов
-          Expanded(
-            child: _buildShopsList(),
-          ),
+          Expanded(child: _buildShopsList()),
         ],
       ),
     );

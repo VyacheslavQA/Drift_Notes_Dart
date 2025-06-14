@@ -55,7 +55,10 @@ class DirectAudioService {
         try {
           // Загружаем данные из ресурсов
           final ByteData data = await rootBundle.load(assetPath);
-          final List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+          final List<int> bytes = data.buffer.asUint8List(
+            data.offsetInBytes,
+            data.lengthInBytes,
+          );
 
           // Создаем временный файл
           final tempFile = File('${tempDir.path}/$soundName');
@@ -64,7 +67,9 @@ class DirectAudioService {
           // Сохраняем путь к временному файлу
           _tempFilePaths[soundName] = tempFile.path;
 
-          debugPrint('✅ Звук $soundName скопирован во временную директорию: ${tempFile.path}');
+          debugPrint(
+            '✅ Звук $soundName скопирован во временную директорию: ${tempFile.path}',
+          );
         } catch (e) {
           debugPrint('❌ Ошибка при копировании звука $soundName: $e');
         }
@@ -127,7 +132,8 @@ class DirectAudioService {
     try {
       debugPrint('🎵 Попытка альтернативного воспроизведения звука $soundName');
 
-      final playerId = 'alt_${soundName}_${DateTime.now().millisecondsSinceEpoch}';
+      final playerId =
+          'alt_${soundName}_${DateTime.now().millisecondsSinceEpoch}';
       final player = AudioPlayer();
       _activePlayers[playerId] = player;
 
@@ -142,7 +148,9 @@ class DirectAudioService {
       final source = AssetSource(assetPath.replaceFirst('assets/', ''));
       await player.play(source);
 
-      debugPrint('✅ Звук $soundName запущен альтернативным методом с ID $playerId');
+      debugPrint(
+        '✅ Звук $soundName запущен альтернативным методом с ID $playerId',
+      );
 
       // Настраиваем автоматическое очищение плеера после воспроизведения
       player.onPlayerComplete.listen((event) {
@@ -155,7 +163,9 @@ class DirectAudioService {
 
       return true;
     } catch (e) {
-      debugPrint('❌ Ошибка при альтернативном воспроизведении звука $soundName: $e');
+      debugPrint(
+        '❌ Ошибка при альтернативном воспроизведении звука $soundName: $e',
+      );
       return false;
     }
   }
@@ -185,7 +195,8 @@ class DirectAudioService {
 
   // Проверка доступности звука
   bool isSoundAvailable(String soundName) {
-    return _soundAssetPaths.containsKey(soundName) || _tempFilePaths.containsKey(soundName);
+    return _soundAssetPaths.containsKey(soundName) ||
+        _tempFilePaths.containsKey(soundName);
   }
 
   // Тест звука (воспроизведение и информация о результате)
@@ -225,7 +236,6 @@ class DirectAudioService {
       // Попытка воспроизведения
       result['playAttempt'] = true;
       result['playSuccess'] = await playSound(soundName);
-
     } catch (e) {
       result['error'] = e.toString();
     }

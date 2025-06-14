@@ -9,10 +9,7 @@ import '../../localization/app_localizations.dart';
 class EditBiteRecordScreen extends StatefulWidget {
   final BiteRecord biteRecord;
 
-  const EditBiteRecordScreen({
-    super.key,
-    required this.biteRecord,
-  });
+  const EditBiteRecordScreen({super.key, required this.biteRecord});
 
   @override
   State<EditBiteRecordScreen> createState() => _EditBiteRecordScreenState();
@@ -32,12 +29,20 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
     super.initState();
 
     // Инициализация контроллеров из существующей записи
-    _fishTypeController = TextEditingController(text: widget.biteRecord.fishType);
+    _fishTypeController = TextEditingController(
+      text: widget.biteRecord.fishType,
+    );
     _weightController = TextEditingController(
-        text: widget.biteRecord.weight > 0 ? widget.biteRecord.weight.toString() : ''
+      text:
+          widget.biteRecord.weight > 0
+              ? widget.biteRecord.weight.toString()
+              : '',
     );
     _lengthController = TextEditingController(
-        text: widget.biteRecord.length > 0 ? widget.biteRecord.length.toString() : ''
+      text:
+          widget.biteRecord.length > 0
+              ? widget.biteRecord.length.toString()
+              : '',
     );
     _notesController = TextEditingController(text: widget.biteRecord.notes);
 
@@ -157,17 +162,17 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
               GestureDetector(
                 onTap: () => _selectTime(context),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF12332E),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.access_time,
-                        color: AppConstants.textColor,
-                      ),
+                      Icon(Icons.access_time, color: AppConstants.textColor),
                       const SizedBox(width: 12),
                       Text(
                         DateFormat('HH:mm').format(_selectedTime),
@@ -198,7 +203,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                   fillColor: const Color(0xFF12332E),
                   filled: true,
                   hintText: localizations.translate('fish_type_hint'),
-                  hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                  hintStyle: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -220,7 +227,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader(localizations.translate('weight_kg')),
+                        _buildSectionHeader(
+                          localizations.translate('weight_kg'),
+                        ),
                         TextFormField(
                           controller: _weightController,
                           style: TextStyle(color: AppConstants.textColor),
@@ -228,7 +237,11 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                             fillColor: const Color(0xFF12332E),
                             filled: true,
                             hintText: localizations.translate('weight'),
-                            hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                            hintStyle: TextStyle(
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -238,13 +251,17 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                               color: AppConstants.textColor,
                             ),
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           validator: (value) {
                             if (value != null && value.isNotEmpty) {
                               // Проверяем, что введено корректное число
                               final weightText = value.replaceAll(',', '.');
                               if (double.tryParse(weightText) == null) {
-                                return localizations.translate('enter_correct_number');
+                                return localizations.translate(
+                                  'enter_correct_number',
+                                );
                               }
                             }
                             return null;
@@ -259,7 +276,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader(localizations.translate('length_cm')),
+                        _buildSectionHeader(
+                          localizations.translate('length_cm'),
+                        ),
                         TextFormField(
                           controller: _lengthController,
                           style: TextStyle(color: AppConstants.textColor),
@@ -267,7 +286,11 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                             fillColor: const Color(0xFF12332E),
                             filled: true,
                             hintText: localizations.translate('length'),
-                            hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                            hintStyle: TextStyle(
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -277,13 +300,17 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                               color: AppConstants.textColor,
                             ),
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           validator: (value) {
                             if (value != null && value.isNotEmpty) {
                               // Проверяем, что введено корректное число
                               final lengthText = value.replaceAll(',', '.');
                               if (double.tryParse(lengthText) == null) {
-                                return localizations.translate('enter_correct_number');
+                                return localizations.translate(
+                                  'enter_correct_number',
+                                );
                               }
                             }
                             return null;
@@ -306,7 +333,9 @@ class _EditBiteRecordScreenState extends State<EditBiteRecordScreen> {
                   fillColor: const Color(0xFF12332E),
                   filled: true,
                   hintText: localizations.translate('additional_notes_hint'),
-                  hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                  hintStyle: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,

@@ -4,11 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 enum TemperatureUnit { celsius, fahrenheit }
+
 enum WindSpeedUnit { metersPerSecond, kilometersPerHour }
+
 enum PressureUnit { mmHg, hPa }
 
 class WeatherPreferencesService {
-  static final WeatherPreferencesService _instance = WeatherPreferencesService._internal();
+  static final WeatherPreferencesService _instance =
+      WeatherPreferencesService._internal();
   factory WeatherPreferencesService() => _instance;
   WeatherPreferencesService._internal();
 
@@ -55,7 +58,9 @@ class WeatherPreferencesService {
       // Загружаем калибровку барометра
       _pressureCalibration = prefs.getDouble(_pressureCalibrationKey) ?? 0.0;
 
-      debugPrint('🌤️ Настройки погоды загружены: T=${_temperatureUnit}, W=${_windSpeedUnit}, P=${_pressureUnit}, Cal=${_pressureCalibration}');
+      debugPrint(
+        '🌤️ Настройки погоды загружены: T=${_temperatureUnit}, W=${_windSpeedUnit}, P=${_pressureUnit}, Cal=${_pressureCalibration}',
+      );
     } catch (e) {
       debugPrint('❌ Ошибка загрузки настроек погоды: $e');
     }

@@ -13,10 +13,7 @@ import '../help/terms_of_service_screen.dart';
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
 
-  const RegisterScreen({
-    super.key,
-    this.onAuthSuccess,
-  });
+  const RegisterScreen({super.key, this.onAuthSuccess});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -164,11 +161,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final name = _nameController.text.trim();
 
       // Регистрируем пользователя в Firebase Auth
-      final userCredential = await _firebaseService.registerWithEmailAndPassword(
-        email,
-        password,
-        context,
-      );
+      final userCredential = await _firebaseService
+          .registerWithEmailAndPassword(email, password, context);
 
       final user = userCredential.user;
 
@@ -226,18 +220,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _showPrivacyPolicy() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const PrivacyPolicyScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
     );
   }
 
   void _showTermsOfService() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const TermsOfServiceScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
     );
   }
 
@@ -258,8 +248,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0A1F1C),  // Тёмно-зеленый
-              Color(0xFF071714),  // Более тёмный оттенок
+              Color(0xFF0A1F1C), // Тёмно-зеленый
+              Color(0xFF071714), // Более тёмный оттенок
             ],
           ),
         ),
@@ -279,7 +269,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Navigator.pop(context);
                     } else {
                       // Если не можем вернуться назад, переходим к экрану выбора авторизации
-                      Navigator.pushReplacementNamed(context, '/auth_selection');
+                      Navigator.pushReplacementNamed(
+                        context,
+                        '/auth_selection',
+                      );
                     }
                   },
                   padding: EdgeInsets.zero,
@@ -311,7 +304,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             localizations.translate('create_account_access'),
                             style: TextStyle(
                               fontSize: 16 * adaptiveTextScale,
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -346,11 +341,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               decoration: InputDecoration(
                                 hintText: localizations.translate('name'),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFF12332E),
-                                prefixIcon: Icon(Icons.person, color: AppConstants.textColor),
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: AppConstants.textColor,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -376,18 +376,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     width: 1.5,
                                   ),
                                 ),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 16, // Увеличенный padding
                                 ),
                               ),
-                              validator: (value) => Validators.validateName(value, context),
+                              validator:
+                                  (value) =>
+                                      Validators.validateName(value, context),
                               textInputAction: TextInputAction.next,
                             ),
 
                             const SizedBox(height: 16), // Увеличенный отступ
-
                             // Поле для email - компактная версия
                             TextFormField(
                               controller: _emailController,
@@ -398,11 +401,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               decoration: InputDecoration(
                                 hintText: localizations.translate('email'),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFF12332E),
-                                prefixIcon: Icon(Icons.email, color: AppConstants.textColor),
+                                prefixIcon: Icon(
+                                  Icons.email,
+                                  color: AppConstants.textColor,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -428,18 +436,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     width: 1.5,
                                   ),
                                 ),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 16, // Увеличенный padding
                                 ),
                               ),
-                              validator: (value) => Validators.validateEmail(value, context),
+                              validator:
+                                  (value) =>
+                                      Validators.validateEmail(value, context),
                               textInputAction: TextInputAction.next,
                             ),
 
                             const SizedBox(height: 16), // Увеличенный отступ
-
                             // Поле для пароля - возвращаем нормальную ширину
                             Column(
                               children: [
@@ -451,16 +462,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     fontSize: 16,
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: localizations.translate('password'),
+                                    hintText: localizations.translate(
+                                      'password',
+                                    ),
                                     hintStyle: TextStyle(
-                                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                                      color: AppConstants.textColor.withValues(
+                                        alpha: 0.5,
+                                      ),
                                     ),
                                     filled: true,
                                     fillColor: const Color(0xFF12332E),
-                                    prefixIcon: Icon(Icons.lock, color: AppConstants.textColor),
+                                    prefixIcon: Icon(
+                                      Icons.lock,
+                                      color: AppConstants.textColor,
+                                    ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
-                                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                        _obscurePassword
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
                                         color: AppConstants.textColor,
                                       ),
                                       onPressed: () {
@@ -494,42 +514,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         width: 1.5,
                                       ),
                                     ),
-                                    errorStyle: const TextStyle(color: Colors.redAccent),
+                                    errorStyle: const TextStyle(
+                                      color: Colors.redAccent,
+                                    ),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 20,
                                       vertical: 16, // Увеличенный padding
                                     ),
                                   ),
                                   obscureText: _obscurePassword,
-                                  validator: (value) => Validators.validatePassword(value, context),
+                                  validator:
+                                      (value) => Validators.validatePassword(
+                                        value,
+                                        context,
+                                      ),
                                   textInputAction: TextInputAction.next,
                                 ),
 
                                 // Требования к паролю под полем
-                                if (_passwordFieldFocused || _passwordController.text.isNotEmpty)
+                                if (_passwordFieldFocused ||
+                                    _passwordController.text.isNotEmpty)
                                   Container(
                                     margin: const EdgeInsets.only(top: 8),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF12332E).withValues(alpha: 0.5),
+                                      color: const Color(
+                                        0xFF12332E,
+                                      ).withValues(alpha: 0.5),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
                                       children: [
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
-                                              _hasMinLength ? Icons.check_circle : Icons.cancel,
-                                              color: _hasMinLength ? Colors.green : Colors.red.withValues(alpha: 0.7),
+                                              _hasMinLength
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel,
+                                              color:
+                                                  _hasMinLength
+                                                      ? Colors.green
+                                                      : Colors.red.withValues(
+                                                        alpha: 0.7,
+                                                      ),
                                               size: 14,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               '8+ симв.',
                                               style: TextStyle(
-                                                color: _hasMinLength ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
+                                                color:
+                                                    _hasMinLength
+                                                        ? Colors.green
+                                                        : AppConstants.textColor
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -539,15 +582,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
-                                              _hasUppercase ? Icons.check_circle : Icons.cancel,
-                                              color: _hasUppercase ? Colors.green : Colors.red.withValues(alpha: 0.7),
+                                              _hasUppercase
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel,
+                                              color:
+                                                  _hasUppercase
+                                                      ? Colors.green
+                                                      : Colors.red.withValues(
+                                                        alpha: 0.7,
+                                                      ),
                                               size: 14,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               'A-Z',
                                               style: TextStyle(
-                                                color: _hasUppercase ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
+                                                color:
+                                                    _hasUppercase
+                                                        ? Colors.green
+                                                        : AppConstants.textColor
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -557,15 +613,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
-                                              _hasNumber ? Icons.check_circle : Icons.cancel,
-                                              color: _hasNumber ? Colors.green : Colors.red.withValues(alpha: 0.7),
+                                              _hasNumber
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel,
+                                              color:
+                                                  _hasNumber
+                                                      ? Colors.green
+                                                      : Colors.red.withValues(
+                                                        alpha: 0.7,
+                                                      ),
                                               size: 14,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               '0-9',
                                               style: TextStyle(
-                                                color: _hasNumber ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
+                                                color:
+                                                    _hasNumber
+                                                        ? Colors.green
+                                                        : AppConstants.textColor
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -578,7 +647,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
 
                             const SizedBox(height: 16), // Увеличенный отступ
-
                             // Поле для подтверждения пароля - нормальной ширины
                             TextFormField(
                               controller: _confirmPasswordController,
@@ -588,21 +656,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 16,
                               ),
                               decoration: InputDecoration(
-                                hintText: localizations.translate('confirm_password'),
+                                hintText: localizations.translate(
+                                  'confirm_password',
+                                ),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: const Color(0xFF12332E),
-                                prefixIcon: Icon(Icons.lock_outline, color: AppConstants.textColor),
+                                prefixIcon: Icon(
+                                  Icons.lock_outline,
+                                  color: AppConstants.textColor,
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
                                     color: AppConstants.textColor,
                                   ),
                                   onPressed: () {
                                     setState(() {
-                                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword;
                                     });
                                   },
                                 ),
@@ -631,18 +709,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     width: 1.5,
                                   ),
                                 ),
-                                errorStyle: const TextStyle(color: Colors.redAccent),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 20,
                                   vertical: 16, // Увеличенный padding
                                 ),
                               ),
                               obscureText: _obscureConfirmPassword,
-                              validator: (value) => Validators.validateConfirmPassword(
-                                value,
-                                _passwordController.text,
-                                context,
-                              ),
+                              validator:
+                                  (value) => Validators.validateConfirmPassword(
+                                    value,
+                                    _passwordController.text,
+                                    context,
+                                  ),
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _register(),
                             ),
@@ -659,11 +740,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.cancel, color: Colors.redAccent, size: 16),
+                                    Icon(
+                                      Icons.cancel,
+                                      color: Colors.redAccent,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      localizations.translate('passwords_dont_match'),
-                                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                                      localizations.translate(
+                                        'passwords_dont_match',
+                                      ),
+                                      style: const TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -691,7 +781,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 activeColor: AppConstants.primaryColor,
                                 checkColor: AppConstants.textColor,
                                 side: BorderSide(
-                                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   width: 1.5,
                                 ),
                               ),
@@ -707,7 +799,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   children: [
                                     TextSpan(
-                                      text: localizations.translate('i_have_read_and_agree'),
+                                      text: localizations.translate(
+                                        'i_have_read_and_agree',
+                                      ),
                                     ),
                                     const TextSpan(text: ' '),
                                     TextSpan(
@@ -717,8 +811,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         decoration: TextDecoration.underline,
                                         fontWeight: FontWeight.w500,
                                       ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = _showTermsOfService,
+                                      recognizer:
+                                          TapGestureRecognizer()
+                                            ..onTap = _showTermsOfService,
                                     ),
                                     const TextSpan(text: ' '),
                                     TextSpan(
@@ -726,14 +821,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                     const TextSpan(text: ' '),
                                     TextSpan(
-                                      text: localizations.translate('privacy_policy_agreement'),
+                                      text: localizations.translate(
+                                        'privacy_policy_agreement',
+                                      ),
                                       style: TextStyle(
                                         color: AppConstants.primaryColor,
                                         decoration: TextDecoration.underline,
                                         fontWeight: FontWeight.w500,
                                       ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = _showPrivacyPolicy,
+                                      recognizer:
+                                          TapGestureRecognizer()
+                                            ..onTap = _showPrivacyPolicy,
                                     ),
                                   ],
                                 ),
@@ -770,7 +868,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             width: double.infinity,
                             height: 56, // Увеличенная высота
                             child: ElevatedButton(
-                              onPressed: (_isLoading || !_acceptedTermsAndPrivacy || !_passwordsMatch) ? null : _register,
+                              onPressed:
+                                  (_isLoading ||
+                                          !_acceptedTermsAndPrivacy ||
+                                          !_passwordsMatch)
+                                      ? null
+                                      : _register,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 foregroundColor: AppConstants.textColor,
@@ -782,24 +885,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 disabledBackgroundColor: Colors.transparent,
                                 elevation: 0,
                               ),
-                              child: _isLoading
-                                  ? SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppConstants.textColor,
-                                  ),
-                                ),
-                              )
-                                  : Text(
-                                localizations.translate('register'),
-                                style: TextStyle(
-                                  fontSize: 16 * adaptiveTextScale,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child:
+                                  _isLoading
+                                      ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                AppConstants.textColor,
+                                              ),
+                                        ),
+                                      )
+                                      : Text(
+                                        localizations.translate('register'),
+                                        style: TextStyle(
+                                          fontSize: 16 * adaptiveTextScale,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                             ),
                           ),
 
@@ -810,18 +915,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                localizations.translate('already_have_account').split('?')[0] + '? ',
+                                localizations
+                                        .translate('already_have_account')
+                                        .split('?')[0] +
+                                    '? ',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  color: AppConstants.textColor.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   fontSize: 14 * adaptiveTextScale,
                                 ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/login');
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/login',
+                                  );
                                 },
                                 child: Text(
-                                  localizations.translate('already_have_account').split('? ')[1],
+                                  localizations
+                                      .translate('already_have_account')
+                                      .split('? ')[1],
                                   style: TextStyle(
                                     color: AppConstants.textColor,
                                     fontSize: 14 * adaptiveTextScale,

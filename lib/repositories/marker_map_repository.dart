@@ -30,17 +30,19 @@ class MarkerMapRepository {
         debugPrint('Запрос маркерных карт для пользователя: $userId');
 
         // Если есть подключение, получаем карты из Firestore
-        final snapshot = await _firestore
-            .collection('marker_maps')
-            .where('userId', isEqualTo: userId)
-            .get();
+        final snapshot =
+            await _firestore
+                .collection('marker_maps')
+                .where('userId', isEqualTo: userId)
+                .get();
 
         debugPrint('Получено документов: ${snapshot.docs.length}');
 
         // Преобразуем документы в модели
-        final onlineMaps = snapshot.docs
-            .map((doc) => MarkerMapModel.fromJson(doc.data(), id: doc.id))
-            .toList();
+        final onlineMaps =
+            snapshot.docs
+                .map((doc) => MarkerMapModel.fromJson(doc.data(), id: doc.id))
+                .toList();
 
         // Получаем офлайн карты, которые еще не были синхронизированы
         final offlineMaps = await _getOfflineMarkerMaps(userId);
@@ -62,8 +64,9 @@ class MarkerMapRepository {
         }
 
         // Сортируем локально по дате (от новых к старым)
-        final result = uniqueMaps.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+        final result =
+            uniqueMaps.values.toList()
+              ..sort((a, b) => b.date.compareTo(a.date));
 
         // Запускаем синхронизацию в фоне
         _syncService.syncAll();
@@ -80,7 +83,9 @@ class MarkerMapRepository {
 
       // В случае ошибки, пытаемся вернуть хотя бы офлайн карты
       try {
-        return await _getOfflineMarkerMaps(_firebaseService.currentUserId ?? '');
+        return await _getOfflineMarkerMaps(
+          _firebaseService.currentUserId ?? '',
+        );
       } catch (_) {
         rethrow;
       }
@@ -93,10 +98,13 @@ class MarkerMapRepository {
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
 
       // Фильтруем и преобразуем данные в модели
-      final offlineMapModels = offlineMaps
-          .where((map) => map['userId'] == userId) // Фильтруем по userId
-          .map((map) => MarkerMapModel.fromJson(map, id: map['id'] as String))
-          .toList();
+      final offlineMapModels =
+          offlineMaps
+              .where((map) => map['userId'] == userId) // Фильтруем по userId
+              .map(
+                (map) => MarkerMapModel.fromJson(map, id: map['id'] as String),
+              )
+              .toList();
 
       // Сортируем по дате (от новых к старым)
       offlineMapModels.sort((a, b) => b.date.compareTo(a.date));
@@ -132,7 +140,10 @@ class MarkerMapRepository {
 
       if (isOnline) {
         // Если есть интернет, добавляем карту в Firestore
-        await _firestore.collection('marker_maps').doc(mapId).set(mapToAdd.toJson());
+        await _firestore
+            .collection('marker_maps')
+            .doc(mapId)
+            .set(mapToAdd.toJson());
 
         // Синхронизируем офлайн карты, если они есть
         await _syncService.syncAll();
@@ -180,7 +191,10 @@ class MarkerMapRepository {
 
       if (isOnline) {
         // Если есть интернет, обновляем карту в Firestore
-        await _firestore.collection('marker_maps').doc(map.id).update(mapToUpdate.toJson());
+        await _firestore
+            .collection('marker_maps')
+            .doc(map.id)
+            .update(mapToUpdate.toJson());
       } else {
         // Если нет интернета, сохраняем обновление локально
         await _offlineStorage.saveMarkerMapUpdate(map.id, mapToUpdate.toJson());
@@ -253,10 +267,11 @@ class MarkerMapRepository {
 
       if (isOnline) {
         // Если есть интернет, получаем все карты пользователя и удаляем их
-        final snapshot = await _firestore
-            .collection('marker_maps')
-            .where('userId', isEqualTo: userId)
-            .get();
+        final snapshot =
+            await _firestore
+                .collection('marker_maps')
+                .where('userId', isEqualTo: userId)
+                .get();
 
         // Создаем пакетную операцию для удаления
         final batch = _firestore.batch();
@@ -267,7 +282,9 @@ class MarkerMapRepository {
         // Выполняем пакетное удаление
         await batch.commit();
 
-        debugPrint('Удалено ${snapshot.docs.length} маркерных карт пользователя');
+        debugPrint(
+          'Удалено ${snapshot.docs.length} маркерных карт пользователя',
+        );
       } else {
         // Если нет интернета, отмечаем все карты для удаления
         await _offlineStorage.markAllMarkerMapsForDeletion();
@@ -340,13 +357,19 @@ class MarkerMapRepository {
 
       // Ищем карту по ID
       final mapData = allOfflineMaps.firstWhere(
-            (map) => map['id'] == mapId,
-        orElse: () => throw Exception('Маркерная карта не найдена в офлайн хранилище'),
+        (map) => map['id'] == mapId,
+        orElse:
+            () =>
+                throw Exception(
+                  'Маркерная карта не найдена в офлайн хранилище',
+                ),
       );
 
       return MarkerMapModel.fromJson(mapData, id: mapId);
     } catch (e) {
-      debugPrint('Ошибка при получении маркерной карты из офлайн хранилища: $e');
+      debugPrint(
+        'Ошибка при получении маркерной карты из офлайн хранилища: $e',
+      );
       rethrow;
     }
   }

@@ -15,12 +15,7 @@ class GoogleSignInService {
   factory GoogleSignInService() => _instance;
   GoogleSignInService._internal();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-    ],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseService _firebaseService = FirebaseService();
@@ -43,7 +38,9 @@ class GoogleSignInService {
   }
 
   /// Вход через Google для мобильных платформ
-  Future<UserCredential?> _signInWithGoogleMobile([BuildContext? context]) async {
+  Future<UserCredential?> _signInWithGoogleMobile([
+    BuildContext? context,
+  ]) async {
     try {
       // Показываем диалог выбора аккаунта Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -55,7 +52,8 @@ class GoogleSignInService {
       }
 
       // Получаем аутентификационные данные
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Создаем credential для Firebase
       final credential = GoogleAuthProvider.credential(
@@ -64,7 +62,9 @@ class GoogleSignInService {
       );
 
       // Входим в Firebase с Google credential
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
 
       // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
@@ -74,7 +74,6 @@ class GoogleSignInService {
 
       debugPrint('Успешный вход через Google: ${userCredential.user?.email}');
       return userCredential;
-
     } catch (e) {
       debugPrint('Ошибка входа через Google (мобильная версия): $e');
       rethrow;
@@ -91,7 +90,9 @@ class GoogleSignInService {
       googleProvider.addScope('profile');
 
       // Выполняем вход через popup
-      final UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
+      final UserCredential userCredential = await _auth.signInWithPopup(
+        googleProvider,
+      );
 
       // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
@@ -99,9 +100,10 @@ class GoogleSignInService {
       // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
       await _createOrUpdateUserDocument(userCredential);
 
-      debugPrint('Успешный вход через Google (веб): ${userCredential.user?.email}');
+      debugPrint(
+        'Успешный вход через Google (веб): ${userCredential.user?.email}',
+      );
       return userCredential;
-
     } catch (e) {
       debugPrint('Ошибка входа через Google (веб-версия): $e');
       rethrow;
@@ -109,7 +111,9 @@ class GoogleSignInService {
   }
 
   /// Создает или обновляет документ пользователя в Firestore
-  Future<void> _createOrUpdateUserDocument(UserCredential userCredential) async {
+  Future<void> _createOrUpdateUserDocument(
+    UserCredential userCredential,
+  ) async {
     try {
       final user = userCredential.user;
       if (user == null) return;
@@ -136,11 +140,14 @@ class GoogleSignInService {
         };
 
         await userRepository.updateUserData(userData);
-        debugPrint('✅ Создан новый документ пользователя в Firestore для Google аккаунта: ${user.email}');
+        debugPrint(
+          '✅ Создан новый документ пользователя в Firestore для Google аккаунта: ${user.email}',
+        );
       } else {
         // Обновляем существующий документ только с Google данными
         final userData = {
-          'email': user.email ?? existingUser.email, // Обновляем email из Google
+          'email':
+              user.email ?? existingUser.email, // Обновляем email из Google
           'displayName': user.displayName ?? existingUser.displayName,
           'photoUrl': user.photoURL ?? existingUser.photoUrl,
           // Сохраняем существующие пользовательские данные
@@ -151,7 +158,9 @@ class GoogleSignInService {
         };
 
         await userRepository.updateUserData(userData);
-        debugPrint('✅ Обновлен документ пользователя в Firestore для Google аккаунта: ${user.email}');
+        debugPrint(
+          '✅ Обновлен документ пользователя в Firestore для Google аккаунта: ${user.email}',
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка при создании/обновлении документа пользователя: $e');
@@ -189,30 +198,33 @@ class GoogleSignInService {
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('user_not_authorized')
-            : 'Пользователь не авторизован');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(context).translate('user_not_authorized')
+              : 'Пользователь не авторизован',
+        );
       }
 
       // Получаем Google credentials
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       // Связываем аккаунты
-      final UserCredential userCredential = await currentUser.linkWithCredential(credential);
+      final UserCredential userCredential = await currentUser
+          .linkWithCredential(credential);
 
       // ИСПРАВЛЕНИЕ: Обновляем документ пользователя после связывания
       await _createOrUpdateUserDocument(userCredential);
 
       debugPrint('Аккаунт успешно связан с Google');
       return userCredential;
-
     } catch (e) {
       debugPrint('Ошибка при связывании с Google: $e');
       _handleGoogleSignInError(e, context);
@@ -225,9 +237,11 @@ class GoogleSignInService {
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
-        throw Exception(context != null
-            ? AppLocalizations.of(context).translate('user_not_authorized')
-            : 'Пользователь не авторизован');
+        throw Exception(
+          context != null
+              ? AppLocalizations.of(context).translate('user_not_authorized')
+              : 'Пользователь не авторизован',
+        );
       }
 
       // Отвязываем Google провайдер
@@ -249,7 +263,7 @@ class GoogleSignInService {
     if (currentUser == null) return false;
 
     return currentUser.providerData.any(
-          (provider) => provider.providerId == GoogleAuthProvider.PROVIDER_ID,
+      (provider) => provider.providerId == GoogleAuthProvider.PROVIDER_ID,
     );
   }
 
@@ -267,8 +281,12 @@ class GoogleSignInService {
         errorMessage = localizations.translate('google_sign_in_canceled');
       } else if (error.toString().contains('sign_in_failed')) {
         errorMessage = localizations.translate('google_sign_in_failed');
-      } else if (error.toString().contains('account-exists-with-different-credential')) {
-        errorMessage = localizations.translate('account_exists_different_credential');
+      } else if (error.toString().contains(
+        'account-exists-with-different-credential',
+      )) {
+        errorMessage = localizations.translate(
+          'account_exists_different_credential',
+        );
       } else {
         errorMessage = localizations.translate('google_sign_in_error');
       }
@@ -281,7 +299,9 @@ class GoogleSignInService {
         errorMessage = 'Вход через Google отменен';
       } else if (error.toString().contains('sign_in_failed')) {
         errorMessage = 'Не удалось войти через Google';
-      } else if (error.toString().contains('account-exists-with-different-credential')) {
+      } else if (error.toString().contains(
+        'account-exists-with-different-credential',
+      )) {
         errorMessage = 'Аккаунт с таким email уже существует';
       } else {
         errorMessage = 'Ошибка входа через Google';

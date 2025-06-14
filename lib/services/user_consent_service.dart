@@ -11,11 +11,11 @@ import '../models/user_consent_models.dart';
 
 /// Уровни ограничений при отказе от принятия политики
 enum ConsentRestrictionLevel {
-  none,     // 0 дней - нет ограничений
-  soft,     // 1-7 дней - мягкие ограничения
-  hard,     // 7-14 дней - жесткие ограничения
-  final_,   // 14-21 день - финальное предупреждение
-  deletion  // 21+ дней - планирование удаления
+  none, // 0 дней - нет ограничений
+  soft, // 1-7 дней - мягкие ограничения
+  hard, // 7-14 дней - жесткие ограничения
+  final_, // 14-21 день - финальное предупреждение
+  deletion, // 21+ дней - планирование удаления
 }
 
 /// Результат проверки ограничений
@@ -92,7 +92,8 @@ class UserConsentService {
   // НОВЫЕ КЛЮЧИ для принудительного принятия
   static const String _policyRejectionDateKey = 'policy_rejection_date';
   static const String _policyRejectionVersionKey = 'policy_rejection_version';
-  static const String _lastPolicyUpdateNotificationKey = 'last_policy_update_notification';
+  static const String _lastPolicyUpdateNotificationKey =
+      'last_policy_update_notification';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -112,7 +113,9 @@ class UserConsentService {
 
         // Ищем версию (русский)
         RegExp versionRuPattern = RegExp(
-            r'[Вв]ерсия\s*:\s*(\d+\.\d+(?:\.\d+)?)', caseSensitive: false);
+          r'[Вв]ерсия\s*:\s*(\d+\.\d+(?:\.\d+)?)',
+          caseSensitive: false,
+        );
         var match = versionRuPattern.firstMatch(firstLine);
         if (match != null && match.group(1) != null) {
           debugPrint('📄 Найдена версия (RU): ${match.group(1)}');
@@ -121,7 +124,9 @@ class UserConsentService {
 
         // Ищем версию (английский)
         RegExp versionEnPattern = RegExp(
-            r'[Vv]ersion\s*:\s*(\d+\.\d+(?:\.\d+)?)', caseSensitive: false);
+          r'[Vv]ersion\s*:\s*(\d+\.\d+(?:\.\d+)?)',
+          caseSensitive: false,
+        );
         match = versionEnPattern.firstMatch(firstLine);
         if (match != null && match.group(1) != null) {
           debugPrint('📄 Найдена версия (EN): ${match.group(1)}');
@@ -153,7 +158,8 @@ class UserConsentService {
 
   /// Загружает и анализирует файл политики конфиденциальности
   Future<Map<String, String>> _loadPrivacyPolicyInfo(
-      String languageCode) async {
+    String languageCode,
+  ) async {
     try {
       final fileName = 'assets/privacy_policy/privacy_policy_$languageCode.txt';
       String content;
@@ -162,68 +168,58 @@ class UserConsentService {
         content = await rootBundle.loadString(fileName);
       } catch (e) {
         debugPrint(
-            '❌ Не удалось загрузить $fileName, загружаем английскую версию');
+          '❌ Не удалось загрузить $fileName, загружаем английскую версию',
+        );
         content = await rootBundle.loadString(
-            'assets/privacy_policy/privacy_policy_en.txt');
+          'assets/privacy_policy/privacy_policy_en.txt',
+        );
       }
 
       final version = _extractVersionFromContent(content);
       final hash = _generateContentHash(content);
 
       debugPrint(
-          '📄 Политика конфиденциальности: версия=$version, хеш=${hash.substring(
-              0, 8)}');
+        '📄 Политика конфиденциальности: версия=$version, хеш=${hash.substring(0, 8)}',
+      );
 
-      return {
-        'version': version,
-        'hash': hash,
-        'content': content,
-      };
+      return {'version': version, 'hash': hash, 'content': content};
     } catch (e) {
       debugPrint('❌ Ошибка загрузки политики конфиденциальности: $e');
-      return {
-        'version': '1.0.0',
-        'hash': 'unknown',
-        'content': '',
-      };
+      return {'version': '1.0.0', 'hash': 'unknown', 'content': ''};
     }
   }
 
   /// Загружает и анализирует файл пользовательского соглашения
   Future<Map<String, String>> _loadTermsOfServiceInfo(
-      String languageCode) async {
+    String languageCode,
+  ) async {
     try {
-      final fileName = 'assets/terms_of_service/terms_of_service_$languageCode.txt';
+      final fileName =
+          'assets/terms_of_service/terms_of_service_$languageCode.txt';
       String content;
 
       try {
         content = await rootBundle.loadString(fileName);
       } catch (e) {
         debugPrint(
-            '❌ Не удалось загрузить $fileName, загружаем английскую версию');
+          '❌ Не удалось загрузить $fileName, загружаем английскую версию',
+        );
         content = await rootBundle.loadString(
-            'assets/terms_of_service/terms_of_service_en.txt');
+          'assets/terms_of_service/terms_of_service_en.txt',
+        );
       }
 
       final version = _extractVersionFromContent(content);
       final hash = _generateContentHash(content);
 
       debugPrint(
-          '📄 Пользовательское соглашение: версия=$version, хеш=${hash.substring(
-              0, 8)}');
+        '📄 Пользовательское соглашение: версия=$version, хеш=${hash.substring(0, 8)}',
+      );
 
-      return {
-        'version': version,
-        'hash': hash,
-        'content': content,
-      };
+      return {'version': version, 'hash': hash, 'content': content};
     } catch (e) {
       debugPrint('❌ Ошибка загрузки пользовательского соглашения: $e');
-      return {
-        'version': '1.0.0',
-        'hash': 'unknown',
-        'content': '',
-      };
+      return {'version': '1.0.0', 'hash': 'unknown', 'content': ''};
     }
   }
 
@@ -264,49 +260,56 @@ class UserConsentService {
     try {
       // Получаем текущие версии из файлов
       final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-          languageCode);
+        languageCode,
+      );
       final currentTermsVersion = await getCurrentTermsOfServiceVersion(
-          languageCode);
+        languageCode,
+      );
 
       debugPrint(
-          '📋 Текущие версии: Privacy=$currentPrivacyVersion, Terms=$currentTermsVersion');
+        '📋 Текущие версии: Privacy=$currentPrivacyVersion, Terms=$currentTermsVersion',
+      );
 
       final user = _auth.currentUser;
 
       if (user != null) {
         // Для авторизованного пользователя проверяем Firebase и локальные данные
         debugPrint(
-            '👤 Проверяем согласия для авторизованного пользователя: ${user
-                .uid}');
+          '👤 Проверяем согласия для авторизованного пользователя: ${user.uid}',
+        );
 
         // Сначала проверяем Firebase
         final firebaseResult = await _checkFirebaseConsents(
-            user.uid,
-            currentPrivacyVersion,
-            currentTermsVersion
+          user.uid,
+          currentPrivacyVersion,
+          currentTermsVersion,
         );
 
         if (!firebaseResult.allValid) {
           debugPrint(
-              '🔄 Firebase показывает что нужно обновить согласия: $firebaseResult');
+            '🔄 Firebase показывает что нужно обновить согласия: $firebaseResult',
+          );
           return firebaseResult;
         }
 
         // Проверяем локальные данные
         final localResult = await _checkLocalConsents(
-            currentPrivacyVersion,
-            currentTermsVersion
+          currentPrivacyVersion,
+          currentTermsVersion,
         );
 
         // Если локальные данные неактуальны, синхронизируем из Firebase
         if (!localResult.allValid) {
           debugPrint(
-              '🔄 Синхронизируем согласия из Firebase в локальное хранилище');
+            '🔄 Синхронизируем согласия из Firebase в локальное хранилище',
+          );
           await syncConsentsFromFirestore(user.uid);
 
           // Проверяем еще раз после синхронизации
           return await _checkLocalConsents(
-              currentPrivacyVersion, currentTermsVersion);
+            currentPrivacyVersion,
+            currentTermsVersion,
+          );
         }
 
         return localResult;
@@ -314,7 +317,9 @@ class UserConsentService {
         // Для неавторизованного пользователя проверяем только локальные данные
         debugPrint('👤 Проверяем согласия для неавторизованного пользователя');
         return await _checkLocalConsents(
-            currentPrivacyVersion, currentTermsVersion);
+          currentPrivacyVersion,
+          currentTermsVersion,
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка при проверке согласий: $e');
@@ -329,18 +334,19 @@ class UserConsentService {
   }
 
   /// Проверяет согласия в Firebase (раздельно)
-  Future<ConsentCheckResult> _checkFirebaseConsents(String userId,
-      String currentPrivacyVersion,
-      String currentTermsVersion) async {
+  Future<ConsentCheckResult> _checkFirebaseConsents(
+    String userId,
+    String currentPrivacyVersion,
+    String currentTermsVersion,
+  ) async {
     try {
-      final doc = await _firestore
-          .collection('user_consents')
-          .doc(userId)
-          .get();
+      final doc =
+          await _firestore.collection('user_consents').doc(userId).get();
 
       if (!doc.exists) {
         debugPrint(
-            '📄 Документ согласий не найден в Firebase для пользователя: $userId');
+          '📄 Документ согласий не найден в Firebase для пользователя: $userId',
+        );
         return ConsentCheckResult(
           allValid: false,
           needPrivacyPolicy: true,
@@ -357,13 +363,14 @@ class UserConsentService {
       final savedTermsVersion = data['terms_of_service_version'] ?? '';
 
       debugPrint(
-          '🔍 Firebase: Privacy($privacyAccepted, $savedPrivacyVersion), Terms($termsAccepted, $savedTermsVersion)');
+        '🔍 Firebase: Privacy($privacyAccepted, $savedPrivacyVersion), Terms($termsAccepted, $savedTermsVersion)',
+      );
 
       // Раздельная проверка версий
-      final privacyValid = privacyAccepted &&
-          savedPrivacyVersion == currentPrivacyVersion;
-      final termsValid = termsAccepted &&
-          savedTermsVersion == currentTermsVersion;
+      final privacyValid =
+          privacyAccepted && savedPrivacyVersion == currentPrivacyVersion;
+      final termsValid =
+          termsAccepted && savedTermsVersion == currentTermsVersion;
 
       final result = ConsentCheckResult(
         allValid: privacyValid && termsValid,
@@ -371,9 +378,8 @@ class UserConsentService {
         needTermsOfService: !termsValid,
         currentPrivacyVersion: currentPrivacyVersion,
         currentTermsVersion: currentTermsVersion,
-        savedPrivacyVersion: savedPrivacyVersion.isEmpty
-            ? null
-            : savedPrivacyVersion,
+        savedPrivacyVersion:
+            savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
         savedTermsVersion: savedTermsVersion.isEmpty ? null : savedTermsVersion,
       );
 
@@ -392,26 +398,29 @@ class UserConsentService {
   }
 
   /// Проверяет локальные согласия (раздельно)
-  Future<ConsentCheckResult> _checkLocalConsents(String currentPrivacyVersion,
-      String currentTermsVersion) async {
+  Future<ConsentCheckResult> _checkLocalConsents(
+    String currentPrivacyVersion,
+    String currentTermsVersion,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
       final privacyAccepted = prefs.getBool(_privacyPolicyAcceptedKey) ?? false;
       final termsAccepted = prefs.getBool(_termsOfServiceAcceptedKey) ?? false;
-      final savedPrivacyVersion = prefs.getString(_privacyPolicyVersionKey) ??
-          '';
-      final savedTermsVersion = prefs.getString(_termsOfServiceVersionKey) ??
-          '';
+      final savedPrivacyVersion =
+          prefs.getString(_privacyPolicyVersionKey) ?? '';
+      final savedTermsVersion =
+          prefs.getString(_termsOfServiceVersionKey) ?? '';
 
       debugPrint(
-          '🔍 Локальные: Privacy($privacyAccepted, $savedPrivacyVersion), Terms($termsAccepted, $savedTermsVersion)');
+        '🔍 Локальные: Privacy($privacyAccepted, $savedPrivacyVersion), Terms($termsAccepted, $savedTermsVersion)',
+      );
 
       // Раздельная проверка версий
-      final privacyValid = privacyAccepted &&
-          savedPrivacyVersion == currentPrivacyVersion;
-      final termsValid = termsAccepted &&
-          savedTermsVersion == currentTermsVersion;
+      final privacyValid =
+          privacyAccepted && savedPrivacyVersion == currentPrivacyVersion;
+      final termsValid =
+          termsAccepted && savedTermsVersion == currentTermsVersion;
 
       final result = ConsentCheckResult(
         allValid: privacyValid && termsValid,
@@ -419,9 +428,8 @@ class UserConsentService {
         needTermsOfService: !termsValid,
         currentPrivacyVersion: currentPrivacyVersion,
         currentTermsVersion: currentTermsVersion,
-        savedPrivacyVersion: savedPrivacyVersion.isEmpty
-            ? null
-            : savedPrivacyVersion,
+        savedPrivacyVersion:
+            savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
         savedTermsVersion: savedTermsVersion.isEmpty ? null : savedTermsVersion,
       );
 
@@ -445,14 +453,18 @@ class UserConsentService {
       languageCode ??= 'ru';
       final prefs = await SharedPreferences.getInstance();
       final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-          languageCode);
+        languageCode,
+      );
 
       await prefs.setString(
-          _policyRejectionDateKey, DateTime.now().toIso8601String());
+        _policyRejectionDateKey,
+        DateTime.now().toIso8601String(),
+      );
       await prefs.setString(_policyRejectionVersionKey, currentPrivacyVersion);
 
       debugPrint(
-          '📝 Записан отказ от принятия политики версии $currentPrivacyVersion');
+        '📝 Записан отказ от принятия политики версии $currentPrivacyVersion',
+      );
 
       // Также записываем в Firebase если пользователь авторизован
       final user = _auth.currentUser;
@@ -469,8 +481,9 @@ class UserConsentService {
   }
 
   /// НОВЫЙ МЕТОД: Получает текущие ограничения на основе отказа от политики
-  Future<ConsentRestrictionResult> getConsentRestrictions(
-      [String? languageCode]) async {
+  Future<ConsentRestrictionResult> getConsentRestrictions([
+    String? languageCode,
+  ]) async {
     try {
       languageCode ??= 'ru';
       final prefs = await SharedPreferences.getInstance();
@@ -502,15 +515,16 @@ class UserConsentService {
           canEditProfile: false,
           showAccountDeletionWarning: false,
           restrictionMessage: _getRestrictionMessage(
-              ConsentRestrictionLevel.none, 0, languageCode),
+            ConsentRestrictionLevel.none,
+            0,
+            languageCode,
+          ),
         );
       }
 
       final rejectionDate = DateTime.parse(rejectionDateStr);
-      final daysSinceRejection = DateTime
-          .now()
-          .difference(rejectionDate)
-          .inDays;
+      final daysSinceRejection =
+          DateTime.now().difference(rejectionDate).inDays;
 
       // Определяем уровень ограничений
       ConsentRestrictionLevel level;
@@ -530,11 +544,15 @@ class UserConsentService {
         canCreateContent: level == ConsentRestrictionLevel.soft,
         canSyncData: level != ConsentRestrictionLevel.deletion,
         canEditProfile: level == ConsentRestrictionLevel.soft,
-        showAccountDeletionWarning: level == ConsentRestrictionLevel.final_ ||
+        showAccountDeletionWarning:
+            level == ConsentRestrictionLevel.final_ ||
             level == ConsentRestrictionLevel.deletion,
         rejectionDate: rejectionDate,
         restrictionMessage: _getRestrictionMessage(
-            level, daysSinceRejection, languageCode),
+          level,
+          daysSinceRejection,
+          languageCode,
+        ),
       );
     } catch (e) {
       debugPrint('❌ Ошибка при получении ограничений: $e');
@@ -551,8 +569,11 @@ class UserConsentService {
   }
 
   /// НОВЫЙ МЕТОД: Формирует сообщение об ограничениях
-  String _getRestrictionMessage(ConsentRestrictionLevel level, int days,
-      String languageCode) {
+  String _getRestrictionMessage(
+    ConsentRestrictionLevel level,
+    int days,
+    String languageCode,
+  ) {
     if (languageCode == 'ru') {
       switch (level) {
         case ConsentRestrictionLevel.none:
@@ -657,9 +678,11 @@ class UserConsentService {
 
       // Получаем текущие версии из файлов
       final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-          languageCode);
+        languageCode,
+      );
       final currentTermsVersion = await getCurrentTermsOfServiceVersion(
-          languageCode);
+        languageCode,
+      );
 
       // Сохраняем локально (РАЗДЕЛЬНО!)
       final prefs = await SharedPreferences.getInstance();
@@ -668,7 +691,9 @@ class UserConsentService {
       await prefs.setString(_privacyPolicyVersionKey, currentPrivacyVersion);
       await prefs.setString(_termsOfServiceVersionKey, currentTermsVersion);
       await prefs.setString(
-          'consent_timestamp', DateTime.now().toIso8601String());
+        'consent_timestamp',
+        DateTime.now().toIso8601String(),
+      );
       await prefs.setString('consent_language', languageCode);
 
       // Сохраняем хеши файлов для отслеживания изменений
@@ -677,11 +702,14 @@ class UserConsentService {
       }
       if (_cachedTermsOfServiceHash != null) {
         await prefs.setString(
-            _termsOfServiceHashKey, _cachedTermsOfServiceHash!);
+          _termsOfServiceHashKey,
+          _cachedTermsOfServiceHash!,
+        );
       }
 
       debugPrint(
-          '✅ Согласия сохранены локально: Privacy=$currentPrivacyVersion, Terms=$currentTermsVersion');
+        '✅ Согласия сохранены локально: Privacy=$currentPrivacyVersion, Terms=$currentTermsVersion',
+      );
 
       // ВАЖНО: Очищаем данные об отказе при принятии политики
       await clearRejectionData();
@@ -720,17 +748,21 @@ class UserConsentService {
       // Если принимается политика конфиденциальности
       if (privacyPolicyAccepted == true) {
         final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-            languageCode);
+          languageCode,
+        );
         await prefs.setBool(_privacyPolicyAcceptedKey, true);
         await prefs.setString(_privacyPolicyVersionKey, currentPrivacyVersion);
 
         if (_cachedPrivacyPolicyHash != null) {
           await prefs.setString(
-              _privacyPolicyHashKey, _cachedPrivacyPolicyHash!);
+            _privacyPolicyHashKey,
+            _cachedPrivacyPolicyHash!,
+          );
         }
 
         debugPrint(
-            '✅ Политика конфиденциальности принята: версия $currentPrivacyVersion');
+          '✅ Политика конфиденциальности принята: версия $currentPrivacyVersion',
+        );
 
         // ВАЖНО: Очищаем данные об отказе при принятии политики
         await clearRejectionData();
@@ -739,22 +771,28 @@ class UserConsentService {
       // Если принимается пользовательское соглашение
       if (termsOfServiceAccepted == true) {
         final currentTermsVersion = await getCurrentTermsOfServiceVersion(
-            languageCode);
+          languageCode,
+        );
         await prefs.setBool(_termsOfServiceAcceptedKey, true);
         await prefs.setString(_termsOfServiceVersionKey, currentTermsVersion);
 
         if (_cachedTermsOfServiceHash != null) {
           await prefs.setString(
-              _termsOfServiceHashKey, _cachedTermsOfServiceHash!);
+            _termsOfServiceHashKey,
+            _cachedTermsOfServiceHash!,
+          );
         }
 
         debugPrint(
-            '✅ Пользовательское соглашение принято: версия $currentTermsVersion');
+          '✅ Пользовательское соглашение принято: версия $currentTermsVersion',
+        );
       }
 
       // Обновляем общие данные
       await prefs.setString(
-          'consent_timestamp', DateTime.now().toIso8601String());
+        'consent_timestamp',
+        DateTime.now().toIso8601String(),
+      );
       await prefs.setString('consent_language', languageCode);
 
       // Сохраняем в Firestore если пользователь авторизован
@@ -776,12 +814,14 @@ class UserConsentService {
   }
 
   /// Сохраняет согласия в Firestore (раздельно)
-  Future<void> _saveConsentsToFirestore(String userId,
-      bool privacyAccepted,
-      bool termsAccepted,
-      String privacyVersion,
-      String termsVersion,
-      String languageCode,) async {
+  Future<void> _saveConsentsToFirestore(
+    String userId,
+    bool privacyAccepted,
+    bool termsAccepted,
+    String privacyVersion,
+    String termsVersion,
+    String languageCode,
+  ) async {
     try {
       await _firestore.collection('user_consents').doc(userId).set({
         'privacy_policy_accepted': privacyAccepted,
@@ -802,10 +842,12 @@ class UserConsentService {
   }
 
   /// НОВЫЙ МЕТОД: Селективное сохранение в Firestore
-  Future<void> _saveSelectiveConsentsToFirestore(String userId,
-      bool? privacyAccepted,
-      bool? termsAccepted,
-      String languageCode,) async {
+  Future<void> _saveSelectiveConsentsToFirestore(
+    String userId,
+    bool? privacyAccepted,
+    bool? termsAccepted,
+    String languageCode,
+  ) async {
     try {
       Map<String, dynamic> updateData = {
         'consent_language': languageCode,
@@ -815,7 +857,8 @@ class UserConsentService {
 
       if (privacyAccepted == true) {
         final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-            languageCode);
+          languageCode,
+        );
         updateData.addAll({
           'privacy_policy_accepted': true,
           'privacy_policy_version': currentPrivacyVersion,
@@ -825,7 +868,8 @@ class UserConsentService {
 
       if (termsAccepted == true) {
         final currentTermsVersion = await getCurrentTermsOfServiceVersion(
-            languageCode);
+          languageCode,
+        );
         updateData.addAll({
           'terms_of_service_accepted': true,
           'terms_of_service_version': currentTermsVersion,
@@ -833,38 +877,41 @@ class UserConsentService {
         });
       }
 
-      await _firestore.collection('user_consents').doc(userId).set(
-          updateData,
-          SetOptions(merge: true)
-      );
+      await _firestore
+          .collection('user_consents')
+          .doc(userId)
+          .set(updateData, SetOptions(merge: true));
 
       debugPrint(
-          '✅ Селективные согласия сохранены в Firestore для пользователя: $userId');
+        '✅ Селективные согласия сохранены в Firestore для пользователя: $userId',
+      );
     } catch (e) {
       debugPrint(
-          '❌ Ошибка при селективном сохранении согласий в Firestore: $e');
+        '❌ Ошибка при селективном сохранении согласий в Firestore: $e',
+      );
     }
   }
 
   /// Проверяет, является ли пользователь новым
   Future<bool> isNewGoogleUser(String userId) async {
     try {
-      final doc = await _firestore
-          .collection('user_consents')
-          .doc(userId)
-          .get();
+      final doc =
+          await _firestore.collection('user_consents').doc(userId).get();
 
       if (doc.exists) {
         final data = doc.data();
-        final hasConsents = data?['privacy_policy_accepted'] == true &&
+        final hasConsents =
+            data?['privacy_policy_accepted'] == true &&
             data?['terms_of_service_accepted'] == true;
         debugPrint(
-            '🔍 Пользователь $userId имеет согласия в Firestore: $hasConsents');
+          '🔍 Пользователь $userId имеет согласия в Firestore: $hasConsents',
+        );
         return !hasConsents;
       }
 
       debugPrint(
-          '🔍 Пользователь $userId не найден в Firestore - новый пользователь');
+        '🔍 Пользователь $userId не найден в Firestore - новый пользователь',
+      );
       return true;
     } catch (e) {
       debugPrint('❌ Ошибка при проверке нового пользователя: $e');
@@ -875,10 +922,8 @@ class UserConsentService {
   /// Синхронизирует согласия из Firestore в локальное хранилище (раздельно)
   Future<void> syncConsentsFromFirestore(String userId) async {
     try {
-      final doc = await _firestore
-          .collection('user_consents')
-          .doc(userId)
-          .get();
+      final doc =
+          await _firestore.collection('user_consents').doc(userId).get();
 
       if (doc.exists) {
         final data = doc.data();
@@ -898,25 +943,33 @@ class UserConsentService {
         await prefs.setString('consent_language', consentLanguage);
 
         if (consentTimestamp != null) {
-          await prefs.setString('consent_timestamp',
-              (consentTimestamp as Timestamp).toDate().toIso8601String());
+          await prefs.setString(
+            'consent_timestamp',
+            (consentTimestamp as Timestamp).toDate().toIso8601String(),
+          );
         }
 
         // Также синхронизируем хеши если они есть
         if (data?['privacy_policy_hash'] != null) {
           await prefs.setString(
-              _privacyPolicyHashKey, data!['privacy_policy_hash']);
+            _privacyPolicyHashKey,
+            data!['privacy_policy_hash'],
+          );
         }
         if (data?['terms_of_service_hash'] != null) {
           await prefs.setString(
-              _termsOfServiceHashKey, data!['terms_of_service_hash']);
+            _termsOfServiceHashKey,
+            data!['terms_of_service_hash'],
+          );
         }
 
         debugPrint(
-            '✅ Согласия синхронизированы из Firestore: Privacy($privacyAccepted, $privacyVersion), Terms($termsAccepted, $termsVersion)');
+          '✅ Согласия синхронизированы из Firestore: Privacy($privacyAccepted, $privacyVersion), Terms($termsAccepted, $termsVersion)',
+        );
       } else {
         debugPrint(
-            '❌ Документ согласий не найден в Firestore для синхронизации');
+          '❌ Документ согласий не найден в Firestore для синхронизации',
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка при синхронизации согласий: $e');
@@ -968,12 +1021,14 @@ class UserConsentService {
       final consentLanguage = prefs.getString('consent_language');
 
       final currentPrivacyVersion = await getCurrentPrivacyPolicyVersion(
-          languageCode);
+        languageCode,
+      );
       final currentTermsVersion = await getCurrentTermsOfServiceVersion(
-          languageCode);
+        languageCode,
+      );
 
-      final isPrivacyVersionCurrent = savedPrivacyVersion ==
-          currentPrivacyVersion;
+      final isPrivacyVersionCurrent =
+          savedPrivacyVersion == currentPrivacyVersion;
       final isTermsVersionCurrent = savedTermsVersion == currentTermsVersion;
 
       DateTime? consentTimestamp;
@@ -1014,7 +1069,8 @@ class UserConsentService {
       for (int minor = 0; minor <= 20; minor++) {
         for (int patch = 0; patch <= 10; patch++) {
           final version = '$major.$minor.$patch';
-          final fileName = 'assets/privacy_policy/privacy_policy_${languageCode}_v$version.txt';
+          final fileName =
+              'assets/privacy_policy/privacy_policy_${languageCode}_v$version.txt';
 
           try {
             await rootBundle.loadString(fileName);
@@ -1028,9 +1084,9 @@ class UserConsentService {
           if (patch > 5 && versions.isEmpty) break;
         }
         // Если несколько minor версий подряд не найдены, переходим к следующему major
-        if (minor > 10 && versions
-            .where((v) => v.startsWith('$major.'))
-            .isEmpty) break;
+        if (minor > 10 &&
+            versions.where((v) => v.startsWith('$major.')).isEmpty)
+          break;
       }
     }
 
@@ -1047,7 +1103,8 @@ class UserConsentService {
       for (int minor = 0; minor <= 20; minor++) {
         for (int patch = 0; patch <= 10; patch++) {
           final version = '$major.$minor.$patch';
-          final fileName = 'assets/terms_of_service/terms_of_service_${languageCode}_v$version.txt';
+          final fileName =
+              'assets/terms_of_service/terms_of_service_${languageCode}_v$version.txt';
 
           try {
             await rootBundle.loadString(fileName);
@@ -1059,9 +1116,9 @@ class UserConsentService {
 
           if (patch > 5 && versions.isEmpty) break;
         }
-        if (minor > 10 && versions
-            .where((v) => v.startsWith('$major.'))
-            .isEmpty) break;
+        if (minor > 10 &&
+            versions.where((v) => v.startsWith('$major.')).isEmpty)
+          break;
       }
     }
 
@@ -1087,8 +1144,12 @@ class UserConsentService {
   }
 
   /// НОВЫЙ МЕТОД: Получает локализованное описание
-  String _getLocalizedDescription(String type, String version,
-      String languageCode, bool isCurrent) {
+  String _getLocalizedDescription(
+    String type,
+    String version,
+    String languageCode,
+    bool isCurrent,
+  ) {
     if (languageCode == 'ru') {
       if (type == 'privacy_policy') {
         return isCurrent
@@ -1114,39 +1175,53 @@ class UserConsentService {
   }
 
   /// ДОБАВЛЕНО: Получает историю версий политики конфиденциальности с локализацией
-  Future<List<DocumentVersion>> getPrivacyPolicyHistory(
-      [String? languageCode]) async {
+  Future<List<DocumentVersion>> getPrivacyPolicyHistory([
+    String? languageCode,
+  ]) async {
     languageCode ??= 'ru';
     List<DocumentVersion> history = [];
 
     try {
       // Добавляем текущую версию
       final currentVersion = await getCurrentPrivacyPolicyVersion(languageCode);
-      history.add(DocumentVersion(
-        version: currentVersion,
-        releaseDate: DateTime.now(),
-        documentType: 'privacy_policy',
-        language: languageCode,
-        description: _getLocalizedDescription(
-            'privacy_policy', currentVersion, languageCode, true),
-        hash: _cachedPrivacyPolicyHash?.substring(0, 8),
-        isCurrent: true,
-      ));
+      history.add(
+        DocumentVersion(
+          version: currentVersion,
+          releaseDate: DateTime.now(),
+          documentType: 'privacy_policy',
+          language: languageCode,
+          description: _getLocalizedDescription(
+            'privacy_policy',
+            currentVersion,
+            languageCode,
+            true,
+          ),
+          hash: _cachedPrivacyPolicyHash?.substring(0, 8),
+          isCurrent: true,
+        ),
+      );
 
       // Ищем архивные версии
       final archivedVersions = await _findArchivedPrivacyVersions(languageCode);
       for (final version in archivedVersions) {
-        if (version != currentVersion) { // Не дублируем текущую версию
-          history.add(DocumentVersion(
-            version: version,
-            releaseDate: DateTime.now(),
-            // В реальности можно парсить из файла
-            documentType: 'privacy_policy',
-            language: languageCode,
-            description: _getLocalizedDescription(
-                'privacy_policy', version, languageCode, false),
-            isCurrent: false,
-          ));
+        if (version != currentVersion) {
+          // Не дублируем текущую версию
+          history.add(
+            DocumentVersion(
+              version: version,
+              releaseDate: DateTime.now(),
+              // В реальности можно парсить из файла
+              documentType: 'privacy_policy',
+              language: languageCode,
+              description: _getLocalizedDescription(
+                'privacy_policy',
+                version,
+                languageCode,
+                false,
+              ),
+              isCurrent: false,
+            ),
+          );
         }
       }
     } catch (e) {
@@ -1157,40 +1232,55 @@ class UserConsentService {
   }
 
   /// ДОБАВЛЕНО: Получает историю версий пользовательского соглашения с локализацией
-  Future<List<DocumentVersion>> getTermsOfServiceHistory(
-      [String? languageCode]) async {
+  Future<List<DocumentVersion>> getTermsOfServiceHistory([
+    String? languageCode,
+  ]) async {
     languageCode ??= 'ru';
     List<DocumentVersion> history = [];
 
     try {
       // Добавляем текущую версию
       final currentVersion = await getCurrentTermsOfServiceVersion(
-          languageCode);
-      history.add(DocumentVersion(
-        version: currentVersion,
-        releaseDate: DateTime.now(),
-        documentType: 'terms_of_service',
-        language: languageCode,
-        description: _getLocalizedDescription(
-            'terms_of_service', currentVersion, languageCode, true),
-        hash: _cachedTermsOfServiceHash?.substring(0, 8),
-        isCurrent: true,
-      ));
+        languageCode,
+      );
+      history.add(
+        DocumentVersion(
+          version: currentVersion,
+          releaseDate: DateTime.now(),
+          documentType: 'terms_of_service',
+          language: languageCode,
+          description: _getLocalizedDescription(
+            'terms_of_service',
+            currentVersion,
+            languageCode,
+            true,
+          ),
+          hash: _cachedTermsOfServiceHash?.substring(0, 8),
+          isCurrent: true,
+        ),
+      );
 
       // Ищем архивные версии
       final archivedVersions = await _findArchivedTermsVersions(languageCode);
       for (final version in archivedVersions) {
-        if (version != currentVersion) { // Не дублируем текущую версию
-          history.add(DocumentVersion(
-            version: version,
-            releaseDate: DateTime.now(),
-            // В реальности можно парсить из файла
-            documentType: 'terms_of_service',
-            language: languageCode,
-            description: _getLocalizedDescription(
-                'terms_of_service', version, languageCode, false),
-            isCurrent: false,
-          ));
+        if (version != currentVersion) {
+          // Не дублируем текущую версию
+          history.add(
+            DocumentVersion(
+              version: version,
+              releaseDate: DateTime.now(),
+              // В реальности можно парсить из файла
+              documentType: 'terms_of_service',
+              language: languageCode,
+              description: _getLocalizedDescription(
+                'terms_of_service',
+                version,
+                languageCode,
+                false,
+              ),
+              isCurrent: false,
+            ),
+          );
         }
       }
     } catch (e) {
@@ -1201,8 +1291,9 @@ class UserConsentService {
   }
 
   /// Получает информацию о текущих версиях документов (обновленный)
-  Future<Map<String, dynamic>> getDocumentVersionsInfo(
-      [String? languageCode]) async {
+  Future<Map<String, dynamic>> getDocumentVersionsInfo([
+    String? languageCode,
+  ]) async {
     languageCode ??= 'ru';
 
     try {

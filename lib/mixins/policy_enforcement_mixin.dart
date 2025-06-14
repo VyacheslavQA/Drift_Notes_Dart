@@ -24,7 +24,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       // Получаем текущие ограничения
       _currentRestrictions = await _consentService.getConsentRestrictions();
 
-      if (_currentRestrictions!.hasRestrictions) {
+      if (_currentRestrictions != null && _currentRestrictions!.hasRestrictions) {
         debugPrint('⚠️ Действуют ограничения: ${_currentRestrictions!.level}');
         _showRestrictionBanner();
       }
@@ -41,8 +41,8 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => false, // Запрещаем закрытие диалога
+        return PopScope(
+          canPop: false, // Заменяем deprecated WillPopScope
           child: UserAgreementsDialog(
             onAgreementsAccepted: () {
               debugPrint('✅ Политика принята пользователем');
@@ -65,7 +65,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
 
     _currentRestrictions = await _consentService.getConsentRestrictions();
 
-    if (_currentRestrictions!.hasRestrictions) {
+    if (_currentRestrictions != null && _currentRestrictions!.hasRestrictions) {
       _showRestrictionBanner();
     }
 
@@ -115,7 +115,9 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    localizations.translate('policy_restrictions_title') ?? 'Ограничения доступа',
+                    localizations.translate('policy_restrictions_title') != null
+                        ? localizations.translate('policy_restrictions_title')!
+                        : 'Ограничения доступа',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -133,7 +135,9 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
         backgroundColor: bannerColor,
         duration: const Duration(seconds: 5),
         action: SnackBarAction(
-          label: localizations.translate('accept_policy') ?? 'Принять политику',
+          label: localizations.translate('accept_policy') != null
+              ? localizations.translate('accept_policy')!
+              : 'Принять политику',
           textColor: Colors.white,
           onPressed: () => _showMandatoryPolicyDialog(),
         ),
@@ -144,7 +148,10 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   /// Проверяет возможность выполнения действия
   bool canPerformAction(String action) {
     if (_currentRestrictions == null) return true;
-    return _consentService.canPerformAction(action, _currentRestrictions!.level);
+    return _consentService.canPerformAction(
+      action,
+      _currentRestrictions!.level,
+    );
   }
 
   /// Показывает сообщение о блокировке действия
@@ -156,20 +163,24 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
 
     switch (action) {
       case 'create_note':
-        message = localizations.translate('create_note_blocked') ??
-            'Создание заметок заблокировано. Примите политику конфиденциальности.';
+        message = localizations.translate('create_note_blocked') != null
+            ? localizations.translate('create_note_blocked')!
+            : 'Создание заметок заблокировано. Примите политику конфиденциальности.';
         break;
       case 'create_map':
-        message = localizations.translate('create_map_blocked') ??
-            'Создание карт заблокировано. Примите политику конфиденциальности.';
+        message = localizations.translate('create_map_blocked') != null
+            ? localizations.translate('create_map_blocked')!
+            : 'Создание карт заблокировано. Примите политику конфиденциальности.';
         break;
       case 'edit_profile':
-        message = localizations.translate('edit_profile_blocked') ??
-            'Редактирование профиля заблокировано. Примите политику конфиденциальности.';
+        message = localizations.translate('edit_profile_blocked') != null
+            ? localizations.translate('edit_profile_blocked')!
+            : 'Редактирование профиля заблокировано. Примите политику конфиденциальности.';
         break;
       default:
-        message = localizations.translate('action_blocked') ??
-            'Действие заблокировано. Примите политику конфиденциальности.';
+        message = localizations.translate('action_blocked') != null
+            ? localizations.translate('action_blocked')!
+            : 'Действие заблокировано. Примите политику конфиденциальности.';
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -177,7 +188,9 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
         content: Text(message),
         backgroundColor: Colors.red,
         action: SnackBarAction(
-          label: localizations.translate('accept_policy') ?? 'Принять политику',
+          label: localizations.translate('accept_policy') != null
+              ? localizations.translate('accept_policy')!
+              : 'Принять политику',
           textColor: Colors.white,
           onPressed: () => _showMandatoryPolicyDialog(),
         ),
@@ -186,7 +199,10 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   }
 
   /// Безопасное выполнение действия с проверкой ограничений
-  Future<bool> safePerformAction(String action, Future<void> Function() actionCallback) async {
+  Future<bool> safePerformAction(
+      String action,
+      Future<void> Function() actionCallback,
+      ) async {
     if (!canPerformAction(action)) {
       showActionBlockedMessage(action);
       return false;
@@ -227,14 +243,12 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.lock,
-            size: 48,
-            color: Colors.red[700],
-          ),
+          Icon(Icons.lock, size: 48, color: Colors.red[700]),
           const SizedBox(height: 8),
           Text(
-            localizations.translate('content_blocked') ?? 'Контент заблокирован',
+            localizations.translate('content_blocked') != null
+                ? localizations.translate('content_blocked')!
+                : 'Контент заблокирован',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -244,12 +258,10 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
           ),
           const SizedBox(height: 4),
           Text(
-            localizations.translate('accept_policy_to_unlock') ??
-                'Примите политику конфиденциальности для разблокировки',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.red[600],
-            ),
+            localizations.translate('accept_policy_to_unlock') != null
+                ? localizations.translate('accept_policy_to_unlock')!
+                : 'Примите политику конфиденциальности для разблокировки',
+            style: TextStyle(fontSize: 14, color: Colors.red[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -259,7 +271,9 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
               backgroundColor: AppConstants.primaryColor,
             ),
             child: Text(
-              localizations.translate('accept_policy') ?? 'Принять политику',
+              localizations.translate('accept_policy') != null
+                  ? localizations.translate('accept_policy')!
+                  : 'Принять политику',
               style: const TextStyle(color: Colors.white),
             ),
           ),
@@ -272,11 +286,14 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   ConsentRestrictionResult? get currentRestrictions => _currentRestrictions;
 
   /// Есть ли активные ограничения
-  bool get hasActiveRestrictions => _currentRestrictions?.hasRestrictions ?? false;
+  bool get hasActiveRestrictions =>
+      _currentRestrictions != null && _currentRestrictions!.hasRestrictions;
 
   /// Может ли пользователь создавать контент
-  bool get canCreateContent => _currentRestrictions?.canCreateContent ?? true;
+  bool get canCreateContent =>
+      _currentRestrictions != null ? _currentRestrictions!.canCreateContent : true;
 
   /// Может ли пользователь редактировать профиль
-  bool get canEditProfile => _currentRestrictions?.canEditProfile ?? true;
+  bool get canEditProfile =>
+      _currentRestrictions != null ? _currentRestrictions!.canEditProfile : true;
 }

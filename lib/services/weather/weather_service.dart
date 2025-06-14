@@ -18,8 +18,11 @@ class WeatherService {
   WeatherService([this._context]);
 
   // Получает данные о погоде для указанных координат используя WeatherAPI
-  Future<FishingWeather?> getWeatherForLocation(double latitude,
-      double longitude, [BuildContext? context]) async {
+  Future<FishingWeather?> getWeatherForLocation(
+    double latitude,
+    double longitude, [
+    BuildContext? context,
+  ]) async {
     if (context != null) _context = context;
 
     try {
@@ -33,7 +36,9 @@ class WeatherService {
       // Конвертируем в FishingWeather для совместимости
       return WeatherApiService.convertToFishingWeather(weatherData);
     } catch (e) {
-      debugPrint('⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e');
+      debugPrint(
+        '⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e',
+      );
 
       try {
         // Если прогноз не работает, используем текущую погоду
@@ -45,22 +50,29 @@ class WeatherService {
         return WeatherApiService.convertToFishingWeather(weatherData);
       } catch (e2) {
         // Если новый API не работает совсем, используем старый Open-Meteo как fallback
-        debugPrint('⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2');
+        debugPrint(
+          '⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2',
+        );
         return _getWeatherFromOpenMeteo(latitude, longitude);
       }
     }
   }
 
   // Fallback метод для Open-Meteo API (оригинальный код)
-  Future<FishingWeather?> _getWeatherFromOpenMeteo(double latitude, double longitude) async {
+  Future<FishingWeather?> _getWeatherFromOpenMeteo(
+    double latitude,
+    double longitude,
+  ) async {
     try {
-      final response = await http.get(Uri.parse(
+      final response = await http.get(
+        Uri.parse(
           '$_baseUrl?latitude=$latitude&longitude=$longitude'
-              '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
-              'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
-              '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
-              '&timezone=auto'
-      ));
+          '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
+          'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
+          '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
+          '&timezone=auto',
+        ),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -112,16 +124,19 @@ class WeatherService {
       final temperature = (current['temperature_2m'] ?? 0.0).toInt();
       final feelsLike = (current['apparent_temperature'] ?? 0.0).toInt();
       final windDirection = _getWindDirection(
-          current['wind_direction_10m'] ?? 0);
+        current['wind_direction_10m'] ?? 0,
+      );
       final windSpeed = current['wind_speed_10m'] ?? 0.0;
       final humidity = current['relative_humidity_2m'] ?? 0;
-      final pressure = current['pressure_msl'] != null
-          ? (current['pressure_msl'] / 1.333).toInt()
-          : 0;
+      final pressure =
+          current['pressure_msl'] != null
+              ? (current['pressure_msl'] / 1.333).toInt()
+              : 0;
       final cloudCover = current['cloud_cover'] ?? 0;
 
       // Формируем описание в зависимости от языка
-      if (_context != null && AppLocalizations.of(_context!).locale.languageCode == 'en') {
+      if (_context != null &&
+          AppLocalizations.of(_context!).locale.languageCode == 'en') {
         return '$weatherDesc, $temperature°C, feels like $feelsLike°C\n'
             'Wind: $windDirection, $windSpeed m/s\n'
             'Humidity: $humidity%, Pressure: $pressure mmHg\n'
@@ -133,7 +148,8 @@ class WeatherService {
           'Влажность: $humidity%, Давление: $pressure мм рт.ст.\n'
           'Облачность: $cloudCover%';
     } catch (e) {
-      return _context != null && AppLocalizations.of(_context!).locale.languageCode == 'en'
+      return _context != null &&
+              AppLocalizations.of(_context!).locale.languageCode == 'en'
           ? 'Error generating weather description'
           : 'Ошибка при формировании описания погоды';
     }
@@ -242,14 +258,22 @@ class WeatherService {
   String _getWindDirection(int degrees) {
     if (_context != null) {
       final localizations = AppLocalizations.of(_context!);
-      if (degrees >= 337.5 || degrees < 22.5) return localizations.translate('wind_n');
-      if (degrees >= 22.5 && degrees < 67.5) return localizations.translate('wind_ne');
-      if (degrees >= 67.5 && degrees < 112.5) return localizations.translate('wind_e');
-      if (degrees >= 112.5 && degrees < 157.5) return localizations.translate('wind_se');
-      if (degrees >= 157.5 && degrees < 202.5) return localizations.translate('wind_s');
-      if (degrees >= 202.5 && degrees < 247.5) return localizations.translate('wind_sw');
-      if (degrees >= 247.5 && degrees < 292.5) return localizations.translate('wind_w');
-      if (degrees >= 292.5 && degrees < 337.5) return localizations.translate('wind_nw');
+      if (degrees >= 337.5 || degrees < 22.5)
+        return localizations.translate('wind_n');
+      if (degrees >= 22.5 && degrees < 67.5)
+        return localizations.translate('wind_ne');
+      if (degrees >= 67.5 && degrees < 112.5)
+        return localizations.translate('wind_e');
+      if (degrees >= 112.5 && degrees < 157.5)
+        return localizations.translate('wind_se');
+      if (degrees >= 157.5 && degrees < 202.5)
+        return localizations.translate('wind_s');
+      if (degrees >= 202.5 && degrees < 247.5)
+        return localizations.translate('wind_sw');
+      if (degrees >= 247.5 && degrees < 292.5)
+        return localizations.translate('wind_w');
+      if (degrees >= 292.5 && degrees < 337.5)
+        return localizations.translate('wind_nw');
       return localizations.translate('unknown_direction');
     }
 

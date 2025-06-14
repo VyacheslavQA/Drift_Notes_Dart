@@ -8,21 +8,18 @@ import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
 import '../../services/auth/google_auth_with_agreements.dart'; // ПРАВИЛЬНО
 
-
 class AuthSelectionScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
 
-  const AuthSelectionScreen({
-    super.key,
-    this.onAuthSuccess,
-  });
+  const AuthSelectionScreen({super.key, this.onAuthSuccess});
 
   @override
   State<AuthSelectionScreen> createState() => _AuthSelectionScreenState();
 }
 
 class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
-  final GoogleAuthWithAgreements _googleAuthWithAgreements = GoogleAuthWithAgreements(); // ИЗМЕНИТЬ эту строку
+  final GoogleAuthWithAgreements _googleAuthWithAgreements =
+      GoogleAuthWithAgreements(); // ИЗМЕНИТЬ эту строку
   bool _isGoogleLoading = false;
 
   @override
@@ -63,7 +60,8 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
               // ИЗМЕНЕНО: Оборачиваем основной контент в Expanded и центрируем
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center, // Центрируем содержимое
+                  mainAxisAlignment:
+                      MainAxisAlignment.center, // Центрируем содержимое
                   children: [
                     // Логотип приложения
                     SizedBox(
@@ -96,7 +94,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                     Text(
                       'Drift Notes',
                       style: TextStyle(
-                        fontSize: 36 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            36 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         fontWeight: FontWeight.bold,
                         color: AppConstants.textColor,
                       ),
@@ -107,7 +109,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                     Text(
                       localizations.translate('select_login_method'),
                       style: TextStyle(
-                        fontSize: 24 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            24 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -119,7 +125,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                       localizations.translate('select_convenient_login_method'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        fontSize:
+                            16 *
+                            (textScaler.scale(1.0) > 1.2
+                                ? 1.2 / textScaler.scale(1.0)
+                                : 1),
                         color: Colors.white70,
                       ),
                     ),
@@ -135,7 +145,10 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => LoginScreen(onAuthSuccess: widget.onAuthSuccess),
+                            builder:
+                                (context) => LoginScreen(
+                                  onAuthSuccess: widget.onAuthSuccess,
+                                ),
                           ),
                         );
                       },
@@ -146,31 +159,38 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                     SizedBox(
                       width: double.infinity, // Занимает всю ширину
                       child: ElevatedButton.icon(
-                        icon: _isGoogleLoading
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
-                          ),
-                        )
-                            : Image.asset(
-                          'assets/images/google_logo.png',
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Если изображение не найдено, показываем иконку
-                            return const Icon(
-                              Icons.account_circle,
-                              size: 24,
-                              color: Colors.black87,
-                            );
-                          },
-                        ),
+                        icon:
+                            _isGoogleLoading
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.black87,
+                                    ),
+                                  ),
+                                )
+                                : Image.asset(
+                                  'assets/images/google_logo.png',
+                                  height: 24,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    // Если изображение не найдено, показываем иконку
+                                    return const Icon(
+                                      Icons.account_circle,
+                                      size: 24,
+                                      color: Colors.black87,
+                                    );
+                                  },
+                                ),
                         label: Text(
                           localizations.translate('login_with_google'),
                           style: TextStyle(
-                            fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                            fontSize:
+                                16 *
+                                (textScaler.scale(1.0) > 1.2
+                                    ? 1.2 / textScaler.scale(1.0)
+                                    : 1),
                             color: Colors.black87,
                             fontWeight: FontWeight.bold,
                           ),
@@ -196,7 +216,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                       onPressed: () {
                         // Можно реализовать вход по телефону
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(localizations.translate('phone_login_later'))),
+                          SnackBar(
+                            content: Text(
+                              localizations.translate('phone_login_later'),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -209,7 +233,10 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => RegisterScreen(onAuthSuccess: widget.onAuthSuccess),
+                            builder:
+                                (context) => RegisterScreen(
+                                  onAuthSuccess: widget.onAuthSuccess,
+                                ),
                           ),
                         );
                       },
@@ -217,7 +244,11 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
                         localizations.translate('no_account_register'),
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                          fontSize:
+                              16 *
+                              (textScaler.scale(1.0) > 1.2
+                                  ? 1.2 / textScaler.scale(1.0)
+                                  : 1),
                         ),
                       ),
                     ),
@@ -239,16 +270,16 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
 
     try {
       // ЗАМЕНИТЬ этот вызов:
-      final userCredential = await _googleAuthWithAgreements.signInWithGoogleAndCheckAgreements(
-        context,
-        onAuthSuccess: widget.onAuthSuccess,
-      );
+      final userCredential = await _googleAuthWithAgreements
+          .signInWithGoogleAndCheckAgreements(
+            context,
+            onAuthSuccess: widget.onAuthSuccess,
+          );
 
       // Проверка результата уже обработана внутри сервиса
       if (userCredential == null && mounted) {
         debugPrint('❌ Google авторизация не завершена');
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка входа через Google: $e');
       // Ошибка уже обработана в GoogleAuthWithAgreements
@@ -277,7 +308,9 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
         label: Text(
           text,
           style: TextStyle(
-            fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+            fontSize:
+                16 *
+                (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),

@@ -41,11 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   List<FishingNoteModel> _fishingNotes = [];
-  bool _hasNewNotifications = true; // Временно устанавливаем в true для демонстрации
+  bool _hasNewNotifications =
+      true; // Временно устанавливаем в true для демонстрации
 
   // ДОБАВЛЕНО: Переменные для системы принудительного принятия политики
   ConsentRestrictionResult? _policyRestrictions;
-  bool _hasPolicyBeenChecked = false; // Флаг для предотвращения повторных проверок
+  bool _hasPolicyBeenChecked =
+      false; // Флаг для предотвращения повторных проверок
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
@@ -84,7 +86,9 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('⚠️ Локализация недоступна, используем русский язык');
       }
 
-      final consentResult = await UserConsentService().checkUserConsents(languageCode);
+      final consentResult = await UserConsentService().checkUserConsents(
+        languageCode,
+      );
 
       if (!consentResult.allValid) {
         debugPrint('🚫 Политика не принята - показываем принудительный диалог');
@@ -94,7 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       // Получаем текущие ограничения с правильным языком
-      _policyRestrictions = await UserConsentService().getConsentRestrictions(languageCode);
+      _policyRestrictions = await UserConsentService().getConsentRestrictions(
+        languageCode,
+      );
 
       if (mounted && _policyRestrictions!.hasRestrictions) {
         debugPrint('⚠️ Действуют ограничения: ${_policyRestrictions!.level}');
@@ -145,7 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('⚠️ Локализация недоступна при обновлении статуса');
     }
 
-    _policyRestrictions = await UserConsentService().getConsentRestrictions(languageCode);
+    _policyRestrictions = await UserConsentService().getConsentRestrictions(
+      languageCode,
+    );
 
     if (mounted && _policyRestrictions!.hasRestrictions) {
       _showPolicyRestrictionBanner();
@@ -202,7 +210,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        localizations.translate('policy_restrictions_title') ?? 'Ограничения доступа',
+                        localizations.translate('policy_restrictions_title') ??
+                            'Ограничения доступа',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -220,7 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: bannerColor,
             duration: const Duration(seconds: 8),
             action: SnackBarAction(
-              label: localizations.translate('accept_policy') ?? 'Принять политику',
+              label:
+                  localizations.translate('accept_policy') ??
+                  'Принять политику',
               textColor: Colors.white,
               onPressed: () => _showPolicyUpdateDialog(),
             ),
@@ -239,8 +250,8 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            localizations.translate('create_note_blocked') ??
-                'Создание заметок заблокировано. Примите политику конфиденциальности.'
+          localizations.translate('create_note_blocked') ??
+              'Создание заметок заблокировано. Примите политику конфиденциальности.',
         ),
         backgroundColor: Colors.red,
         action: SnackBarAction(
@@ -264,8 +275,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-              '${localizations.translate('loading_error')}: ${e.toString()}')),
+          SnackBar(
+            content: Text(
+              '${localizations.translate('loading_error')}: ${e.toString()}',
+            ),
+          ),
         );
       }
     }
@@ -279,7 +293,8 @@ class _HomeScreenState extends State<HomeScreen> {
           final localizations = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(localizations.translate('failed_to_open_link'))),
+              content: Text(localizations.translate('failed_to_open_link')),
+            ),
           );
         }
       }
@@ -287,9 +302,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-              '${localizations.translate('link_open_error')}: ${e
-                  .toString()}')),
+          SnackBar(
+            content: Text(
+              '${localizations.translate('link_open_error')}: ${e.toString()}',
+            ),
+          ),
         );
       }
     }
@@ -322,7 +339,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => const FishingCalendarScreen()),
+            builder: (context) => const FishingCalendarScreen(),
+          ),
         );
         break;
       case 4: // Карта
@@ -342,9 +360,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => const FishingTypeSelectionScreen())
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FishingTypeSelectionScreen(),
+      ),
     ).then((value) {
       if (value == true) {
         _loadFishingNotes();
@@ -403,14 +422,20 @@ class _HomeScreenState extends State<HomeScreen> {
     Set<DateTime> uniqueFishingDays = {};
     for (var note in notes) {
       DateTime startDate = DateTime(
-          note.date.year, note.date.month, note.date.day);
-      DateTime endDate = note.endDate != null
-          ? DateTime(note.endDate!.year, note.endDate!.month, note.endDate!.day)
-          : startDate;
+        note.date.year,
+        note.date.month,
+        note.date.day,
+      );
+      DateTime endDate =
+          note.endDate != null
+              ? DateTime(
+                note.endDate!.year,
+                note.endDate!.month,
+                note.endDate!.day,
+              )
+              : startDate;
 
-      for (int i = 0; i <= endDate
-          .difference(startDate)
-          .inDays; i++) {
+      for (int i = 0; i <= endDate.difference(startDate).inDays; i++) {
         uniqueFishingDays.add(startDate.add(Duration(days: i)));
       }
     }
@@ -440,7 +465,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String biggestFishLocation = '';
     for (var note in notes) {
       for (var record in note.biteRecords) {
-        if (record.fishType.isNotEmpty && record.weight > 0 &&
+        if (record.fishType.isNotEmpty &&
+            record.weight > 0 &&
             (biggestFish == null || record.weight > biggestFish.weight)) {
           biggestFish = record;
           biggestFishLocation = note.location;
@@ -459,8 +485,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 7. Лучший месяц по количеству рыбы - ИЗМЕНЕНО
     Map<String, int> fishByMonth = {};
-    Map<String, Map<String, int>> monthDetails = {
-    }; // Для хранения номера месяца и года
+    Map<String, Map<String, int>> monthDetails =
+        {}; // Для хранения номера месяца и года
 
     for (var note in notes) {
       for (var record in note.biteRecords) {
@@ -473,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (!monthDetails.containsKey(monthKey)) {
             monthDetails[monthKey] = {
               'month': record.time.month,
-              'year': record.time.year
+              'year': record.time.year,
             };
           }
         }
@@ -531,8 +557,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.newspaper_outlined,
                   // Более интересная иконка газеты
                   label: localizations.translate('news'),
-                  onTap: () =>
-                      _showComingSoonMessage(localizations.translate('news')),
+                  onTap:
+                      () => _showComingSoonMessage(
+                        localizations.translate('news'),
+                      ),
                 ),
               ),
             ),
@@ -546,9 +574,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildQuickActionItem(
                   icon: Icons.menu_book_outlined, // Красивая книга с закладкой
                   label: localizations.translate('articles'),
-                  onTap: () =>
-                      _showComingSoonMessage(
-                          localizations.translate('articles')),
+                  onTap:
+                      () => _showComingSoonMessage(
+                        localizations.translate('articles'),
+                      ),
                 ),
               ),
             ),
@@ -556,7 +585,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
 
         const SizedBox(height: 12), // Отступ между строками
-
         // Вторая строка
         Row(
           children: [
@@ -572,7 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const ShopsScreen()),
+                        builder: (context) => const ShopsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -593,7 +622,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const TournamentsScreen()),
+                        builder: (context) => const TournamentsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -660,9 +690,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Фильтруем только прошедшие и текущие заметки
     final now = DateTime.now();
-    final validNotes = _fishingNotes.where((note) =>
-    note.date.isBefore(now) || note.date.isAtSameMomentAs(now)
-    ).toList();
+    final validNotes =
+        _fishingNotes
+            .where(
+              (note) =>
+                  note.date.isBefore(now) || note.date.isAtSameMomentAs(now),
+            )
+            .toList();
 
     // Расчет статистики
     final stats = _calculateStatistics(validNotes);
@@ -678,10 +712,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildStatCard(
             icon: Icons.emoji_events,
             title: localizations.translate('biggest_fish'),
-            value: '${stats['biggestFish'].weight} ${localizations.translate(
-                'kg')}',
-            subtitle: '${stats['biggestFish'].fishType}, ${DateFormatter
-                .formatDate(stats['biggestFish'].time, context)}',
+            value:
+                '${stats['biggestFish'].weight} ${localizations.translate('kg')}',
+            subtitle:
+                '${stats['biggestFish'].fishType}, ${DateFormatter.formatDate(stats['biggestFish'].time, context)}',
             valueColor: Colors.amber,
           ),
 
@@ -725,8 +759,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildStatCard(
           icon: Icons.scale,
           title: localizations.translate('total_catch_weight'),
-          value: '${stats['totalWeight'].toStringAsFixed(1)} ${localizations
-              .translate('kg')}',
+          value:
+              '${stats['totalWeight'].toStringAsFixed(1)} ${localizations.translate('kg')}',
           subtitle: localizations.translate('total_weight_caught_fish'),
           valueColor: Colors.green,
         ),
@@ -739,7 +773,9 @@ class _HomeScreenState extends State<HomeScreen> {
           title: localizations.translate('total_fishing_trips'),
           value: stats['totalTrips'].toString(),
           subtitle: DateFormatter.getFishingTripsText(
-              stats['totalTrips'], context),
+            stats['totalTrips'],
+            context,
+          ),
         ),
 
         const SizedBox(height: 16),
@@ -769,9 +805,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildStatCard(
             icon: Icons.directions_car,
             title: localizations.translate('last_trip'),
-            value: stats['lastTrip'].title.isNotEmpty
-                ? '«${stats['lastTrip'].title}»'
-                : stats['lastTrip'].location,
+            value:
+                stats['lastTrip'].title.isNotEmpty
+                    ? '«${stats['lastTrip'].title}»'
+                    : stats['lastTrip'].location,
             subtitle: DateFormatter.formatDate(stats['lastTrip'].date, context),
           ),
 
@@ -782,10 +819,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildStatCard(
             icon: Icons.star,
             title: localizations.translate('best_month'),
-            value: '${DateFormatter.getMonthInNominative(
-                stats['bestMonthNumber'], context)} ${stats['bestYear']}',
-            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(
-                stats['bestMonthFish'], context)}',
+            value:
+                '${DateFormatter.getMonthInNominative(stats['bestMonthNumber'], context)} ${stats['bestYear']}',
+            subtitle:
+                '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'], context)}',
             valueColor: Colors.amber,
           ),
       ],
@@ -809,22 +846,30 @@ class _HomeScreenState extends State<HomeScreen> {
       case ConsentRestrictionLevel.soft:
         cardColor = Colors.orange;
         cardIcon = Icons.warning_amber;
-        title = localizations.translate('soft_restrictions_title') ?? 'Мягкие ограничения';
+        title =
+            localizations.translate('soft_restrictions_title') ??
+            'Мягкие ограничения';
         break;
       case ConsentRestrictionLevel.hard:
         cardColor = Colors.red;
         cardIcon = Icons.warning;
-        title = localizations.translate('hard_restrictions_title') ?? 'Жесткие ограничения';
+        title =
+            localizations.translate('hard_restrictions_title') ??
+            'Жесткие ограничения';
         break;
       case ConsentRestrictionLevel.final_:
         cardColor = Colors.red[800]!;
         cardIcon = Icons.error;
-        title = localizations.translate('final_warning_title') ?? 'Финальное предупреждение';
+        title =
+            localizations.translate('final_warning_title') ??
+            'Финальное предупреждение';
         break;
       case ConsentRestrictionLevel.deletion:
         cardColor = Colors.red[900]!;
         cardIcon = Icons.delete_forever;
-        title = localizations.translate('deletion_warning_title') ?? 'Запланировано удаление';
+        title =
+            localizations.translate('deletion_warning_title') ??
+            'Запланировано удаление';
         break;
       default:
         return const SizedBox.shrink();
@@ -848,11 +893,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: cardColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  cardIcon,
-                  color: cardColor,
-                  size: 24,
-                ),
+                child: Icon(cardIcon, color: cardColor, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -934,7 +975,10 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           leading: IconButton(
             icon: Icon(
-                Icons.menu_rounded, color: AppConstants.textColor, size: 26),
+              Icons.menu_rounded,
+              color: AppConstants.textColor,
+              size: 26,
+            ),
             onPressed: () {
               _scaffoldKey.currentState?.openDrawer();
             },
@@ -944,9 +988,11 @@ class _HomeScreenState extends State<HomeScreen> {
               alignment: Alignment.center,
               children: [
                 IconButton(
-                  icon: Icon(Icons.notifications_rounded,
-                      color: AppConstants.textColor,
-                      size: 26),
+                  icon: Icon(
+                    Icons.notifications_rounded,
+                    color: AppConstants.textColor,
+                    size: 26,
+                  ),
                   onPressed: _navigateToNotifications,
                 ),
                 if (_hasNewNotifications)
@@ -1029,8 +1075,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final localizations = AppLocalizations.of(context);
 
     return GestureDetector(
-      onTap: () =>
-          _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
+      onTap:
+          () =>
+              _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
       child: Container(
         height: 180,
         decoration: BoxDecoration(
@@ -1153,7 +1200,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        padding: const EdgeInsets.only(bottom: 60), // Добавляем отступ снизу для системных кнопок
+        padding: const EdgeInsets.only(
+          bottom: 60,
+        ), // Добавляем отступ снизу для системных кнопок
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {
@@ -1161,9 +1210,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.zero,
               children: [
                 Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0A1F1C),
-                  ),
+                  decoration: const BoxDecoration(color: Color(0xFF0A1F1C)),
                   child: SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -1216,12 +1263,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              localizations.translate('edit_profile_blocked') ??
-                                  'Редактирование профиля заблокировано. Примите политику конфиденциальности.'
+                            localizations.translate('edit_profile_blocked') ??
+                                'Редактирование профиля заблокировано. Примите политику конфиденциальности.',
                           ),
                           backgroundColor: Colors.red,
                           action: SnackBarAction(
-                            label: localizations.translate('accept_policy') ?? 'Принять политику',
+                            label:
+                                localizations.translate('accept_policy') ??
+                                'Принять политику',
                             textColor: Colors.white,
                             onPressed: () => _showPolicyUpdateDialog(),
                           ),
@@ -1261,7 +1310,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const FishingNotesListScreen()),
+                        builder: (context) => const FishingNotesListScreen(),
+                      ),
                     ).then((value) {
                       if (value == true) {
                         _loadFishingNotes();
@@ -1278,7 +1328,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const TimersScreen()),
+                        builder: (context) => const TimersScreen(),
+                      ),
                     );
                   },
                 ),
@@ -1291,7 +1342,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const FishingCalendarScreen()),
+                        builder: (context) => const FishingCalendarScreen(),
+                      ),
                     );
                   },
                 ),
@@ -1377,17 +1429,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(
-        icon,
-        color: AppConstants.textColor,
-        size: 22,
-      ),
+      leading: Icon(icon, color: AppConstants.textColor, size: 22),
       title: Text(
         title,
-        style: TextStyle(
-          color: AppConstants.textColor,
-          fontSize: 16,
-        ),
+        style: TextStyle(color: AppConstants.textColor, fontSize: 16),
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1396,10 +1441,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
-    final bottomPadding = MediaQuery
-        .of(context)
-        .padding
-        .bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return SizedBox(
       height: 90 + bottomPadding,
@@ -1440,9 +1482,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Icon(
                               Icons.timelapse_rounded,
-                              color: _selectedIndex == 0
-                                  ? AppConstants.textColor
-                                  : Colors.white54,
+                              color:
+                                  _selectedIndex == 0
+                                      ? AppConstants.textColor
+                                      : Colors.white54,
                               size: 26,
                             ),
                             const SizedBox(height: 4),
@@ -1450,9 +1493,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               localizations.translate('timer'),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: _selectedIndex == 0
-                                    ? AppConstants.textColor
-                                    : Colors.white54,
+                                color:
+                                    _selectedIndex == 0
+                                        ? AppConstants.textColor
+                                        : Colors.white54,
                               ),
                             ),
                           ],
@@ -1469,9 +1513,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Icon(
                               Icons.cloud_queue_rounded,
-                              color: _selectedIndex == 1
-                                  ? AppConstants.textColor
-                                  : Colors.white54,
+                              color:
+                                  _selectedIndex == 1
+                                      ? AppConstants.textColor
+                                      : Colors.white54,
                               size: 26,
                             ),
                             const SizedBox(height: 4),
@@ -1479,9 +1524,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               localizations.translate('weather'),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: _selectedIndex == 1
-                                    ? AppConstants.textColor
-                                    : Colors.white54,
+                                color:
+                                    _selectedIndex == 1
+                                        ? AppConstants.textColor
+                                        : Colors.white54,
                               ),
                             ),
                           ],
@@ -1501,9 +1547,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Icon(
                               Icons.event_note_rounded,
-                              color: _selectedIndex == 3
-                                  ? AppConstants.textColor
-                                  : Colors.white54,
+                              color:
+                                  _selectedIndex == 3
+                                      ? AppConstants.textColor
+                                      : Colors.white54,
                               size: 26,
                             ),
                             const SizedBox(height: 4),
@@ -1511,9 +1558,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               localizations.translate('calendar'),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: _selectedIndex == 3
-                                    ? AppConstants.textColor
-                                    : Colors.white54,
+                                color:
+                                    _selectedIndex == 3
+                                        ? AppConstants.textColor
+                                        : Colors.white54,
                               ),
                             ),
                           ],
@@ -1530,9 +1578,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Icon(
                               Icons.explore_rounded,
-                              color: _selectedIndex == 4
-                                  ? AppConstants.textColor
-                                  : Colors.white54,
+                              color:
+                                  _selectedIndex == 4
+                                      ? AppConstants.textColor
+                                      : Colors.white54,
                               size: 26,
                             ),
                             const SizedBox(height: 4),
@@ -1540,9 +1589,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               localizations.translate('map'),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: _selectedIndex == 4
-                                    ? AppConstants.textColor
-                                    : Colors.white54,
+                                color:
+                                    _selectedIndex == 4
+                                        ? AppConstants.textColor
+                                        : Colors.white54,
                               ),
                             ),
                           ],

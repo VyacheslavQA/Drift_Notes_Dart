@@ -26,17 +26,21 @@ class BiteForecastModel {
       overallActivity: (json['overallActivity'] ?? 0.0).toDouble(),
       scorePoints: json['scorePoints'] ?? 0,
       level: BiteForecastLevel.values.firstWhere(
-            (e) => e.toString() == json['level'],
+        (e) => e.toString() == json['level'],
         orElse: () => BiteForecastLevel.poor,
       ),
       recommendation: json['recommendation'] ?? '',
       tips: List<String>.from(json['tips'] ?? []),
-      factors: (json['factors'] as Map<String, dynamic>? ?? {})
-          .map((key, value) => MapEntry(key, BiteFactor.fromJson(value))),
-      bestTimeWindows: (json['bestTimeWindows'] as List<dynamic>? ?? [])
-          .map((item) => OptimalTimeWindow.fromJson(item))
-          .toList(),
-      calculatedAt: DateTime.parse(json['calculatedAt'] ?? DateTime.now().toIso8601String()),
+      factors: (json['factors'] as Map<String, dynamic>? ?? {}).map(
+        (key, value) => MapEntry(key, BiteFactor.fromJson(value)),
+      ),
+      bestTimeWindows:
+          (json['bestTimeWindows'] as List<dynamic>? ?? [])
+              .map((item) => OptimalTimeWindow.fromJson(item))
+              .toList(),
+      calculatedAt: DateTime.parse(
+        json['calculatedAt'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -48,7 +52,8 @@ class BiteForecastModel {
       'recommendation': recommendation,
       'tips': tips,
       'factors': factors.map((key, value) => MapEntry(key, value.toJson())),
-      'bestTimeWindows': bestTimeWindows.map((window) => window.toJson()).toList(),
+      'bestTimeWindows':
+          bestTimeWindows.map((window) => window.toJson()).toList(),
       'calculatedAt': calculatedAt.toIso8601String(),
     };
   }
@@ -56,10 +61,10 @@ class BiteForecastModel {
 
 enum BiteForecastLevel {
   excellent, // 80-100
-  good,      // 60-79
-  moderate,  // 40-59
-  poor,      // 20-39
-  veryPoor   // 0-19
+  good, // 60-79
+  moderate, // 40-59
+  poor, // 20-39
+  veryPoor, // 0-19
 }
 
 class BiteFactor {
@@ -83,7 +88,7 @@ class BiteFactor {
       value: (json['value'] ?? 0.0).toDouble(),
       weight: (json['weight'] ?? 0.0).toDouble(),
       impact: FactorImpact.values.firstWhere(
-            (e) => e.toString() == json['impact'],
+        (e) => e.toString() == json['impact'],
         orElse: () => FactorImpact.neutral,
       ),
       description: json['description'] ?? '',
@@ -101,13 +106,7 @@ class BiteFactor {
   }
 }
 
-enum FactorImpact {
-  veryPositive,
-  positive,
-  neutral,
-  negative,
-  veryNegative
-}
+enum FactorImpact { veryPositive, positive, neutral, negative, veryNegative }
 
 class OptimalTimeWindow {
   final DateTime startTime;

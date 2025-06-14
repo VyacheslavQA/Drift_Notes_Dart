@@ -2,7 +2,6 @@
 
 import '../models/shop_model.dart';
 
-
 class ShopService {
   static final ShopService _instance = ShopService._internal();
   factory ShopService() => _instance;
@@ -22,7 +21,8 @@ class ShopService {
         specialization: ShopSpecialization.carpFishing,
         phone: '+7(777)162-10-01',
         email: 'info@master-carp.kz',
-        address: 'г. Алматы, ул.Сатпаева 145а/2, заезд с Абая, территория "Car Service" 2 этаж',
+        address:
+            'г. Алматы, ул.Сатпаева 145а/2, заезд с Абая, территория "Car Service" 2 этаж',
         city: 'Алматы',
         workingHours: {
           'monday': 'Пн-Вс 10.00 - 20.00',
@@ -73,25 +73,31 @@ class ShopService {
     if (query.isEmpty) return getAllShops();
 
     final lowercaseQuery = query.toLowerCase();
-    return getAllShops().where((shop) =>
-    shop.name.toLowerCase().contains(lowercaseQuery) ||
-        shop.description.toLowerCase().contains(lowercaseQuery)
-    ).toList();
+    return getAllShops()
+        .where(
+          (shop) =>
+              shop.name.toLowerCase().contains(lowercaseQuery) ||
+              shop.description.toLowerCase().contains(lowercaseQuery),
+        )
+        .toList();
   }
 
   // Фильтрация по специализации
   List<ShopModel> getShopsBySpecialization(ShopSpecialization specialization) {
-    return getAllShops().where((shop) =>
-    shop.specialization == specialization
-    ).toList();
+    return getAllShops()
+        .where((shop) => shop.specialization == specialization)
+        .toList();
   }
 
   // Получить рекомендуемые магазины
   List<ShopModel> getRecommendedShops() {
-    return getAllShops().where((shop) =>
-    shop.status == ShopStatus.recommended ||
-        shop.status == ShopStatus.premium
-    ).toList();
+    return getAllShops()
+        .where(
+          (shop) =>
+              shop.status == ShopStatus.recommended ||
+              shop.status == ShopStatus.premium,
+        )
+        .toList();
   }
 
   // Получить магазины с доставкой
@@ -129,8 +135,8 @@ class ShopService {
 
   // Получить магазины по категории товаров (поиск по ключам локализации)
   List<ShopModel> getShopsByCategory(String categoryKey) {
-    return getAllShops().where((shop) =>
-        shop.categories.contains(categoryKey)
-    ).toList();
+    return getAllShops()
+        .where((shop) => shop.categories.contains(categoryKey))
+        .toList();
   }
 }

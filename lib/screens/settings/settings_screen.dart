@@ -12,7 +12,7 @@ import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
-import 'notification_sound_settings_screen.dart';  // НОВЫЙ ИМПОРТ
+import 'notification_sound_settings_screen.dart'; // НОВЫЙ ИМПОРТ
 import 'weather_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -22,7 +22,8 @@ class SettingsScreen extends StatefulWidget {
   SettingsScreenState createState() => SettingsScreenState();
 }
 
-class SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
+class SettingsScreenState extends State<SettingsScreen>
+    with SingleTickerProviderStateMixin {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final SyncService _syncService = SyncService();
 
@@ -48,10 +49,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
     _syncRotationAnimation = Tween<double>(
       begin: 0.0,
       end: 2 * 3.14159, // 360 градусов в радианах
-    ).animate(CurvedAnimation(
-      parent: _syncAnimationController,
-      curve: Curves.linear,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _syncAnimationController, curve: Curves.linear),
+    );
   }
 
   @override
@@ -84,7 +84,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
       if (_syncStatus['lastSyncTime'] is DateTime) {
         dateTime = _syncStatus['lastSyncTime'] as DateTime;
       } else if (_syncStatus['lastSyncTime'] is int) {
-        dateTime = DateTime.fromMillisecondsSinceEpoch(_syncStatus['lastSyncTime'] as int);
+        dateTime = DateTime.fromMillisecondsSinceEpoch(
+          _syncStatus['lastSyncTime'] as int,
+        );
       } else {
         return 'Недавно';
       }
@@ -150,9 +152,11 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result
-                ? localizations.translate('sync_success')
-                : localizations.translate('sync_with_errors')),
+            content: Text(
+              result
+                  ? localizations.translate('sync_success')
+                  : localizations.translate('sync_with_errors'),
+            ),
             backgroundColor: result ? Colors.green : Colors.orange,
           ),
         );
@@ -182,40 +186,35 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.cardColor,
-        title: Text(
-          localizations.translate('clear_all_data_title'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('clear_all_data_message'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              localizations.translate('cancel'),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.cardColor,
+            title: Text(
+              localizations.translate('clear_all_data_title'),
               style: TextStyle(
                 color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+            content: Text(
+              localizations.translate('clear_all_data_message'),
+              style: TextStyle(color: AppConstants.textColor),
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(localizations.translate('clear')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  localizations.translate('cancel'),
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(localizations.translate('clear')),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -243,7 +242,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${localizations.translate('data_clear_error')}: $e'),
+              content: Text(
+                '${localizations.translate('data_clear_error')}: $e',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -261,10 +262,7 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
       appBar: AppBar(
         title: Text(
           localizations.translate('settings'),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -293,9 +291,14 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                         onTap: _isSyncing ? null : _forceSyncData,
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                            color: AppConstants.primaryColor.withValues(
+                              alpha: 0.2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: AppConstants.primaryColor,
@@ -312,9 +315,10 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                     angle: _syncRotationAnimation.value,
                                     child: Icon(
                                       Icons.sync,
-                                      color: _isSyncing
-                                          ? AppConstants.primaryColor
-                                          : AppConstants.textColor,
+                                      color:
+                                          _isSyncing
+                                              ? AppConstants.primaryColor
+                                              : AppConstants.textColor,
                                       size: 24,
                                     ),
                                   );
@@ -337,10 +341,15 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                     const SizedBox(height: 4),
                                     Text(
                                       _isSyncing
-                                          ? localizations.translate('syncing_in_progress')
-                                          : localizations.translate('sync_all_data_now'),
+                                          ? localizations.translate(
+                                            'syncing_in_progress',
+                                          )
+                                          : localizations.translate(
+                                            'sync_all_data_now',
+                                          ),
                                       style: TextStyle(
-                                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                                        color: AppConstants.textColor
+                                            .withValues(alpha: 0.7),
                                         fontSize: 14,
                                       ),
                                     ),
@@ -367,7 +376,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                 Text(
                                   localizations.translate('last_sync'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.7,
+                                    ),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -390,7 +401,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                 Text(
                                   localizations.translate('pending_changes'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.7,
+                                    ),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -412,7 +425,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                 Text(
                                   localizations.translate('network_status'),
                                   style: TextStyle(
-                                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                                    color: AppConstants.textColor.withValues(
+                                      alpha: 0.7,
+                                    ),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -422,8 +437,10 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: _syncStatus['isOnline'] == true ?
-                                        Colors.green : Colors.red,
+                                        color:
+                                            _syncStatus['isOnline'] == true
+                                                ? Colors.green
+                                                : Colors.red,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -489,14 +506,24 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                     // Настройки звуков уведомлений - НОВЫЙ ПУНКТ
                     ListTile(
                       leading: const Icon(Icons.volume_up, color: Colors.green),
-                      title: Text(AppLocalizations.of(context).translate('notification_sounds')),
-                      subtitle: Text(AppLocalizations.of(context).translate('sound_vibration_badge_settings')),
+                      title: Text(
+                        AppLocalizations.of(
+                          context,
+                        ).translate('notification_sounds'),
+                      ),
+                      subtitle: Text(
+                        AppLocalizations.of(
+                          context,
+                        ).translate('sound_vibration_badge_settings'),
+                      ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const NotificationSoundSettingsScreen(),
+                            builder:
+                                (context) =>
+                                    const NotificationSoundSettingsScreen(),
                           ),
                         );
                       },
@@ -506,15 +533,24 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
 
                     // Погодные уведомления
                     ListTile(
-                      leading: const Icon(Icons.notifications_active, color: Colors.amber),
-                      title: Text(localizations.translate('weather_notifications')),
-                      subtitle: Text(localizations.translate('weather_notifications_desc')),
+                      leading: const Icon(
+                        Icons.notifications_active,
+                        color: Colors.amber,
+                      ),
+                      title: Text(
+                        localizations.translate('weather_notifications'),
+                      ),
+                      subtitle: Text(
+                        localizations.translate('weather_notifications_desc'),
+                      ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const WeatherNotificationsSettingsScreen(),
+                            builder:
+                                (context) =>
+                                    const WeatherNotificationsSettingsScreen(),
                           ),
                         );
                       },
@@ -535,7 +571,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 child: ListTile(
                   leading: const Icon(Icons.cloud, color: Colors.blue),
                   title: Text(localizations.translate('weather_settings')),
-                  subtitle: Text(localizations.translate('units_and_calibration')),
+                  subtitle: Text(
+                    localizations.translate('units_and_calibration'),
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
@@ -560,9 +598,14 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.cleaning_services, color: Colors.orange),
+                      leading: const Icon(
+                        Icons.cleaning_services,
+                        color: Colors.orange,
+                      ),
                       title: Text(localizations.translate('storage_cleanup')),
-                      subtitle: Text(localizations.translate('remove_problematic_notes')),
+                      subtitle: Text(
+                        localizations.translate('remove_problematic_notes'),
+                      ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
@@ -575,9 +618,14 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                     ),
                     const Divider(height: 1, color: Colors.white10),
                     ListTile(
-                      leading: const Icon(Icons.delete_forever, color: Colors.red),
+                      leading: const Icon(
+                        Icons.delete_forever,
+                        color: Colors.red,
+                      ),
                       title: Text(localizations.translate('clear_all_data')),
-                      subtitle: Text(localizations.translate('delete_all_local_data')),
+                      subtitle: Text(
+                        localizations.translate('delete_all_local_data'),
+                      ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: _clearAllData,
                     ),
@@ -597,7 +645,9 @@ class SettingsScreenState extends State<SettingsScreen> with SingleTickerProvide
                 child: ListTile(
                   leading: const Icon(Icons.security, color: Colors.blue),
                   title: Text(localizations.translate('change_password')),
-                  subtitle: Text(localizations.translate('change_your_account_password')),
+                  subtitle: Text(
+                    localizations.translate('change_your_account_password'),
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(

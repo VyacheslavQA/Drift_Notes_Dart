@@ -9,7 +9,8 @@ import '../../localization/app_localizations.dart';
 
 /// Расширенный сервис для Google авторизации с проверкой соглашений
 class GoogleAuthWithAgreements {
-  static final GoogleAuthWithAgreements _instance = GoogleAuthWithAgreements._internal();
+  static final GoogleAuthWithAgreements _instance =
+      GoogleAuthWithAgreements._internal();
   factory GoogleAuthWithAgreements() => _instance;
   GoogleAuthWithAgreements._internal();
 
@@ -18,14 +19,18 @@ class GoogleAuthWithAgreements {
 
   /// Вход через Google с проверкой соглашений
   Future<UserCredential?> signInWithGoogleAndCheckAgreements(
-      BuildContext context, {
-        VoidCallback? onAuthSuccess,
-      }) async {
+    BuildContext context, {
+    VoidCallback? onAuthSuccess,
+  }) async {
     try {
-      debugPrint('🚀 Начинаем процесс входа через Google с проверкой соглашений');
+      debugPrint(
+        '🚀 Начинаем процесс входа через Google с проверкой соглашений',
+      );
 
       // Сначала выполняем Google авторизацию
-      final userCredential = await _googleSignInService.signInWithGoogle(context);
+      final userCredential = await _googleSignInService.signInWithGoogle(
+        context,
+      );
 
       if (userCredential == null) {
         debugPrint('❌ Google авторизация отменена или неудачна');
@@ -45,18 +50,26 @@ class GoogleAuthWithAgreements {
 
       // Проверяем, новый ли это пользователь и приняты ли соглашения
       final isNewUser = await _consentService.isNewGoogleUser(user.uid);
-      final hasAcceptedAgreements = await _consentService.hasUserAcceptedAllConsents();
+      final hasAcceptedAgreements =
+          await _consentService.hasUserAcceptedAllConsents();
 
-      debugPrint('🔍 Новый пользователь: $isNewUser, Соглашения приняты: $hasAcceptedAgreements');
+      debugPrint(
+        '🔍 Новый пользователь: $isNewUser, Соглашения приняты: $hasAcceptedAgreements',
+      );
 
       if (isNewUser || !hasAcceptedAgreements) {
         debugPrint('📋 Показываем диалог соглашений');
 
         // Показываем диалог соглашений и ждем результата
-        final agreementsAccepted = await _showAgreementsDialog(context, onAuthSuccess);
+        final agreementsAccepted = await _showAgreementsDialog(
+          context,
+          onAuthSuccess,
+        );
 
         if (!agreementsAccepted) {
-          debugPrint('❌ Пользователь не принял соглашения, выходим из аккаунта');
+          debugPrint(
+            '❌ Пользователь не принял соглашения, выходим из аккаунта',
+          );
 
           // Выходим из Google аккаунта если соглашения не приняты
           await _googleSignInService.signOutGoogle();
@@ -82,7 +95,6 @@ class GoogleAuthWithAgreements {
       }
 
       return userCredential;
-
     } catch (e) {
       debugPrint('❌ Ошибка в процессе Google авторизации с соглашениями: $e');
 
@@ -102,9 +114,9 @@ class GoogleAuthWithAgreements {
 
   /// Показывает диалог соглашений и возвращает результат
   Future<bool> _showAgreementsDialog(
-      BuildContext context,
-      VoidCallback? onAuthSuccess,
-      ) async {
+    BuildContext context,
+    VoidCallback? onAuthSuccess,
+  ) async {
     if (!context.mounted) return false;
 
     bool agreementsAccepted = false;

@@ -15,7 +15,8 @@ import '../services/notification_service.dart';
 import '../localization/app_localizations.dart';
 
 class WeatherNotificationService {
-  static final WeatherNotificationService _instance = WeatherNotificationService._internal();
+  static final WeatherNotificationService _instance =
+      WeatherNotificationService._internal();
   factory WeatherNotificationService() => _instance;
   WeatherNotificationService._internal();
 
@@ -144,13 +145,16 @@ class WeatherNotificationService {
     );
 
     // Если время уже прошло, планируем на завтра
-    final nextScheduledTime = scheduledTime.isBefore(now)
-        ? scheduledTime.add(const Duration(days: 1))
-        : scheduledTime;
+    final nextScheduledTime =
+        scheduledTime.isBefore(now)
+            ? scheduledTime.add(const Duration(days: 1))
+            : scheduledTime;
 
     final delay = nextScheduledTime.difference(now);
 
-    debugPrint('📅 Ежедневный прогноз запланирован на: ${nextScheduledTime.toString()}');
+    debugPrint(
+      '📅 Ежедневный прогноз запланирован на: ${nextScheduledTime.toString()}',
+    );
 
     _dailyForecastTimer = Timer(delay, () {
       _sendDailyForecast();
@@ -182,7 +186,6 @@ class WeatherNotificationService {
       await _checkStormWarning(currentWeather);
 
       await _saveLastWeatherData(currentWeather);
-
     } catch (e) {
       debugPrint('❌ Ошибка при проверке изменений погоды: $e');
     }
@@ -190,9 +193,9 @@ class WeatherNotificationService {
 
   /// Анализ изменений погоды
   Future<void> _analyzeWeatherChanges(
-      WeatherApiResponse oldWeather,
-      WeatherApiResponse newWeather,
-      ) async {
+    WeatherApiResponse oldWeather,
+    WeatherApiResponse newWeather,
+  ) async {
     // Проверка изменения давления
     if (_settings.pressureChangeEnabled) {
       await _checkPressureChange(oldWeather.current, newWeather.current);
@@ -210,7 +213,10 @@ class WeatherNotificationService {
   }
 
   /// Проверка изменения давления
-  Future<void> _checkPressureChange(Current oldCurrent, Current newCurrent) async {
+  Future<void> _checkPressureChange(
+    Current oldCurrent,
+    Current newCurrent,
+  ) async {
     final oldPressureMmHg = oldCurrent.pressureMb / 1.333;
     final newPressureMmHg = newCurrent.pressureMb / 1.333;
     final pressureChange = (newPressureMmHg - oldPressureMmHg).abs();
@@ -224,8 +230,12 @@ class WeatherNotificationService {
         id: _uuid.v4(),
         type: WeatherAlertType.pressureChange,
         title: 'Изменение атмосферного давления',
-        message: 'Давление $trend на ${pressureChange.toStringAsFixed(1)} мм рт.ст. Ожидается $impact.',
-        priority: pressureChange > 10 ? WeatherAlertPriority.high : WeatherAlertPriority.medium,
+        message:
+            'Давление $trend на ${pressureChange.toStringAsFixed(1)} мм рт.ст. Ожидается $impact.',
+        priority:
+            pressureChange > 10
+                ? WeatherAlertPriority.high
+                : WeatherAlertPriority.medium,
         createdAt: DateTime.now(),
         data: {
           'oldPressure': oldPressureMmHg,
@@ -240,7 +250,10 @@ class WeatherNotificationService {
   }
 
   /// Проверка изменения температуры
-  Future<void> _checkTemperatureChange(Current oldCurrent, Current newCurrent) async {
+  Future<void> _checkTemperatureChange(
+    Current oldCurrent,
+    Current newCurrent,
+  ) async {
     final tempChange = (newCurrent.tempC - oldCurrent.tempC).abs();
 
     if (tempChange >= _settings.temperatureThreshold) {
@@ -251,7 +264,8 @@ class WeatherNotificationService {
         id: _uuid.v4(),
         type: WeatherAlertType.temperatureChange,
         title: 'Резкое изменение температуры',
-        message: 'Температура $trend на ${tempChange.toStringAsFixed(1)}°C. Рыба может изменить поведение.',
+        message:
+            'Температура $trend на ${tempChange.toStringAsFixed(1)}°C. Рыба может изменить поведение.',
         priority: WeatherAlertPriority.medium,
         createdAt: DateTime.now(),
         data: {
@@ -278,7 +292,8 @@ class WeatherNotificationService {
         id: _uuid.v4(),
         type: WeatherAlertType.windChange,
         title: 'Изменение силы ветра',
-        message: 'Ветер $trend. Скорость изменилась на ${(windSpeedChange / 3.6).toStringAsFixed(1)} м/с.',
+        message:
+            'Ветер $trend. Скорость изменилась на ${(windSpeedChange / 3.6).toStringAsFixed(1)} м/с.',
         priority: WeatherAlertPriority.low,
         createdAt: DateTime.now(),
         data: {
@@ -294,7 +309,10 @@ class WeatherNotificationService {
   }
 
   /// Проверка благоприятных условий для рыбалки
-  Future<void> _checkFavorableConditions(WeatherApiResponse weather, Position position) async {
+  Future<void> _checkFavorableConditions(
+    WeatherApiResponse weather,
+    Position position,
+  ) async {
     if (!_settings.favorableConditionsEnabled) return;
 
     // Проверяем, не отправляли ли мы уже уведомление о хороших условиях сегодня
@@ -321,7 +339,8 @@ class WeatherNotificationService {
         if (nextWindow != null) {
           final startTime = DateTime.parse(nextWindow['startTime']);
           final endTime = DateTime.parse(nextWindow['endTime']);
-          timeInfo = ' Лучшее время: ${_formatTime(startTime)} - ${_formatTime(endTime)}';
+          timeInfo =
+              ' Лучшее время: ${_formatTime(startTime)} - ${_formatTime(endTime)}';
         }
 
         final alert = WeatherAlertModel(
@@ -364,17 +383,23 @@ class WeatherNotificationService {
       priority = WeatherAlertPriority.high;
     } else if (current.windKph > 50) {
       hasStormConditions = true;
-      warningMessage = 'Сильный ветер ${(current.windKph / 3.6).toStringAsFixed(1)} м/с. Будьте осторожны на воде!';
+      warningMessage =
+          'Сильный ветер ${(current.windKph / 3.6).toStringAsFixed(1)} м/с. Будьте осторожны на воде!';
       priority = WeatherAlertPriority.high;
-    } else if (condition.contains('heavy rain') || condition.contains('torrential')) {
+    } else if (condition.contains('heavy rain') ||
+        condition.contains('torrential')) {
       hasStormConditions = true;
-      warningMessage = 'Ожидается сильный дождь. Рекомендуется отложить рыбалку.';
+      warningMessage =
+          'Ожидается сильный дождь. Рекомендуется отложить рыбалку.';
       priority = WeatherAlertPriority.medium;
     }
 
     if (hasStormConditions) {
       // Проверяем, не отправляли ли уже предупреждение в последние 3 часа
-      if (await _wasNotificationSentRecently(WeatherAlertType.stormWarning, 3)) {
+      if (await _wasNotificationSentRecently(
+        WeatherAlertType.stormWarning,
+        3,
+      )) {
         return;
       }
 
@@ -442,7 +467,8 @@ class WeatherNotificationService {
         id: _uuid.v4(),
         type: WeatherAlertType.dailyForecast,
         title: 'Прогноз рыбалки на сегодня',
-        message: '$activityText ($scorePoints/100)\nT: $temperature°C, Ветер: $windSpeed м/с, Давление: $pressure мм',
+        message:
+            '$activityText ($scorePoints/100)\nT: $temperature°C, Ветер: $windSpeed м/с, Давление: $pressure мм',
         priority: WeatherAlertPriority.low,
         createdAt: DateTime.now(),
         data: {
@@ -456,7 +482,6 @@ class WeatherNotificationService {
       );
 
       await _sendWeatherAlert(alert);
-
     } catch (e) {
       debugPrint('❌ Ошибка при отправке ежедневного прогноза: $e');
     }
@@ -481,14 +506,15 @@ class WeatherNotificationService {
       await _notificationService.addNotification(notification);
 
       debugPrint('✅ Погодное уведомление отправлено: ${weatherAlert.title}');
-
     } catch (e) {
       debugPrint('❌ Ошибка при отправке погодного уведомления: $e');
     }
   }
 
   /// Мапинг типов погодных уведомлений в общие типы
-  NotificationType _mapWeatherAlertTypeToNotificationType(WeatherAlertType weatherType) {
+  NotificationType _mapWeatherAlertTypeToNotificationType(
+    WeatherAlertType weatherType,
+  ) {
     switch (weatherType) {
       case WeatherAlertType.pressureChange:
       case WeatherAlertType.windChange:
@@ -518,7 +544,9 @@ class WeatherNotificationService {
 
       if (permission == LocationPermission.deniedForever) return null;
 
-      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
     } catch (e) {
       debugPrint('❌ Ошибка получения геопозиции: $e');
       // Возвращаем Павлодар как fallback
@@ -546,7 +574,9 @@ class WeatherNotificationService {
 
       if (lastSentTimestamp == null) return false;
 
-      final lastSentDate = DateTime.fromMillisecondsSinceEpoch(lastSentTimestamp);
+      final lastSentDate = DateTime.fromMillisecondsSinceEpoch(
+        lastSentTimestamp,
+      );
       final today = DateTime.now();
 
       return lastSentDate.day == today.day &&
@@ -558,7 +588,10 @@ class WeatherNotificationService {
   }
 
   /// Проверка, отправлялось ли уведомление недавно (в указанные часы)
-  Future<bool> _wasNotificationSentRecently(WeatherAlertType type, int hours) async {
+  Future<bool> _wasNotificationSentRecently(
+    WeatherAlertType type,
+    int hours,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = '${_lastNotificationTimeKey}${type.toString()}_recent';
@@ -566,7 +599,9 @@ class WeatherNotificationService {
 
       if (lastSentTimestamp == null) return false;
 
-      final lastSentTime = DateTime.fromMillisecondsSinceEpoch(lastSentTimestamp);
+      final lastSentTime = DateTime.fromMillisecondsSinceEpoch(
+        lastSentTimestamp,
+      );
       final now = DateTime.now();
 
       return now.difference(lastSentTime).inHours < hours;

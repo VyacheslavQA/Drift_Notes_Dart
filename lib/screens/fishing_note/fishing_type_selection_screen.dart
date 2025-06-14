@@ -10,12 +10,15 @@ class FishingTypeSelectionScreen extends StatefulWidget {
   const FishingTypeSelectionScreen({super.key});
 
   @override
-  State<FishingTypeSelectionScreen> createState() => _FishingTypeSelectionScreenState();
+  State<FishingTypeSelectionScreen> createState() =>
+      _FishingTypeSelectionScreenState();
 }
 
-class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen> {
+class _FishingTypeSelectionScreenState
+    extends State<FishingTypeSelectionScreen> {
   String _selectedFishingType = AppConstants.fishingTypes.first;
-  bool _dialogShown = false; // ДОБАВЛЕНО: флаг для предотвращения повторного показа диалога
+  bool _dialogShown =
+      false; // ДОБАВЛЕНО: флаг для предотвращения повторного показа диалога
 
   @override
   void initState() {
@@ -35,7 +38,9 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddFishingNoteScreen(fishingType: _selectedFishingType),
+        builder:
+            (context) =>
+                AddFishingNoteScreen(fishingType: _selectedFishingType),
       ),
     );
 
@@ -72,7 +77,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
       context: context,
       barrierDismissible: false, // Запрещаем закрытие по нажатию вне диалога
       builder: (BuildContext context) {
-        return WillPopScope( // ДОБАВЛЕНО: обработка системной кнопки "назад"
+        return WillPopScope(
+          // ДОБАВЛЕНО: обработка системной кнопки "назад"
           onWillPop: () async {
             // При нажатии системной кнопки "назад" в диалоге - закрываем весь экран
             Navigator.pop(context); // Закрываем диалог
@@ -82,7 +88,9 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
           child: Dialog(
             backgroundColor: Colors.transparent, // Прозрачный фон
             elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 40), // Отступы по бокам
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 40,
+            ), // Отступы по бокам
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF0B1F1D), // Цвет как на скриншоте
@@ -126,7 +134,10 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                       color: const Color(0xFF12332E),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: StatefulBuilder(
                       builder: (context, setState) {
                         return DropdownButtonHideUnderline(
@@ -134,25 +145,32 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                             value: _selectedFishingType,
                             isExpanded: true,
                             dropdownColor: const Color(0xFF12332E),
-                            icon: Icon(Icons.arrow_drop_down, color: AppConstants.textColor),
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: AppConstants.textColor,
+                            ),
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 18,
                             ),
-                            items: AppConstants.fishingTypes.map((String typeKey) {
-                              return DropdownMenuItem<String>(
-                                value: typeKey,
-                                child: Row(
-                                  children: [
-                                    // Используем FishingTypeIcons.getIconWidget для ключа
-                                    FishingTypeIcons.getIconWidget(typeKey, size: 36.0),
-                                    const SizedBox(width: 12),
-                                    // Переводим ключ в локализованный текст
-                                    Text(localizations.translate(typeKey)),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
+                            items:
+                                AppConstants.fishingTypes.map((String typeKey) {
+                                  return DropdownMenuItem<String>(
+                                    value: typeKey,
+                                    child: Row(
+                                      children: [
+                                        // Используем FishingTypeIcons.getIconWidget для ключа
+                                        FishingTypeIcons.getIconWidget(
+                                          typeKey,
+                                          size: 36.0,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        // Переводим ключ в локализованный текст
+                                        Text(localizations.translate(typeKey)),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
                             onChanged: (String? newValue) {
                               if (newValue != null) {
                                 setState(() {
@@ -194,7 +212,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                       // Кнопка "Продолжить"
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.green, // Зеленая кнопка как на скриншоте
+                          color:
+                              Colors.green, // Зеленая кнопка как на скриншоте
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: TextButton(
@@ -203,7 +222,9 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
                             _continueToNoteCreation(); // Переходим к заполнению заметки
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
                             child: Text(
                               localizations.translate('continue'),
                               style: const TextStyle(
@@ -230,7 +251,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    return WillPopScope( // ДОБАВЛЕНО: обработка системной кнопки "назад"
+    return WillPopScope(
+      // ДОБАВЛЕНО: обработка системной кнопки "назад"
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: AppConstants.backgroundColor,
@@ -245,7 +267,8 @@ class _FishingTypeSelectionScreenState extends State<FishingTypeSelectionScreen>
           ),
           leading: IconButton(
             icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-            onPressed: _cancelAndClose, // ИСПРАВЛЕНО: используем безопасное закрытие
+            onPressed:
+                _cancelAndClose, // ИСПРАВЛЕНО: используем безопасное закрытие
           ),
           backgroundColor: Colors.transparent,
           elevation: 0,

@@ -47,7 +47,9 @@ class SyncService {
       }
     });
 
-    debugPrint('🕒 Запущена периодическая синхронизация каждые ${period.inMinutes} минут');
+    debugPrint(
+      '🕒 Запущена периодическая синхронизация каждые ${period.inMinutes} минут',
+    );
   }
 
   /// Остановить периодическую синхронизацию
@@ -86,10 +88,7 @@ class SyncService {
       }
 
       // Синхронизируем все типы данных
-      await Future.wait([
-        _syncMarkerMaps(userId),
-        _syncNotes(userId),
-      ]);
+      await Future.wait([_syncMarkerMaps(userId), _syncNotes(userId)]);
 
       // Обновляем время последней синхронизации
       await _offlineStorage.updateLastSyncTime();
@@ -103,7 +102,10 @@ class SyncService {
   }
 
   /// Обрабатывает локальные URI файлов в структуре данных и заменяет их на серверные URL
-  Future<void> _processLocalFileUrls(Map<String, dynamic> data, String userId) async {
+  Future<void> _processLocalFileUrls(
+    Map<String, dynamic> data,
+    String userId,
+  ) async {
     // Проверяем наличие списка photoUrls
     if (data['photoUrls'] is List) {
       final photoUrls = List<String>.from(data['photoUrls']);
@@ -119,7 +121,8 @@ class SyncService {
             if (file != null && await file.exists()) {
               // Загружаем файл на сервер
               final bytes = await file.readAsBytes();
-              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${url.hashCode}.jpg';
+              final fileName =
+                  '${DateTime.now().millisecondsSinceEpoch}_${url.hashCode}.jpg';
               final path = 'users/$userId/photos/$fileName';
               final serverUrl = await _firebaseService.uploadImage(path, bytes);
 
@@ -128,7 +131,9 @@ class SyncService {
 
               // Удаляем локальную копию после успешной загрузки
               await _localFileService.deleteLocalFile(url);
-              debugPrint('🔄 Локальный файл $url заменен на серверный $serverUrl');
+              debugPrint(
+                '🔄 Локальный файл $url заменен на серверный $serverUrl',
+              );
             } else {
               // Если файл не существует, сохраняем исходный URL (будет обработан как ошибка)
               processedUrls.add(url);
@@ -152,7 +157,8 @@ class SyncService {
       // Обновляем список URL только если были изменения
       if (hasChanges) {
         // Фильтруем, удаляя placeholder 'offline_photo'
-        data['photoUrls'] = processedUrls.where((url) => url != 'offline_photo').toList();
+        data['photoUrls'] =
+            processedUrls.where((url) => url != 'offline_photo').toList();
       }
     }
   }
@@ -178,10 +184,11 @@ class SyncService {
 
         try {
           // Получаем все заметки пользователя и удаляем их
-          final snapshot = await _firestore
-              .collection('fishing_notes')
-              .where('userId', isEqualTo: userId)
-              .get();
+          final snapshot =
+              await _firestore
+                  .collection('fishing_notes')
+                  .where('userId', isEqualTo: userId)
+                  .get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -191,7 +198,9 @@ class SyncService {
 
           await batch.commit();
           await _offlineStorage.clearDeleteAllFlag(false);
-          debugPrint('✅ Все заметки пользователя удалены (${snapshot.docs.length} шт.)');
+          debugPrint(
+            '✅ Все заметки пользователя удалены (${snapshot.docs.length} шт.)',
+          );
         } catch (e) {
           debugPrint('❌ Ошибка при удалении всех заметок: $e');
           _incrementErrorCounter(dataType);
@@ -204,14 +213,18 @@ class SyncService {
       // Синхронизируем отдельные удаления
       final notesToDelete = await _offlineStorage.getIdsToDelete(false);
       if (notesToDelete.isNotEmpty) {
-        debugPrint('🗑️ Синхронизация удалений заметок (${notesToDelete.length} шт.)');
+        debugPrint(
+          '🗑️ Синхронизация удалений заметок (${notesToDelete.length} шт.)',
+        );
 
         for (var noteId in notesToDelete) {
           try {
             await _firestore.collection('fishing_notes').doc(noteId).delete();
             debugPrint('✅ Заметка $noteId удалена из Firestore');
           } catch (e) {
-            debugPrint('❌ Ошибка при удалении заметки $noteId из Firestore: $e');
+            debugPrint(
+              '❌ Ошибка при удалении заметки $noteId из Firestore: $e',
+            );
           }
         }
 
@@ -222,7 +235,9 @@ class SyncService {
       // Синхронизируем обновления заметок
       final noteUpdates = await _offlineStorage.getAllNoteUpdates();
       if (noteUpdates.isNotEmpty) {
-        debugPrint('🔄 Синхронизация обновлений заметок (${noteUpdates.length} шт.)');
+        debugPrint(
+          '🔄 Синхронизация обновлений заметок (${noteUpdates.length} шт.)',
+        );
 
         for (var entry in noteUpdates.entries) {
           try {
@@ -243,8 +258,10 @@ class SyncService {
             await _processLocalFileUrls(noteData, userId);
 
             // Сохраняем обновления в Firestore
-            await _firestore.collection('fishing_notes').doc(noteId).set(
-                noteData, SetOptions(merge: true));
+            await _firestore
+                .collection('fishing_notes')
+                .doc(noteId)
+                .set(noteData, SetOptions(merge: true));
 
             debugPrint('✅ Обновление заметки $noteId успешно синхронизировано');
           } catch (e) {
@@ -260,7 +277,9 @@ class SyncService {
       // Синхронизируем новые заметки
       final offlineNotes = await _offlineStorage.getAllOfflineNotes();
       if (offlineNotes.isNotEmpty) {
-        debugPrint('🔄 Синхронизация новых заметок (${offlineNotes.length} шт.)');
+        debugPrint(
+          '🔄 Синхронизация новых заметок (${offlineNotes.length} шт.)',
+        );
 
         for (var noteData in offlineNotes) {
           try {
@@ -277,14 +296,18 @@ class SyncService {
             }
 
             // Проверяем, есть ли фотографии для загрузки
-            final photoPaths = await _offlineStorage.getOfflinePhotoPaths(noteId);
+            final photoPaths = await _offlineStorage.getOfflinePhotoPaths(
+              noteId,
+            );
 
             // Обрабатываем локальные URI в данных заметки
             await _processLocalFileUrls(noteData, userId);
 
             // Загрузка исходных фотографий из сохраненных путей
             if (photoPaths.isNotEmpty) {
-              debugPrint('🖼️ Загрузка фотографий для заметки $noteId (${photoPaths.length} шт.)');
+              debugPrint(
+                '🖼️ Загрузка фотографий для заметки $noteId (${photoPaths.length} шт.)',
+              );
 
               // Получаем текущий список URL фотографий
               List<String> photoUrls = [];
@@ -297,10 +320,14 @@ class SyncService {
                   final file = File(path);
                   if (await file.exists()) {
                     final bytes = await file.readAsBytes();
-                    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photoPaths.indexOf(path)}.jpg';
+                    final fileName =
+                        '${DateTime.now().millisecondsSinceEpoch}_${photoPaths.indexOf(path)}.jpg';
                     final storagePath = 'users/$userId/photos/$fileName';
 
-                    final url = await _firebaseService.uploadImage(storagePath, bytes);
+                    final url = await _firebaseService.uploadImage(
+                      storagePath,
+                      bytes,
+                    );
                     // Добавляем URL только если его еще нет в списке
                     if (!photoUrls.contains(url)) {
                       photoUrls.add(url);
@@ -319,7 +346,10 @@ class SyncService {
             }
 
             // Сохраняем или обновляем заметку в Firestore
-            await _firestore.collection('fishing_notes').doc(noteId).set(noteData);
+            await _firestore
+                .collection('fishing_notes')
+                .doc(noteId)
+                .set(noteData);
 
             // Удаляем заметку из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineNote(noteId);
@@ -349,7 +379,9 @@ class SyncService {
 
     // Проверка на слишком частые попытки синхронизации с ошибками
     if (_shouldSkipSync(dataType)) {
-      debugPrint('⏭️ Пропускаем синхронизацию маркерных карт из-за частых ошибок');
+      debugPrint(
+        '⏭️ Пропускаем синхронизацию маркерных карт из-за частых ошибок',
+      );
       return;
     }
 
@@ -364,10 +396,11 @@ class SyncService {
 
         try {
           // Получаем все маркерные карты пользователя и удаляем их
-          final snapshot = await _firestore
-              .collection('marker_maps')
-              .where('userId', isEqualTo: userId)
-              .get();
+          final snapshot =
+              await _firestore
+                  .collection('marker_maps')
+                  .where('userId', isEqualTo: userId)
+                  .get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -377,7 +410,9 @@ class SyncService {
 
           await batch.commit();
           await _offlineStorage.clearDeleteAllFlag(true);
-          debugPrint('✅ Все маркерные карты пользователя удалены (${snapshot.docs.length} шт.)');
+          debugPrint(
+            '✅ Все маркерные карты пользователя удалены (${snapshot.docs.length} шт.)',
+          );
         } catch (e) {
           debugPrint('❌ Ошибка при удалении всех маркерных карт: $e');
           _incrementErrorCounter(dataType);
@@ -390,14 +425,18 @@ class SyncService {
       // Синхронизируем отдельные удаления
       final mapsToDelete = await _offlineStorage.getIdsToDelete(true);
       if (mapsToDelete.isNotEmpty) {
-        debugPrint('🗑️ Синхронизация удалений маркерных карт (${mapsToDelete.length} шт.)');
+        debugPrint(
+          '🗑️ Синхронизация удалений маркерных карт (${mapsToDelete.length} шт.)',
+        );
 
         for (var mapId in mapsToDelete) {
           try {
             await _firestore.collection('marker_maps').doc(mapId).delete();
             debugPrint('✅ Маркерная карта $mapId удалена из Firestore');
           } catch (e) {
-            debugPrint('❌ Ошибка при удалении маркерной карты $mapId из Firestore: $e');
+            debugPrint(
+              '❌ Ошибка при удалении маркерной карты $mapId из Firestore: $e',
+            );
           }
         }
 
@@ -408,7 +447,9 @@ class SyncService {
       // Синхронизируем обновления маркерных карт
       final mapUpdates = await _offlineStorage.getAllMarkerMapUpdates();
       if (mapUpdates.isNotEmpty) {
-        debugPrint('🔄 Синхронизация обновлений маркерных карт (${mapUpdates.length} шт.)');
+        debugPrint(
+          '🔄 Синхронизация обновлений маркерных карт (${mapUpdates.length} шт.)',
+        );
 
         for (var entry in mapUpdates.entries) {
           try {
@@ -426,12 +467,18 @@ class SyncService {
             }
 
             // Сохраняем обновления в Firestore
-            await _firestore.collection('marker_maps').doc(mapId).set(
-                mapData, SetOptions(merge: true));
+            await _firestore
+                .collection('marker_maps')
+                .doc(mapId)
+                .set(mapData, SetOptions(merge: true));
 
-            debugPrint('✅ Обновление маркерной карты $mapId успешно синхронизировано');
+            debugPrint(
+              '✅ Обновление маркерной карты $mapId успешно синхронизировано',
+            );
           } catch (e) {
-            debugPrint('❌ Ошибка при синхронизации обновления маркерной карты: $e');
+            debugPrint(
+              '❌ Ошибка при синхронизации обновления маркерной карты: $e',
+            );
             _incrementErrorCounter(dataType);
           }
         }
@@ -443,7 +490,9 @@ class SyncService {
       // Синхронизируем новые маркерные карты
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
       if (offlineMaps.isNotEmpty) {
-        debugPrint('🔄 Синхронизация новых маркерных карт (${offlineMaps.length} шт.)');
+        debugPrint(
+          '🔄 Синхронизация новых маркерных карт (${offlineMaps.length} шт.)',
+        );
 
         for (var mapData in offlineMaps) {
           try {
@@ -523,7 +572,8 @@ class SyncService {
       final notesToDelete = await _offlineStorage.getIdsToDelete(false);
       final mapsToDelete = await _offlineStorage.getIdsToDelete(true);
 
-      final pendingChanges = offlineNotes.length +
+      final pendingChanges =
+          offlineNotes.length +
           offlineNoteUpdates.length +
           offlineMaps.length +
           offlineMapUpdates.length +
@@ -553,9 +603,7 @@ class SyncService {
       };
     } catch (e) {
       debugPrint('❌ Ошибка при получении статуса синхронизации: $e');
-      return {
-        'error': e.toString(),
-      };
+      return {'error': e.toString()};
     }
   }
 
@@ -563,7 +611,8 @@ class SyncService {
   String _formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes Б';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} КБ';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
+    if (bytes < 1024 * 1024 * 1024)
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} ГБ';
   }
 
@@ -575,7 +624,8 @@ class SyncService {
 
       if (!await directory.exists()) return 0;
 
-      final files = await directory.list().where((entity) => entity is File).toList();
+      final files =
+          await directory.list().where((entity) => entity is File).toList();
       return files.length;
     } catch (e) {
       debugPrint('❌ Ошибка при подсчете локальных файлов: $e');

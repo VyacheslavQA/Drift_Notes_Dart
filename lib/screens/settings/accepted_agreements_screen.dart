@@ -15,7 +15,8 @@ class AcceptedAgreementsScreen extends StatefulWidget {
   const AcceptedAgreementsScreen({super.key});
 
   @override
-  State<AcceptedAgreementsScreen> createState() => _AcceptedAgreementsScreenState();
+  State<AcceptedAgreementsScreen> createState() =>
+      _AcceptedAgreementsScreenState();
 }
 
 class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
@@ -56,23 +57,33 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       final languageCode = localizations.locale.languageCode;
 
       // ИСПРАВЛЕНО: Сначала загружаем селективную проверку (основные данные)
-      final consentResult = await _consentService.checkUserConsents(languageCode);
+      final consentResult = await _consentService.checkUserConsents(
+        languageCode,
+      );
 
       // Затем загружаем статус для дополнительной информации (timestamp и т.д.)
       var status = await _consentService.getUserConsentStatus(languageCode);
 
-      final privacyVersion = await _consentService.getCurrentPrivacyPolicyVersion(languageCode);
-      final termsVersion = await _consentService.getCurrentTermsOfServiceVersion(languageCode);
+      final privacyVersion = await _consentService
+          .getCurrentPrivacyPolicyVersion(languageCode);
+      final termsVersion = await _consentService
+          .getCurrentTermsOfServiceVersion(languageCode);
 
       // ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ при частичных обновлениях
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && consentResult.hasChanges && !consentResult.allValid) {
-        debugPrint('🔄 Принудительная синхронизация локальных данных с Firebase');
+        debugPrint(
+          '🔄 Принудительная синхронизация локальных данных с Firebase',
+        );
         await _consentService.syncConsentsFromFirestore(user.uid);
 
         // Перезагружаем статус после синхронизации
-        final statusAfterSync = await _consentService.getUserConsentStatus(languageCode);
-        debugPrint('📋 Статус после синхронизации: Privacy=${statusAfterSync.privacyPolicyAccepted}, Terms=${statusAfterSync.termsOfServiceAccepted}');
+        final statusAfterSync = await _consentService.getUserConsentStatus(
+          languageCode,
+        );
+        debugPrint(
+          '📋 Статус после синхронизации: Privacy=${statusAfterSync.privacyPolicyAccepted}, Terms=${statusAfterSync.termsOfServiceAccepted}',
+        );
 
         // Обновляем переменную status
         status = statusAfterSync;
@@ -87,8 +98,12 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       debugPrint('   needTermsOfService: ${consentResult.needTermsOfService}');
       debugPrint('   allValid: ${consentResult.allValid}');
       debugPrint('   hasChanges: ${consentResult.hasChanges}');
-      debugPrint('   Privacy: current=${consentResult.currentPrivacyVersion}, saved=${consentResult.savedPrivacyVersion}');
-      debugPrint('   Terms: current=${consentResult.currentTermsVersion}, saved=${consentResult.savedTermsVersion}');
+      debugPrint(
+        '   Privacy: current=${consentResult.currentPrivacyVersion}, saved=${consentResult.savedPrivacyVersion}',
+      );
+      debugPrint(
+        '   Terms: current=${consentResult.currentTermsVersion}, saved=${consentResult.savedTermsVersion}',
+      );
 
       if (mounted) {
         setState(() {
@@ -96,7 +111,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
           _consentResult = consentResult;
           _privacyPolicyVersion = privacyVersion;
           _termsOfServiceVersion = termsVersion;
-          _hasUpdates = consentResult.hasChanges; // Используем селективную проверку
+          _hasUpdates =
+              consentResult.hasChanges; // Используем селективную проверку
           _isLoading = false;
         });
 
@@ -128,15 +144,16 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => UserAgreementsDialog(
-        onAgreementsAccepted: () {
-          debugPrint('✅ Согласия приняты селективно, перезагружаем статус');
-          _loadConsentStatus(); // Перезагружаем статус
-        },
-        onCancel: () {
-          debugPrint('❌ Пользователь отменил принятие согласий');
-        },
-      ),
+      builder:
+          (context) => UserAgreementsDialog(
+            onAgreementsAccepted: () {
+              debugPrint('✅ Согласия приняты селективно, перезагружаем статус');
+              _loadConsentStatus(); // Перезагружаем статус
+            },
+            onCancel: () {
+              debugPrint('❌ Пользователь отменил принятие согласий');
+            },
+          ),
     );
   }
 
@@ -163,13 +180,19 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(localizations.translate('agreements_updated_successfully') ?? 'Соглашения успешно обновлены'),
+              content: Text(
+                localizations.translate('agreements_updated_successfully') ??
+                    'Соглашения успешно обновлены',
+              ),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        throw Exception(localizations.translate('agreement_save_failed') ?? 'Не удалось сохранить соглашения');
+        throw Exception(
+          localizations.translate('agreement_save_failed') ??
+              'Не удалось сохранить соглашения',
+        );
       }
     } catch (e) {
       debugPrint('❌ Ошибка принятия согласий: $e');
@@ -177,7 +200,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${localizations.translate('error_updating_agreements') ?? 'Ошибка обновления соглашений'}: $e'),
+            content: Text(
+              '${localizations.translate('error_updating_agreements') ?? 'Ошибка обновления соглашений'}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -198,39 +223,39 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     // Показываем диалог с предупреждением
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.cardColor,
-        title: Text(
-          localizations.translate('limited_mode') ?? 'Ограниченный режим',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          localizations.translate('limited_mode_warning') ??
-              'Если вы не примете новую версию соглашений, приложение будет работать в ограниченном режиме:\n\n✅ Просмотр существующих записей\n❌ Создание новых записей\n❌ Редактирование\n❌ Синхронизация\n\nВы можете принять соглашения в любое время.',
-          style: TextStyle(
-            color: AppConstants.textColor,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              localizations.translate('cancel') ?? 'Отмена',
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: AppConstants.cardColor,
+            title: Text(
+              localizations.translate('limited_mode') ?? 'Ограниченный режим',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              localizations.translate('limited_mode_warning') ??
+                  'Если вы не примете новую версию соглашений, приложение будет работать в ограниченном режиме:\n\n✅ Просмотр существующих записей\n❌ Создание новых записей\n❌ Редактирование\n❌ Синхронизация\n\nВы можете принять соглашения в любое время.',
               style: TextStyle(color: AppConstants.textColor),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  localizations.translate('cancel') ?? 'Отмена',
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  localizations.translate('continue_limited') ??
+                      'Продолжить в ограниченном режиме',
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(localizations.translate('continue_limited') ?? 'Продолжить в ограниченном режиме'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -239,7 +264,10 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('limited_mode_activated') ?? 'Ограниченный режим активирован'),
+            content: Text(
+              localizations.translate('limited_mode_activated') ??
+                  'Ограниченный режим активирован',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -256,7 +284,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          localizations.translate('accepted_agreements') ?? 'Принятые соглашения',
+          localizations.translate('accepted_agreements') ??
+              'Принятые соглашения',
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 22,
@@ -270,13 +299,14 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          color: AppConstants.primaryColor,
-        ),
-      )
-          : _buildContent(localizations),
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  color: AppConstants.primaryColor,
+                ),
+              )
+              : _buildContent(localizations),
     );
   }
 
@@ -293,7 +323,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              localizations.translate('error_loading_consents') ?? 'Ошибка загрузки соглашений',
+              localizations.translate('error_loading_consents') ??
+                  'Ошибка загрузки соглашений',
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: 16,
@@ -302,7 +333,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadConsentStatus,
-              child: Text(localizations.translate('try_again') ?? 'Попробовать снова'),
+              child: Text(
+                localizations.translate('try_again') ?? 'Попробовать снова',
+              ),
             ),
           ],
         ),
@@ -324,7 +357,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
         // ИСПРАВЛЕНО: Политика конфиденциальности с селективным статусом
         _buildDocumentCard(
-          title: localizations.translate('privacy_policy') ?? 'Политика конфиденциальности',
+          title:
+              localizations.translate('privacy_policy') ??
+              'Политика конфиденциальности',
           accepted: _consentStatus!.privacyPolicyAccepted,
           needsUpdate: _consentResult!.needPrivacyPolicy,
           currentVersion: _privacyPolicyVersion,
@@ -337,7 +372,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
         // ИСПРАВЛЕНО: Пользовательское соглашение с селективным статусом
         _buildDocumentCard(
-          title: localizations.translate('terms_of_service') ?? 'Пользовательское соглашение',
+          title:
+              localizations.translate('terms_of_service') ??
+              'Пользовательское соглашение',
           accepted: _consentStatus!.termsOfServiceAccepted,
           needsUpdate: _consentResult!.needTermsOfService,
           currentVersion: _termsOfServiceVersion,
@@ -377,7 +414,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    localizations.translate('new_version_available') ?? 'Доступна новая версия',
+                    localizations.translate('new_version_available') ??
+                        'Доступна новая версия',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -413,11 +451,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                       ),
                     ),
                     child: Text(
-                      localizations.translate('limited_mode') ?? 'Ограниченный режим',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 14,
-                      ),
+                      localizations.translate('limited_mode') ??
+                          'Ограниченный режим',
+                      style: TextStyle(color: Colors.orange, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -426,7 +462,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                 Expanded(
                   child: ElevatedButton(
                     // Используем селективный диалог вместо принятия всего
-                    onPressed: _isProcessing ? null : _showSelectiveAgreementsDialog,
+                    onPressed:
+                        _isProcessing ? null : _showSelectiveAgreementsDialog,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -434,24 +471,28 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: _isProcessing
-                        ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                        : Text(
-                      localizations.translate('accept_updates') ?? 'Принять обновления',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    child:
+                        _isProcessing
+                            ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : Text(
+                              localizations.translate('accept_updates') ??
+                                  'Принять обновления',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                   ),
                 ),
               ],
@@ -469,20 +510,31 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     List<String> updates = [];
 
     if (_consentResult!.needPrivacyPolicy) {
-      updates.add(localizations.translate('privacy_policy_update_desc') ?? 'политика конфиденциальности');
+      updates.add(
+        localizations.translate('privacy_policy_update_desc') ??
+            'политика конфиденциальности',
+      );
     }
 
     if (_consentResult!.needTermsOfService) {
-      updates.add(localizations.translate('terms_update_desc') ?? 'пользовательское соглашение');
+      updates.add(
+        localizations.translate('terms_update_desc') ??
+            'пользовательское соглашение',
+      );
     }
 
     if (updates.isEmpty) {
-      return localizations.translate('agreements_needed_general') ?? 'Для продолжения работы необходимо принять соглашения.';
+      return localizations.translate('agreements_needed_general') ??
+          'Для продолжения работы необходимо принять соглашения.';
     } else if (updates.length == 1) {
-      return localizations.translate('single_agreement_update')?.replaceAll('{document}', updates[0]) ??
+      return localizations
+              .translate('single_agreement_update')
+              ?.replaceAll('{document}', updates[0]) ??
           'Обновилась ${updates[0]}. Для продолжения работы необходимо принять новую версию.';
     } else {
-      return localizations.translate('multiple_agreements_updated')?.replaceAll('{documents}', updates.join(' и ')) ??
+      return localizations
+              .translate('multiple_agreements_updated')
+              ?.replaceAll('{documents}', updates.join(' и ')) ??
           'Обновились ${updates.join(' и ')}. Для продолжения работы необходимо принять новые версии.';
     }
   }
@@ -492,9 +544,7 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
     return Card(
       color: AppConstants.cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -511,10 +561,15 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                 Expanded(
                   child: Text(
                     hasAllConsents
-                        ? (localizations.translate('all_agreements_accepted') ?? 'Все соглашения приняты')
+                        ? (localizations.translate('all_agreements_accepted') ??
+                            'Все соглашения приняты')
                         : (_hasUpdates
-                        ? (localizations.translate('update_required') ?? 'Требуется обновление')
-                        : (localizations.translate('agreements_require_attention') ?? 'Соглашения требуют внимания')),
+                            ? (localizations.translate('update_required') ??
+                                'Требуется обновление')
+                            : (localizations.translate(
+                                  'agreements_require_attention',
+                                ) ??
+                                'Соглашения требуют внимания')),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -528,8 +583,12 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
               const SizedBox(height: 8),
               Text(
                 _hasUpdates
-                    ? (localizations.translate('please_review_updated_agreements') ?? 'Пожалуйста, ознакомьтесь с обновленными соглашениями')
-                    : (localizations.translate('please_review_and_accept') ?? 'Пожалуйста, ознакомьтесь и примите соглашения'),
+                    ? (localizations.translate(
+                          'please_review_updated_agreements',
+                        ) ??
+                        'Пожалуйста, ознакомьтесь с обновленными соглашениями')
+                    : (localizations.translate('please_review_and_accept') ??
+                        'Пожалуйста, ознакомьтесь и примите соглашения'),
                 style: TextStyle(
                   color: AppConstants.textColor.withOpacity(0.7),
                   fontSize: 14,
@@ -558,7 +617,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     IconData statusIcon;
     String statusText;
 
-    debugPrint('🔍 Статус карточки "$title": accepted=$accepted, needsUpdate=$needsUpdate');
+    debugPrint(
+      '🔍 Статус карточки "$title": accepted=$accepted, needsUpdate=$needsUpdate',
+    );
 
     if (!accepted) {
       // Документ вообще не принят
@@ -569,7 +630,8 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       // Документ принят, но требует обновления
       statusColor = Colors.orange;
       statusIcon = Icons.update;
-      statusText = localizations.translate('update_required') ?? 'Требуется обновление';
+      statusText =
+          localizations.translate('update_required') ?? 'Требуется обновление';
     } else {
       // Документ принят и актуален
       statusColor = Colors.green;
@@ -579,9 +641,7 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
     return Card(
       color: AppConstants.cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           ListTile(
@@ -600,11 +660,7 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(
-                      statusIcon,
-                      color: statusColor,
-                      size: 20,
-                    ),
+                    Icon(statusIcon, color: statusColor, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       statusText,
@@ -625,7 +681,9 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
                   ),
                 ),
                 // Показываем информацию о версиях если есть обновление
-                if (needsUpdate && savedVersion != null && savedVersion.isNotEmpty) ...[
+                if (needsUpdate &&
+                    savedVersion != null &&
+                    savedVersion.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     '${localizations.translate('accepted_version') ?? 'Принята версия'}: $savedVersion → $currentVersion',
@@ -659,7 +717,10 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
           // Кнопка "История версий"
           const Divider(height: 1, color: Colors.white10),
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: Icon(
               Icons.history,
               color: AppConstants.textColor.withOpacity(0.7),
@@ -689,9 +750,7 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
     return Card(
       color: AppConstants.cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -708,12 +767,14 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
             const SizedBox(height: 12),
             _buildInfoRow(
               localizations.translate('consent_version') ?? 'Версия согласий',
-              _consentStatus!.consentVersion ?? (localizations.translate('not_specified') ?? 'Не указано'),
+              _consentStatus!.consentVersion ??
+                  (localizations.translate('not_specified') ?? 'Не указано'),
               localizations,
             ),
             _buildInfoRow(
               localizations.translate('current_version') ?? 'Текущая версия',
-              _consentStatus!.currentVersion ?? (localizations.translate('unknown') ?? 'Неизвестно'),
+              _consentStatus!.currentVersion ??
+                  (localizations.translate('unknown') ?? 'Неизвестно'),
               localizations,
             ),
             _buildInfoRow(
@@ -746,7 +807,11 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     }
   }
 
-  Widget _buildInfoRow(String label, String value, AppLocalizations localizations) {
+  Widget _buildInfoRow(
+    String label,
+    String value,
+    AppLocalizations localizations,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -779,26 +844,23 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
 
   void _showPrivacyPolicy() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const PrivacyPolicyScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
     );
   }
 
   void _showTermsOfService() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const TermsOfServiceScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
     );
   }
 
   void _showPrivacyPolicyHistory() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const DocumentVersionHistoryScreen(
-          documentType: 'privacy_policy',
-        ),
+        builder:
+            (context) => const DocumentVersionHistoryScreen(
+              documentType: 'privacy_policy',
+            ),
       ),
     );
   }
@@ -806,9 +868,10 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
   void _showTermsOfServiceHistory() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const DocumentVersionHistoryScreen(
-          documentType: 'terms_of_service',
-        ),
+        builder:
+            (context) => const DocumentVersionHistoryScreen(
+              documentType: 'terms_of_service',
+            ),
       ),
     );
   }

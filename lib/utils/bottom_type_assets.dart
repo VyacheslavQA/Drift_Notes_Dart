@@ -44,7 +44,8 @@ class BottomTypeAssets {
   }
 
   // Получить виджет Image для данного типа дна с запасным вариантом в виде иконки
-  static Widget getBottomTypeWidget(String bottomType, {
+  static Widget getBottomTypeWidget(
+    String bottomType, {
     double size = 24.0,
     Color? color,
   }) {
@@ -67,7 +68,8 @@ class BottomTypeAssets {
   }
 
   // Специальная функция для Canvas - возвращает ui.Image для отрисовки
-  static Future<ui.Image?> getCanvasImage(String bottomType, {
+  static Future<ui.Image?> getCanvasImage(
+    String bottomType, {
     double size = 24.0,
   }) async {
     try {

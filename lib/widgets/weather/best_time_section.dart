@@ -11,11 +11,7 @@ class BestTimeSection extends StatelessWidget {
   final WeatherApiResponse weather;
   final MultiFishingTypePrediction? aiPrediction;
 
-  const BestTimeSection({
-    super.key,
-    required this.weather,
-    this.aiPrediction,
-  });
+  const BestTimeSection({super.key, required this.weather, this.aiPrediction});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +51,8 @@ class BestTimeSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          if (aiPrediction != null && aiPrediction!.bestPrediction.bestTimeWindows.isNotEmpty)
+          if (aiPrediction != null &&
+              aiPrediction!.bestPrediction.bestTimeWindows.isNotEmpty)
             _buildAITimeWindows(context)
           else
             _buildDefaultTimeWindows(context),
@@ -65,10 +62,12 @@ class BestTimeSection extends StatelessWidget {
   }
 
   Widget _buildAITimeWindows(BuildContext context) {
-    final windows = aiPrediction!.bestPrediction.bestTimeWindows.take(3).toList();
+    final windows =
+        aiPrediction!.bestPrediction.bestTimeWindows.take(3).toList();
 
     return Column(
-      children: windows.map((window) => _buildTimeWindow(context, window)).toList(),
+      children:
+          windows.map((window) => _buildTimeWindow(context, window)).toList(),
     );
   }
 
@@ -91,15 +90,16 @@ class BestTimeSection extends StatelessWidget {
     ];
 
     return Column(
-      children: windows.map((window) {
-        return _buildSimpleTimeWindow(
-          context,
-          window['start'] as DateTime,
-          window['end'] as DateTime,
-          window['activity'] as double,
-          window['reason'] as String,
-        );
-      }).toList(),
+      children:
+          windows.map((window) {
+            return _buildSimpleTimeWindow(
+              context,
+              window['start'] as DateTime,
+              window['end'] as DateTime,
+              window['activity'] as double,
+              window['reason'] as String,
+            );
+          }).toList(),
     );
   }
 
@@ -111,13 +111,15 @@ class BestTimeSection extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppConstants.primaryColor.withValues(alpha: 0.1)
-            : AppConstants.backgroundColor.withValues(alpha: 0.5),
+        color:
+            isActive
+                ? AppConstants.primaryColor.withValues(alpha: 0.1)
+                : AppConstants.backgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: isActive
-            ? Border.all(color: AppConstants.primaryColor, width: 2)
-            : null,
+        border:
+            isActive
+                ? Border.all(color: AppConstants.primaryColor, width: 2)
+                : null,
       ),
       child: Row(
         children: [
@@ -146,10 +148,7 @@ class BestTimeSection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      window.timeIcon,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text(window.timeIcon, style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 8),
                     Text(
                       window.timeRange,
@@ -162,9 +161,14 @@ class BestTimeSection extends StatelessWidget {
                     if (timeUntil != null) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                          color: AppConstants.primaryColor.withValues(
+                            alpha: 0.2,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -206,26 +210,29 @@ class BestTimeSection extends StatelessWidget {
   }
 
   Widget _buildSimpleTimeWindow(
-      BuildContext context,
-      DateTime start,
-      DateTime end,
-      double activity,
-      String reason,
-      ) {
-    final isActive = DateTime.now().isAfter(start) && DateTime.now().isBefore(end);
+    BuildContext context,
+    DateTime start,
+    DateTime end,
+    double activity,
+    String reason,
+  ) {
+    final isActive =
+        DateTime.now().isAfter(start) && DateTime.now().isBefore(end);
     final activityColor = _getActivityColor(activity);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppConstants.primaryColor.withValues(alpha: 0.1)
-            : AppConstants.backgroundColor.withValues(alpha: 0.5),
+        color:
+            isActive
+                ? AppConstants.primaryColor.withValues(alpha: 0.1)
+                : AppConstants.backgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: isActive
-            ? Border.all(color: AppConstants.primaryColor, width: 2)
-            : null,
+        border:
+            isActive
+                ? Border.all(color: AppConstants.primaryColor, width: 2)
+                : null,
       ),
       child: Row(
         children: [
