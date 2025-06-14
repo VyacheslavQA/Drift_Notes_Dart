@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
+import 'dart:convert'; // ДОБАВЛЕНО для json.decode
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -31,10 +32,11 @@ import 'utils/network_utils.dart';
 import 'config/api_keys.dart';
 import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
-import 'services/local_push_notification_service.dart';  // НОВЫЙ ИМПОРТ
+import 'services/local_push_notification_service.dart';
 import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
 import 'services/user_consent_service.dart';
+import 'services/scheduled_reminder_service.dart'; // ОБНОВЛЕНО: новый сервис
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,7 +79,7 @@ void main() async {
     return;
   }
 
-  // НОВОЕ: Инициализация сервисов уведомлений в правильном порядке
+  // ОБНОВЛЕНО: Инициализация сервисов уведомлений в правильном порядке
   try {
     // 1. Сначала инициализируем локальные push-уведомления
     await LocalPushNotificationService().initialize();
@@ -108,6 +110,14 @@ void main() async {
     debugPrint('✅ Сервис настроек погоды инициализирован');
   } catch (e) {
     debugPrint('❌ Ошибка инициализации сервиса настроек погоды: $e');
+  }
+
+  // ОБНОВЛЕНО: Инициализация нового сервиса точных напоминаний
+  try {
+    await ScheduledReminderService().initialize();
+    debugPrint('✅ Сервис точных напоминаний инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации сервиса точных напоминаний: $e');
   }
 
   // ТЕПЕРЬ можно безопасно создать UserConsentService
@@ -216,19 +226,25 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     _initializeDeepLinkHandling();
     _checkDocumentUpdatesAfterAuth();
 
-    // НОВОЕ: Настройка обработчиков уведомлений
+    // ОБНОВЛЕНО: Настройка обработчиков уведомлений
     _setupNotificationHandlers();
+
+    // ОБНОВЛЕНО: Инициализация контекста для сервиса точных напоминаний
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeScheduledReminderContext();
+    });
   }
 
   @override
   void dispose() {
     _linkSubscription?.cancel();
 
-    // НОВОЕ: Освобождение ресурсов сервисов уведомлений
+    // ОБНОВЛЕНО: Освобождение ресурсов сервисов уведомлений и нового сервиса напоминаний
     try {
       NotificationService().dispose();
       LocalPushNotificationService().dispose();
       WeatherNotificationService().dispose();
+      ScheduledReminderService().dispose(); // ОБНОВЛЕНО: новый сервис
     } catch (e) {
       debugPrint('❌ Ошибка освобождения ресурсов уведомлений: $e');
     }
@@ -236,7 +252,19 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     super.dispose();
   }
 
-  // НОВАЯ ФУНКЦИЯ: Настройка обработчиков уведомлений
+  // ОБНОВЛЕНО: Инициализация контекста для сервиса точных напоминаний
+  void _initializeScheduledReminderContext() {
+    try {
+      if (_navigatorKey.currentContext != null) {
+        ScheduledReminderService().setContext(_navigatorKey.currentContext!);
+        debugPrint('✅ Контекст для сервиса точных напоминаний установлен');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка установки контекста для сервиса напоминаний: $e');
+    }
+  }
+
+  // ОБНОВЛЕНО: Настройка обработчиков уведомлений
   void _setupNotificationHandlers() {
     try {
       final pushService = LocalPushNotificationService();
@@ -253,7 +281,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     }
   }
 
-  // НОВАЯ ФУНКЦИЯ: Обработка нажатий на уведомления
+  // ОБНОВЛЕНО: Обработка нажатий на уведомления
   void _handleNotificationTap(String payload) {
     try {
       debugPrint('📱 Обработка нажатия на уведомление: $payload');
@@ -264,13 +292,66 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
         return;
       }
 
-      // Простая навигация к экрану уведомлений
-      // Здесь можно добавить более сложную логику на основе payload
-      // Например, если это погодное уведомление, перейти к прогнозу погоды
+      // ОБНОВЛЕНО: Улучшенная обработка уведомлений
+      try {
+        final payloadData = json.decode(payload);
+        final notificationType = payloadData['type'];
+        final eventType = payloadData['eventType'];
+        final sourceId = payloadData['sourceId']; // ID турнира
+
+        debugPrint('📱 Тип уведомления: $notificationType');
+        debugPrint('📱 Тип события: $eventType');
+        debugPrint('📱 ID источника: $sourceId');
+
+        // Переходим в зависимости от типа
+        if (notificationType == 'NotificationType.tournamentReminder' && sourceId != null) {
+          _navigateToTournamentDetail(sourceId);
+        } else if (notificationType == 'NotificationType.fishingReminder') {
+          _navigateToFishingCalendar();
+        } else {
+          // Для других типов переходим к списку уведомлений
+          _navigateToNotifications();
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка парсинга payload: $e');
+        // Fallback - переходим к уведомлениям
+        _navigateToNotifications();
+      }
 
     } catch (e) {
       debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
     }
+  }
+
+  // ОБНОВЛЕНО: Навигация к разным экранам
+  void _navigateToNotifications() {
+    debugPrint('📱 Переход к уведомлениям');
+    _navigatorKey.currentState?.pushNamed('/notifications');
+  }
+
+  void _navigateToTournaments() {
+    debugPrint('🏆 Переход к турнирам');
+    _navigatorKey.currentState?.pushNamed('/tournaments');
+  }
+
+  // НОВЫЙ: Переход к конкретному турниру
+  void _navigateToTournamentDetail(String tournamentId) {
+    debugPrint('🏆 Переход к турниру: $tournamentId');
+
+    // Сначала переходим к главному экрану
+    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+
+    // Затем переходим к детальной информации о турнире
+    // Здесь нужно добавить навигацию к конкретному турниру
+    // Пока что переходим к списку турниров
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _navigateToTournaments();
+    });
+  }
+
+  void _navigateToFishingCalendar() {
+    debugPrint('📅 Переход к календарю рыбалки');
+    _navigatorKey.currentState?.pushNamed('/fishing_calendar');
   }
 
   void _checkDocumentUpdatesAfterAuth() {
@@ -279,6 +360,11 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
       if (user != null && widget.consentService != null) {
         // Пользователь авторизован - можно добавить дополнительную логику если нужно
         debugPrint('✅ Пользователь авторизован: ${user.uid}');
+
+        // ОБНОВЛЕНО: Обновляем контекст сервиса напоминаний при авторизации
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _initializeScheduledReminderContext();
+        });
       }
     });
   }
@@ -453,7 +539,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // НОВОЕ: Обработка изменений состояния приложения для уведомлений
+    // ОБНОВЛЕНО: Обработка изменений состояния приложения для уведомлений
     switch (state) {
       case AppLifecycleState.resumed:
         _onAppResumed();
@@ -469,7 +555,7 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     }
   }
 
-  // НОВАЯ ФУНКЦИЯ: Обработка возобновления приложения
+  // ОБНОВЛЕНО: Обработка возобновления приложения
   void _onAppResumed() {
     debugPrint('📱 Приложение возобновлено');
 
@@ -482,18 +568,21 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
         final pushService = LocalPushNotificationService();
         pushService.clearBadge();
       }
+
+      // ОБНОВЛЕНО: Обновляем контекст сервиса напоминаний при возобновлении
+      _initializeScheduledReminderContext();
     } catch (e) {
       debugPrint('❌ Ошибка обновления бейджа при возобновлении: $e');
     }
   }
 
-  // НОВАЯ ФУНКЦИЯ: Обработка паузы приложения
+  // ОБНОВЛЕНО: Обработка паузы приложения
   void _onAppPaused() {
     debugPrint('📱 Приложение на паузе');
     // Здесь можно сохранить текущее состояние
   }
 
-  // НОВАЯ ФУНКЦИЯ: Обработка закрытия приложения
+  // ОБНОВЛЕНО: Обработка закрытия приложения
   void _onAppDetached() {
     debugPrint('📱 Приложение закрывается');
     // Ресурсы освобождаются в dispose()
@@ -518,8 +607,17 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
             GlobalCupertinoLocalizations.delegate,
           ],
 
-          // Добавляем обработчик для полной перезагрузки при смене языка
+          // ОБНОВЛЕНО: builder: Добавляем установку контекста для сервиса напоминаний
           builder: (context, widget) {
+            // Устанавливаем контекст для сервиса напоминаний при каждом rebuild
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              try {
+                ScheduledReminderService().setContext(context);
+              } catch (e) {
+                debugPrint('❌ Ошибка установки контекста сервиса напоминаний в builder: $e');
+              }
+            });
+
             return widget ?? const SizedBox();
           },
 

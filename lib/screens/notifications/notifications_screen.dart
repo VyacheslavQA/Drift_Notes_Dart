@@ -586,6 +586,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.notifications;
       case NotificationType.fishingReminder:
         return Icons.catching_pokemon;
+      case NotificationType.tournamentReminder: // ДОБАВЛЕНО
+        return Icons.emoji_events;
       case NotificationType.biteForecast:
         return Icons.show_chart;
       case NotificationType.weatherUpdate:
@@ -607,6 +609,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return localizations.translate('notification_type_general');
       case NotificationType.fishingReminder:
         return localizations.translate('notification_type_fishing_reminder');
+      case NotificationType.tournamentReminder: // ДОБАВЛЕНО
+        return localizations.translate('notification_type_tournament_reminder');
       case NotificationType.biteForecast:
         return localizations.translate('notification_type_bite_forecast');
       case NotificationType.weatherUpdate:

@@ -1,5 +1,7 @@
 // Путь: lib/models/fishing_note_model.dart
 
+import '../services/calendar_event_service.dart';
+
 class FishingNoteModel {
   final String id;
   final String userId;
@@ -21,7 +23,12 @@ class FishingNoteModel {
   final String coverPhotoUrl;
   final Map<String, dynamic>? coverCropSettings;
   final String title;
-  final Map<String, dynamic>? aiPrediction; // ДОБАВЛЕНО поле для ИИ-анализа
+  final Map<String, dynamic>? aiPrediction;
+
+  // ПОЛЯ ДЛЯ НАПОМИНАНИЙ (ОБНОВЛЕНЫ)
+  final bool reminderEnabled;
+  final ReminderType reminderType;
+  final DateTime? reminderTime; // Для custom времени
 
   FishingNoteModel({
     required this.id,
@@ -44,7 +51,11 @@ class FishingNoteModel {
     this.coverPhotoUrl = '',
     this.coverCropSettings,
     this.title = '',
-    this.aiPrediction, // ДОБАВЛЕНО в конструктор
+    this.aiPrediction,
+    // ПАРАМЕТРЫ НАПОМИНАНИЙ
+    this.reminderEnabled = false,
+    this.reminderType = ReminderType.none,
+    this.reminderTime,
   });
 
   factory FishingNoteModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -83,7 +94,13 @@ class FishingNoteModel {
       coverPhotoUrl: json['coverPhotoUrl'] ?? '',
       coverCropSettings: json['coverCropSettings'],
       title: json['title'] ?? '',
-      aiPrediction: json['aiPrediction'], // ДОБАВЛЕНО в fromJson
+      aiPrediction: json['aiPrediction'],
+      // ЧТЕНИЕ ПОЛЕЙ НАПОМИНАНИЙ
+      reminderEnabled: json['reminderEnabled'] ?? false,
+      reminderType: _parseReminderType(json['reminderType'] as String?),
+      reminderTime: (json['reminderTime'] != null)
+          ? DateTime.fromMillisecondsSinceEpoch(json['reminderTime'])
+          : null,
     );
   }
 
@@ -108,7 +125,11 @@ class FishingNoteModel {
       'coverPhotoUrl': coverPhotoUrl,
       'coverCropSettings': coverCropSettings,
       'title': title,
-      'aiPrediction': aiPrediction, // ДОБАВЛЕНО в toJson
+      'aiPrediction': aiPrediction,
+      // СОХРАНЕНИЕ ПОЛЕЙ НАПОМИНАНИЙ
+      'reminderEnabled': reminderEnabled,
+      'reminderType': reminderType.toString(),
+      'reminderTime': reminderTime?.millisecondsSinceEpoch,
     };
   }
 
@@ -133,7 +154,11 @@ class FishingNoteModel {
     String? coverPhotoUrl,
     Map<String, dynamic>? coverCropSettings,
     String? title,
-    Map<String, dynamic>? aiPrediction, // ДОБАВЛЕНО в copyWith
+    Map<String, dynamic>? aiPrediction,
+    // ПАРАМЕТРЫ НАПОМИНАНИЙ В copyWith
+    bool? reminderEnabled,
+    ReminderType? reminderType,
+    DateTime? reminderTime,
   }) {
     return FishingNoteModel(
       id: id ?? this.id,
@@ -156,8 +181,65 @@ class FishingNoteModel {
       coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl,
       coverCropSettings: coverCropSettings ?? this.coverCropSettings,
       title: title ?? this.title,
-      aiPrediction: aiPrediction ?? this.aiPrediction, // ДОБАВЛЕНО в copyWith
+      aiPrediction: aiPrediction ?? this.aiPrediction,
+      // ПОЛЯ НАПОМИНАНИЙ В copyWith
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+      reminderType: reminderType ?? this.reminderType,
+      reminderTime: reminderTime ?? this.reminderTime,
     );
+  }
+
+  // ИСПРАВЛЕННЫЙ МЕТОД ПАРСИНГА ТИПА НАПОМИНАНИЯ
+  static ReminderType _parseReminderType(String? reminderStr) {
+    if (reminderStr == null) return ReminderType.none;
+
+    switch (reminderStr) {
+      case 'ReminderType.none':
+        return ReminderType.none;
+      case 'ReminderType.custom':
+        return ReminderType.custom;
+    // Обратная совместимость со старыми значениями
+      case 'ReminderType.thirtyMinutes':
+      case 'ReminderType.oneHour':
+      case 'ReminderType.twoHours':
+      case 'ReminderType.oneDay':
+      case 'ReminderType.threeDays':
+      case 'ReminderType.oneWeek':
+        return ReminderType.none; // Конвертируем старые значения в none
+      default:
+        return ReminderType.none;
+    }
+  }
+
+  // ОБНОВЛЕННЫЙ МЕТОД ВЫЧИСЛЕНИЯ ВРЕМЕНИ НАПОМИНАНИЯ
+  DateTime? calculateReminderTime() {
+    if (!reminderEnabled || reminderType == ReminderType.none) {
+      return null;
+    }
+
+    switch (reminderType) {
+      case ReminderType.none:
+        return null;
+      case ReminderType.custom:
+        return reminderTime; // Для custom используем сохраненное время
+    }
+  }
+
+  // МЕТОД ПРОВЕРКИ, НУЖНО ЛИ ПОКАЗАТЬ НАПОМИНАНИЕ
+  bool shouldShowReminder() {
+    if (!reminderEnabled) return false;
+
+    final reminderDateTime = calculateReminderTime();
+    if (reminderDateTime == null) return false;
+
+    final now = DateTime.now();
+    return now.isAfter(reminderDateTime) && now.isBefore(date);
+  }
+
+  // МЕТОД ПРОВЕРКИ, ЯВЛЯЕТСЯ ЛИ РЫБАЛКА ЗАПЛАНИРОВАННОЙ
+  bool get isPlanned {
+    final now = DateTime.now();
+    return date.isAfter(now);
   }
 
   // Получение самой крупной рыбы

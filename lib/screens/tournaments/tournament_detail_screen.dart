@@ -6,6 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../models/tournament_model.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/calendar_event_service.dart';
+import '../../widgets/reminder_selection_widget.dart';
 
 class TournamentDetailScreen extends StatefulWidget {
   final TournamentModel tournament;
@@ -23,6 +24,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   bool _isInCalendar = false;
   bool _isCheckingCalendar = true;
   bool _isUpdatingCalendar = false;
+  ReminderType _currentReminderType = ReminderType.none; // ИСПРАВЛЕНО
+  DateTime? _currentCustomDateTime;
 
   @override
   void initState() {
@@ -34,6 +37,24 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     try {
       final calendarService = CalendarEventService();
       final isInCalendar = await calendarService.isTournamentInCalendar(widget.tournament.id);
+
+      // Получаем текущий тип напоминания если турнир в календаре
+      if (isInCalendar) {
+        final events = await calendarService.getCalendarEvents();
+        final tournamentEvent = events.firstWhere(
+              (e) => e.sourceId == widget.tournament.id && e.type == CalendarEventType.tournament,
+          orElse: () => CalendarEvent(
+            id: '',
+            title: '',
+            startDate: DateTime.now(),
+            endDate: DateTime.now(),
+            type: CalendarEventType.tournament,
+            reminderType: ReminderType.none, // ИСПРАВЛЕНО
+          ),
+        );
+        _currentReminderType = tournamentEvent.reminderType;
+        _currentCustomDateTime = tournamentEvent.customReminderDateTime;
+      }
 
       if (mounted) {
         setState(() {
@@ -561,7 +582,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
             children: [
               Icon(Icons.info, color: AppConstants.primaryColor, size: 24),
               const SizedBox(width: 12),
-              Expanded( // Добавлено Expanded для корректного отображения длинного текста
+              Expanded(
                 child: Text(
                   localizations.translate('additional_info'),
                   style: TextStyle(
@@ -569,8 +590,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
-                  maxLines: 2, // Разрешаем до 2 строк
-                  overflow: TextOverflow.ellipsis, // Добавляем многоточие при переполнении
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -665,8 +686,87 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           width: double.infinity,
           child: _buildCalendarButton(context, localizations),
         ),
+
+        // Кнопка настройки напоминания (показывается только если турнир в календаре)
+        if (_isInCalendar && !_isCheckingCalendar) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isUpdatingCalendar ? null : () => _editReminder(context, localizations),
+              icon: const Icon(Icons.edit_notifications),
+              label: Text(localizations.translate('edit_reminder')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppConstants.textColor,
+                side: BorderSide(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Показываем текущее напоминание
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.schedule,
+                  color: AppConstants.primaryColor,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${localizations.translate('current_reminder')}: ${_getCurrentReminderDescription(localizations)}',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  String _getCurrentReminderDescription(AppLocalizations localizations) {
+    if (_currentReminderType == ReminderType.custom && _currentCustomDateTime != null) {
+      final date = _currentCustomDateTime!;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      final reminderDate = DateTime(date.year, date.month, date.day);
+
+      String dateStr;
+      if (reminderDate == today) {
+        dateStr = 'сегодня';
+      } else if (reminderDate == tomorrow) {
+        dateStr = 'завтра';
+      } else {
+        dateStr = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+      }
+
+      final timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+      return '$dateStr в $timeStr';
+    }
+
+    return localizations.translate(_currentReminderType.localizationKey);
   }
 
   Widget _buildCalendarButton(BuildContext context, AppLocalizations localizations) {
@@ -788,16 +888,36 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
     });
 
     try {
+      // Показываем диалог выбора напоминания
+      final result = await ReminderDialogs.showTournamentReminderDialog(
+        context,
+        eventStartDate: widget.tournament.startDate,
+      );
+
+      if (result == null) {
+        // Пользователь отменил выбор
+        setState(() {
+          _isUpdatingCalendar = false;
+        });
+        return;
+      }
+
+      final reminderType = result['reminderType'] as ReminderType;
+      final customDateTime = result['customDateTime'] as DateTime?;
+
       final calendarService = CalendarEventService();
 
-      // Добавляем турнир в календарь с напоминанием за день
+      // Добавляем турнир в календарь с выбранным напоминанием
       await calendarService.addTournamentToCalendar(
         tournament: widget.tournament,
-        reminderType: ReminderType.oneDay,
+        reminderType: reminderType,
+        customReminderDateTime: customDateTime,
       );
 
       setState(() {
         _isInCalendar = true;
+        _currentReminderType = reminderType;
+        _currentCustomDateTime = customDateTime;
         _isUpdatingCalendar = false;
       });
 
@@ -805,6 +925,71 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(localizations.translate('tournament_added_to_calendar')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isUpdatingCalendar = false;
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_loading')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _editReminder(BuildContext context, AppLocalizations localizations) async {
+    try {
+      final result = await ReminderDialogs.showEditReminderDialog(
+        context,
+        _currentReminderType,
+        widget.tournament.name,
+        currentCustomDateTime: _currentCustomDateTime,
+        eventStartDate: widget.tournament.startDate,
+      );
+
+      if (result == null) {
+        return; // Пользователь отменил
+      }
+
+      final newReminderType = result['reminderType'] as ReminderType;
+      final newCustomDateTime = result['customDateTime'] as DateTime?;
+
+      if (newReminderType == _currentReminderType && newCustomDateTime == _currentCustomDateTime) {
+        return; // Ничего не изменилось
+      }
+
+      setState(() {
+        _isUpdatingCalendar = true;
+      });
+
+      final calendarService = CalendarEventService();
+      final eventId = 'tournament_${widget.tournament.id}';
+
+      // Обновляем напоминание
+      await calendarService.updateEventReminder(
+        eventId,
+        newReminderType,
+        customReminderDateTime: newCustomDateTime,
+      );
+
+      setState(() {
+        _currentReminderType = newReminderType;
+        _currentCustomDateTime = newCustomDateTime;
+        _isUpdatingCalendar = false;
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('reminder_updated')),
             backgroundColor: Colors.green,
           ),
         );

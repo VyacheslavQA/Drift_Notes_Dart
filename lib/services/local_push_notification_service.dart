@@ -162,21 +162,25 @@ class LocalPushNotificationService {
 
   /// Получение текста типа уведомления
   String _getNotificationTypeText(NotificationType type) {
+    // Используем английские fallback значения, так как у нас нет доступа к контексту
+    // В реальном push-уведомлении это не так критично
     switch (type) {
       case NotificationType.general:
-        return 'Общее';
+        return 'General';
       case NotificationType.fishingReminder:
-        return 'Напоминание';
+        return 'Reminder';
+      case NotificationType.tournamentReminder:
+        return 'Tournament';
       case NotificationType.biteForecast:
-        return 'Прогноз клева';
+        return 'Bite forecast';
       case NotificationType.weatherUpdate:
-        return 'Погода';
+        return 'Weather';
       case NotificationType.newFeatures:
-        return 'Новости';
+        return 'News';
       case NotificationType.systemUpdate:
-        return 'Система';
+        return 'System';
       case NotificationType.policyUpdate:
-        return 'Документы';
+        return 'Documents';
     }
   }
 

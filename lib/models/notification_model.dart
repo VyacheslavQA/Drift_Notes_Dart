@@ -3,6 +3,7 @@
 enum NotificationType {
   general,           // Общие уведомления
   fishingReminder,   // Напоминания о рыбалке
+  tournamentReminder, // НОВЫЙ: Напоминания о турнирах
   biteForecast,      // Прогнозы клева
   weatherUpdate,     // Обновления погоды
   newFeatures,       // Новые функции
@@ -83,6 +84,8 @@ class NotificationModel {
         return 'assets/icons/notification.png';
       case NotificationType.fishingReminder:
         return 'assets/icons/fishing.png';
+      case NotificationType.tournamentReminder: // НОВЫЙ ТИП
+        return 'assets/icons/tournament.png';
       case NotificationType.biteForecast:
         return 'assets/icons/fish_active.png';
       case NotificationType.weatherUpdate:
@@ -103,6 +106,8 @@ class NotificationModel {
         return 0xFF4CAF50; // Зеленый
       case NotificationType.fishingReminder:
         return 0xFF2196F3; // Синий
+      case NotificationType.tournamentReminder: // НОВЫЙ ТИП
+        return 0xFFFF5722; // Оранжево-красный
       case NotificationType.biteForecast:
         return 0xFFFF9800; // Оранжевый
       case NotificationType.weatherUpdate:
@@ -114,5 +119,112 @@ class NotificationModel {
       case NotificationType.policyUpdate:
         return 0xFFE91E63; // Розовый/красный
     }
+  }
+
+  // НОВЫЙ: Получение emoji-иконки для типа уведомления
+  String get emoji {
+    switch (type) {
+      case NotificationType.general:
+        return '📢';
+      case NotificationType.fishingReminder:
+        return '🎣';
+      case NotificationType.tournamentReminder:
+        return '🏆';
+      case NotificationType.biteForecast:
+        return '🐟';
+      case NotificationType.weatherUpdate:
+        return '🌤️';
+      case NotificationType.newFeatures:
+        return '⭐';
+      case NotificationType.systemUpdate:
+        return '🔧';
+      case NotificationType.policyUpdate:
+        return '🔒';
+    }
+  }
+
+  // НОВЫЙ: Получение локализованного названия типа уведомления
+  String get typeLocalizationKey {
+    switch (type) {
+      case NotificationType.general:
+        return 'notification_type_general';
+      case NotificationType.fishingReminder:
+        return 'notification_type_fishing_reminder';
+      case NotificationType.tournamentReminder:
+        return 'notification_type_tournament_reminder';
+      case NotificationType.biteForecast:
+        return 'notification_type_bite_forecast';
+      case NotificationType.weatherUpdate:
+        return 'notification_type_weather_update';
+      case NotificationType.newFeatures:
+        return 'notification_type_new_features';
+      case NotificationType.systemUpdate:
+        return 'notification_type_system_update';
+      case NotificationType.policyUpdate:
+        return 'notification_type_policy_update';
+    }
+  }
+
+  // НОВЫЙ: Получение приоритета уведомления (для сортировки)
+  int get priority {
+    switch (type) {
+      case NotificationType.tournamentReminder:
+        return 5; // Высокий приоритет
+      case NotificationType.fishingReminder:
+        return 4; // Высокий приоритет
+      case NotificationType.biteForecast:
+        return 3; // Средний приоритет
+      case NotificationType.weatherUpdate:
+        return 3; // Средний приоритет
+      case NotificationType.systemUpdate:
+        return 2; // Низкий приоритет
+      case NotificationType.policyUpdate:
+        return 2; // Низкий приоритет
+      case NotificationType.newFeatures:
+        return 1; // Очень низкий приоритет
+      case NotificationType.general:
+        return 1; // Очень низкий приоритет
+    }
+  }
+
+  // НОВЫЙ: Проверка, является ли уведомление напоминанием
+  bool get isReminder {
+    return type == NotificationType.fishingReminder ||
+        type == NotificationType.tournamentReminder;
+  }
+
+  // НОВЫЙ: Проверка, требует ли уведомление действий от пользователя
+  bool get requiresAction {
+    return type == NotificationType.policyUpdate ||
+        type == NotificationType.systemUpdate ||
+        isReminder;
+  }
+
+  // НОВЫЙ: Получение времени, через которое уведомление автоматически пропадет (в часах)
+  int? get autoExpireHours {
+    switch (type) {
+      case NotificationType.fishingReminder:
+      case NotificationType.tournamentReminder:
+        return 24; // Напоминания исчезают через 24 часа
+      case NotificationType.biteForecast:
+        return 12; // Прогнозы исчезают через 12 часов
+      case NotificationType.weatherUpdate:
+        return 6; // Погода исчезает через 6 часов
+      case NotificationType.general:
+        return 48; // Общие уведомления через 48 часов
+      case NotificationType.newFeatures:
+      case NotificationType.systemUpdate:
+      case NotificationType.policyUpdate:
+        return null; // Не исчезают автоматически
+    }
+  }
+
+  // НОВЫЙ: Проверка, истекло ли уведомление
+  bool get isExpired {
+    final expireHours = autoExpireHours;
+    if (expireHours == null) return false;
+
+    final expireTime = timestamp.add(Duration(hours: expireHours));
+    return DateTime.now().isAfter(expireTime);
   }
 }
