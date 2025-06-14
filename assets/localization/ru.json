@@ -1521,7 +1521,63 @@
   "tomorrow": "Завтра",
   "at": "в",
   "tournament_hashtag": "турнир",
-  "fishing_hashtag": "рыбалка"
+  "fishing_hashtag": "рыбалка",
+
+  "today": "Сегодня",
+  "tomorrow": "Завтра",
+  "day_after_tomorrow": "Послезавтра",
+  "3_days": "3 дня",
+  "7_days": "Неделя",
+  "14_days": "2 недели",
+
+  "mon_short": "Пн",
+  "tue_short": "Вт",
+  "wed_short": "Ср",
+  "thu_short": "Чт",
+  "fri_short": "Пт",
+  "sat_short": "Сб",
+  "sun_short": "Вс",
+
+  "morning": "Утро",
+  "day": "День",
+  "evening": "Вечер",
+  "night": "Ночь",
+
+  "wind_speed": "Ветер, м/с",
+  "gusts": "Порывы",
+  "up_to": "до",
+  "pressure_mmhg": "Давление, мм рт.ст.",
+  "visibility": "Видимость",
+  "m": "м",
+  "water_temp": "t воды",
+  "daylight": "Световой день",
+  "feels_like_short": "ощущается",
+
+  "normal_pressure": "Нормальное",
+  "low_pressure": "Низкое",
+  "high_pressure": "Высокое",
+  "moderate_pressure": "Умеренное",
+
+
+  "today": "Сегодня",
+  "tomorrow": "Завтра",
+  "3_days": "3 дня",
+  "7_days": "Неделя",
+
+  "morning": "Утро",
+  "day": "День",
+  "evening": "Вечер",
+  "night": "Ночь",
+
+  "wind_speed": "Ветер, м/с",
+  "gusts": "Порывы",
+  "up_to": "до",
+  "pressure_mmhg": "Давление, мм рт.ст.",
+  "visibility": "Видимость",
+  "km": "км",
+  "m_s": "м/с",
+  "daylight": "Световой день",
+  "feels_like_short": "ощущается"
 
 
 }

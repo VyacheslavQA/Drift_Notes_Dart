@@ -1,4 +1,5 @@
 // Путь: lib/widgets/weather/weather_metrics_grid.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -52,7 +53,7 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final localizations = AppLocalizations.of(context);
     final pressure = widget.weather.current.pressureMb;
     final formattedPressure = widget.weatherSettings.formatPressure(pressure);
-    final pressureTrend = _getPressureTrend();
+    final pressureTrend = _getPressureTrend(pressure);
     final pressureStatus = _getPressureStatus(pressure, localizations);
 
     return AnimatedBorderWidget(
@@ -234,9 +235,9 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   Widget _buildMoonPhaseCard() {
     final localizations = AppLocalizations.of(context);
     final moonPhase =
-        widget.weather.forecast.isNotEmpty
-            ? widget.weather.forecast.first.astro.moonPhase
-            : 'Unknown';
+    widget.weather.forecast.isNotEmpty
+        ? widget.weather.forecast.first.astro.moonPhase
+        : 'Unknown';
 
     final moonInfo = _getMoonPhaseInfo(moonPhase, localizations);
 
@@ -423,17 +424,16 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   // Вспомогательные методы для анализа данных
 
-  String _getPressureTrend() {
-    final pressure = widget.weather.current.pressureMb;
+  String _getPressureTrend(double pressure) {
     if (pressure > 1020) return 'stable';
     if (pressure > 1010) return 'rising';
     return 'falling';
   }
 
   Map<String, dynamic> _getPressureStatus(
-    double pressure,
-    AppLocalizations localizations,
-  ) {
+      double pressure,
+      AppLocalizations localizations,
+      ) {
     if (pressure >= 1010 && pressure <= 1025) {
       return {
         'color': Colors.green,
@@ -480,9 +480,9 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   }
 
   Map<String, dynamic> _getWindStatus(
-    double windKph,
-    AppLocalizations localizations,
-  ) {
+      double windKph,
+      AppLocalizations localizations,
+      ) {
     if (windKph < 10) {
       return {
         'color': Colors.green,
@@ -530,9 +530,9 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   }
 
   Map<String, dynamic> _getMoonPhaseInfo(
-    String moonPhase,
-    AppLocalizations localizations,
-  ) {
+      String moonPhase,
+      AppLocalizations localizations,
+      ) {
     final phase = moonPhase.toLowerCase();
 
     if (phase.contains('new')) {
@@ -625,9 +625,9 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   }
 
   Map<String, dynamic> _getHumidityStatus(
-    int humidity,
-    AppLocalizations localizations,
-  ) {
+      int humidity,
+      AppLocalizations localizations,
+      ) {
     if (humidity >= 40 && humidity <= 60) {
       return {
         'color': Colors.green,
@@ -656,7 +656,6 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
   }
 
   double _calculateDewPoint(double tempC, int humidity) {
-    // Упрощенная формула расчета точки росы
     final a = 17.27;
     final b = 237.7;
     final alpha = ((a * tempC) / (b + tempC)) + math.log(humidity / 100.0);

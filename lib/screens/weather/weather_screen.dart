@@ -1,4 +1,5 @@
 // Путь: lib/screens/weather/weather_screen.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,10 +11,11 @@ import '../../services/weather/weather_api_service.dart';
 import '../../services/weather_settings_service.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../localization/app_localizations.dart';
-import '../../widgets/weather/weather_header.dart';
+import '../../enums/forecast_period.dart';
+import '../../widgets/weather/forecast_period_selector.dart';
+import '../../widgets/weather/detailed_weather_forecast.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../widgets/weather/ai_bite_meter.dart';
-import '../../widgets/weather/hourly_forecast.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
 import 'package:flutter/foundation.dart';
@@ -41,6 +43,9 @@ class _WeatherScreenState extends State<WeatherScreen>
   String _locationName = '';
   DateTime _lastUpdated = DateTime.now();
 
+  // НОВОЕ: Состояние выбранного периода
+  ForecastPeriod _selectedPeriod = ForecastPeriod.today;
+
   // Анимации
   late AnimationController _loadingController;
   late AnimationController _fadeController;
@@ -62,7 +67,6 @@ class _WeatherScreenState extends State<WeatherScreen>
     if (_isLoading && _currentWeather == null) {
       _loadWeather();
     } else {
-      // Проверяем, нужно ли показать подсказку для существующих данных
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _startPullHintIfNeeded();
       });
@@ -85,12 +89,10 @@ class _WeatherScreenState extends State<WeatherScreen>
       vsync: this,
     );
 
-    // Анимация прозрачности для пульсирующего эффекта
     _pullHintAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _pullHintController, curve: Curves.easeInOut),
     );
 
-    // Анимация сдвига для имитации движения вниз
     _pullHintSlideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.5),
       end: const Offset(0, 0.2),
@@ -102,15 +104,11 @@ class _WeatherScreenState extends State<WeatherScreen>
   }
 
   void _startPullHintIfNeeded() {
-    // Показываем подсказку если:
-    // 1. Еще не показывали в этой сессии
-    // 2. Или данные устарели (более 1 часа)
-    // 3. Или есть ошибка
     final shouldShow =
         !_hasShownHintOnce ||
-        _errorMessage != null ||
-        (_currentWeather != null &&
-            DateTime.now().difference(_lastUpdated).inHours > 1);
+            _errorMessage != null ||
+            (_currentWeather != null &&
+                DateTime.now().difference(_lastUpdated).inHours > 1);
 
     if (shouldShow && !_isLoading) {
       setState(() {
@@ -120,7 +118,6 @@ class _WeatherScreenState extends State<WeatherScreen>
       _pullHintController.repeat(reverse: true);
       _hasShownHintOnce = true;
 
-      // Скрываем через 8 секунд
       Future.delayed(const Duration(seconds: 8), () {
         if (mounted && _showPullHint) {
           setState(() {
@@ -140,13 +137,14 @@ class _WeatherScreenState extends State<WeatherScreen>
     super.dispose();
   }
 
+  // ОБНОВЛЕННЫЙ МЕТОД: Теперь запрашивает нужное количество дней
   Future<void> _loadWeather() async {
     if (!mounted) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _showPullHint = false; // Скрываем подсказку при загрузке
+      _showPullHint = false;
     });
 
     _pullHintController.stop();
@@ -156,14 +154,15 @@ class _WeatherScreenState extends State<WeatherScreen>
       final position = await _getCurrentPosition();
 
       if (position != null && mounted) {
-        // Получаем погоду
+        // Получаем прогноз на нужное количество дней
+        final daysCount = _selectedPeriod.getDaysCount();
+
         final weather = await _weatherService.getForecast(
           latitude: position.latitude,
           longitude: position.longitude,
-          days: 3,
+          days: daysCount,
         );
 
-        // Получаем ИИ прогноз для всех типов рыбалки
         final aiPrediction = await _aiService.getMultiFishingTypePrediction(
           weather: weather,
           latitude: position.latitude,
@@ -176,7 +175,7 @@ class _WeatherScreenState extends State<WeatherScreen>
             _currentWeather = weather;
             _aiPrediction = aiPrediction;
             _locationName =
-                '${weather.location.name}, ${weather.location.region}';
+            '${weather.location.name}, ${weather.location.region}';
             _isLoading = false;
             _lastUpdated = DateTime.now();
           });
@@ -184,7 +183,6 @@ class _WeatherScreenState extends State<WeatherScreen>
           _loadingController.stop();
           _fadeController.forward();
 
-          // Показываем подсказку после успешной загрузки (для новых пользователей)
           if (!_hasShownHintOnce) {
             Future.delayed(const Duration(seconds: 2), () {
               if (mounted) _startPullHintIfNeeded();
@@ -202,10 +200,28 @@ class _WeatherScreenState extends State<WeatherScreen>
         });
         _loadingController.stop();
 
-        // Показываем подсказку при ошибке
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) _startPullHintIfNeeded();
         });
+      }
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Обработка смены периода
+  void _onPeriodChanged(ForecastPeriod newPeriod) {
+    if (_selectedPeriod != newPeriod) {
+      setState(() {
+        _selectedPeriod = newPeriod;
+      });
+
+      // Перезагружаем данные если нужно больше дней
+      if (_currentWeather != null) {
+        final currentDays = _currentWeather!.forecast.length;
+        final neededDays = newPeriod.getDaysCount();
+
+        if (neededDays > currentDays) {
+          _loadWeather();
+        }
       }
     }
   }
@@ -246,7 +262,6 @@ class _WeatherScreenState extends State<WeatherScreen>
       );
     } catch (e) {
       debugPrint('Ошибка геолокации: $e');
-      // Fallback - координаты Павлодара
       return Position(
         longitude: 76.9574,
         latitude: 52.2962,
@@ -283,32 +298,44 @@ class _WeatherScreenState extends State<WeatherScreen>
       return _buildNoDataState();
     }
 
-    return _buildTodayContent();
+    return _buildMainContent();
   }
 
-  Widget _buildTodayContent() {
+  // ОБНОВЛЕННЫЙ МЕТОД: Новая структура контента
+  Widget _buildMainContent() {
     return RefreshIndicator(
       onRefresh: _loadWeather,
       color: AppConstants.primaryColor,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // Заголовок экрана (без кнопки обновления)
+          // Заголовок экрана
           SliverToBoxAdapter(child: _buildScreenHeader()),
 
           // Анимированная подсказка pull-to-refresh
           if (_showPullHint)
             SliverToBoxAdapter(child: _buildAnimatedPullHint()),
 
-          // Заголовок с температурой
+          // НОВОЕ: Селектор периодов
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fadeController,
-              child: WeatherHeader(
+              child: ForecastPeriodSelector(
+                selectedPeriod: _selectedPeriod,
+                onPeriodChanged: _onPeriodChanged,
+              ),
+            ),
+          ),
+
+          // НОВОЕ: Детальный прогноз погоды (заменяет WeatherHeader + HourlyForecast)
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fadeController,
+              child: DetailedWeatherForecast(
                 weather: _currentWeather!,
-                locationName: _locationName,
-                lastUpdated: _lastUpdated,
                 weatherSettings: _weatherSettings,
+                selectedPeriod: _selectedPeriod,
+                locationName: _locationName,
               ),
             ),
           ),
@@ -318,42 +345,37 @@ class _WeatherScreenState extends State<WeatherScreen>
               opacity: _fadeController,
               child: Column(
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // Почасовой прогноз (перемещен выше)
-                  HourlyForecast(
-                    weather: _currentWeather!,
-                    weatherSettings: _weatherSettings,
-                    onHourTapped:
-                        (hour, activity) => _showHourDetails(hour, activity),
-                  ),
+                  // ОБНОВЛЕННЫЕ: Только 2 карточки метрик (давление и ветер)
+                  _buildReducedMetricsGrid(),
 
                   const SizedBox(height: 24),
 
-                  /// Ключевые показатели (4 карточки)
-                  WeatherMetricsGrid(
-                    weather: _currentWeather!,
-                    weatherSettings: _weatherSettings,
-                    onPressureCardTap: () => _openPressureDetailScreen(),
-                    onWindCardTap: () => _openWindDetailScreen(),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ИИ прогноз клева
+                  // ИИ прогноз клева (остается как есть)
                   AIBiteMeter(
                     aiPrediction: _aiPrediction,
                     onCompareTypes: () => _showCompareTypesDialog(),
                     onSelectType: (type) => _onFishingTypeSelected(type),
                   ),
 
-                  const SizedBox(height: 100), // Отступ для bottom navigation
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // УПРОЩЕННЫЙ МЕТОД: Возвращаем полную сетку с 4 карточками
+  Widget _buildReducedMetricsGrid() {
+    return WeatherMetricsGrid(
+      weather: _currentWeather!,
+      weatherSettings: _weatherSettings,
+      onPressureCardTap: _openPressureDetailScreen,
+      onWindCardTap: _openWindDetailScreen,
     );
   }
 
@@ -368,16 +390,33 @@ class _WeatherScreenState extends State<WeatherScreen>
           children: [
             Icon(Icons.cloud, color: AppConstants.primaryColor, size: 28),
             const SizedBox(width: 12),
-            Text(
-              localizations.translate('weather'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localizations.translate('weather'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_locationName.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _locationName,
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
-            const Spacer(),
-            // Кнопка ИИ-тестирования в правом углу
             if (kDebugMode)
               Container(
                 decoration: BoxDecoration(
@@ -398,7 +437,7 @@ class _WeatherScreenState extends State<WeatherScreen>
                     );
                   },
                   icon: Icon(
-                    Icons.smart_toy, // ИИ-робот иконка
+                    Icons.smart_toy,
                     color: AppConstants.primaryColor,
                     size: 24,
                   ),
@@ -432,7 +471,6 @@ class _WeatherScreenState extends State<WeatherScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Левая стрелка
                   Transform.scale(
                     scale: 0.8 + (_pullHintAnimation.value * 0.4),
                     child: Icon(
@@ -444,18 +482,16 @@ class _WeatherScreenState extends State<WeatherScreen>
                     ),
                   ),
                   const SizedBox(width: 8),
-
-                  // Текст с градиентом
                   ShaderMask(
                     shaderCallback:
                         (bounds) => LinearGradient(
-                          colors: [
-                            AppConstants.primaryColor.withValues(alpha: 0.6),
-                            AppConstants.primaryColor,
-                            AppConstants.primaryColor.withValues(alpha: 0.6),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        ).createShader(bounds),
+                      colors: [
+                        AppConstants.primaryColor.withValues(alpha: 0.6),
+                        AppConstants.primaryColor,
+                        AppConstants.primaryColor.withValues(alpha: 0.6),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ).createShader(bounds),
                     child: Text(
                       localizations.translate('pull_to_refresh') ??
                           'Потяните для обновления',
@@ -467,10 +503,7 @@ class _WeatherScreenState extends State<WeatherScreen>
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // Правая стрелка
                   Transform.scale(
                     scale: 0.8 + (_pullHintAnimation.value * 0.4),
                     child: Icon(
@@ -658,9 +691,9 @@ class _WeatherScreenState extends State<WeatherScreen>
         MaterialPageRoute(
           builder:
               (context) => PressureDetailScreen(
-                weatherData: _currentWeather!,
-                locationName: _locationName,
-              ),
+            weatherData: _currentWeather!,
+            locationName: _locationName,
+          ),
         ),
       );
     }
@@ -673,9 +706,9 @@ class _WeatherScreenState extends State<WeatherScreen>
         MaterialPageRoute(
           builder:
               (context) => WindDetailScreen(
-                weatherData: _currentWeather!,
-                locationName: _locationName,
-              ),
+            weatherData: _currentWeather!,
+            locationName: _locationName,
+          ),
         ),
       );
     }
@@ -692,52 +725,6 @@ class _WeatherScreenState extends State<WeatherScreen>
 
   void _onFishingTypeSelected(String fishingType) {
     debugPrint('🎣 Выбран тип рыбалки: $fishingType');
-  }
-
-  void _showHourDetails(int hour, double activity) {
-    final localizations = AppLocalizations.of(context);
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: AppConstants.surfaceColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Text(
-              '${hour.toString().padLeft(2, '0')}:00',
-              style: TextStyle(color: AppConstants.textColor, fontSize: 18),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${localizations.translate('bite_activity')}: ${(activity * 100).round()}%',
-                  style: TextStyle(
-                    color: _getActivityColor(activity),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _getActivityText(activity),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  localizations.translate('close'),
-                  style: TextStyle(color: AppConstants.primaryColor),
-                ),
-              ),
-            ],
-          ),
-    );
   }
 
   Widget _buildCompareTypesDialog() {
@@ -818,17 +805,17 @@ class _WeatherScreenState extends State<WeatherScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color:
-            isBest
-                ? AppConstants.primaryColor.withValues(alpha: 0.1)
-                : AppConstants.backgroundColor.withValues(alpha: 0.5),
+        isBest
+            ? AppConstants.primaryColor.withValues(alpha: 0.1)
+            : AppConstants.backgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border:
-            isBest
-                ? Border.all(color: AppConstants.primaryColor, width: 2)
-                : Border.all(
-                  color: AppConstants.textColor.withValues(alpha: 0.1),
-                  width: 1,
-                ),
+        isBest
+            ? Border.all(color: AppConstants.primaryColor, width: 2)
+            : Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -888,20 +875,53 @@ class _WeatherScreenState extends State<WeatherScreen>
   }
 
   // Вспомогательные методы
-  Color _getActivityColor(double activity) {
-    if (activity >= 0.8) return const Color(0xFF4CAF50);
-    if (activity >= 0.6) return const Color(0xFFFFC107);
-    if (activity >= 0.4) return const Color(0xFFFF9800);
-    return const Color(0xFFF44336);
+  Map<String, dynamic> _getPressureStatus(
+      double pressure,
+      AppLocalizations localizations,
+      ) {
+    if (pressure >= 1010 && pressure <= 1025) {
+      return {
+        'color': Colors.green,
+        'description': localizations.translate('normal_pressure'),
+      };
+    } else if (pressure < 1000) {
+      return {
+        'color': Colors.red,
+        'description': localizations.translate('low_pressure'),
+      };
+    } else if (pressure > 1030) {
+      return {
+        'color': Colors.orange,
+        'description': localizations.translate('high_pressure'),
+      };
+    } else {
+      return {
+        'color': Colors.orange,
+        'description': localizations.translate('moderate_pressure'),
+      };
+    }
   }
 
-  String _getActivityText(double activity) {
-    final localizations = AppLocalizations.of(context);
-
-    if (activity >= 0.8) return localizations.translate('excellent_activity');
-    if (activity >= 0.6) return localizations.translate('good_activity');
-    if (activity >= 0.4) return localizations.translate('moderate_activity');
-    return localizations.translate('poor_activity');
+  String _translateWindDirection(String direction) {
+    const Map<String, String> directions = {
+      'N': 'С',
+      'NNE': 'ССВ',
+      'NE': 'СВ',
+      'ENE': 'ВСВ',
+      'E': 'В',
+      'ESE': 'ВЮВ',
+      'SE': 'ЮВ',
+      'SSE': 'ЮЮВ',
+      'S': 'Ю',
+      'SSW': 'ЮЮЗ',
+      'SW': 'ЮЗ',
+      'WSW': 'ЗЮЗ',
+      'W': 'З',
+      'WNW': 'ЗСЗ',
+      'NW': 'СЗ',
+      'NNW': 'ССЗ',
+    };
+    return directions[direction] ?? direction;
   }
 }
 
@@ -914,16 +934,16 @@ extension MultiFishingTypePredictionExt on MultiFishingTypePrediction {
       'recommendation': bestPrediction.recommendation,
       'tips': bestPrediction.tips,
       'bestTimeWindows':
-          bestPrediction.bestTimeWindows
-              .map(
-                (w) => {
-                  'startTime': w.startTime.toIso8601String(),
-                  'endTime': w.endTime.toIso8601String(),
-                  'activity': w.activity,
-                  'reason': w.reason,
-                },
-              )
-              .toList(),
+      bestPrediction.bestTimeWindows
+          .map(
+            (w) => {
+          'startTime': w.startTime.toIso8601String(),
+          'endTime': w.endTime.toIso8601String(),
+          'activity': w.activity,
+          'reason': w.reason,
+        },
+      )
+          .toList(),
     };
   }
 }

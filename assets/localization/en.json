@@ -1583,7 +1583,62 @@
   "at": "at",
 
   "tournament_hashtag": "tournament",
-  "fishing_hashtag": "fishing"
+  "fishing_hashtag": "fishing",
+
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "day_after_tomorrow": "Day after tomorrow",
+  "3_days": "3 days",
+  "7_days": "Week",
+  "14_days": "2 weeks",
+
+  "mon_short": "Mon",
+  "tue_short": "Tue",
+  "wed_short": "Wed",
+  "thu_short": "Thu",
+  "fri_short": "Fri",
+  "sat_short": "Sat",
+  "sun_short": "Sun",
+
+  "morning": "Morning",
+  "day": "Day",
+  "evening": "Evening",
+  "night": "Night",
+
+  "wind_speed": "Wind, m/s",
+  "gusts": "Gusts",
+  "up_to": "up to",
+  "pressure_mmhg": "Pressure, mmHg",
+  "visibility": "Visibility",
+  "m": "m",
+  "water_temp": "Water temp",
+  "daylight": "Daylight",
+  "feels_like_short": "feels like",
+
+  "normal_pressure": "Normal",
+  "low_pressure": "Low",
+  "high_pressure": "High",
+  "moderate_pressure": "Moderate",
+
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "3_days": "3 days",
+  "7_days": "Week",
+
+  "morning": "Morning",
+  "day": "Day",
+  "evening": "Evening",
+  "night": "Night",
+
+  "wind_speed": "Wind, m/s",
+  "gusts": "Gusts",
+  "up_to": "up to",
+  "pressure_mmhg": "Pressure, mmHg",
+  "visibility": "Visibility",
+  "km": "km",
+  "m_s": "m/s",
+  "daylight": "Daylight",
+  "feels_like_short": "feels like"
 
 
 }
