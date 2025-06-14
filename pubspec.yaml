@@ -72,6 +72,12 @@ dependencies:
   quick_actions: ^1.0.7  # Добавь эту строку
   app_links: ^6.3.2  # Добавь эту строку
 
+  # Добавьте эти зависимости для тестирования:
+  fake_cloud_firestore: ^2.4.1+1
+  firebase_auth_mocks: ^0.13.0
+  mockito: ^5.4.2
+  build_runner: ^2.4.7
+
 
 
 dev_dependencies:
