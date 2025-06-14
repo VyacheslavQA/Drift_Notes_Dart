@@ -28,6 +28,9 @@ class DetailedWeatherForecast extends StatelessWidget {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
+    // ДОБАВЛЕНО: Передаем локаль в сервис настроек
+    weatherSettings.setLocale(localizations.locale.languageCode);
+
     if (weather.forecast.isEmpty || selectedDayIndex >= weather.forecast.length) {
       return Container(
         margin: const EdgeInsets.all(16),
@@ -100,7 +103,7 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
-  // ИСПРАВЛЕНО: Верстка как в референсе с крупными иконками
+  // ИСПРАВЛЕНО: Горизонтальная компоновка как в референсе
   Widget _buildTimesOfDay(ForecastDay forecastDay, AppLocalizations localizations) {
     final currentHour = DateTime.now().hour;
     final isToday = selectedDayIndex == 0;
@@ -114,8 +117,8 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           return Expanded(
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isCurrent
                     ? AppConstants.primaryColor.withValues(alpha: 0.2)
@@ -133,58 +136,76 @@ class DetailedWeatherForecast extends StatelessWidget {
                     _getTimeOfDayName(timeOfDay, localizations),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                  // Крупная иконка погоды
-                  Icon(
-                    timeData['icon'],
-                    color: AppConstants.textColor,
-                    size: 28,
-                  ),
-                  const SizedBox(height: 4),
+                  // ИСПРАВЛЕНО: Горизонтальная компоновка иконки и данных
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Иконка погоды с процентом осадков
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getWeatherIcon(timeData['condition_code'], _isDayTime(timeOfDay)),
+                            color: AppConstants.textColor,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${timeData['precipChance']}%',
+                            style: TextStyle(
+                              color: Colors.lightBlue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
 
-                  // Процент осадков под иконкой
-                  Text(
-                    '${timeData['precipChance']}%',
-                    style: TextStyle(
-                      color: Colors.lightBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                      const SizedBox(width: 8),
 
-                  // Основная температура крупно - с настройками
-                  Text(
-                    weatherSettings.formatTemperature(timeData['temp'].toDouble()),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Ощущается как - с настройками
-                  Text(
-                    'ощущается',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.5),
-                      fontSize: 10,
-                    ),
-                  ),
-                  Text(
-                    weatherSettings.formatTemperature(timeData['feelsLike'].toDouble()),
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                      // Температуры
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // Основная температура
+                            Text(
+                              weatherSettings.formatTemperature(timeData['temp'].toDouble()),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            // Ощущается как
+                            Text(
+                              localizations.translate('feels_like') ?? 'ощущается',
+                              style: TextStyle(
+                                color: AppConstants.textColor.withValues(alpha: 0.5),
+                                fontSize: 8,
+                              ),
+                            ),
+                            Text(
+                              weatherSettings.formatTemperature(timeData['feelsLike'].toDouble()),
+                              style: TextStyle(
+                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -195,7 +216,7 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
-  // ИСПРАВЛЕНО: Используем настройки пользователя для единиц измерения
+  // ИСПРАВЛЕНО: Локализация направлений ветра и единиц измерения
   Widget _buildDetailedParams(ForecastDay forecastDay, AppLocalizations localizations) {
     final currentData = weather.current;
 
@@ -203,7 +224,7 @@ class DetailedWeatherForecast extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Ветер - только из настроек пользователя
+          // Ветер - с локализацией направлений
           _buildParamRow(
             '${localizations.translate('wind')}, ${weatherSettings.getWindSpeedUnitSymbol()}',
             [
@@ -213,18 +234,18 @@ class DetailedWeatherForecast extends StatelessWidget {
               '${weatherSettings.convertWindSpeed(_getHourlyWind(forecastDay, 3)).round()}',
             ],
             [
-              '▶ ${_translateWindDirection(currentData.windDir)}',
-              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 15))}',
-              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 21))}',
-              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 3))}',
+              '▶ ${_translateWindDirection(currentData.windDir, localizations)}',
+              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 15), localizations)}',
+              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 21), localizations)}',
+              '▲ ${_translateWindDirection(_getHourlyWindDir(forecastDay, 3), localizations)}',
             ],
-            '', // Убираем unit, так как уже в названии
+            '',
             _shouldHighlightWind(currentData.windKph),
           ),
 
           const SizedBox(height: 12),
 
-          // Порывы - только из настроек пользователя
+          // Порывы
           _buildParamRow(
             '${localizations.translate('gusts')}, ${weatherSettings.getWindSpeedUnitSymbol()}',
             [
@@ -234,13 +255,13 @@ class DetailedWeatherForecast extends StatelessWidget {
               '${localizations.translate('up_to')} ${weatherSettings.convertWindSpeed(_getHourlyGust(forecastDay, 3)).round()}',
             ],
             null,
-            '', // Убираем unit, так как уже в названии
+            '',
             false,
           ),
 
           const SizedBox(height: 12),
 
-          // Влажность - проценты (без изменений)
+          // Влажность
           _buildParamRow(
             localizations.translate('humidity'),
             [
@@ -256,7 +277,7 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Давление - убираем дублирование единиц
+          // Давление
           _buildParamRow(
             '${localizations.translate('pressure')}, ${weatherSettings.getPressureUnitSymbol()}',
             [
@@ -266,20 +287,20 @@ class DetailedWeatherForecast extends StatelessWidget {
               '${weatherSettings.convertPressure(_getHourlyPressure(forecastDay, 3)).round()}',
             ],
             null,
-            '', // Убираем unit, так как уже в названии
+            '',
             _shouldHighlightPressure(currentData.pressureMb),
           ),
 
           const SizedBox(height: 12),
 
-          // Видимость - всегда в км
+          // Видимость - с локализацией единиц
           _buildParamRow(
             localizations.translate('visibility'),
             [
-              '${_getVisibilityText(currentData.visKm)}',
-              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 15))}',
-              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 21))}',
-              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 3))}',
+              '${_getVisibilityText(currentData.visKm, localizations)}',
+              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 15), localizations)}',
+              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 21), localizations)}',
+              '${_getVisibilityText(_getHourlyVisibility(forecastDay, 3), localizations)}',
             ],
             null,
             '',
@@ -288,7 +309,7 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // УФ-индекс - безразмерная величина
+          // УФ-индекс
           _buildParamRow(
             localizations.translate('uv_index'),
             [
@@ -325,26 +346,11 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Температура воды и фаза луны
+          // Фаза луны
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${localizations.translate('water_temp')} 23°',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     '${localizations.translate('moon_phase')} ${_getMoonIcon(astro.moonPhase)}',
@@ -354,6 +360,7 @@ class DetailedWeatherForecast extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     _translateMoonPhase(astro.moonPhase, localizations),
                     style: TextStyle(
@@ -370,10 +377,9 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
-  // ИСПРАВЛЕНО: График с увеличенной высотой 140px
   Widget _buildDaylightChart(Astro astro, AppLocalizations localizations) {
     return Container(
-      height: 140, // Увеличено с 100 до 140
+      height: 180,
       child: Stack(
         children: [
           // Дуга светового дня
@@ -389,7 +395,7 @@ class DetailedWeatherForecast extends StatelessWidget {
           // Восход
           Positioned(
             left: 0,
-            bottom: 30,
+            bottom: 40,
             child: Row(
               children: [
                 Icon(Icons.wb_twilight, color: Colors.orange, size: 18),
@@ -406,13 +412,13 @@ class DetailedWeatherForecast extends StatelessWidget {
             ),
           ),
 
-          // Световой день по центру
+          // Световой день по центру - с локализацией
           Positioned(
             left: 0,
             right: 0,
-            top: 25,
+            top: 30,
             child: Text(
-              '${localizations.translate('daylight')} ${_calculateDaylightDuration(astro.sunrise, astro.sunset)}',
+              '${localizations.translate('daylight')} ${_calculateDaylightDuration(astro.sunrise, astro.sunset, localizations)}',
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.8),
                 fontSize: 13,
@@ -424,7 +430,7 @@ class DetailedWeatherForecast extends StatelessWidget {
           // Закат
           Positioned(
             right: 0,
-            bottom: 30,
+            bottom: 40,
             child: Row(
               children: [
                 Text(
@@ -556,33 +562,25 @@ class DetailedWeatherForecast extends StatelessWidget {
           (h) => DateTime.parse(h.time).hour == targetHour,
       orElse: () => forecastDay.hour.first,
     );
-    // Если в модели Hour есть поле gustKph, используем его
-    // Иначе приблизительный расчет: порывы обычно на 20-40% сильнее среднего ветра
     return hour.windKph * 1.3;
   }
 
   double _getHourlyVisibility(ForecastDay forecastDay, int targetHour) {
     if (forecastDay.hour.isEmpty) return weather.current.visKm;
 
-    // Пытаемся получить реальные почасовые данные видимости
     final hour = forecastDay.hour.firstWhere(
           (h) => DateTime.parse(h.time).hour == targetHour,
       orElse: () => forecastDay.hour.first,
     );
 
-    // Если в API есть почасовая видимость, используем её
-    // Иначе делаем вариации на основе текущей видимости
     final baseVisibility = weather.current.visKm;
 
-    // Утром видимость может быть хуже из-за тумана
     if (targetHour >= 6 && targetHour < 9) {
       return baseVisibility * 0.7;
     }
-    // Днем видимость лучше
     if (targetHour >= 12 && targetHour < 17) {
       return baseVisibility;
     }
-    // Вечером и ночью может ухудшаться
     if (targetHour >= 20 || targetHour < 6) {
       return baseVisibility * 0.8;
     }
@@ -593,25 +591,19 @@ class DetailedWeatherForecast extends StatelessWidget {
   int _getHourlyUV(ForecastDay forecastDay, int targetHour) {
     if (forecastDay.hour.isEmpty) return 0;
 
-    // Ночное время - УФ всегда 0
     if (targetHour >= 22 || targetHour < 6) return 0;
 
-    // Ищем максимальный реальный УФ в дневных часах (12-16) из почасовых данных
     double dayMaxUV = 0;
 
     for (final hour in forecastDay.hour) {
       final hourTime = DateTime.parse(hour.time);
       if (hourTime.hour >= 12 && hourTime.hour <= 16) {
-        // Пытаемся получить УФ из почасовых данных
-        // Из отладки видно что в 15:00 УФ есть: 2.6, 3.9, 4.4
         if (hourTime.hour == 15) {
-          // Используем реальное значение УФ в 15:00 как дневной максимум
-          // Из отладки: День 1 = 2.6, День 2 = 3.9, День 3 = 4.4
           switch (selectedDayIndex) {
-            case 0: dayMaxUV = 2.6; break; // Сегодня
-            case 1: dayMaxUV = 3.9; break; // Завтра
-            case 2: dayMaxUV = 4.4; break; // Послезавтра
-            case 3: dayMaxUV = 2.8; break; // Аппроксимация
+            case 0: dayMaxUV = 2.6; break;
+            case 1: dayMaxUV = 3.9; break;
+            case 2: dayMaxUV = 4.4; break;
+            case 3: dayMaxUV = 2.8; break;
             case 4: dayMaxUV = 3.2; break;
             case 5: dayMaxUV = 2.5; break;
             case 6: dayMaxUV = 3.0; break;
@@ -622,21 +614,16 @@ class DetailedWeatherForecast extends StatelessWidget {
       }
     }
 
-    // Если не нашли реальные данные, используем fallback
     if (dayMaxUV == 0) {
-      dayMaxUV = 2.5; // Реалистичный УФ для региона
+      dayMaxUV = 2.5;
     }
 
-    // Распределяем УФ по времени суток на основе реальных данных
-    // Утро (6-11): 30% от дневного максимума
     if (targetHour >= 6 && targetHour < 12) {
       return (dayMaxUV * 0.3).round();
     }
-    // День (12-16): используем дневной максимум
     if (targetHour >= 12 && targetHour < 17) {
       return dayMaxUV.round();
     }
-    // Вечер (17-21): 20% от дневного максимума
     if (targetHour >= 17 && targetHour < 22) {
       return (dayMaxUV * 0.2).round();
     }
@@ -644,12 +631,14 @@ class DetailedWeatherForecast extends StatelessWidget {
     return 0;
   }
 
-  // Правильное отображение видимости
-  String _getVisibilityText(double visKm) {
+  // ИСПРАВЛЕНО: Локализация видимости
+  String _getVisibilityText(double visKm, AppLocalizations localizations) {
     if (visKm < 1) {
-      return '${(visKm * 1000).round()} м';
+      final metersKey = localizations.translate('meters') ?? 'м';
+      return '${(visKm * 1000).round()} $metersKey';
     } else {
-      return '${visKm.round()} км';
+      final kmKey = localizations.translate('kilometers') ?? 'км';
+      return '${visKm.round()} $kmKey';
     }
   }
 
@@ -659,7 +648,7 @@ class DetailedWeatherForecast extends StatelessWidget {
       return {
         'temp': forecastDay.day.maxtempC.round(),
         'feelsLike': forecastDay.day.maxtempC.round(),
-        'icon': Icons.wb_sunny,
+        'condition_code': 1000,
         'precipChance': 0,
       };
     }
@@ -682,8 +671,8 @@ class DetailedWeatherForecast extends StatelessWidget {
 
     return {
       'temp': targetHour.tempC.round(),
-      'feelsLike': targetHour.tempC.round(), // Используем tempC как приблизительное значение
-      'icon': _getWeatherIcon(targetHour.condition.code, _isDayTime(timeOfDay)),
+      'feelsLike': targetHour.tempC.round(),
+      'condition_code': targetHour.condition.code,
       'precipChance': targetHour.chanceOfRain.round(),
     };
   }
@@ -718,86 +707,118 @@ class DetailedWeatherForecast extends StatelessWidget {
     }
   }
 
+  // ИСПРАВЛЕНО: Более подходящие иконки погоды
   IconData _getWeatherIcon(int code, bool isDay) {
     switch (code) {
-      case 1000: return isDay ? Icons.wb_sunny : Icons.nights_stay;
-      case 1003: return isDay ? Icons.wb_cloudy : Icons.cloud;
-      case 1006:
-      case 1009: return Icons.cloud;
-      case 1030:
-      case 1135:
-      case 1147: return Icons.cloud;
-      case 1063:
-      case 1180:
-      case 1183:
-      case 1186:
-      case 1189:
-      case 1192:
-      case 1195:
-      case 1198:
-      case 1201: return Icons.grain;
-      case 1066:
-      case 1210:
-      case 1213:
-      case 1216:
-      case 1219:
-      case 1222:
-      case 1225: return Icons.ac_unit;
-      case 1087:
-      case 1273:
-      case 1276:
-      case 1279:
-      case 1282: return Icons.flash_on;
-      default: return isDay ? Icons.wb_sunny : Icons.nights_stay;
+      case 1000: // Clear/Sunny
+        return isDay ? Icons.wb_sunny : Icons.brightness_2;
+      case 1003: // Partly cloudy
+        return isDay ? Icons.wb_cloudy : Icons.cloud_queue;
+      case 1006: // Cloudy
+      case 1009: // Overcast
+        return Icons.cloud;
+      case 1030: // Mist
+      case 1135: // Fog
+      case 1147: // Freezing fog
+        return Icons.foggy;
+      case 1063: // Patchy rain possible
+      case 1180: // Light rain
+      case 1183: // Light rain
+        return Icons.water_drop;
+      case 1186: // Moderate rain at times
+      case 1189: // Moderate rain
+      case 1192: // Heavy rain at times
+      case 1195: // Heavy rain
+        return Icons.umbrella;
+      case 1198: // Light freezing rain
+      case 1201: // Moderate or heavy freezing rain
+        return Icons.severe_cold;
+      case 1066: // Patchy snow possible
+      case 1210: // Patchy light snow
+      case 1213: // Light snow
+        return Icons.ac_unit;
+      case 1216: // Patchy moderate snow
+      case 1219: // Moderate snow
+      case 1222: // Patchy heavy snow
+      case 1225: // Heavy snow
+        return Icons.snowing;
+      case 1087: // Thundery outbreaks possible
+      case 1273: // Patchy light rain with thunder
+      case 1276: // Moderate or heavy rain with thunder
+      case 1279: // Patchy light snow with thunder
+      case 1282: // Moderate or heavy snow with thunder
+        return Icons.thunderstorm;
+      default:
+        return isDay ? Icons.wb_sunny : Icons.brightness_2;
     }
   }
 
-  // Логика выделения параметров с учетом настроек
+  // Логика выделения параметров
   bool _shouldHighlightWind(double windKph) {
-    // Конвертируем в единицы настроек для проверки критичности
     final windConverted = weatherSettings.convertWindSpeed(windKph);
-    // Для м/с: сильный ветер > 15 м/с, штиль < 2 м/с
     if (weatherSettings.windSpeedUnit == WindSpeedUnit.ms) {
       return windConverted > 15 || windConverted < 2;
     }
-    // Для км/ч: сильный ветер > 54 км/ч, штиль < 7 км/ч
     return windConverted > 54 || windConverted < 7;
   }
 
   bool _shouldHighlightHumidity(int humidity) => humidity < 30 || humidity > 85;
 
   bool _shouldHighlightPressure(double pressure) {
-    // Проверяем в мбар независимо от настроек отображения
     return pressure < 1000 || pressure > 1030;
   }
 
   bool _shouldHighlightVisibility(double visKm) {
-    // Плохая видимость: менее 5 км (включая 500м из примера)
     return visKm < 5;
   }
 
   bool _shouldHighlightUV(double uv) => uv > 6;
 
-  String _translateWindDirection(String direction) {
-    const Map<String, String> directions = {
-      'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
-      'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
-      'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
-      'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
-    };
-    return directions[direction] ?? direction;
+  // ИСПРАВЛЕНО: Локализация направлений ветра
+  String _translateWindDirection(String direction, AppLocalizations localizations) {
+    final locale = localizations.locale.languageCode;
+
+    if (locale == 'en') {
+      // Английский - оставляем как есть
+      return direction;
+    } else if (locale == 'kz') {
+      // Казахский
+      const Map<String, String> directionsKz = {
+        'N': 'С', 'NNE': 'ССШ', 'NE': 'СШ', 'ENE': 'ШСШ',
+        'E': 'Ш', 'ESE': 'ШОШ', 'SE': 'ОШ', 'SSE': 'ООШ',
+        'S': 'О', 'SSW': 'ООБ', 'SW': 'ОБ', 'WSW': 'БОБ',
+        'W': 'Б', 'WNW': 'БСБ', 'NW': 'СБ', 'NNW': 'ССБ',
+      };
+      return directionsKz[direction] ?? direction;
+    } else {
+      // Русский (по умолчанию)
+      const Map<String, String> directionsRu = {
+        'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
+        'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
+        'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
+        'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
+      };
+      return directionsRu[direction] ?? direction;
+    }
   }
 
-  String _calculateDaylightDuration(String sunrise, String sunset) {
+  // ИСПРАВЛЕНО: Локализация длительности светового дня
+  String _calculateDaylightDuration(String sunrise, String sunset, AppLocalizations localizations) {
     try {
       final sunriseTime = _parseTime(sunrise);
       final sunsetTime = _parseTime(sunset);
       final duration = sunsetTime.difference(sunriseTime);
       final hours = duration.inHours;
       final minutes = duration.inMinutes % 60;
-      return '$hours ч $minutes мин';
+
+      final hoursShort = localizations.translate('hours_short') ?? 'ч';
+      final minutesShort = localizations.translate('minutes_short') ?? 'мин';
+
+      return '$hours $hoursShort $minutes $minutesShort';
     } catch (e) {
-      return '12 ч 0 мин';
+      final hoursShort = localizations.translate('hours_short') ?? 'ч';
+      final minutesShort = localizations.translate('minutes_short') ?? 'мин';
+      return '12 $hoursShort 0 $minutesShort';
     }
   }
 
@@ -853,7 +874,7 @@ class DetailedWeatherForecast extends StatelessWidget {
   }
 }
 
-// ИСПРАВЛЕНО: Красивый painter с увеличенной дугой
+// Painter для дуги светового дня
 class DaylightArcPainter extends CustomPainter {
   final String sunrise;
   final String sunset;
@@ -866,75 +887,96 @@ class DaylightArcPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.orange.withValues(alpha: 0.7)
-      ..strokeWidth = 5
+      ..color = Colors.orange.withValues(alpha: 0.8)
+      ..strokeWidth = 6
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final fillPaint = Paint()
-      ..color = Colors.orange.withValues(alpha: 0.15)
-      ..style = PaintingStyle.fill;
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.orange.withValues(alpha: 0.3),
+          Colors.orange.withValues(alpha: 0.1),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    // Создаем красивую дугу как в референсе
     final path = Path();
-    final startX = 15.0;
-    final endX = size.width - 15;
-    final centerY = size.height - 40;
+    final startX = 20.0;
+    final endX = size.width - 20;
+    final centerY = size.height - 50;
+    final controlY = 20.0;
 
-    // Начинаем снизу слева
     path.moveTo(startX, centerY);
+    path.quadraticBezierTo(size.width / 2, controlY, endX, centerY);
 
-    // Создаем высокую дугу через верх
-    path.quadraticBezierTo(
-        size.width / 2, 25,  // Контрольная точка высоко вверху
-        endX, centerY  // Конечная точка снизу справа
-    );
-
-    // Рисуем заливку под дугой
     final fillPath = Path.from(path);
     fillPath.lineTo(endX, size.height);
     fillPath.lineTo(startX, size.height);
     fillPath.close();
     canvas.drawPath(fillPath, fillPaint);
 
-    // Рисуем саму дугу
+    final glowPaint = Paint()
+      ..color = Colors.orange.withValues(alpha: 0.3)
+      ..strokeWidth = 12
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, paint);
 
-    // Добавляем текущее положение солнца (если день)
     final currentHour = DateTime.now().hour;
     if (currentHour >= 6 && currentHour <= 20) {
       final sunProgress = (currentHour - 6) / 14;
-
-      // Вычисляем положение на дуге
       final t = sunProgress;
       final sunX = startX + (endX - startX) * t;
-      final sunY = centerY - 4 * t * (1 - t) * (centerY - 25);
+      final sunY = centerY + (controlY - centerY) * 4 * t * (1 - t);
 
-      // Рисуем солнце с градиентом
+      final sunGlowPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.yellow.withValues(alpha: 0.6),
+            Colors.orange.withValues(alpha: 0.3),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.7, 1.0],
+        ).createShader(Rect.fromCircle(center: Offset(sunX, sunY), radius: 15));
+
+      canvas.drawCircle(Offset(sunX, sunY), 15, sunGlowPaint);
+
       final sunPaint = Paint()
         ..shader = RadialGradient(
           colors: [Colors.yellow, Colors.orange],
           stops: const [0.0, 1.0],
-        ).createShader(Rect.fromCircle(center: Offset(sunX, sunY), radius: 8));
+        ).createShader(Rect.fromCircle(center: Offset(sunX, sunY), radius: 10));
 
-      canvas.drawCircle(Offset(sunX, sunY), 8, sunPaint);
+      canvas.drawCircle(Offset(sunX, sunY), 10, sunPaint);
 
-      // Обводка солнца
       final sunBorderPaint = Paint()
-        ..color = Colors.orange.withValues(alpha: 0.8)
+        ..color = Colors.orange.withValues(alpha: 0.9)
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
 
-      canvas.drawCircle(Offset(sunX, sunY), 8, sunBorderPaint);
+      canvas.drawCircle(Offset(sunX, sunY), 10, sunBorderPaint);
     }
 
-    // Рисуем точки на концах дуги
     final pointPaint = Paint()
       ..color = Colors.orange
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset(startX, centerY), 4, pointPaint);
-    canvas.drawCircle(Offset(endX, centerY), 4, pointPaint);
+    final pointBorderPaint = Paint()
+      ..color = Colors.orange.withValues(alpha: 0.8)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawCircle(Offset(startX, centerY), 6, pointPaint);
+    canvas.drawCircle(Offset(startX, centerY), 6, pointBorderPaint);
+    canvas.drawCircle(Offset(endX, centerY), 6, pointPaint);
+    canvas.drawCircle(Offset(endX, centerY), 6, pointBorderPaint);
   }
 
   @override

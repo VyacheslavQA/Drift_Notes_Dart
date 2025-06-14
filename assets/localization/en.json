@@ -1653,7 +1653,13 @@
   "km": "km",
   "water_temp": "water temp",
   "moon_phase": "Moon phase",
-  "daylight": "Daylight"
+  "daylight": "Daylight",
+
+  "feels_like": "feels like",
+  "meters": "m",
+  "kilometers": "km",
+  "hours_short": "h",
+  "minutes_short": "min"
 
 
 }

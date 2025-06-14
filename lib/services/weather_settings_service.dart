@@ -1,4 +1,5 @@
 // Путь: lib/services/weather_settings_service.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,7 @@ enum PressureUnit { mmhg, hpa, inhg }
 
 class WeatherSettingsService {
   static final WeatherSettingsService _instance =
-      WeatherSettingsService._internal();
+  WeatherSettingsService._internal();
   factory WeatherSettingsService() => _instance;
   WeatherSettingsService._internal();
 
@@ -28,11 +29,19 @@ class WeatherSettingsService {
   PressureUnit _pressureUnit = PressureUnit.mmhg;
   double _barometerCalibration = 0.0;
 
+  // ДОБАВЛЕНО: Текущая локаль для правильной локализации
+  String _currentLocale = 'ru';
+
   // Геттеры
   TemperatureUnit get temperatureUnit => _temperatureUnit;
   WindSpeedUnit get windSpeedUnit => _windSpeedUnit;
   PressureUnit get pressureUnit => _pressureUnit;
   double get barometerCalibration => _barometerCalibration;
+
+  // ДОБАВЛЕНО: Установка локали
+  void setLocale(String locale) {
+    _currentLocale = locale;
+  }
 
   // Инициализация - загрузка настроек
   Future<void> initialize() async {
@@ -153,61 +162,117 @@ class WeatherSettingsService {
     }
   }
 
-  // Получение символа единицы скорости ветра
+  // ИСПРАВЛЕНО: Локализация символов скорости ветра
   String getWindSpeedUnitSymbol() {
     switch (_windSpeedUnit) {
       case WindSpeedUnit.ms:
-        return 'м/с';
+        return _currentLocale == 'en' ? 'm/s' : 'м/с';
       case WindSpeedUnit.kmh:
-        return 'км/ч';
+        return _currentLocale == 'en' ? 'km/h' : 'км/ч';
       case WindSpeedUnit.mph:
-        return 'mph';
+        return 'mph'; // Одинаково для всех языков
     }
   }
 
-  // Получение символа единицы давления
+  // ИСПРАВЛЕНО: Локализация символов давления
   String getPressureUnitSymbol() {
     switch (_pressureUnit) {
       case PressureUnit.mmhg:
-        return 'мм рт.ст.';
+        if (_currentLocale == 'en') {
+          return 'mmHg';
+        } else {
+          return 'мм рт.ст.';
+        }
       case PressureUnit.hpa:
-        return 'гПа';
+        if (_currentLocale == 'en') {
+          return 'hPa';
+        } else {
+          return 'гПа';
+        }
       case PressureUnit.inhg:
-        return 'inHg';
+        return 'inHg'; // Одинаково для всех языков
     }
   }
 
-  // Получение полного названия единицы температуры
+  // ИСПРАВЛЕНО: Локализация названий единиц температуры
   String getTemperatureUnitName() {
     switch (_temperatureUnit) {
       case TemperatureUnit.celsius:
-        return 'Цельсий';
+        if (_currentLocale == 'en') {
+          return 'Celsius';
+        } else if (_currentLocale == 'kz') {
+          return 'Цельсий';
+        } else {
+          return 'Цельсий';
+        }
       case TemperatureUnit.fahrenheit:
-        return 'Фаренгейт';
+        if (_currentLocale == 'en') {
+          return 'Fahrenheit';
+        } else if (_currentLocale == 'kz') {
+          return 'Фаренгейт';
+        } else {
+          return 'Фаренгейт';
+        }
     }
   }
 
-  // Получение полного названия единицы скорости ветра
+  // ИСПРАВЛЕНО: Локализация названий единиц скорости ветра
   String getWindSpeedUnitName() {
     switch (_windSpeedUnit) {
       case WindSpeedUnit.ms:
-        return 'Метры в секунду';
+        if (_currentLocale == 'en') {
+          return 'Meters per second';
+        } else if (_currentLocale == 'kz') {
+          return 'Метр секундына';
+        } else {
+          return 'Метры в секунду';
+        }
       case WindSpeedUnit.kmh:
-        return 'Километры в час';
+        if (_currentLocale == 'en') {
+          return 'Kilometers per hour';
+        } else if (_currentLocale == 'kz') {
+          return 'Километр сағатына';
+        } else {
+          return 'Километры в час';
+        }
       case WindSpeedUnit.mph:
-        return 'Мили в час';
+        if (_currentLocale == 'en') {
+          return 'Miles per hour';
+        } else if (_currentLocale == 'kz') {
+          return 'Миль сағатына';
+        } else {
+          return 'Мили в час';
+        }
     }
   }
 
-  // Получение полного названия единицы давления
+  // ИСПРАВЛЕНО: Локализация названий единиц давления
   String getPressureUnitName() {
     switch (_pressureUnit) {
       case PressureUnit.mmhg:
-        return 'Миллиметры ртутного столба';
+        if (_currentLocale == 'en') {
+          return 'Millimeters of mercury';
+        } else if (_currentLocale == 'kz') {
+          return 'Сынап бағанасының миллиметрі';
+        } else {
+          return 'Миллиметры ртутного столба';
+        }
       case PressureUnit.hpa:
-        return 'Гектопаскали';
+        if (_currentLocale == 'en') {
+          return 'Hectopascals';
+        } else if (_currentLocale == 'kz') {
+          return 'Гектопаскаль';
+        } else {
+          return 'Гектопаскали';
+        }
       case PressureUnit.inhg:
-        return 'Дюймы ртутного столба';
+        if (_currentLocale == 'en') {
+          return 'Inches of mercury';
+        } else if (_currentLocale == 'kz') {
+          return 'Сынап бағанасының дюймі';
+        } else {
+          return 'Дюймы ртутного столба';
+        }
     }
   }
 
@@ -222,9 +287,9 @@ class WeatherSettingsService {
   String formatWindSpeed(double kmh, {bool showUnit = true, int decimals = 0}) {
     final converted = convertWindSpeed(kmh);
     final formatted =
-        decimals == 0
-            ? converted.round().toString()
-            : converted.toStringAsFixed(decimals);
+    decimals == 0
+        ? converted.round().toString()
+        : converted.toStringAsFixed(decimals);
     return showUnit ? '$formatted ${getWindSpeedUnitSymbol()}' : formatted;
   }
 
@@ -232,9 +297,9 @@ class WeatherSettingsService {
   String formatPressure(double mbar, {bool showUnit = true, int decimals = 0}) {
     final converted = convertPressure(mbar);
     final formatted =
-        decimals == 0
-            ? converted.round().toString()
-            : converted.toStringAsFixed(decimals);
+    decimals == 0
+        ? converted.round().toString()
+        : converted.toStringAsFixed(decimals);
     return showUnit ? '$formatted ${getPressureUnitSymbol()}' : formatted;
   }
 }
