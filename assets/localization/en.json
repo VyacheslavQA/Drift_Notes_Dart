@@ -1638,7 +1638,22 @@
   "km": "km",
   "m_s": "m/s",
   "daylight": "Daylight",
-  "feels_like_short": "feels like"
+  "feels_like_short": "feels like",
+
+  "monday_short": "Mon",
+  "tuesday_short": "Tue",
+  "wednesday_short": "Wed",
+  "thursday_short": "Thu",
+  "friday_short": "Fri",
+  "saturday_short": "Sat",
+  "sunday_short": "Sun",
+  "feels_like_short": "feels like",
+  "up_to": "up to",
+  "m_s": "m/s",
+  "km": "km",
+  "water_temp": "water temp",
+  "moon_phase": "Moon phase",
+  "daylight": "Daylight"
 
 
 }

@@ -1,59 +1,63 @@
 // Путь: lib/widgets/weather/forecast_period_selector.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
-import '../../enums/forecast_period.dart';
 import '../../localization/app_localizations.dart';
+import '../../models/weather_api_model.dart';
 
 class ForecastPeriodSelector extends StatelessWidget {
-  final ForecastPeriod selectedPeriod;
-  final Function(ForecastPeriod) onPeriodChanged;
-  final List<ForecastPeriod> availablePeriods;
+  final WeatherApiResponse weather;
+  final int selectedDayIndex;
+  final Function(int) onDayChanged;
 
   const ForecastPeriodSelector({
     super.key,
-    required this.selectedPeriod,
-    required this.onPeriodChanged,
-    this.availablePeriods = const [
-      ForecastPeriod.today,
-      ForecastPeriod.tomorrow,
-      ForecastPeriod.threeDays,
-      ForecastPeriod.sevenDays,
-    ],
+    required this.weather,
+    required this.selectedDayIndex,
+    required this.onDayChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
+    if (weather.forecast.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Ограничиваем до 7 дней согласно плану API
+    final availableDays = weather.forecast.length > 7 ? 7 : weather.forecast.length;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: availablePeriods.map((period) {
-            final isSelected = period == selectedPeriod;
-            final displayName = _getShortDisplayName(period, localizations);
+          children: List.generate(availableDays, (index) {
+            final forecastDay = weather.forecast[index];
+            final isSelected = index == selectedDayIndex;
 
             return GestureDetector(
-              onTap: () => onPeriodChanged(period),
+              onTap: () => onDayChanged(index),
               child: Container(
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppConstants.primaryColor
-                      : AppConstants.surfaceColor,
+                      : AppConstants.surfaceColor.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppConstants.primaryColor
-                        : AppConstants.textColor.withValues(alpha: 0.2),
+                  border: isSelected
+                      ? null
+                      : Border.all(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
                 child: Text(
-                  displayName,
+                  _getTabText(index, forecastDay.date, localizations),
                   style: TextStyle(
                     color: isSelected
                         ? Colors.white
@@ -64,41 +68,43 @@ class ForecastPeriodSelector extends StatelessWidget {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ),
       ),
     );
   }
 
-  String _getShortDisplayName(ForecastPeriod period, AppLocalizations localizations) {
-    switch (period) {
-      case ForecastPeriod.today:
-        return localizations.translate('today');
-      case ForecastPeriod.tomorrow:
-        return localizations.translate('tomorrow');
-      case ForecastPeriod.dayAfterTomorrow:
-      // Показываем день недели для послезавтра
-        final dayAfterTomorrow = DateTime.now().add(const Duration(days: 2));
-        return _getShortDayName(dayAfterTomorrow.weekday, localizations);
-      case ForecastPeriod.threeDays:
-        return localizations.translate('3_days');
-      case ForecastPeriod.sevenDays:
-        return localizations.translate('7_days');
-      case ForecastPeriod.fourteenDays:
-        return localizations.translate('14_days');
+  String _getTabText(int index, String dateString, AppLocalizations localizations) {
+    final date = DateTime.parse(dateString);
+    final now = DateTime.now();
+
+    // Сегодня
+    if (index == 0) {
+      return localizations.translate('today');
     }
+
+    // Завтра
+    if (index == 1) {
+      return localizations.translate('tomorrow');
+    }
+
+    // Остальные дни - день недели + число
+    final dayName = _getDayName(date.weekday, localizations);
+    final dayNumber = date.day;
+
+    return '$dayName, $dayNumber';
   }
 
-  String _getShortDayName(int weekday, AppLocalizations localizations) {
+  String _getDayName(int weekday, AppLocalizations localizations) {
     switch (weekday) {
-      case 1: return localizations.translate('mon_short');
-      case 2: return localizations.translate('tue_short');
-      case 3: return localizations.translate('wed_short');
-      case 4: return localizations.translate('thu_short');
-      case 5: return localizations.translate('fri_short');
-      case 6: return localizations.translate('sat_short');
-      case 7: return localizations.translate('sun_short');
-      default: return '';
+      case 1: return localizations.translate('monday_short') ?? 'Пн';
+      case 2: return localizations.translate('tuesday_short') ?? 'Вт';
+      case 3: return localizations.translate('wednesday_short') ?? 'Ср';
+      case 4: return localizations.translate('thursday_short') ?? 'Чт';
+      case 5: return localizations.translate('friday_short') ?? 'Пт';
+      case 6: return localizations.translate('saturday_short') ?? 'Сб';
+      case 7: return localizations.translate('sunday_short') ?? 'Вс';
+      default: return 'Пн';
     }
   }
 }

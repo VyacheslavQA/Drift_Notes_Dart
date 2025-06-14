@@ -1577,7 +1577,22 @@
   "km": "км",
   "m_s": "м/с",
   "daylight": "Световой день",
-  "feels_like_short": "ощущается"
+  "feels_like_short": "ощущается",
+
+  "monday_short": "Пн",
+  "tuesday_short": "Вт",
+  "wednesday_short": "Ср",
+  "thursday_short": "Чт",
+  "friday_short": "Пт",
+  "saturday_short": "Сб",
+  "sunday_short": "Вс",
+  "feels_like_short": "ощущается",
+  "up_to": "до",
+  "m_s": "м/с",
+  "km": "км",
+  "water_temp": "t воды",
+  "moon_phase": "Фаза луны",
+  "daylight": "Световой день"
 
 
 }

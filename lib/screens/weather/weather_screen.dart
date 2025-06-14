@@ -11,7 +11,6 @@ import '../../services/weather/weather_api_service.dart';
 import '../../services/weather_settings_service.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../localization/app_localizations.dart';
-import '../../enums/forecast_period.dart';
 import '../../widgets/weather/forecast_period_selector.dart';
 import '../../widgets/weather/detailed_weather_forecast.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
@@ -43,8 +42,8 @@ class _WeatherScreenState extends State<WeatherScreen>
   String _locationName = '';
   DateTime _lastUpdated = DateTime.now();
 
-  // НОВОЕ: Состояние выбранного периода
-  ForecastPeriod _selectedPeriod = ForecastPeriod.today;
+  // ИЗМЕНЕНО: Теперь выбираем по индексу дня вместо enum
+  int _selectedDayIndex = 0;
 
   // Анимации
   late AnimationController _loadingController;
@@ -137,7 +136,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     super.dispose();
   }
 
-  // ОБНОВЛЕННЫЙ МЕТОД: Теперь запрашивает нужное количество дней
+  // ИСПРАВЛЕНО: Всегда запрашиваем 14 дней
   Future<void> _loadWeather() async {
     if (!mounted) return;
 
@@ -154,13 +153,11 @@ class _WeatherScreenState extends State<WeatherScreen>
       final position = await _getCurrentPosition();
 
       if (position != null && mounted) {
-        // Получаем прогноз на нужное количество дней
-        final daysCount = _selectedPeriod.getDaysCount();
-
+        // ИЗМЕНЕНО: Запрашиваем 7 дней согласно вашему плану
         final weather = await _weatherService.getForecast(
           latitude: position.latitude,
           longitude: position.longitude,
-          days: daysCount,
+          days: 7, // Изменено с 14 на 7
         );
 
         final aiPrediction = await _aiService.getMultiFishingTypePrediction(
@@ -178,6 +175,11 @@ class _WeatherScreenState extends State<WeatherScreen>
             '${weather.location.name}, ${weather.location.region}';
             _isLoading = false;
             _lastUpdated = DateTime.now();
+
+            // Сбрасываем выбранный день если он превышает доступные
+            if (_selectedDayIndex >= weather.forecast.length) {
+              _selectedDayIndex = 0;
+            }
           });
 
           _loadingController.stop();
@@ -207,22 +209,14 @@ class _WeatherScreenState extends State<WeatherScreen>
     }
   }
 
-  // НОВЫЙ МЕТОД: Обработка смены периода
-  void _onPeriodChanged(ForecastPeriod newPeriod) {
-    if (_selectedPeriod != newPeriod) {
+  // НОВЫЙ МЕТОД: Обработка смены дня
+  void _onDayChanged(int dayIndex) {
+    if (_selectedDayIndex != dayIndex &&
+        _currentWeather != null &&
+        dayIndex < _currentWeather!.forecast.length) {
       setState(() {
-        _selectedPeriod = newPeriod;
+        _selectedDayIndex = dayIndex;
       });
-
-      // Перезагружаем данные если нужно больше дней
-      if (_currentWeather != null) {
-        final currentDays = _currentWeather!.forecast.length;
-        final neededDays = newPeriod.getDaysCount();
-
-        if (neededDays > currentDays) {
-          _loadWeather();
-        }
-      }
     }
   }
 
@@ -301,7 +295,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     return _buildMainContent();
   }
 
-  // ОБНОВЛЕННЫЙ МЕТОД: Новая структура контента
+  // ОБНОВЛЕННЫЙ МЕТОД: Новая структура с динамическими табами
   Widget _buildMainContent() {
     return RefreshIndicator(
       onRefresh: _loadWeather,
@@ -316,25 +310,26 @@ class _WeatherScreenState extends State<WeatherScreen>
           if (_showPullHint)
             SliverToBoxAdapter(child: _buildAnimatedPullHint()),
 
-          // НОВОЕ: Селектор периодов
+          // ОБНОВЛЕНО: Селектор периодов с динамическими табами
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fadeController,
               child: ForecastPeriodSelector(
-                selectedPeriod: _selectedPeriod,
-                onPeriodChanged: _onPeriodChanged,
+                weather: _currentWeather!,
+                selectedDayIndex: _selectedDayIndex,
+                onDayChanged: _onDayChanged,
               ),
             ),
           ),
 
-          // НОВОЕ: Детальный прогноз погоды (заменяет WeatherHeader + HourlyForecast)
+          // ОБНОВЛЕНО: Детальный прогноз с выбранным днем
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fadeController,
               child: DetailedWeatherForecast(
                 weather: _currentWeather!,
                 weatherSettings: _weatherSettings,
-                selectedPeriod: _selectedPeriod,
+                selectedDayIndex: _selectedDayIndex,
                 locationName: _locationName,
               ),
             ),
@@ -347,8 +342,8 @@ class _WeatherScreenState extends State<WeatherScreen>
                 children: [
                   const SizedBox(height: 24),
 
-                  // ОБНОВЛЕННЫЕ: Только 2 карточки метрик (давление и ветер)
-                  _buildReducedMetricsGrid(),
+                  // Карточки метрик (остаются как есть)
+                  _buildMetricsGrid(),
 
                   const SizedBox(height: 24),
 
@@ -369,8 +364,8 @@ class _WeatherScreenState extends State<WeatherScreen>
     );
   }
 
-  // УПРОЩЕННЫЙ МЕТОД: Возвращаем полную сетку с 4 карточками
-  Widget _buildReducedMetricsGrid() {
+  // Возвращаем полную сетку с 4 карточками
+  Widget _buildMetricsGrid() {
     return WeatherMetricsGrid(
       weather: _currentWeather!,
       weatherSettings: _weatherSettings,
@@ -872,78 +867,5 @@ class _WeatherScreenState extends State<WeatherScreen>
         ],
       ),
     );
-  }
-
-  // Вспомогательные методы
-  Map<String, dynamic> _getPressureStatus(
-      double pressure,
-      AppLocalizations localizations,
-      ) {
-    if (pressure >= 1010 && pressure <= 1025) {
-      return {
-        'color': Colors.green,
-        'description': localizations.translate('normal_pressure'),
-      };
-    } else if (pressure < 1000) {
-      return {
-        'color': Colors.red,
-        'description': localizations.translate('low_pressure'),
-      };
-    } else if (pressure > 1030) {
-      return {
-        'color': Colors.orange,
-        'description': localizations.translate('high_pressure'),
-      };
-    } else {
-      return {
-        'color': Colors.orange,
-        'description': localizations.translate('moderate_pressure'),
-      };
-    }
-  }
-
-  String _translateWindDirection(String direction) {
-    const Map<String, String> directions = {
-      'N': 'С',
-      'NNE': 'ССВ',
-      'NE': 'СВ',
-      'ENE': 'ВСВ',
-      'E': 'В',
-      'ESE': 'ВЮВ',
-      'SE': 'ЮВ',
-      'SSE': 'ЮЮВ',
-      'S': 'Ю',
-      'SSW': 'ЮЮЗ',
-      'SW': 'ЮЗ',
-      'WSW': 'ЗЮЗ',
-      'W': 'З',
-      'WNW': 'ЗСЗ',
-      'NW': 'СЗ',
-      'NNW': 'ССЗ',
-    };
-    return directions[direction] ?? direction;
-  }
-}
-
-// Расширение для обратной совместимости с табами
-extension MultiFishingTypePredictionExt on MultiFishingTypePrediction {
-  Map<String, dynamic> toOldFormat() {
-    return {
-      'overallActivity': bestPrediction.overallScore / 100.0,
-      'scorePoints': bestPrediction.overallScore,
-      'recommendation': bestPrediction.recommendation,
-      'tips': bestPrediction.tips,
-      'bestTimeWindows':
-      bestPrediction.bestTimeWindows
-          .map(
-            (w) => {
-          'startTime': w.startTime.toIso8601String(),
-          'endTime': w.endTime.toIso8601String(),
-          'activity': w.activity,
-          'reason': w.reason,
-        },
-      )
-          .toList(),
-    };
   }
 }

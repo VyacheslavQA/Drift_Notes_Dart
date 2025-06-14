@@ -1,4 +1,5 @@
 // Путь: lib/services/weather/weather_api_service.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -97,8 +98,8 @@ class WeatherApiService {
     }
 
     try {
-      // Ограничиваем количество дней для платного плана (до 14 дней)
-      final limitedDays = days > 14 ? 14 : days;
+      // Ограничиваем количество дней для вашего плана (до 7 дней)
+      final limitedDays = days > 7 ? 7 : days;
 
       final url =
           '$_baseUrl/forecast.json?key=$_apiKey&q=$latitude,$longitude&days=$limitedDays&aqi=no&alerts=no';
@@ -119,6 +120,10 @@ class WeatherApiService {
         debugPrint(
           '✅ ${_getDebugText(context, 'forecast_received_successfully')}: ${data['forecast']['forecastday'].length} ${_getDebugText(context, 'days_received')}',
         );
+
+        // ОТЛАДКА РЕАЛЬНЫХ ДАННЫХ ОТ API
+        _debugApiData(data);
+
         return WeatherApiResponse.fromJson(data);
       } else {
         final errorBody = response.body;
@@ -140,6 +145,62 @@ class WeatherApiService {
     } catch (e) {
       debugPrint('❌ ${_getDebugText(context, 'error_getting_forecast')}: $e');
       rethrow;
+    }
+  }
+
+  /// НОВЫЙ МЕТОД: Отладка данных от API
+  void _debugApiData(Map<String, dynamic> data) {
+    try {
+      debugPrint('🔍 ===== ОТЛАДКА ДАННЫХ ОТ API =====');
+
+      final current = data['current'];
+      final forecast = data['forecast']['forecastday'];
+
+      debugPrint('📍 Локация: ${data['location']['name']}, ${data['location']['region']}');
+      debugPrint('🕐 Время: ${current['last_updated']}');
+
+      debugPrint('🌡️ ТЕКУЩАЯ ТЕМПЕРАТУРА: ${current['temp_c']}°C');
+      debugPrint('🌡️ ОЩУЩАЕТСЯ КАК: ${current['feelslike_c']}°C');
+      debugPrint('💨 ВЕТЕР: ${current['wind_kph']} км/ч, направление: ${current['wind_dir']}');
+      debugPrint('💧 ВЛАЖНОСТЬ: ${current['humidity']}%');
+      debugPrint('📊 ДАВЛЕНИЕ: ${current['pressure_mb']} мб (${(current['pressure_mb'] * 0.75).round()} мм рт.ст.)');
+      debugPrint('👁️ ВИДИМОСТЬ: ${current['vis_km']} км');
+      debugPrint('☀️ УФ-ИНДЕКС: ${current['uv']}');
+      debugPrint('☁️ ОБЛАЧНОСТЬ: ${current['cloud']}%');
+      debugPrint('🌤️ УСЛОВИЯ: ${current['condition']['text']}');
+
+      debugPrint('📅 ПРОГНОЗ НА ${forecast.length} ДНЕЙ:');
+      for (int i = 0; i < forecast.length && i < 3; i++) {
+        final day = forecast[i];
+        final dayData = day['day'];
+        final astro = day['astro'];
+
+        debugPrint('📅 День ${i + 1} (${day['date']}):');
+        debugPrint('   🌡️ Мин: ${dayData['mintemp_c']}°C, Макс: ${dayData['maxtemp_c']}°C');
+        debugPrint('   💨 Макс ветер: ${dayData['maxwind_kph']} км/ч');
+        debugPrint('   💧 Средняя влажность: ${dayData['avghumidity']}%');
+        debugPrint('   ☀️ ДНЕВНОЙ УФ: ${dayData['uv'] ?? 'N/A'}');
+        debugPrint('   🌅 Восход: ${astro['sunrise']}');
+        debugPrint('   🌇 Закат: ${astro['sunset']}');
+        debugPrint('   🌙 Фаза луны: ${astro['moon_phase']}');
+
+        // Проверяем почасовые данные
+        final hours = day['hour'] as List;
+        if (hours.length >= 16) {
+          final hour15 = hours[15]; // 15:00
+          debugPrint('   🕒 В 15:00:');
+          debugPrint('      🌡️ Температура: ${hour15['temp_c']}°C');
+          debugPrint('      💨 Ветер: ${hour15['wind_kph']} км/ч, ${hour15['wind_dir']}');
+          debugPrint('      💧 Влажность: ${hour15['humidity']}%');
+          debugPrint('      📊 Давление: ${hour15['pressure_mb']} мб');
+          debugPrint('      🌧️ Шанс дождя: ${hour15['chance_of_rain']}%');
+          debugPrint('      ☀️ УФ в 15:00: ${hour15['uv'] ?? 'N/A'}');
+        }
+      }
+
+      debugPrint('🔍 ===== КОНЕЦ ОТЛАДКИ =====');
+    } catch (e) {
+      debugPrint('❌ Ошибка отладки данных: $e');
     }
   }
 
@@ -271,15 +332,15 @@ class WeatherApiService {
 
   /// Конвертация в модель FishingWeather для совместимости
   static FishingWeather convertToFishingWeather(
-    WeatherApiResponse weatherData, [
-    BuildContext? context,
-  ]) {
+      WeatherApiResponse weatherData, [
+        BuildContext? context,
+      ]) {
     try {
       final current = weatherData.current;
       final astro =
-          weatherData.forecast.isNotEmpty
-              ? weatherData.forecast.first.astro
-              : null;
+      weatherData.forecast.isNotEmpty
+          ? weatherData.forecast.first.astro
+          : null;
 
       return FishingWeather(
         temperature: current.tempC,
@@ -387,11 +448,11 @@ class WeatherApiService {
   static String _getRussianFallback(String key) {
     const Map<String, String> fallbacks = {
       'weather_api_key_not_configured':
-          'WeatherAPI ключ не настроен. Замените "тут мой ключ" на реальный ключ в config/api_keys.dart',
+      'WeatherAPI ключ не настроен. Замените "тут мой ключ" на реальный ключ в config/api_keys.dart',
       'weather_api_invalid_key':
-          'Неверный API ключ WeatherAPI. Проверьте ключ в config/api_keys.dart',
+      'Неверный API ключ WeatherAPI. Проверьте ключ в config/api_keys.dart',
       'weather_api_access_denied':
-          'Доступ к WeatherAPI запрещен. Проверьте ваш план подписки',
+      'Доступ к WeatherAPI запрещен. Проверьте ваш план подписки',
       'weather_api_key_not_set': 'WeatherAPI ключ не настроен',
       'current_weather_request': 'Запрос текущей погоды для координат',
       'forecast_request': 'Запрос прогноза погоды на',
@@ -401,7 +462,7 @@ class WeatherApiService {
       'forecast_received_successfully': 'Прогноз погоды успешно получен',
       'days_received': 'дней',
       'getting_extended_pressure_data':
-          'Получение расширенных данных о давлении...',
+      'Получение расширенных данных о давлении...',
       'extended_data_received': 'Расширенные данные получены',
       'feels_like_short': 'ощущается как',
       'wind_short': 'Ветер',
@@ -410,7 +471,7 @@ class WeatherApiService {
       'cloudiness_short': 'Облачность',
       'data_unavailable': 'Данные недоступны',
       'weather_api_key_not_configured_debug':
-          'WeatherAPI ключ не настроен в config/api_keys.dart',
+      'WeatherAPI ключ не настроен в config/api_keys.dart',
       'current_key': 'Текущий ключ',
       'weather_api_error': 'Ошибка Weather API',
       'error_body': 'Тело ошибки',
