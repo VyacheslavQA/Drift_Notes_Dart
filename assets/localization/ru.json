@@ -1515,7 +1515,13 @@
   "tournament_reminder_message": "{tournament} начнется {time}",
   "reminder_time": "Время напоминания",
   "current_reminder": "Текущее напоминание",
-  "reminder_updated": "Напоминание обновлено"
+  "reminder_updated": "Напоминание обновлено",
+
+  "today": "Сегодня",
+  "tomorrow": "Завтра",
+  "at": "в",
+  "tournament_hashtag": "турнир",
+  "fishing_hashtag": "рыбалка"
 
 
 }

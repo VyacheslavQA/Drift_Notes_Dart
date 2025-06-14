@@ -24,7 +24,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   bool _isInCalendar = false;
   bool _isCheckingCalendar = true;
   bool _isUpdatingCalendar = false;
-  ReminderType _currentReminderType = ReminderType.none; // ИСПРАВЛЕНО
+  ReminderType _currentReminderType = ReminderType.none;
   DateTime? _currentCustomDateTime;
 
   @override
@@ -49,7 +49,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
             startDate: DateTime.now(),
             endDate: DateTime.now(),
             type: CalendarEventType.tournament,
-            reminderType: ReminderType.none, // ИСПРАВЛЕНО
+            reminderType: ReminderType.none,
           ),
         );
         _currentReminderType = tournamentEvent.reminderType;
@@ -744,6 +744,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     );
   }
 
+  // ИСПРАВЛЕНО: Добавлена локализация для дат
   String _getCurrentReminderDescription(AppLocalizations localizations) {
     if (_currentReminderType == ReminderType.custom && _currentCustomDateTime != null) {
       final date = _currentCustomDateTime!;
@@ -754,16 +755,16 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
 
       String dateStr;
       if (reminderDate == today) {
-        dateStr = 'сегодня';
+        dateStr = localizations.translate('today'); // ИСПРАВЛЕНО: локализация
       } else if (reminderDate == tomorrow) {
-        dateStr = 'завтра';
+        dateStr = localizations.translate('tomorrow'); // ИСПРАВЛЕНО: локализация
       } else {
         dateStr = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
       }
 
       final timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
-      return '$dateStr в $timeStr';
+      return '$dateStr ${localizations.translate('at')} $timeStr'; // ИСПРАВЛЕНО: локализация "в"
     }
 
     return localizations.translate(_currentReminderType.localizationKey);
@@ -852,7 +853,7 @@ ${widget.tournament.category.icon} ${widget.tournament.name}
 📍 ${localizations.translate('venue')}: ${widget.tournament.location}
 👥 ${localizations.translate('organizer')}: ${widget.tournament.organizer}
 
-#${widget.tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #турнир #рыбалка
+#${widget.tournament.fishingType.displayName.toLowerCase().replaceAll(' ', '')} #${localizations.translate('tournament_hashtag')} #${localizations.translate('fishing_hashtag')}
     '''.trim();
 
     Clipboard.setData(ClipboardData(text: text));

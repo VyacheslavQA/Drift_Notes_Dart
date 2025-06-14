@@ -1576,7 +1576,14 @@
   "tournament_reminder_message": "{tournament} starts {time}",
   "reminder_time": "Reminder time",
   "current_reminder": "Current reminder",
-  "reminder_updated": "Reminder updated"
+  "reminder_updated": "Reminder updated",
+
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "at": "at",
+
+  "tournament_hashtag": "tournament",
+  "fishing_hashtag": "fishing"
 
 
 }

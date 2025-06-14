@@ -269,7 +269,7 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                               const SizedBox(height: 2),
                               Text(
                                 _customDateTime != null
-                                    ? _formatDate(_customDateTime!)
+                                    ? _formatDate(_customDateTime!, localizations)
                                     : localizations.translate('tap_to_select'),
                                 style: TextStyle(
                                   color: AppConstants.textColor,
@@ -371,7 +371,7 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${localizations.translate('reminder_will_be_shown')}: ${_getFormattedDateTime(_customDateTime!)}',
+                            '${localizations.translate('reminder_will_be_shown')}: ${_getFormattedDateTime(_customDateTime!, localizations)}',
                             style: TextStyle(
                               color: AppConstants.textColor,
                               fontSize: 12,
@@ -544,16 +544,17 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
     return true;
   }
 
-  String _formatDate(DateTime date) {
+  // ИСПРАВЛЕНО: Добавлен параметр localizations
+  String _formatDate(DateTime date, AppLocalizations localizations) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final targetDate = DateTime(date.year, date.month, date.day);
 
     if (targetDate == today) {
-      return 'Сегодня';
+      return localizations.translate('today'); // ИСПРАВЛЕНО: локализация
     } else if (targetDate == tomorrow) {
-      return 'Завтра';
+      return localizations.translate('tomorrow'); // ИСПРАВЛЕНО: локализация
     } else {
       return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
     }
@@ -563,8 +564,9 @@ class _ReminderSelectionWidgetState extends State<ReminderSelectionWidget> {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
-  String _getFormattedDateTime(DateTime dateTime) {
-    return '${_formatDate(dateTime)} в ${_formatTime(dateTime)}';
+  // ИСПРАВЛЕНО: Добавлен параметр localizations
+  String _getFormattedDateTime(DateTime dateTime, AppLocalizations localizations) {
+    return '${_formatDate(dateTime, localizations)} ${localizations.translate('at')} ${_formatTime(dateTime)}'; // ИСПРАВЛЕНО: локализация "в"
   }
 }
 
