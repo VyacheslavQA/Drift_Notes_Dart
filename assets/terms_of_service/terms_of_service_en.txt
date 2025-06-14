@@ -1,70 +1,82 @@
 Version: 1.0.0
 Date: 08.06.2025
-Drift Notes User Agreement
+Drift Notes Terms of Use
 
 Support Email: support@driftnotesapp.com
-Telegram channel & chat: Drift Notes App
-____________________________________
-1. General
-This User Agreement governs the use of the Drift Notes mobile app (the “App”), designed for anglers to log fishing trips, analyze patterns, and track personal statistics.
-By installing, registering for, or using the App, you (“User”) agree to the terms of this Agreement. If you disagree, do not use the App.
-____________________________________
+Telegram channel and chat: Drift Notes App
+
+1. General Provisions
+This agreement governs the use of the Drift Notes mobile application (hereinafter referred to as the “App”), designed for fishing logs, catch analysis, location saving, and statistics.
+By installing, using, or registering in the App, you (the “User”) agree to the terms of this Agreement and the Privacy Policy. If you do not agree, do not use the App.
+
 2. Age Restrictions
-The App is intended for users aged 13 and above.
-____________________________________
+The App is intended for users aged 13 and older.
+
 3. Registration and Authentication
-Users can sign in via:
-•	Google Account
-•	Phone number (via code verification)
-The App receives:
-•	Your name
-•	Email (if using Google login)
-•	Phone number (if using phone login)
-These are used for secure login, personalization, and communication.
-____________________________________
-4. Collected Data
-You may voluntarily provide:
-•	Name, email, profile photo
-•	Fishing locations and GPS points
-•	Fishing experience level, preferred fishing types
-•	Catch data: fish count and weight
-•	Photos and notes
-•	Bottom mapping data
-All data is stored in Firebase and is not shared with third parties.
-____________________________________
+Users can sign in to the App via:
+• Google account
+• Phone number (with code confirmation)
+
+The App will access the following information:
+• User name
+• Email address (Google sign-in)
+• Phone number (phone login)
+• IP address, device type, and OS version (for diagnostics and abuse prevention)
+
+This data is used solely for authentication, personalization, and user support.
+
+4. Processed Data
+Users can voluntarily provide and save the following data in the App:
+• Name, email, profile photo
+• Geotags, fishing spots, routes
+• Fishing experience level, types of fishing
+• Amount and weight of fish
+• Photos and notes
+• Bottom marker map information
+
+Data is stored in Firebase (Google Cloud) and is not shared with third parties unless required by law.
+
 5. Data Deletion
 Users can delete:
-•	Individual notes, photos, and maps
-•	Their entire account and associated data (from the account settings)
-____________________________________
+• Individual notes, photos, and maps
+• Their entire account and associated data (in the profile settings)
+
+Once deleted, data cannot be recovered.
+
 6. Paid Features
-The App may include paid features. Payments are processed via Google Play, App Store, and RuStore. Refunds are handled by the respective store policies.
-____________________________________
-7. Permissions
-The App may request access to:
-•	GPS (for location tagging and forecasts)
-•	Camera (for uploading photos)
-•	Device storage
-____________________________________
-8. Offline Mode
-You can create new notes offline. Once connected, your data syncs automatically. Previously saved notes are not viewable offline.
-____________________________________
-9. User Content & Analytics
-You can upload images and notes. These inputs are used for personalized stats and insights. You are responsible for your uploaded content.
-____________________________________
+The App may include paid features. Payments are processed via Google Play, App Store, and RuStore. Refund policies are governed by the terms of the respective store.
+
+7. Permissions Used
+To function properly, the App may request access to:
+• GPS (for geotags and weather forecasts)
+• Camera (for photos)
+• Device storage
+
+8. Offline Functionality
+In offline mode, users can create new notes. Upon reconnection, data is synchronized. Viewing existing notes offline is not available.
+
+9. User Content and Analytics
+Users may upload photos, text, and other content. The App uses this data to generate personal analytics and recommendations. Users are solely responsible for their uploaded content.
+
 10. Restrictions
-Users must not:
-•	Hack, modify, or replicate the App
-•	Break Kazakhstan law
-•	Use bots or automation tools
-____________________________________
+The following is prohibited:
+• Hacking, decompilation, disassembly, reverse engineering, or modifying the App
+• Violation of the laws of the Republic of Kazakhstan
+• Mass registrations or automation of actions
+• Attempting to access source code or internal algorithms
+
+All intellectual property rights, including interface, functionality, and structure, belong to Vyacheslav Andreevich Kuzin.
+
 11. Limitation of Liability
-The App offers recommendations only and does not guarantee forecast accuracy. The developers are not liable for any losses or damage caused by the use of the App.
-____________________________________
-12. Jurisdiction
-This Agreement is governed by the laws of the Republic of Kazakhstan.
-____________________________________
-13. Contact
-For support and feedback:
-•	Email: support@driftnotesapp.com
-•	Telegram: Drift Notes App
+Drift Notes does not guarantee the accuracy of predictions or analytics and is not liable for any damages resulting from the use of the App. The App is for informational and recommendation purposes only.
+
+12. Third-Party Services
+The App uses third-party services, including Firebase, Google Maps API, WeatherAPI, OpenAI, Anthropic Claude, and mobile app stores (Google Play, App Store, RuStore). By using the App, you agree to the terms of these services.
+
+13. Jurisdiction
+This Agreement is governed by the laws of the Republic of Kazakhstan. Any disputes will be resolved in the courts of the developer's jurisdiction.
+
+14. Contact Information
+For support and complaints:
+• Email: support@driftnotesapp.com
+• Telegram: Drift Notes App
