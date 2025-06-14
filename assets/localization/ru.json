@@ -1378,7 +1378,27 @@
 
   "select_time": "Выберите время",
   "confirm": "Подтвердить",
-  "daily_forecast_time_desc": "Время получения ежедневного прогноза рыбалки"
+  "daily_forecast_time_desc": "Время получения ежедневного прогноза рыбалки",
+
+  "add_test_notification": "Добавить тестовое уведомление",
+  "notifications_description": "Здесь будут появляться уведомления о погоде и клеве",
+  "additional_data": "Дополнительные данные:",
+  "clear_all_notifications_title": "Очистить все уведомления",
+  "clear_all_notifications_message": "Вы уверены, что хотите удалить все уведомления? Это действие нельзя отменить.",
+  "notification_type_general": "Общее",
+  "notification_type_fishing_reminder": "Напоминание",
+  "notification_type_bite_forecast": "Прогноз клева",
+  "notification_type_weather_update": "Погода",
+  "notification_type_new_features": "Новости",
+  "notification_type_system_update": "Система",
+  "notification_type_policy_update": "Документы",
+
+  "test_notification_title": "Тестовое уведомление",
+  "test_notification_message": "Это тестовое уведомление для проверки работы системы",
+  "favorable_conditions_title": "Отличные условия для рыбалки!",
+  "favorable_conditions_message": "Прогноз клева: {scorePoints} баллов из 100. Лучшее время: {bestTime}",
+  "fishing_reminder_title": "Напоминание о рыбалке",
+  "fishing_reminder_message": "Запланированная рыбалка в {location}"
 
 
 }

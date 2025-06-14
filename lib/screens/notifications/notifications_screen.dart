@@ -79,7 +79,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _addTestNotification() async {
-    await _notificationService.addTestNotification();
+    final localizations = AppLocalizations.of(context);
+    await _notificationService.addTestNotification(
+      title: localizations.translate('test_notification_title'),
+      message: localizations.translate('test_notification_message'),
+    );
   }
 
   @override
@@ -124,7 +128,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       const Icon(Icons.add_alert, color: Colors.blue),
                       const SizedBox(width: 8),
-                      Text(localizations.translate('add') + ' тест'),
+                      Text(localizations.translate('add_test_notification')),
                     ],
                   ),
                 ),
@@ -183,7 +187,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Здесь будут появляться уведомления о погоде и клеве',
+            localizations.translate('notifications_description'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
               fontSize: 14,
@@ -194,7 +198,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ElevatedButton.icon(
             onPressed: _addTestNotification,
             icon: const Icon(Icons.add_alert),
-            label: Text('Добавить тестовое уведомление'),
+            label: Text(localizations.translate('add_test_notification')),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
               foregroundColor: AppConstants.textColor,
@@ -385,6 +389,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showNotificationDetails(NotificationModel notification) {
+    final localizations = AppLocalizations.of(context);
+
     // Если это уведомление об обновлении политики, переходим к соглашениям
     if (notification.type == NotificationType.policyUpdate) {
       _markAsRead(notification.id);
@@ -477,7 +483,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Дополнительные данные:',
+                      localizations.translate('additional_data'),
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.8),
                         fontSize: 12,
@@ -505,7 +511,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              AppLocalizations.of(context).translate('close'),
+              localizations.translate('close'),
               style: TextStyle(color: AppConstants.textColor),
             ),
           ),
@@ -522,14 +528,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.surfaceColor,
         title: Text(
-          'Очистить все уведомления',
+          localizations.translate('clear_all_notifications_title'),
           style: TextStyle(
             color: AppConstants.textColor,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'Вы уверены, что хотите удалить все уведомления? Это действие нельзя отменить.',
+          localizations.translate('clear_all_notifications_message'),
           style: TextStyle(
             color: AppConstants.textColor,
           ),
@@ -594,21 +600,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _getNotificationTypeText(NotificationType type) {
+    final localizations = AppLocalizations.of(context);
+
     switch (type) {
       case NotificationType.general:
-        return 'Общее';
+        return localizations.translate('notification_type_general');
       case NotificationType.fishingReminder:
-        return 'Напоминание';
+        return localizations.translate('notification_type_fishing_reminder');
       case NotificationType.biteForecast:
-        return 'Прогноз клева';
+        return localizations.translate('notification_type_bite_forecast');
       case NotificationType.weatherUpdate:
-        return 'Погода';
+        return localizations.translate('notification_type_weather_update');
       case NotificationType.newFeatures:
-        return 'Новости';
+        return localizations.translate('notification_type_new_features');
       case NotificationType.systemUpdate:
-        return 'Система';
+        return localizations.translate('notification_type_system_update');
       case NotificationType.policyUpdate:
-        return 'Документы';
+        return localizations.translate('notification_type_policy_update');
     }
   }
 }

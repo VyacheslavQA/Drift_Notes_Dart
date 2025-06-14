@@ -112,23 +112,8 @@ class WeatherNotificationService {
       return;
     }
 
-    // Определяем куда перейти в зависимости от типа уведомления
-    switch (notificationResponse.payload) {
-      case 'daily_forecast':
-      // Переходим на главный экран (где есть погода)
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-        break;
-      case 'pressure_change':
-      case 'storm_warning':
-      case 'favorable_conditions':
-      case 'weather_alert':
-      // Переходим на главный экран
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-        break;
-      default:
-      // По умолчанию - главный экран
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-    }
+    // Все погодные уведомления ведут на главный экран
+    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
   /// Загрузка настроек из SharedPreferences
@@ -584,13 +569,8 @@ class WeatherNotificationService {
 
       await _sendWeatherAlert(alert);
 
-      // ДОПОЛНИТЕЛЬНО: отправляем локальное уведомление с актуальными данными
-      await _sendLocalNotification(
-        'Прогноз рыбалки на сегодня',
-        '$activityText ($scorePoints/100)\nT: $temperature°C, Ветер: $windSpeed м/с',
-        1000, // Уникальный ID
-        'daily_forecast',
-      );
+      // Убираем дублирующее локальное уведомление - NotificationService сам отправит push
+      // await _sendLocalNotification(...) - УДАЛЕНО
 
     } catch (e) {
       debugPrint('❌ Ошибка при отправке ежедневного прогноза: $e');
@@ -652,16 +632,9 @@ class WeatherNotificationService {
         data: weatherAlert.data,
       );
 
-      // Отправляем через основной сервис уведомлений
+      // Отправляем ТОЛЬКО через основной сервис уведомлений
+      // (он сам отправит push-уведомление через LocalPushNotificationService)
       await _notificationService.addNotification(notification);
-
-      // ДОПОЛНИТЕЛЬНО: отправляем локальное уведомление
-      await _sendLocalNotification(
-        weatherAlert.title,
-        weatherAlert.message,
-        weatherAlert.hashCode, // Используем hashCode как уникальный ID
-        _getPayloadForAlertType(weatherAlert.type),
-      );
 
       debugPrint('✅ Погодное уведомление отправлено: ${weatherAlert.title}');
 

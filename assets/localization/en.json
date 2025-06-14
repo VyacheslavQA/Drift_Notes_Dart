@@ -1439,7 +1439,27 @@
 
   "select_time": "Select Time",
   "confirm": "Confirm",
-  "daily_forecast_time_desc": "Time to receive daily fishing forecast"
+  "daily_forecast_time_desc": "Time to receive daily fishing forecast",
+
+  "add_test_notification": "Add Test Notification",
+  "notifications_description": "Weather and bite notifications will appear here",
+  "additional_data": "Additional data:",
+  "clear_all_notifications_title": "Clear All Notifications",
+  "clear_all_notifications_message": "Are you sure you want to delete all notifications? This action cannot be undone.",
+  "notification_type_general": "General",
+  "notification_type_fishing_reminder": "Reminder",
+  "notification_type_bite_forecast": "Bite Forecast",
+  "notification_type_weather_update": "Weather",
+  "notification_type_new_features": "News",
+  "notification_type_system_update": "System",
+  "notification_type_policy_update": "Documents",
+
+  "test_notification_title": "Test Notification",
+  "test_notification_message": "This is a test notification to check system functionality",
+  "favorable_conditions_title": "Great fishing conditions!",
+  "favorable_conditions_message": "Bite forecast: {scorePoints} points out of 100. Best time: {bestTime}",
+  "fishing_reminder_title": "Fishing Reminder",
+  "fishing_reminder_message": "Scheduled fishing at {location}"
 
 
 }

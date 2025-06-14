@@ -56,6 +56,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
   }
 
   Future<void> _loadNotes() async {
+    if (!mounted) return; // ДОБАВЛЕНО: проверка mounted
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -63,6 +65,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
 
     try {
       final notes = await _fishingNoteRepository.getUserFishingNotes();
+
+      if (!mounted) return; // ДОБАВЛЕНО: проверка mounted перед setState
 
       // Сортируем заметки по дате (сначала новые)
       notes.sort((a, b) => b.date.compareTo(a.date));
@@ -73,8 +77,12 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
       });
 
       // Запускаем анимацию после загрузки данных
-      _animationController.forward();
+      if (mounted) {
+        _animationController.forward();
+      }
     } catch (e) {
+      if (!mounted) return; // ДОБАВЛЕНО: проверка mounted
+
       setState(() {
         _errorMessage = '${AppLocalizations.of(context).translate('error_loading')}: $e';
         _isLoading = false;
@@ -82,16 +90,56 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
     }
   }
 
+  // ИСПРАВЛЕНО: убрана автоматическая перезагрузка при возврате
   Future<void> _addNewNote() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const FishingTypeSelectionScreen()),
     );
 
-    // Если заметка была успешно создана, обновляем список
-    if (result == true) {
-      _animationController.reset();
-      _loadNotes();
+    // ИСПРАВЛЕНО: обновляем список только если заметка была создана И если мы все еще на экране
+    if (result == true && mounted) {
+      // Показываем Snackbar об успешном создании
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('note_created_successfully')),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // ИСПРАВЛЕНО: более мягкая перезагрузка без сброса анимации
+      _refreshNotesList();
+    }
+  }
+
+  // ДОБАВЛЕНО: новый метод для мягкого обновления списка
+  Future<void> _refreshNotesList() async {
+    if (!mounted) return;
+
+    try {
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
+
+      if (!mounted) return;
+
+      // Сортируем заметки по дате (сначала новые)
+      notes.sort((a, b) => b.date.compareTo(a.date));
+
+      setState(() {
+        _notes = notes;
+        // НЕ меняем _isLoading - это предотвращает показ индикатора загрузки
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      // При ошибке показываем Snackbar вместо изменения состояния загрузки
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppLocalizations.of(context).translate('error_loading')}: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -102,10 +150,9 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         builder: (context) => FishingNoteDetailScreen(noteId: note.id),
       ),
     ).then((value) {
-      if (value == true) {
-        // Сбрасываем анимацию перед обновлением данных
-        _animationController.reset();
-        _loadNotes();
+      if (value == true && mounted) {
+        // ИСПРАВЛЕНО: используем мягкое обновление вместо полной перезагрузки
+        _refreshNotesList();
       }
     });
   }
@@ -136,36 +183,15 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
         isLoading: _isLoading,
         message: localizations.translate('loading'),
         child: RefreshIndicator(
-          onRefresh: _loadNotes,
+          onRefresh: () async {
+            // ИСПРАВЛЕНО: используем полную перезагрузку только при pull-to-refresh
+            _animationController.reset();
+            await _loadNotes();
+          },
           color: AppConstants.primaryColor,
           backgroundColor: AppConstants.surfaceColor,
           child: _errorMessage != null
-              ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _loadNotes,
-                  child: Text(localizations.translate('try_again')),
-                ),
-              ],
-            ),
-          )
+              ? _buildErrorState()
               : _notes.isEmpty
               ? _buildEmptyState()
               : FadeTransition(
@@ -209,6 +235,45 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen> with Si
             height: 50,
           ),
         ),
+      ),
+    );
+  }
+
+  // ДОБАВЛЕНО: отдельный виджет для состояния ошибки
+  Widget _buildErrorState() {
+    final localizations = AppLocalizations.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _errorMessage!,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              _animationController.reset();
+              _loadNotes();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+            ),
+            child: Text(localizations.translate('try_again')),
+          ),
+        ],
       ),
     );
   }

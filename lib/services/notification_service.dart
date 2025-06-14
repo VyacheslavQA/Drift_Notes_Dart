@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/notification_model.dart';
-import 'local_push_notification_service.dart';  // НОВЫЙ ИМПОРТ
+import 'local_push_notification_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -288,11 +288,14 @@ class NotificationService {
     return _notifications.where((notification) => notification.type == type).toList();
   }
 
-  /// Добавление тестового уведомления (для разработки)
-  Future<void> addTestNotification() async {
+  /// Добавление тестового уведомления с локализацией
+  Future<void> addTestNotification({
+    required String title,
+    required String message,
+  }) async {
     await createNotification(
-      title: 'Тестовое уведомление',
-      message: 'Это тестовое уведомление для проверки работы системы',
+      title: title,
+      message: message,
       type: NotificationType.general,
       data: {
         'test': true,
@@ -303,13 +306,15 @@ class NotificationService {
 
   /// Добавление уведомления о благоприятных условиях для рыбалки
   Future<void> addFavorableConditionsNotification({
+    required String title,
+    required String message,
     required int scorePoints,
     required String bestTime,
     Map<String, dynamic> additionalData = const {},
   }) async {
     await createNotification(
-      title: 'Отличные условия для рыбалки!',
-      message: 'Прогноз клева: $scorePoints баллов из 100. Лучшее время: $bestTime',
+      title: title,
+      message: message,
       type: NotificationType.biteForecast,
       data: {
         'scorePoints': scorePoints,
@@ -338,13 +343,15 @@ class NotificationService {
 
   /// Добавление напоминания о рыбалке
   Future<void> addFishingReminder({
+    required String title,
+    required String message,
     required String location,
     required DateTime scheduledTime,
     Map<String, dynamic> additionalData = const {},
   }) async {
     await createNotification(
-      title: 'Напоминание о рыбалке',
-      message: 'Запланированная рыбалка в $location',
+      title: title,
+      message: message,
       type: NotificationType.fishingReminder,
       data: {
         'location': location,

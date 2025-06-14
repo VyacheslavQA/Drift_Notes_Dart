@@ -168,7 +168,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
             _buildSectionHeader(localizations.translate('time_settings')),
 
             if (_settings.dailyForecastEnabled)
-              _buildDetailedTimeSetting(), // НОВЫЙ МЕТОД ДЛЯ ДЕТАЛЬНОГО ВРЕМЕНИ
+              _buildDetailedTimeSetting(),
 
             const SizedBox(height: 24),
 
@@ -377,7 +377,6 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
     );
   }
 
-  // НОВЫЙ МЕТОД ДЛЯ ДЕТАЛЬНОГО ВЫБОРА ВРЕМЕНИ
   Widget _buildDetailedTimeSetting() {
     final localizations = AppLocalizations.of(context);
 
@@ -435,7 +434,7 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        _settings.formattedTime, // Используем новый метод из модели
+                        _settings.formattedTime,
                         style: TextStyle(
                           color: AppConstants.primaryColor,
                           fontSize: 18,
@@ -457,7 +456,6 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
     );
   }
 
-  // НОВЫЙ МЕТОД ДЛЯ ПОКАЗА PICKER'А ВРЕМЕНИ
   void _showTimePicker() {
     final localizations = AppLocalizations.of(context);
 
@@ -467,83 +465,94 @@ class _WeatherNotificationsSettingsScreenState extends State<WeatherNotification
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Заголовок
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      isScrollControlled: true, // Позволяет контролировать размер
+      builder: (context) {
+        final bottomPadding = MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom;
+
+        return SafeArea(
+          child: Container(
+            padding: EdgeInsets.only(bottom: bottomPadding > 0 ? bottomPadding : 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  localizations.translate('select_time'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                // Заголовок
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        localizations.translate('select_time'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.close,
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Icon(
-                    Icons.close,
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
+
+                // Time Picker
+                SizedBox(
+                  height: 200,
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.time,
+                    initialDateTime: DateTime(2024, 1, 1, _settings.dailyForecastHour, _settings.dailyForecastMinute),
+                    minuteInterval: 5,
+                    use24hFormat: true,
+                    onDateTimeChanged: (DateTime newTime) {
+                      setState(() {
+                        _settings = _settings.copyWith(
+                          dailyForecastHour: newTime.hour,
+                          dailyForecastMinute: newTime.minute,
+                        );
+                      });
+                    },
+                  ),
+                ),
+
+                // Кнопка подтверждения
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _saveSettings();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: AppConstants.textColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        localizations.translate('confirm'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-
-          // Time Picker
-          SizedBox(
-            height: 200,
-            child: CupertinoDatePicker(
-              mode: CupertinoDatePickerMode.time,
-              initialDateTime: DateTime(2024, 1, 1, _settings.dailyForecastHour, _settings.dailyForecastMinute),
-              minuteInterval: 5, // Интервал в 5 минут для удобства
-              use24hFormat: true,
-              onDateTimeChanged: (DateTime newTime) {
-                setState(() {
-                  _settings = _settings.copyWith(
-                    dailyForecastHour: newTime.hour,
-                    dailyForecastMinute: newTime.minute,
-                  );
-                });
-              },
-            ),
-          ),
-
-          // Кнопка подтверждения
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _saveSettings(); // Автоматически сохраняем при изменении времени
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  localizations.translate('confirm'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

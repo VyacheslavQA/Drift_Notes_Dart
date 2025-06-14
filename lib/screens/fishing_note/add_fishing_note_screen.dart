@@ -70,6 +70,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  // ДОБАВЛЕНО: флаг для отслеживания изменений
+  bool _hasUnsavedChanges = false;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +95,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
 
     _animationController.forward();
     _tripDays = 1;
+
+    // ДОБАВЛЕНО: слушатели для отслеживания изменений
+    _locationController.addListener(_markAsChanged);
+    _tackleController.addListener(_markAsChanged);
+    _notesController.addListener(_markAsChanged);
   }
 
   @override
@@ -101,6 +109,15 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     _notesController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  // ДОБАВЛЕНО: метод для отметки изменений
+  void _markAsChanged() {
+    if (!_hasUnsavedChanges) {
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+    }
   }
 
   void _updateTripDays() {
@@ -113,6 +130,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         _tripDays = 1;
       });
     }
+    _markAsChanged(); // ДОБАВЛЕНО
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
@@ -171,6 +189,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
               pickedFiles.map((xFile) => File(xFile.path)).toList()
           );
         });
+        _markAsChanged(); // ДОБАВЛЕНО
       }
     } catch (e) {
       if (mounted) {
@@ -195,6 +214,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         setState(() {
           _selectedPhotos.add(File(pickedFile.path));
         });
+        _markAsChanged(); // ДОБАВЛЕНО
       }
     } catch (e) {
       if (mounted) {
@@ -209,6 +229,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     setState(() {
       _selectedPhotos.removeAt(index);
     });
+    _markAsChanged(); // ДОБАВЛЕНО
   }
 
   Future<void> _selectLocation() async {
@@ -231,6 +252,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         _weather = null;
         _aiPrediction = null;
       });
+      _markAsChanged(); // ДОБАВЛЕНО
     }
   }
 
@@ -270,6 +292,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
           _weather = weatherData;
           _isLoadingWeather = false;
         });
+        _markAsChanged(); // ДОБАВЛЕНО
       }
 
       // Загружаем ИИ-анализ для выбранного типа рыбалки
@@ -286,6 +309,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             _aiPrediction = aiResult;
             _isLoadingAI = false;
           });
+          _markAsChanged(); // ДОБАВЛЕНО
           debugPrint('🧠 ИИ-анализ загружен: ${aiResult.overallScore} баллов');
         }
       } catch (aiError) {
@@ -326,6 +350,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
       setState(() {
         _biteRecords.add(result);
       });
+      _markAsChanged(); // ДОБАВЛЕНО
     }
   }
 
@@ -399,6 +424,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             ),
           );
 
+          // ИСПРАВЛЕНО: только возвращаем true при успешном сохранении
+          _hasUnsavedChanges = false;
           Navigator.pop(context, true);
         }
       } else {
@@ -412,7 +439,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
             ),
           );
 
-          Navigator.pop(context, true); // Возвращаем true для обновления списка
+          // ИСПРАВЛЕНО: только возвращаем true при успешном сохранении
+          _hasUnsavedChanges = false;
+          Navigator.pop(context, true);
         }
       }
     } catch (e) {
@@ -428,6 +457,60 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
         });
       }
     }
+  }
+
+  // ИСПРАВЛЕНО: метод для безопасного выхода
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) {
+      // Если нет изменений, просто выходим без возврата результата
+      return true;
+    }
+
+    final localizations = AppLocalizations.of(context);
+
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          title: Text(
+            localizations.translate('cancel_creation'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            localizations.translate('cancel_creation_confirmation'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                localizations.translate('no'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                localizations.translate('yes_cancel'),
+                style: TextStyle(
+                  color: Colors.redAccent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldPop ?? false;
   }
 
   void _showFishingTypeDialog() {
@@ -483,7 +566,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                           // Сбрасываем ИИ-анализ при смене типа рыбалки
                           _aiPrediction = null;
                         });
-                        Navigator.pop(context, true); // Возвращаем true для обновления списка
+                        _markAsChanged(); // ДОБАВЛЕНО
+                        Navigator.pop(context); // ИСПРАВЛЕНО: убран возврат true
                       },
                     );
                   },
@@ -496,7 +580,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                   children: [
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context, true); // Возвращаем true для обновления списка
+                        Navigator.pop(context); // ИСПРАВЛЕНО: убран возврат true
                       },
                       child: Text(
                         localizations.translate('cancel'),
@@ -520,53 +604,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
     final localizations = AppLocalizations.of(context);
 
     return ElevatedButton(
-      onPressed: () {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: AppConstants.cardColor,
-              title: Text(
-                localizations.translate('cancel_creation'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Text(
-                localizations.translate('cancel_creation_confirmation'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    localizations.translate('no'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    localizations.translate('yes_cancel'),
-                    style: TextStyle(
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
+      onPressed: () async {
+        final shouldExit = await _onWillPop();
+        if (shouldExit && mounted) {
+          Navigator.of(context).pop(); // ИСПРАВЛЕНО: убран возврат результата
+        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.redAccent,
@@ -741,458 +783,467 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          localizations.translate('new_note'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+    return WillPopScope( // ДОБАВЛЕНО: обработка системной кнопки "назад"
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: AppConstants.backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            localizations.translate('new_note'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.pop(context, true), // Возвращаем true для обновления списка
-        ),
-        actions: [
-          if (!_isSaving)
-            IconButton(
-              icon: Icon(Icons.check, color: AppConstants.textColor),
-              onPressed: _saveNote,
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-                  strokeWidth: 2.5,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+            onPressed: () async {
+              // ИСПРАВЛЕНО: обработка кнопки назад через _onWillPop
+              final shouldExit = await _onWillPop();
+              if (shouldExit && mounted) {
+                Navigator.pop(context); // ИСПРАВЛЕНО: убран возврат результата
+              }
+            },
+          ),
+          actions: [
+            if (!_isSaving)
+              IconButton(
+                icon: Icon(Icons.check, color: AppConstants.textColor),
+                onPressed: _saveNote,
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+                    strokeWidth: 2.5,
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                // Тип рыбалки
-                _buildSectionHeader(localizations.translate('fishing_type')),
-                InkWell(
-                  onTap: _showFishingTypeDialog,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF12332E),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: FishingTypeIcons.getIconWidget(_selectedFishingType, size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            localizations.translate(_selectedFishingType),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          color: AppConstants.textColor,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Место рыбалки
-                _buildSectionHeader('${localizations.translate('fishing_location')}*'),
-                TextFormField(
-                  controller: _locationController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('enter_location_name'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.location_on,
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return localizations.translate('required_field');
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Даты рыбалки
-                _buildSectionHeader(localizations.translate('fishing_dates')),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDateSelector(
-                        label: localizations.translate('start'),
-                        date: _startDate,
-                        onTap: () => _selectDate(context, true),
+          ],
+        ),
+        body: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  // Тип рыбалки
+                  _buildSectionHeader(localizations.translate('fishing_type')),
+                  InkWell(
+                    onTap: _showFishingTypeDialog,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF12332E),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildDateSelector(
-                        label: localizations.translate('end'),
-                        date: _endDate,
-                        onTap: () => _selectDate(context, false),
-                      ),
-                    ),
-                  ],
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8),
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Точка на карте
-                _buildSectionHeader(localizations.translate('map_point')),
-                ElevatedButton.icon(
-                  icon: Icon(
-                    Icons.map,
-                    color: AppConstants.textColor,
-                  ),
-                  label: Text(
-                    _hasLocation
-                        ? localizations.translate('change_map_point')
-                        : localizations.translate('select_map_point'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _selectLocation,
-                ),
-
-                if (_hasLocation) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 20),
-
-                // Погода + ИИ-анализ
-                _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
-                ElevatedButton.icon(
-                  icon: Icon(
-                    Icons.psychology,
-                    color: AppConstants.textColor,
-                  ),
-                  label: Text(
-                    _weather != null || _aiPrediction != null
-                        ? localizations.translate('update_weather_and_ai')
-                        : localizations.translate('load_weather_ai'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: (_isLoadingWeather || _isLoadingAI) ? null : _fetchWeatherAndAI,
-                ),
-
-                if (_isLoadingWeather || _isLoadingAI)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: Column(
+                      child: Row(
                         children: [
-                          CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _isLoadingAI ? localizations.translate('ai_analyzing') : localizations.translate('loading_weather'),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(alpha: 0.7),
-                              fontSize: 14,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
                             ),
+                            child: FishingTypeIcons.getIconWidget(_selectedFishingType, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              localizations.translate(_selectedFishingType),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            color: AppConstants.textColor,
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                if (_weather != null) ...[
-                  const SizedBox(height: 12),
-                  _buildWeatherCard(),
-                ],
+                  const SizedBox(height: 20),
 
-                // Отображение ИИ-анализа после погоды
-                if (_aiPrediction != null)
-                  _buildAIAnalysisCard(),
-
-                const SizedBox(height: 20),
-
-                // Снасти
-                _buildSectionHeader(localizations.translate('tackle')),
-                TextFormField(
-                  controller: _tackleController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('tackle_desc'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  maxLines: 3,
-                ),
-
-                const SizedBox(height: 20),
-
-                // Заметки
-                _buildSectionHeader(localizations.translate('notes')),
-                TextFormField(
-                  controller: _notesController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('notes_desc'),
-                    hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  maxLines: 5,
-                ),
-
-                const SizedBox(height: 20),
-
-                // Фотографии
-                _buildSectionHeader(localizations.translate('photos')),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.photo_library),
-                        label: Text(localizations.translate('gallery')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _pickImages,
+                  // Место рыбалки
+                  _buildSectionHeader('${localizations.translate('fishing_location')}*'),
+                  TextFormField(
+                    controller: _locationController,
+                    style: TextStyle(color: AppConstants.textColor),
+                    decoration: InputDecoration(
+                      fillColor: const Color(0xFF12332E),
+                      filled: true,
+                      hintText: localizations.translate('enter_location_name'),
+                      hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.location_on,
+                        color: AppConstants.textColor,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.camera_alt),
-                        label: Text(localizations.translate('camera')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return localizations.translate('required_field');
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Даты рыбалки
+                  _buildSectionHeader(localizations.translate('fishing_dates')),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDateSelector(
+                          label: localizations.translate('start'),
+                          date: _startDate,
+                          onTap: () => _selectDate(context, true),
                         ),
-                        onPressed: _takePhoto,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDateSelector(
+                          label: localizations.translate('end'),
+                          date: _endDate,
+                          onTap: () => _selectDate(context, false),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Точка на карте
+                  _buildSectionHeader(localizations.translate('map_point')),
+                  ElevatedButton.icon(
+                    icon: Icon(
+                      Icons.map,
+                      color: AppConstants.textColor,
+                    ),
+                    label: Text(
+                      _hasLocation
+                          ? localizations.translate('change_map_point')
+                          : localizations.translate('select_map_point'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF12332E),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _selectLocation,
+                  ),
+
+                  if (_hasLocation) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
                       ),
                     ),
                   ],
-                ),
 
-                if (_selectedPhotos.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _selectedPhotos.length,
-                      itemBuilder: (context, index) {
-                        return Stack(
+                  const SizedBox(height: 20),
+
+                  // Погода + ИИ-анализ
+                  _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
+                  ElevatedButton.icon(
+                    icon: Icon(
+                      Icons.psychology,
+                      color: AppConstants.textColor,
+                    ),
+                    label: Text(
+                      _weather != null || _aiPrediction != null
+                          ? localizations.translate('update_weather_and_ai')
+                          : localizations.translate('load_weather_ai'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF12332E),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: (_isLoadingWeather || _isLoadingAI) ? null : _fetchWeatherAndAI,
+                  ),
+
+                  if (_isLoadingWeather || _isLoadingAI)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Center(
+                        child: Column(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                image: DecorationImage(
-                                  image: FileImage(_selectedPhotos[index]),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
                             ),
-                            Positioned(
-                              top: 0,
-                              right: 8,
-                              child: GestureDetector(
-                                onTap: () => _removePhoto(index),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.7),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isLoadingAI ? localizations.translate('ai_analyzing') : localizations.translate('loading_weather'),
+                              style: TextStyle(
+                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                                fontSize: 14,
                               ),
                             ),
                           ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 20),
-
-                // Записи о поклевках
-                _buildSectionHeader(localizations.translate('bite_records')),
-                ElevatedButton.icon(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: AppConstants.textColor,
-                  ),
-                  label: Text(
-                    localizations.translate('add_bite_record'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _addBiteRecord,
-                ),
-
-                if (_biteRecords.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _buildBiteRecordsSection(),
-                ],
-
-                const SizedBox(height: 40),
-
-                // Кнопки внизу экрана
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCancelButton(),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveNote,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
-                        ),
-                        child: _isSaving
-                            ? SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: AppConstants.textColor,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                            : Text(
-                          localizations.translate('save'),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
 
-                const SizedBox(height: 40),
-              ],
+                  if (_weather != null) ...[
+                    const SizedBox(height: 12),
+                    _buildWeatherCard(),
+                  ],
+
+                  // Отображение ИИ-анализа после погоды
+                  if (_aiPrediction != null)
+                    _buildAIAnalysisCard(),
+
+                  const SizedBox(height: 20),
+
+                  // Снасти
+                  _buildSectionHeader(localizations.translate('tackle')),
+                  TextFormField(
+                    controller: _tackleController,
+                    style: TextStyle(color: AppConstants.textColor),
+                    decoration: InputDecoration(
+                      fillColor: const Color(0xFF12332E),
+                      filled: true,
+                      hintText: localizations.translate('tackle_desc'),
+                      hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    maxLines: 3,
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Заметки
+                  _buildSectionHeader(localizations.translate('notes')),
+                  TextFormField(
+                    controller: _notesController,
+                    style: TextStyle(color: AppConstants.textColor),
+                    decoration: InputDecoration(
+                      fillColor: const Color(0xFF12332E),
+                      filled: true,
+                      hintText: localizations.translate('notes_desc'),
+                      hintStyle: TextStyle(color: AppConstants.textColor.withValues(alpha: 0.5)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    maxLines: 5,
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Фотографии
+                  _buildSectionHeader(localizations.translate('photos')),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.photo_library),
+                          label: Text(localizations.translate('gallery')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppConstants.primaryColor,
+                            foregroundColor: AppConstants.textColor,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _pickImages,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.camera_alt),
+                          label: Text(localizations.translate('camera')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppConstants.primaryColor,
+                            foregroundColor: AppConstants.textColor,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _takePhoto,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  if (_selectedPhotos.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 100,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedPhotos.length,
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  image: DecorationImage(
+                                    image: FileImage(_selectedPhotos[index]),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () => _removePhoto(index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.7),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // Записи о поклевках
+                  _buildSectionHeader(localizations.translate('bite_records')),
+                  ElevatedButton.icon(
+                    icon: Icon(
+                      Icons.add_circle_outline,
+                      color: AppConstants.textColor,
+                    ),
+                    label: Text(
+                      localizations.translate('add_bite_record'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF12332E),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _addBiteRecord,
+                  ),
+
+                  if (_biteRecords.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildBiteRecordsSection(),
+                  ],
+
+                  const SizedBox(height: 40),
+
+                  // Кнопки внизу экрана
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCancelButton(),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveNote,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppConstants.primaryColor,
+                            foregroundColor: AppConstants.textColor,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
+                          ),
+                          child: _isSaving
+                              ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: AppConstants.textColor,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                              : Text(
+                            localizations.translate('save'),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
@@ -1550,6 +1601,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen> with Single
                     setState(() {
                       _biteRecords.removeAt(index);
                     });
+                    _markAsChanged(); // ДОБАВЛЕНО
                   },
                 ),
               ),
