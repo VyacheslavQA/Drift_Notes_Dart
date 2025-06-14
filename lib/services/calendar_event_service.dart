@@ -256,7 +256,7 @@ class CalendarEventService {
     }
   }
 
-  /// НОВЫЙ: Запланировать напоминание для события
+  /// ИСПРАВЛЕНО: Запланировать напоминание для события
   Future<void> _scheduleEventReminder(CalendarEvent event) async {
     try {
       final reminderTime = event.calculateReminderTime();
@@ -285,7 +285,12 @@ class CalendarEventService {
         message += '\nМесто: ${event.location}';
       }
 
-      // Планируем точное напоминание
+      debugPrint('🔍 Планируем напоминание для турнира:');
+      debugPrint('  - Event ID: ${event.id}');
+      debugPrint('  - Source ID (Tournament ID): ${event.sourceId}');
+      debugPrint('  - Title: ${event.title}');
+
+      // ИСПРАВЛЕНО: Планируем точное напоминание с правильными данными
       await _scheduledReminderService.scheduleReminder(
         id: event.id,
         title: title,
@@ -293,16 +298,16 @@ class CalendarEventService {
         reminderDateTime: reminderTime,
         type: notificationType,
         data: {
-          'eventId': event.id,
+          'sourceId': event.sourceId ?? '', // Чистый ID турнира (например, jun_1)
+          'eventId': event.id, // ID события календаря (например, tournament_jun_1)
           'eventType': event.type.toString(),
-          'location': event.location ?? '',
-          // Добавляем данные для навигации к турниру
-          'sourceId': event.sourceId ?? '', // ID турнира для навигации
           'eventTitle': event.title,
+          'location': event.location ?? '',
         },
       );
 
       debugPrint('✅ Точное напоминание запланировано для: ${event.title}');
+      debugPrint('✅ С данными: sourceId=${event.sourceId}, eventId=${event.id}');
 
     } catch (e) {
       debugPrint('❌ Ошибка планирования напоминания: $e');

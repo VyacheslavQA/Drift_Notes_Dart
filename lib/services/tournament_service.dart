@@ -1,11 +1,22 @@
 // Путь: lib/services/tournament_service.dart
 
+import 'package:flutter/foundation.dart';
 import '../models/tournament_model.dart';
 
 class TournamentService {
   static final TournamentService _instance = TournamentService._internal();
   factory TournamentService() => _instance;
   TournamentService._internal();
+
+  // НОВЫЙ МЕТОД: Получить турнир по ID
+  TournamentModel? getTournamentById(String id) {
+    try {
+      return getAllTournaments().firstWhere((tournament) => tournament.id == id);
+    } catch (e) {
+      debugPrint('❌ Турнир с ID $id не найден');
+      return null;
+    }
+  }
 
   // Все турниры на 2025 год (данные из Excel файла)
   List<TournamentModel> getAllTournaments() {

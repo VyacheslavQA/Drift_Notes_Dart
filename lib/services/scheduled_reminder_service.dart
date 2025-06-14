@@ -149,7 +149,7 @@ class ScheduledReminderService {
     return Map.from(_activeTimers);
   }
 
-  /// Срабатывание напоминания
+  /// ИСПРАВЛЕНО: Срабатывание напоминания
   Future<void> _triggerReminder(ScheduledReminder reminder) async {
     try {
       debugPrint('🔔 Срабатывает напоминание: ${reminder.title}');
@@ -165,21 +165,42 @@ class ScheduledReminderService {
         }
       }
 
-      // Создаем уведомление
-      await _notificationService.createNotification(
-        title: title,
-        message: reminder.message,
-        type: reminder.type,
-        data: {
-          // Только необходимые данные для навигации
-          'eventId': reminder.data['eventId'] ?? '',
-          'eventType': reminder.data['eventType'] ?? '',
-          'location': reminder.data['location'] ?? '',
-          // Красивое описание вместо технических полей
-          'eventTitle': reminder.title,
-          'eventStartDate': reminder.data['eventStartDate'] ?? '',
-        },
-      );
+      // ИСПРАВЛЕНО: Используем специальные методы для разных типов уведомлений
+      if (reminder.type == NotificationType.tournamentReminder) {
+        await _notificationService.addTournamentReminderNotification(
+          id: reminder.id,
+          title: title,
+          message: reminder.message,
+          data: {
+            'sourceId': reminder.data['sourceId'] ?? '', // ID турнира для навигации
+            'eventId': reminder.data['eventId'] ?? '',
+            'eventType': reminder.data['eventType'] ?? '',
+            'eventTitle': reminder.data['eventTitle'] ?? reminder.title,
+            'location': reminder.data['location'] ?? '',
+          },
+        );
+      } else if (reminder.type == NotificationType.fishingReminder) {
+        await _notificationService.addFishingReminderNotification(
+          id: reminder.id,
+          title: title,
+          message: reminder.message,
+          data: {
+            'sourceId': reminder.data['sourceId'] ?? '', // ID заметки для навигации
+            'eventId': reminder.data['eventId'] ?? '',
+            'eventType': reminder.data['eventType'] ?? '',
+            'eventTitle': reminder.data['eventTitle'] ?? reminder.title,
+            'location': reminder.data['location'] ?? '',
+          },
+        );
+      } else {
+        // Для других типов используем общий метод
+        await _notificationService.createNotification(
+          title: title,
+          message: reminder.message,
+          type: reminder.type,
+          data: reminder.data,
+        );
+      }
 
       // Удаляем из активных напоминаний
       _activeTimers.remove(reminder.id);

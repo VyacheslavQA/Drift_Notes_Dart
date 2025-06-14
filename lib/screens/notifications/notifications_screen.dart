@@ -128,7 +128,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       const Icon(Icons.add_alert, color: Colors.blue),
                       const SizedBox(width: 8),
-                      Text(localizations.translate('add_test_notification')),
+                      Expanded(
+                        child: Text(
+                          'Тест уведомления',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -138,7 +143,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       const Icon(Icons.clear_all, color: Colors.red),
                       const SizedBox(width: 8),
-                      Text(localizations.translate('clear_all_data')),
+                      Expanded(
+                        child: Text(
+                          localizations.translate('clear_all_data'),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -198,7 +208,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ElevatedButton.icon(
             onPressed: _addTestNotification,
             icon: const Icon(Icons.add_alert),
-            label: Text(localizations.translate('add_test_notification')),
+            label: Text('Тест уведомления'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
               foregroundColor: AppConstants.textColor,
@@ -471,7 +481,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ],
             ),
-            if (notification.data.isNotEmpty) ...[
+            // ИСПРАВЛЕНО: Убираем отображение технических данных для уведомлений о турнирах
+            if (notification.data.isNotEmpty && notification.type != NotificationType.tournamentReminder) ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -491,7 +502,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ...notification.data.entries.map((entry) => Padding(
+                    // Фильтруем технические поля
+                    ...notification.data.entries
+                        .where((entry) => !['sourceId', 'eventId', 'eventType', 'eventTitle'].contains(entry.key))
+                        .map((entry) => Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
                         '${entry.key}: ${entry.value}',

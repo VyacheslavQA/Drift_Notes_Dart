@@ -37,6 +37,8 @@ import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
 import 'services/user_consent_service.dart';
 import 'services/scheduled_reminder_service.dart'; // ОБНОВЛЕНО: новый сервис
+import 'services/tournament_service.dart'; // НОВЫЙ: импорт сервиса турниров
+import 'screens/tournaments/tournament_detail_screen.dart'; // НОВЫЙ: импорт экрана турнира
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -258,27 +260,70 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
       if (_navigatorKey.currentContext != null) {
         ScheduledReminderService().setContext(_navigatorKey.currentContext!);
         debugPrint('✅ Контекст для сервиса точных напоминаний установлен');
+
+        // НОВЫЙ: Дополнительная попытка подключить обработчик уведомлений
+        _ensureNotificationHandlerIsActive();
+      } else {
+        debugPrint('⚠️ Контекст еще не готов для сервиса напоминаний');
       }
     } catch (e) {
       debugPrint('❌ Ошибка установки контекста для сервиса напоминаний: $e');
     }
   }
 
+  // НОВЫЙ: Проверяем и переподключаем обработчик если нужно
+  void _ensureNotificationHandlerIsActive() {
+    try {
+      debugPrint('🔍 Проверяем активность обработчика уведомлений...');
+
+      // Просто переподключаем обработчик для уверенности
+      debugPrint('🔄 Переподключаем обработчик уведомлений...');
+      _setupNotificationHandlers();
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки обработчика: $e');
+    }
+  }
+
   // ОБНОВЛЕНО: Настройка обработчиков уведомлений
   void _setupNotificationHandlers() {
     try {
+      debugPrint('🔧 Настройка обработчиков уведомлений...');
+
       final pushService = LocalPushNotificationService();
 
       // Обрабатываем нажатия на уведомления
       pushService.notificationTapStream.listen((payload) {
         debugPrint('📱 Приложение: получено нажатие на уведомление: $payload');
         _handleNotificationTap(payload);
+      }, onError: (error) {
+        debugPrint('❌ Ошибка в stream уведомлений: $error');
       });
 
       debugPrint('✅ Обработчики уведомлений настроены');
     } catch (e) {
       debugPrint('❌ Ошибка настройки обработчиков уведомлений: $e');
+      // Пробуем альтернативный способ
+      _setupAlternativeNotificationHandler();
     }
+  }
+
+  // НОВЫЙ: Альтернативный способ подключения обработчика
+  void _setupAlternativeNotificationHandler() {
+    debugPrint('🔧 Пробуем альтернативный способ подключения...');
+
+    // Добавляем задержку и пробуем снова
+    Future.delayed(const Duration(seconds: 1), () {
+      try {
+        final pushService = LocalPushNotificationService();
+        pushService.notificationTapStream.listen((payload) {
+          debugPrint('📱 АЛЬТЕРНАТИВНЫЙ обработчик: $payload');
+          _handleNotificationTap(payload);
+        });
+        debugPrint('✅ Альтернативный обработчик подключен');
+      } catch (e) {
+        debugPrint('❌ Альтернативный обработчик тоже не работает: $e');
+      }
+    });
   }
 
   // ОБНОВЛЕНО: Обработка нажатий на уведомления
@@ -292,20 +337,18 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
         return;
       }
 
-      // ОБНОВЛЕНО: Улучшенная обработка уведомлений
+      // ИСПРАВЛЕНО: Обработка уведомлений с правильным извлечением данных
       try {
         final payloadData = json.decode(payload);
         final notificationType = payloadData['type'];
-        final eventType = payloadData['eventType'];
-        final sourceId = payloadData['sourceId']; // ID турнира
+        final notificationId = payloadData['id'];
 
         debugPrint('📱 Тип уведомления: $notificationType');
-        debugPrint('📱 Тип события: $eventType');
-        debugPrint('📱 ID источника: $sourceId');
+        debugPrint('📱 ID уведомления: $notificationId');
 
-        // Переходим в зависимости от типа
-        if (notificationType == 'NotificationType.tournamentReminder' && sourceId != null) {
-          _navigateToTournamentDetail(sourceId);
+        // Если это напоминание о турнире, нужно найти уведомление и извлечь sourceId
+        if (notificationType == 'NotificationType.tournamentReminder') {
+          _handleTournamentNotification(notificationId);
         } else if (notificationType == 'NotificationType.fishingReminder') {
           _navigateToFishingCalendar();
         } else {
@@ -323,6 +366,42 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     }
   }
 
+  // НОВЫЙ МЕТОД: Обработка уведомления о турнире
+  void _handleTournamentNotification(String notificationId) {
+    try {
+      debugPrint('🏆 Обработка уведомления о турнире: $notificationId');
+
+      // Получаем уведомление из сервиса
+      final notificationService = NotificationService();
+      final notifications = notificationService.getAllNotifications();
+
+      // Ищем уведомление по ID
+      final notification = notifications.firstWhere(
+              (n) => n.id == notificationId,
+          orElse: () => throw Exception('Notification not found')
+      );
+
+      debugPrint('📱 Найдено уведомление: ${notification.title}');
+      debugPrint('📱 Данные уведомления: ${notification.data}');
+
+      // Извлекаем sourceId из данных уведомления
+      final sourceId = notification.data['sourceId'] as String?;
+
+      debugPrint('📱 Source ID из уведомления: $sourceId');
+
+      if (sourceId != null && sourceId.isNotEmpty) {
+        _navigateToTournamentDetail(sourceId);
+      } else {
+        debugPrint('❌ Source ID не найден в данных уведомления');
+        _navigateToNotifications();
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка обработки уведомления о турнире: $e');
+      _navigateToNotifications();
+    }
+  }
+
   // ОБНОВЛЕНО: Навигация к разным экранам
   void _navigateToNotifications() {
     debugPrint('📱 Переход к уведомлениям');
@@ -334,19 +413,42 @@ class _DriftNotesAppState extends State<DriftNotesApp> with WidgetsBindingObserv
     _navigatorKey.currentState?.pushNamed('/tournaments');
   }
 
-  // НОВЫЙ: Переход к конкретному турниру
+  // ИСПРАВЛЕНО: Переход к конкретному турниру
   void _navigateToTournamentDetail(String tournamentId) {
     debugPrint('🏆 Переход к турниру: $tournamentId');
 
-    // Сначала переходим к главному экрану
-    _navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+    try {
+      // Получаем турнир по ID
+      final tournamentService = TournamentService();
+      final tournament = tournamentService.getTournamentById(tournamentId);
 
-    // Затем переходим к детальной информации о турнире
-    // Здесь нужно добавить навигацию к конкретному турниру
-    // Пока что переходим к списку турниров
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _navigateToTournaments();
-    });
+      if (tournament == null) {
+        debugPrint('❌ Турнир с ID $tournamentId не найден');
+        // Fallback - переходим к уведомлениям
+        _navigateToNotifications();
+        return;
+      }
+
+      // Проверяем, готово ли приложение для навигации
+      if (_navigatorKey.currentContext == null) {
+        debugPrint('⏳ Контекст не готов для навигации');
+        return;
+      }
+
+      // Переходим к детальной информации о турнире
+      Navigator.of(_navigatorKey.currentContext!).push(
+        MaterialPageRoute(
+          builder: (context) => TournamentDetailScreen(tournament: tournament),
+        ),
+      );
+
+      debugPrint('✅ Успешный переход к турниру: ${tournament.name}');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка перехода к турниру: $e');
+      // Fallback - переходим к уведомлениям
+      _navigateToNotifications();
+    }
   }
 
   void _navigateToFishingCalendar() {

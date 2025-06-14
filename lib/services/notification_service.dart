@@ -41,8 +41,8 @@ class NotificationService {
       // НОВЫЙ: Обновляем бейдж на основе непрочитанных уведомлений
       await _updateBadgeCount();
 
-      // НОВЫЙ: Подписываемся на нажатия уведомлений
-      _pushService.notificationTapStream.listen(_handleNotificationTap);
+      // УДАЛЕНО: Подписка на нажатия уведомлений (теперь обрабатывается в main.dart)
+      // _pushService.notificationTapStream.listen(_handleNotificationTap);
 
       debugPrint('✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений');
     } catch (e) {
@@ -176,6 +176,91 @@ class NotificationService {
     );
 
     await addNotification(notification);
+  }
+
+  /// НОВЫЙ: Специальный метод для добавления уведомлений о турнирах
+  Future<void> addTournamentReminderNotification({
+    required String id,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      // Очищаем сообщение от технических данных
+      String cleanMessage = message;
+
+      // Удаляем техническую информацию из сообщения
+      final lines = cleanMessage.split('\n');
+      final filteredLines = lines.where((line) {
+        return !line.startsWith('eventId:') &&
+            !line.startsWith('eventType:') &&
+            !line.startsWith('location:') &&
+            !line.startsWith('eventTitle:') &&
+            !line.startsWith('eventStartDate:') &&
+            !line.trim().startsWith('Дополнительные данные:');
+      }).toList();
+
+      cleanMessage = filteredLines.join('\n').trim();
+
+      final notification = NotificationModel(
+        id: id,
+        title: title,
+        message: cleanMessage,
+        type: NotificationType.tournamentReminder,
+        timestamp: DateTime.now(),
+        data: data,
+      );
+
+      await addNotification(notification);
+
+      debugPrint('✅ Уведомление о турнире добавлено: $title');
+      debugPrint('✅ Очищенное сообщение: $cleanMessage');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка добавления уведомления о турнире: $e');
+    }
+  }
+
+  /// НОВЫЙ: Специальный метод для добавления уведомлений о рыбалке
+  Future<void> addFishingReminderNotification({
+    required String id,
+    required String title,
+    required String message,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      // Очищаем сообщение от технических данных
+      String cleanMessage = message;
+
+      // Удаляем техническую информацию из сообщения
+      final lines = cleanMessage.split('\n');
+      final filteredLines = lines.where((line) {
+        return !line.startsWith('eventId:') &&
+            !line.startsWith('eventType:') &&
+            !line.startsWith('location:') &&
+            !line.startsWith('eventTitle:') &&
+            !line.startsWith('eventStartDate:') &&
+            !line.trim().startsWith('Дополнительные данные:');
+      }).toList();
+
+      cleanMessage = filteredLines.join('\n').trim();
+
+      final notification = NotificationModel(
+        id: id,
+        title: title,
+        message: cleanMessage,
+        type: NotificationType.fishingReminder,
+        timestamp: DateTime.now(),
+        data: data,
+      );
+
+      await addNotification(notification);
+
+      debugPrint('✅ Уведомление о рыбалке добавлено: $title');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка добавления уведомления о рыбалке: $e');
+    }
   }
 
   /// Получение всех уведомлений
