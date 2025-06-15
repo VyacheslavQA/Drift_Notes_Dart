@@ -1659,7 +1659,18 @@
   "meters": "m",
   "kilometers": "km",
   "hours_short": "h",
-  "minutes_short": "min"
+  "minutes_short": "min",
+
+  "no_calibration": "No calibration",
+  "save_settings": "Save Settings",
+  "error_saving_settings": "Error saving settings",
+  "unsaved_changes": "Unsaved Changes",
+  "unsaved_changes_message": "You have unsaved changes. Would you like to save them?",
+  "discard": "Discard",
+  "cancel": "Cancel",
+  "save": "Save",
+  "reset": "Reset",
+  "calibration_tip": "Tap: ±0.1, Long press: fast change ±0.5"
 
 
 }

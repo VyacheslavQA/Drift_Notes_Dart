@@ -1598,7 +1598,18 @@
   "meters": "м",
   "kilometers": "км",
   "hours_short": "ч",
-  "minutes_short": "мин"
+  "minutes_short": "мин",
+
+  "no_calibration": "Без калибровки",
+  "save_settings": "Сохранить настройки",
+  "error_saving_settings": "Ошибка сохранения настроек",
+  "unsaved_changes": "Несохраненные изменения",
+  "unsaved_changes_message": "У вас есть несохраненные изменения. Хотите их сохранить?",
+  "discard": "Не сохранять",
+  "cancel": "Отмена",
+  "save": "Сохранить",
+  "reset": "Сброс",
+  "calibration_tip": "Касание: ±0.1, Долгое нажатие: быстрое изменение ±0.5"
 
 
 }

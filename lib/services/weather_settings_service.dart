@@ -20,8 +20,7 @@ class WeatherSettingsService {
   static const String _temperatureUnitKey = 'weather_temperature_unit';
   static const String _windSpeedUnitKey = 'weather_wind_speed_unit';
   static const String _pressureUnitKey = 'weather_pressure_unit';
-  static const String _barometerCalibrationKey =
-      'weather_barometer_calibration';
+  static const String _barometerCalibrationKey = 'weather_barometer_calibration';
 
   // Настройки по умолчанию
   TemperatureUnit _temperatureUnit = TemperatureUnit.celsius;
@@ -69,7 +68,7 @@ class WeatherSettingsService {
       _barometerCalibration = prefs.getDouble(_barometerCalibrationKey) ?? 0.0;
 
       debugPrint(
-        '🌤️ Настройки погоды загружены: T:$_temperatureUnit, W:$_windSpeedUnit, P:$_pressureUnit',
+        '🌤️ Настройки погоды загружены: T:$_temperatureUnit, W:$_windSpeedUnit, P:$_pressureUnit, Cal:$_barometerCalibration',
       );
     } catch (e) {
       debugPrint('❌ Ошибка загрузки настроек погоды: $e');
@@ -86,7 +85,7 @@ class WeatherSettingsService {
       await prefs.setInt(_pressureUnitKey, _pressureUnit.index);
       await prefs.setDouble(_barometerCalibrationKey, _barometerCalibration);
 
-      debugPrint('✅ Настройки погоды сохранены');
+      debugPrint('✅ Настройки погоды сохранены (калибровка: $_barometerCalibration)');
     } catch (e) {
       debugPrint('❌ Ошибка сохранения настроек погоды: $e');
     }
@@ -110,10 +109,103 @@ class WeatherSettingsService {
     await _saveSettings();
   }
 
-  // Установка калибровки барометра
+  // УЛУЧШЕНО: Установка калибровки барометра с валидацией
   Future<void> setBarometerCalibration(double calibration) async {
-    _barometerCalibration = calibration;
+    // Ограничиваем калибровку разумными пределами (-50 до +50 мбар)
+    _barometerCalibration = calibration.clamp(-50.0, 50.0);
     await _saveSettings();
+    debugPrint('📊 Калибровка барометра установлена: $_barometerCalibration мбар');
+  }
+
+  // ДОБАВЛЕНО: Сброс калибровки барометра
+  Future<void> resetBarometerCalibration() async {
+    _barometerCalibration = 0.0;
+    await _saveSettings();
+    debugPrint('🔄 Калибровка барометра сброшена');
+  }
+
+  // ДОБАВЛЕНО: Изменение калибровки на фиксированное значение (для кнопок +/-)
+  Future<void> adjustBarometerCalibration(double delta) async {
+    final newCalibration = _barometerCalibration + delta;
+    await setBarometerCalibration(newCalibration);
+  }
+
+  // ДОБАВЛЕНО: Получение текста калибровки для отображения
+  String getCalibrationDisplayText() {
+    final absValue = _barometerCalibration.abs();
+    final sign = _barometerCalibration >= 0 ? '+' : '-';
+
+    if (_barometerCalibration == 0.0) {
+      return _currentLocale == 'en' ? 'No calibration' : 'Без калибровки';
+    }
+
+    return '$sign${absValue.toStringAsFixed(1)} ${getPressureCalibrationUnit()}';
+  }
+
+  // ДОБАВЛЕНО: Получение единицы измерения для калибровки
+  String getPressureCalibrationUnit() {
+    switch (_pressureUnit) {
+      case PressureUnit.mmhg:
+        return _currentLocale == 'en' ? 'mmHg' : 'мм рт.ст.';
+      case PressureUnit.hpa:
+        return _currentLocale == 'en' ? 'hPa' : 'гПа';
+      case PressureUnit.inhg:
+        return 'inHg';
+    }
+  }
+
+  // ДОБАВЛЕНО: Конвертация калибровки в текущие единицы для отображения
+  double getCalibrationInCurrentUnits() {
+    switch (_pressureUnit) {
+      case PressureUnit.mmhg:
+        return _barometerCalibration / 1.333;
+      case PressureUnit.hpa:
+        return _barometerCalibration;
+      case PressureUnit.inhg:
+        return _barometerCalibration / 33.8639;
+    }
+  }
+
+  // ДОБАВЛЕНО: Установка калибровки в текущих единицах
+  Future<void> setCalibrationInCurrentUnits(double calibrationInCurrentUnits) async {
+    double calibrationInMbar;
+
+    switch (_pressureUnit) {
+      case PressureUnit.mmhg:
+        calibrationInMbar = calibrationInCurrentUnits * 1.333;
+        break;
+      case PressureUnit.hpa:
+        calibrationInMbar = calibrationInCurrentUnits;
+        break;
+      case PressureUnit.inhg:
+        calibrationInMbar = calibrationInCurrentUnits * 33.8639;
+        break;
+    }
+
+    await setBarometerCalibration(calibrationInMbar);
+  }
+
+  // ДОБАВЛЕНО: Предустановленные значения калибровки для быстрого выбора
+  List<double> getPresetCalibrationValues() {
+    switch (_pressureUnit) {
+      case PressureUnit.mmhg:
+        return [-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0]; // мм рт.ст.
+      case PressureUnit.hpa:
+        return [-7.0, -3.0, -1.0, 0.0, 1.0, 3.0, 7.0]; // гПа
+      case PressureUnit.inhg:
+        return [-0.2, -0.1, -0.03, 0.0, 0.03, 0.1, 0.2]; // inHg
+    }
+  }
+
+  // ДОБАВЛЕНО: Получение рекомендаций по калибровке
+  String getCalibrationRecommendation() {
+    if (_currentLocale == 'en') {
+      return 'Compare with a reference barometer or local weather station data. Positive values increase readings, negative values decrease them.';
+    } else if (_currentLocale == 'kz') {
+      return 'Эталондық барометрмен немесе жергілікті ауа-райы станциясының деректерімен салыстырыңыз. Оң мәндер көрсеткішті арттырады, теріс мәндер азайтады.';
+    } else {
+      return 'Сравните с эталонным барометром или данными местной метеостанции. Положительные значения увеличивают показания, отрицательные - уменьшают.';
+    }
   }
 
   // Конвертация температуры

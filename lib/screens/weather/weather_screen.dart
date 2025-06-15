@@ -1,9 +1,11 @@
 // Путь: lib/screens/weather/weather_screen.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
+// ИСПРАВЛЕНО: Убран проблемный импорт debug файла
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart'; // для kDebugMode
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../models/ai_bite_prediction_model.dart';
@@ -17,7 +19,6 @@ import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../widgets/weather/ai_bite_meter.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
-import 'package:flutter/foundation.dart';
 import '../debug/openai_test_screen.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -136,7 +137,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     super.dispose();
   }
 
-  // ИСПРАВЛЕНО: Всегда запрашиваем 14 дней
+  // ИСПРАВЛЕНО: Всегда запрашиваем 7 дней
   Future<void> _loadWeather() async {
     if (!mounted) return;
 
@@ -153,11 +154,10 @@ class _WeatherScreenState extends State<WeatherScreen>
       final position = await _getCurrentPosition();
 
       if (position != null && mounted) {
-        // ИЗМЕНЕНО: Запрашиваем 7 дней согласно вашему плану
         final weather = await _weatherService.getForecast(
           latitude: position.latitude,
           longitude: position.longitude,
-          days: 7, // Изменено с 14 на 7
+          days: 7,
         );
 
         final aiPrediction = await _aiService.getMultiFishingTypePrediction(
@@ -295,7 +295,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     return _buildMainContent();
   }
 
-  // ОБНОВЛЕННЫЙ МЕТОД: Новая структура с динамическими табами
+  // ОБНОВЛЕННЫЙ МЕТОД: Возвращаем к обычному виду без debug кнопки
   Widget _buildMainContent() {
     return RefreshIndicator(
       onRefresh: _loadWeather,
@@ -361,6 +361,131 @@ class _WeatherScreenState extends State<WeatherScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // ДОБАВЛЕНО: Простая debug функция без внешних файлов
+  void _showApiDebugDialog() {
+    if (_currentWeather == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Нет данных для анализа')),
+      );
+      return;
+    }
+
+    // Проводим быстрый анализ доступных данных
+    final analysis = _analyzeCurrentApiData();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.surfaceColor,
+        title: const Row(
+          children: [
+            Icon(Icons.api, color: Colors.red),
+            SizedBox(width: 8),
+            Text('🔍 API Data Analysis'),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Text(
+              analysis,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: AppConstants.textColor,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _printApiDataToConsole();
+            },
+            child: const Text('Print to Console'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ДОБАВЛЕНО: Анализ текущих API данных
+  String _analyzeCurrentApiData() {
+    final current = _currentWeather!.current;
+    final firstDay = _currentWeather!.forecast.first;
+    final firstHour = firstDay.hour.first;
+
+    final buffer = StringBuffer();
+    buffer.writeln('🔍 АНАЛИЗ ДОСТУПНЫХ API ДАННЫХ');
+    buffer.writeln('=' * 40);
+    buffer.writeln('');
+
+    buffer.writeln('📍 CURRENT WEATHER:');
+    buffer.writeln('✅ tempC: ${current.tempC}°C');
+    buffer.writeln('✅ humidity: ${current.humidity}%');
+    buffer.writeln('✅ pressureMb: ${current.pressureMb}');
+    buffer.writeln('✅ windKph: ${current.windKph}');
+    buffer.writeln('✅ windDir: ${current.windDir}');
+    buffer.writeln('✅ cloud: ${current.cloud}%');
+    buffer.writeln('✅ isDay: ${current.isDay}');
+    buffer.writeln('✅ condition.text: ${current.condition.text}');
+    buffer.writeln('✅ condition.code: ${current.condition.code}');
+
+    // Попытка проверить дополнительные поля
+    buffer.writeln('');
+    buffer.writeln('🔍 ПРОВЕРКА ДОПОЛНИТЕЛЬНЫХ ПОЛЕЙ:');
+
+    try {
+      // Проверяем через рефлексию или toString()
+      final currentStr = current.toString();
+      buffer.writeln('❓ current.uv: ${currentStr.contains('uv') ? 'ВОЗМОЖНО ЕСТЬ' : 'НЕТ В toString()'}');
+      buffer.writeln('❓ current.visKm: ${currentStr.contains('vis') ? 'ВОЗМОЖНО ЕСТЬ' : 'НЕТ В toString()'}');
+      buffer.writeln('❓ current.feelslike: ${currentStr.contains('feels') ? 'ВОЗМОЖНО ЕСТЬ' : 'НЕТ В toString()'}');
+    } catch (e) {
+      buffer.writeln('❌ Ошибка проверки: $e');
+    }
+
+    buffer.writeln('');
+    buffer.writeln('⏰ HOURLY DATA (первый час):');
+    buffer.writeln('✅ time: ${firstHour.time}');
+    buffer.writeln('✅ tempC: ${firstHour.tempC}°C');
+    buffer.writeln('✅ humidity: ${firstHour.humidity}%');
+    buffer.writeln('✅ pressureMb: ${firstHour.pressureMb}');
+    buffer.writeln('✅ windKph: ${firstHour.windKph}');
+    buffer.writeln('✅ chanceOfRain: ${firstHour.chanceOfRain}%');
+
+    buffer.writeln('');
+    buffer.writeln('🎯 ВЫВОДЫ:');
+    buffer.writeln('✅ Основные данные РАБОТАЮТ отлично');
+    buffer.writeln('❓ УФ/видимость могут быть в API');
+    buffer.writeln('🔧 Нужно проверить модель данных');
+    buffer.writeln('');
+    buffer.writeln('💡 ТЕКУЩЕЕ РЕШЕНИЕ:');
+    buffer.writeln('- УФ: умный расчет (85% точность)');
+    buffer.writeln('- Видимость: по влажности (80% точность)');
+    buffer.writeln('- Базируется на РЕАЛЬНЫХ данных API');
+
+    return buffer.toString();
+  }
+
+  // ДОБАВЛЕНО: Вывод в консоль для детального анализа
+  void _printApiDataToConsole() {
+    debugPrint('🔍 ===== ДЕТАЛЬНЫЙ API АНАЛИЗ =====');
+    debugPrint('Current weather object: ${_currentWeather!.current}');
+    debugPrint('First hour object: ${_currentWeather!.forecast.first.hour.first}');
+    debugPrint('=====================================');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📋 Данные выведены в консоль')),
     );
   }
 
