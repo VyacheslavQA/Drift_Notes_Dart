@@ -20,6 +20,7 @@ import '../../widgets/weather/ai_bite_meter.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
 import '../debug/openai_test_screen.dart';
+import '../../localization/app_localizations.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -165,6 +166,7 @@ class _WeatherScreenState extends State<WeatherScreen>
           latitude: position.latitude,
           longitude: position.longitude,
           targetDate: DateTime.now(),
+          l10n: AppLocalizations.of(context),
         );
 
         if (mounted) {

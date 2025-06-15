@@ -359,7 +359,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           fishingType: _selectedFishingType,
           latitude: _latitude,
           longitude: _longitude,
-          date: _startDate,
+          l10n: AppLocalizations.of(context),
         );
 
         if (mounted) {

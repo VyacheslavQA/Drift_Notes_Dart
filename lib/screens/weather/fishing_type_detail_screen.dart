@@ -294,7 +294,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
               ),
             ),
             child: Text(
-              _getActivityLevelName(widget.prediction.activityLevel),
+              _getActivityLevelName(widget.prediction.activityLevel, localizations),
               style: TextStyle(
                 color: _getScoreColor(score),
                 fontSize: 18,
@@ -417,7 +417,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
           // Позитивные факторы
           if (widget.prediction.topPositiveFactors.isNotEmpty) ...[
             Text(
-              '✅ Помогающие факторы:',
+              '✅ ${localizations.translate('helping_factors')}:',
               style: TextStyle(
                 color: Colors.green,
                 fontSize: 16,
@@ -426,7 +426,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
             ),
             const SizedBox(height: 12),
             ...widget.prediction.topPositiveFactors.map(
-              (factor) => _buildFactorCard(factor, true),
+                  (factor) => _buildFactorCard(factor, true),
             ),
             const SizedBox(height: 16),
           ],
@@ -434,7 +434,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
           // Негативные факторы
           if (widget.prediction.topNegativeFactors.isNotEmpty) ...[
             Text(
-              '⚠️ Мешающие факторы:',
+              '⚠️ ${localizations.translate('hindering_factors')}:',
               style: TextStyle(
                 color: Colors.red,
                 fontSize: 16,
@@ -443,7 +443,7 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
             ),
             const SizedBox(height: 12),
             ...widget.prediction.topNegativeFactors.map(
-              (factor) => _buildFactorCard(factor, false),
+                  (factor) => _buildFactorCard(factor, false),
             ),
           ],
         ],
@@ -673,34 +673,34 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
               .entries
               .map(
                 (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          entry.value,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 15,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-              )
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
               .toList(),
         ],
       ),
@@ -708,18 +708,18 @@ class _FishingTypeDetailScreenState extends State<FishingTypeDetailScreen>
   }
 
   // Функция для получения названия уровня активности
-  String _getActivityLevelName(ActivityLevel level) {
+  String _getActivityLevelName(ActivityLevel level, AppLocalizations localizations) {
     switch (level) {
       case ActivityLevel.excellent:
-        return 'Отличная';
+        return localizations.translate('activity_excellent');
       case ActivityLevel.good:
-        return 'Хорошая';
+        return localizations.translate('activity_good');
       case ActivityLevel.moderate:
-        return 'Умеренная';
+        return localizations.translate('activity_moderate');
       case ActivityLevel.poor:
-        return 'Слабая';
+        return localizations.translate('activity_poor');
       case ActivityLevel.veryPoor:
-        return 'Очень слабая';
+        return localizations.translate('activity_very_poor');
     }
   }
 

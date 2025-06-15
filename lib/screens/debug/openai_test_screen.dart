@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../config/api_keys.dart';
+import '../../localization/app_localizations.dart';
 
 class OpenAITestScreen extends StatefulWidget {
   const OpenAITestScreen({super.key});
@@ -366,7 +367,7 @@ class _OpenAITestScreenState extends State<OpenAITestScreen> {
 
       if (isAIAvailable) {
         // Проверяем, действительно ли AI работает
-        final testResult = await _aiService.testOpenAIConnection();
+        final testResult = await _aiService.testOpenAIConnection(AppLocalizations.of(context));
 
         if (testResult['success'] == true) {
           setState(() {

@@ -18,6 +18,7 @@ import 'bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
+import '../../localization/app_localizations.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -304,6 +305,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           latitude: _latitude,
           longitude: _longitude,
           date: _startDate,
+          l10n: AppLocalizations.of(context),
         );
 
         if (mounted) {
