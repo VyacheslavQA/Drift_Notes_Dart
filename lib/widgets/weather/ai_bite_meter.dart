@@ -122,40 +122,65 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   List<String> _getFilteredTypes() {
+    // Проверяем переданные предпочтения
     if (widget.preferredTypes != null && widget.preferredTypes!.isNotEmpty) {
+      debugPrint('🎯 Используем переданные предпочтения: ${widget.preferredTypes}');
       return widget.preferredTypes!;
     }
-    return fishingTypes.keys.toList();
+
+    // Проверяем есть ли предпочтения в самом прогнозе
+    if (widget.aiPrediction != null) {
+      final availableTypes = widget.aiPrediction!.allPredictions.keys.toList();
+      if (availableTypes.isNotEmpty) {
+        debugPrint('🎯 Используем типы из прогноза: $availableTypes');
+        return availableTypes;
+      }
+    }
+
+    // Fallback - пустой список (покажем сообщение о настройке профиля)
+    debugPrint('⚠️ Нет выбранных типов рыбалки');
+    return [];
   }
 
   String _getBestFilteredType() {
-    if (widget.aiPrediction == null) return 'spinning';
-
     final filteredTypes = _getFilteredTypes();
+
+    if (filteredTypes.isEmpty) {
+      return ''; // Нет типов
+    }
+
+    if (widget.aiPrediction == null) {
+      return filteredTypes.first; // Возвращаем первый доступный
+    }
+
     final rankings = widget.aiPrediction!.comparison.rankings;
 
+    // Ищем лучший тип среди доступных
     for (final ranking in rankings) {
       if (filteredTypes.contains(ranking.fishingType)) {
         return ranking.fishingType;
       }
     }
 
-    return filteredTypes.isNotEmpty ? filteredTypes.first : 'spinning';
+    return filteredTypes.first; // Fallback
   }
 
   int _getBestFilteredScore() {
-    if (widget.aiPrediction == null) return 50;
-
     final bestType = _getBestFilteredType();
+
+    if (bestType.isEmpty || widget.aiPrediction == null) {
+      return 50; // Базовый скор
+    }
+
     final prediction = widget.aiPrediction!.allPredictions[bestType];
     return prediction?.overallScore ?? 50;
   }
 
   /// Перевод фазы луны с английского на локализованный язык
   String _translateMoonPhase(
-    String englishPhase,
-    AppLocalizations localizations,
-  ) {
+      String englishPhase,
+      AppLocalizations localizations,
+      ) {
     final cleanPhase = englishPhase.trim().toLowerCase();
 
     final Map<String, String> phaseToKey = {
@@ -395,109 +420,99 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   Widget _buildFishingTypesScroll(
-    AppLocalizations localizations,
-    String bestType,
-  ) {
-    final allTypes = fishingTypes.keys.toList();
+      AppLocalizations localizations,
+      String bestType,
+      ) {
+    // ИЗМЕНЕНО: Показываем только выбранные пользователем типы
+    final selectedTypes = _getFilteredTypes();
+
+    // НОВОЕ: Если нет выбранных типов - показываем сообщение
+    if (selectedTypes.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              localizations.translate('fishing_types_comparison'),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Container(
+            height: 90,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.orange.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.settings, color: Colors.orange, size: 24),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Выберите типы рыбалки в профиле',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            localizations.translate('fishing_types_comparison'),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            itemCount: allTypes.length,
-            itemBuilder: (context, index) {
-              final type = allTypes[index];
-              final typeInfo = fishingTypes[type]!;
-              final isBest = type == bestType;
-              final prediction = widget.aiPrediction!.allPredictions[type];
-              final score = prediction?.overallScore ?? 0;
-
-              return GestureDetector(
-                onTap: () => _openFishingTypeDetail(type, localizations),
-                child: Container(
-                  width: 85,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color:
-                        isBest
-                            ? Colors.green.withValues(alpha: 0.3)
-                            : _getScoreColor(score).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color:
-                          isBest
-                              ? Colors.green.withValues(alpha: 0.6)
-                              : _getScoreColor(score).withValues(alpha: 0.4),
-                      width: isBest ? 2 : 1,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // ОБНОВЛЕНО: Увеличенная иконка из assets
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            fishingTypes[type]!['icon']!,
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.contain,
-                            color:
-                                isBest
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.8),
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.sports,
-                                size: 36,
-                                color:
-                                    isBest
-                                        ? Colors.white
-                                        : Colors.white.withValues(alpha: 0.8),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Название на 2 строки
-                        Text(
-                          localizations.translate(typeInfo['nameKey']!) ??
-                              typeInfo['name']!,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            height: 1.1,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+          child: Row(
+            children: [
+              Text(
+                localizations.translate('fishing_types_comparison'),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // НОВОЕ: Показываем количество выбранных типов
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${selectedTypes.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
+        // НОВОЕ: Адаптивное отображение карточек
+        _buildAdaptiveFishingCards(selectedTypes, bestType, localizations),
       ],
     );
   }
@@ -638,6 +653,449 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
+  /// НОВЫЙ метод - адаптивные карточки рыбалки
+  Widget _buildAdaptiveFishingCards(
+      List<String> selectedTypes,
+      String bestType,
+      AppLocalizations localizations,
+      ) {
+    // Определяем как отображать карточки в зависимости от количества
+    if (selectedTypes.length == 1) {
+      // 1 тип - на всю ширину
+      return _buildSingleCard(selectedTypes.first, bestType, localizations);
+    } else if (selectedTypes.length == 2) {
+      // 2 типа - по половине экрана
+      return _buildTwoCards(selectedTypes, bestType, localizations);
+    } else {
+      // 3+ типов - скроллируемый список с фиксированной шириной
+      return _buildScrollableCards(selectedTypes, bestType, localizations);
+    }
+  }
+
+  /// Одна карточка на всю ширину
+  Widget _buildSingleCard(
+      String type,
+      String bestType,
+      AppLocalizations localizations,
+      ) {
+    final typeInfo = fishingTypes[type]!;
+    final prediction = widget.aiPrediction!.allPredictions[type];
+    final score = prediction?.overallScore ?? 0;
+
+    return GestureDetector( // ДОБАВЛЕНО: GestureDetector для обработки нажатий
+      onTap: () => _openFishingTypeDetail(type, localizations),
+      child: Container(
+        height: 170, // УВЕЛИЧЕНО с 160 до 170
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _getScoreColor(score).withValues(alpha: 0.6),
+              _getScoreColor(score).withValues(alpha: 0.3),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _getScoreColor(score),
+            width: 3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _getScoreColor(score).withValues(alpha: 0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Левая часть - иконка
+              Container(
+                width: 80, // УМЕНЬШЕНО с 85 до 80
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6), // УМЕНЬШЕНО с 8 до 6
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10), // УМЕНЬШЕНО с 12 до 10
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6), // УМЕНЬШЕНО с 8 до 6
+                        child: Image.asset(
+                          typeInfo['icon']!,
+                          width: 50, // УМЕНЬШЕНО с 55 до 50
+                          height: 50, // УМЕНЬШЕНО с 55 до 50
+                          fit: BoxFit.contain,
+                          color: Colors.white,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(Icons.sports, size: 50, color: Colors.white);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 12), // УМЕНЬШЕНО с 16 до 12
+
+              // Правая часть - информация
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17, // УМЕНЬШЕНО с 18 до 17
+                        fontWeight: FontWeight.bold,
+                        height: 1.0, // УМЕНЬШЕНО с 1.1 до 1.0
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8), // УМЕНЬШЕНО с 10 до 8
+
+                    // Размещаем "Активность:" и скор в столбик для экономии места
+                    Text(
+                      'Активность:',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13, // УМЕНЬШЕНО с 14 до 13
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), // УМЕНЬШЕНО padding
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10), // УМЕНЬШЕНО с 12 до 10
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        '$score баллов',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15, // УМЕНЬШЕНО с 16 до 15
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _getScoreText(score, localizations),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13, // УМЕНЬШЕНО с 14 до 13
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Две карточки рядом
+  Widget _buildTwoCards(
+      List<String> selectedTypes,
+      String bestType,
+      AppLocalizations localizations,
+      ) {
+    return SizedBox(
+      height: 150, // УВЕЛИЧЕНО с 130 до 150
+      child: Row(
+        children: selectedTypes.map((type) {
+          final typeInfo = fishingTypes[type]!;
+          final isBest = type == bestType;
+          final prediction = widget.aiPrediction!.allPredictions[type];
+          final score = prediction?.overallScore ?? 0;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _openFishingTypeDetail(type, localizations),
+              child: Container(
+                margin: EdgeInsets.only(
+                  left: selectedTypes.indexOf(type) == 0 ? 4 : 2,
+                  right: selectedTypes.indexOf(type) == selectedTypes.length - 1 ? 4 : 2,
+                ),
+                decoration: BoxDecoration(
+                  gradient: isBest
+                      ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _getScoreColor(score).withValues(alpha: 0.6),
+                      _getScoreColor(score).withValues(alpha: 0.3),
+                    ],
+                  )
+                      : LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _getScoreColor(score).withValues(alpha: 0.3),
+                      _getScoreColor(score).withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _getScoreColor(score),
+                    width: isBest ? 3 : 2,
+                  ),
+                  boxShadow: isBest
+                      ? [
+                    BoxShadow(
+                      color: _getScoreColor(score).withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                      : null,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10), // ОПТИМИЗИРОВАНО с 12 до 10
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Иконка с рамкой для лучшего типа
+                      Container(
+                        padding: EdgeInsets.all(isBest ? 6 : 5), // ОПТИМИЗИРОВАНО с 8/6 до 6/5
+                        decoration: isBest
+                            ? BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                        )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            typeInfo['icon']!,
+                            width: isBest ? 40 : 36, // ОПТИМИЗИРОВАНО с 44/40 до 40/36
+                            height: isBest ? 40 : 36,
+                            fit: BoxFit.contain,
+                            color: Colors.white,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.sports,
+                                size: isBest ? 40 : 36,
+                                color: Colors.white,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isBest ? 13 : 12, // ОПТИМИЗИРОВАНО с 14/13 до 13/12
+                          fontWeight: isBest ? FontWeight.w600 : FontWeight.w500,
+                          height: 1.0, // УМЕНЬШЕНО с 1.1 до 1.0
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (score > 0) ...[
+                        const SizedBox(height: 4), // УМЕНЬШЕНО с 6 до 4
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // ОПТИМИЗИРОВАНО
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$score',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isBest ? 14 : 13, // ОПТИМИЗИРОВАНО с 15/14 до 14/13
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// Скроллируемые карточки для 3+ типов
+  Widget _buildScrollableCards(
+      List<String> selectedTypes,
+      String bestType,
+      AppLocalizations localizations,
+      ) {
+    // Вычисляем ширину карточки в зависимости от количества типов
+    double cardWidth;
+    if (selectedTypes.length == 3) {
+      cardWidth = (MediaQuery.of(context).size.width - 64) / 3; // 3 карточки на экране
+    } else if (selectedTypes.length == 4) {
+      cardWidth = (MediaQuery.of(context).size.width - 80) / 3.5; // 3.5 карточки на экране
+    } else {
+      cardWidth = 120; // УВЕЛИЧЕНО с 110 до 120
+    }
+
+    return SizedBox(
+      height: 120, // УВЕЛИЧЕНО с 100 до 120
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemCount: selectedTypes.length,
+        itemBuilder: (context, index) {
+          final type = selectedTypes[index];
+          final typeInfo = fishingTypes[type]!;
+          final isBest = type == bestType;
+          final prediction = widget.aiPrediction!.allPredictions[type];
+          final score = prediction?.overallScore ?? 0;
+
+          return GestureDetector(
+            onTap: () => _openFishingTypeDetail(type, localizations),
+            child: Container(
+              width: cardWidth,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                gradient: isBest
+                    ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _getScoreColor(score).withValues(alpha: 0.6),
+                    _getScoreColor(score).withValues(alpha: 0.3),
+                  ],
+                )
+                    : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _getScoreColor(score).withValues(alpha: 0.3),
+                    _getScoreColor(score).withValues(alpha: 0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _getScoreColor(score),
+                  width: isBest ? 3 : 2,
+                ),
+                boxShadow: isBest
+                    ? [
+                  BoxShadow(
+                    color: _getScoreColor(score).withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+                    : null,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8), // УВЕЛИЧЕНО с 6 до 8
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Иконка с рамкой для лучшего типа
+                    Container(
+                      padding: EdgeInsets.all(isBest ? 6 : 4), // УВЕЛИЧЕНО с 4/2 до 6/4
+                      decoration: isBest
+                          ? BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10), // УВЕЛИЧЕНО с 8 до 10
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      )
+                          : null,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8), // УВЕЛИЧЕНО с 6 до 8
+                        child: Image.asset(
+                          typeInfo['icon']!,
+                          width: isBest ? 36 : 32, // УВЕЛИЧЕНО с 30/26 до 36/32
+                          height: isBest ? 36 : 32,
+                          fit: BoxFit.contain,
+                          color: Colors.white,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.sports,
+                              size: isBest ? 36 : 32,
+                              color: Colors.white,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6), // УВЕЛИЧЕНО с 4 до 6
+                    Text(
+                      localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: cardWidth > 110 ? (isBest ? 12 : 11) : (isBest ? 11 : 10), // УВЕЛИЧЕНО на 1
+                        fontWeight: isBest ? FontWeight.w600 : FontWeight.w500,
+                        height: 1.1,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (score > 0) ...[
+                      const SizedBox(height: 4), // УВЕЛИЧЕНО с 2 до 4
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // УВЕЛИЧЕНО с 4/1 до 6/2
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8), // УВЕЛИЧЕНО с 6 до 8
+                        ),
+                        child: Text(
+                          '$score',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: cardWidth > 110 ? 12 : 11, // УВЕЛИЧЕНО с 11/10 до 12/11
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _openFishingTypeDetail(String type, AppLocalizations localizations) {
     final prediction = widget.aiPrediction!.allPredictions[type];
     if (prediction == null) return;
@@ -647,10 +1105,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       MaterialPageRoute(
         builder:
             (context) => FishingTypeDetailScreen(
-              fishingType: type,
-              prediction: prediction,
-              typeInfo: fishingTypes[type]!,
-            ),
+          fishingType: type,
+          prediction: prediction,
+          typeInfo: fishingTypes[type]!,
+        ),
       ),
     );
   }
@@ -710,11 +1168,11 @@ class SpeedometerPainter extends CustomPainter {
 
   void _drawBackgroundArc(Canvas canvas, Offset center, double radius) {
     final paint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.15)
-          ..strokeWidth = 16
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round;
+    Paint()
+      ..color = Colors.white.withValues(alpha: 0.15)
+      ..strokeWidth = 16
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
     const startAngle = math.pi + 0.4;
     const sweepAngle = math.pi - 0.8;
@@ -747,13 +1205,13 @@ class SpeedometerPainter extends CustomPainter {
     );
 
     final paint =
-        Paint()
-          ..shader = gradient.createShader(
-            Rect.fromCircle(center: center, radius: radius),
-          )
-          ..strokeWidth = 16
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round;
+    Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: radius),
+      )
+      ..strokeWidth = 16
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -831,20 +1289,20 @@ class SpeedometerPainter extends CustomPainter {
 
     // Основной треугольник - белый цвет
     final trianglePaint =
-        Paint()
-          ..color =
-              Colors
-                  .white // Белый цвет
-          ..style = PaintingStyle.fill;
+    Paint()
+      ..color =
+          Colors
+              .white // Белый цвет
+      ..style = PaintingStyle.fill;
 
     canvas.drawPath(path, trianglePaint);
 
     // Обводка треугольника
     final strokePaint =
-        Paint()
-          ..color = Colors.black.withValues(alpha: 0.3)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0;
+    Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
 
     canvas.drawPath(path, strokePaint);
   }
