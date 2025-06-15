@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../models/timer_model.dart';
 
 class TimerService {
@@ -18,9 +19,15 @@ class TimerService {
 
   // Стримы для обновления UI
   final _timerStreamController =
-      StreamController<List<FishingTimerModel>>.broadcast();
+  StreamController<List<FishingTimerModel>>.broadcast();
   Stream<List<FishingTimerModel>> get timersStream =>
       _timerStreamController.stream;
+
+  // Плагин локальных уведомлений для таймеров
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+
+  // Карта для отслеживания Timer'ов уведомлений
+  final Map<String, Timer> _notificationTimers = {};
 
   bool _isInitialized = false;
 
@@ -47,6 +54,11 @@ class TimerService {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
+    debugPrint('⏰ Инициализация TimerService...');
+
+    // Инициализируем уведомления для таймеров
+    await _initializeNotifications();
+
     // Загрузка сохраненных таймеров
     await _loadTimers();
 
@@ -63,6 +75,31 @@ class TimerService {
 
     _isInitialized = true;
     _notifyListeners();
+
+    debugPrint('✅ TimerService инициализирован');
+  }
+
+  // Инициализация уведомлений для таймеров
+  Future<void> _initializeNotifications() async {
+    try {
+      const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+
+      await _notifications.initialize(initSettings);
+      debugPrint('✅ Уведомления для таймеров инициализированы');
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации уведомлений таймеров: $e');
+    }
   }
 
   // Создание таймеров по умолчанию с ключами локализации
@@ -145,28 +182,125 @@ class TimerService {
     final now = DateTime.now();
     _timers[index] = _timers[index].copyWith(isRunning: true, startTime: now);
 
-    // Запускаем таймер
+    // Планируем системное уведомление
+    _scheduleSystemNotification(id);
+
+    // Запускаем таймер для обновления UI
     final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      // Проверяем режим таймера (обратный отсчет)
       final currentDuration = getCurrentDuration(id);
 
-      // Если время вышло, останавливаем таймер и запускаем уведомление
+      // Если время вышло, останавливаем таймер и воспроизводим звук
       if (currentDuration.inSeconds <= 0) {
         stopTimer(id);
         _notifyTimeIsUp(id);
         return;
       }
 
-      // Нам нужно обновить только UI, сам таймер идет от startTime
       _notifyListeners();
     });
 
-    // Сохраняем таймер
     _runningTimers.add(timer);
-
-    // Сохраняем состояние
     _saveTimers();
     _notifyListeners();
+  }
+
+  // Планирование системного уведомления
+  void _scheduleSystemNotification(String timerId) {
+    final index = _timers.indexWhere((timer) => timer.id == timerId);
+    if (index == -1) return;
+
+    final timer = _timers[index];
+    final duration = timer.remainingTime;
+
+    if (duration.inSeconds <= 0) return;
+
+    // Отменяем предыдущее уведомление
+    _cancelSystemNotification(timerId);
+
+    // Получаем название таймера для отображения
+    String displayName = _getTimerDisplayName(timer);
+
+    // Планируем показ уведомления через Timer
+    _notificationTimers[timerId] = Timer(duration, () async {
+      try {
+        // Настройки уведомления для Android
+        final androidDetails = AndroidNotificationDetails(
+          'timer_channel',
+          'Таймеры рыбалки',
+          channelDescription: 'Уведомления о завершении таймеров рыбалки',
+          importance: Importance.high,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+          color: const Color(0xFF2E7D32),
+          styleInformation: BigTextStyleInformation(
+            'Время рыбалки истекло!',
+            contentTitle: '$displayName завершен',
+          ),
+        );
+
+        // Настройки уведомления для iOS
+        const iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          subtitle: 'Время рыбалки истекло!',
+        );
+
+        final notificationDetails = NotificationDetails(
+          android: androidDetails,
+          iOS: iosDetails,
+        );
+
+        // Генерируем уникальный ID для уведомления
+        final notificationId = DateTime.now().millisecondsSinceEpoch % 2147483647;
+
+        await _notifications.show(
+          notificationId,
+          '$displayName завершен',
+          'Время рыбалки истекло!',
+          notificationDetails,
+          payload: json.encode({
+            'type': 'timer_finished',
+            'timerId': timerId,
+            'timerName': displayName,
+          }),
+        );
+
+        debugPrint('✅ Системное уведомление показано для таймера: $displayName');
+      } catch (e) {
+        debugPrint('❌ Ошибка показа уведомления: $e');
+      }
+    });
+
+    debugPrint('✅ Системное уведомление запланировано на ${duration.inMinutes} минут для таймера: $displayName');
+  }
+
+  // Отмена системного уведомления
+  void _cancelSystemNotification(String timerId) {
+    if (_notificationTimers.containsKey(timerId)) {
+      _notificationTimers[timerId]?.cancel();
+      _notificationTimers.remove(timerId);
+      debugPrint('✅ Отменено системное уведомление для таймера: $timerId');
+    }
+  }
+
+  // Получение отображаемого названия таймера
+  String _getTimerDisplayName(FishingTimerModel timer) {
+    // Простая логика замены ключей локализации на читаемые названия
+    switch (timer.name) {
+      case 'timer_1':
+        return 'Таймер 1';
+      case 'timer_2':
+        return 'Таймер 2';
+      case 'timer_3':
+        return 'Таймер 3';
+      case 'timer_4':
+        return 'Таймер 4';
+      default:
+        return timer.name;
+    }
   }
 
   // Метод для уведомления о том, что время вышло
@@ -231,8 +365,12 @@ class TimerService {
   // Остановка звука оповещения
   void _stopAlertSound(String timerId) {
     if (_alertPlayers.containsKey(timerId)) {
-      _alertPlayers[timerId]!.stop();
-      _alertPlayers[timerId]!.dispose();
+      try {
+        _alertPlayers[timerId]!.stop();
+        _alertPlayers[timerId]!.dispose();
+      } catch (e) {
+        debugPrint('⚠️ AudioPlayer уже освобожден для таймера $timerId');
+      }
       _alertPlayers.remove(timerId);
     }
     _isPlayingAlert[timerId] = false;
@@ -251,8 +389,12 @@ class TimerService {
     } finally {
       // Освобождаем ресурсы после воспроизведения
       Timer(Duration(milliseconds: _maxAlertDuration), () {
-        previewPlayer.stop();
-        previewPlayer.dispose();
+        try {
+          previewPlayer.stop();
+          previewPlayer.dispose();
+        } catch (e) {
+          debugPrint('⚠️ PreviewPlayer уже освобожден');
+        }
       });
     }
   }
@@ -261,6 +403,9 @@ class TimerService {
   void stopTimer(String id) {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
+
+    // Отменяем системное уведомление
+    _cancelSystemNotification(id);
 
     // Останавливаем звук оповещения, если он воспроизводится
     _stopAlertSound(id);
@@ -302,6 +447,9 @@ class TimerService {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
+    // Отменяем системное уведомление
+    _cancelSystemNotification(id);
+
     // Останавливаем звук оповещения, если он воспроизводится
     _stopAlertSound(id);
 
@@ -328,11 +476,11 @@ class TimerService {
 
   // Обновление настроек таймера
   void updateTimerSettings(
-    String id, {
-    String? name,
-    Color? timerColor,
-    String? alertSound,
-  }) {
+      String id, {
+        String? name,
+        Color? timerColor,
+        String? alertSound,
+      }) {
     final index = _timers.indexWhere((timer) => timer.id == id);
     if (index == -1) return;
 
@@ -374,7 +522,7 @@ class TimerService {
   Future<void> _saveTimers() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> timersJson =
-        _timers.map((timer) => jsonEncode(timer.toJson())).toList();
+    _timers.map((timer) => jsonEncode(timer.toJson())).toList();
 
     await prefs.setStringList('fishing_timers', timersJson);
   }
@@ -397,15 +545,42 @@ class TimerService {
     }
   }
 
-  // Восстановление работающих таймеров
+  // Восстановление работающих таймеров после перезапуска приложения
   void _restoreRunningTimers() {
     for (var timer in _timers) {
       if (timer.isRunning && timer.startTime != null) {
-        // Запускаем таймер
-        final timerInstance = Timer.periodic(const Duration(seconds: 1), (t) {
-          _notifyListeners();
-        });
-        _runningTimers.add(timerInstance);
+        // Проверяем, не истекло ли время таймера пока приложение было закрыто
+        final elapsed = DateTime.now().difference(timer.startTime!);
+        final remainingTime = timer.remainingTime.inSeconds - elapsed.inSeconds;
+
+        final index = _timers.indexWhere((t) => t.id == timer.id);
+        if (index == -1) continue;
+
+        if (remainingTime <= 0) {
+          // Время истекло, останавливаем таймер
+          _timers[index] = timer.copyWith(
+            isRunning: false,
+            remainingTime: Duration.zero,
+            startTime: null,
+          );
+          debugPrint('⏰ Таймер ${timer.id} завершился пока приложение было закрыто');
+        } else {
+          // Таймер еще работает, обновляем оставшееся время и перепланируем уведомление
+          _timers[index] = timer.copyWith(
+            remainingTime: Duration(seconds: remainingTime),
+          );
+
+          // Перепланируем системное уведомление
+          _scheduleSystemNotification(timer.id);
+
+          // Запускаем таймер для обновления UI
+          final timerInstance = Timer.periodic(const Duration(seconds: 1), (t) {
+            _notifyListeners();
+          });
+          _runningTimers.add(timerInstance);
+
+          debugPrint('⏰ Восстановлен таймер ${timer.id}, осталось: ${remainingTime}с');
+        }
       }
     }
   }
@@ -422,10 +597,19 @@ class TimerService {
     }
     _runningTimers.clear();
 
+    // Отменяем все Timer'ы уведомлений
+    for (var timerId in _notificationTimers.keys) {
+      _cancelSystemNotification(timerId);
+    }
+
     // Останавливаем и освобождаем все звуковые ресурсы
     for (var player in _alertPlayers.values) {
-      player.stop();
-      player.dispose();
+      try {
+        player.stop();
+        player.dispose();
+      } catch (e) {
+        debugPrint('⚠️ AudioPlayer уже освобожден при dispose');
+      }
     }
     _alertPlayers.clear();
 
@@ -439,8 +623,7 @@ class TimerService {
 
     _timers[index] = _timers[index].copyWith(
       duration: duration,
-      remainingTime:
-          duration, // Устанавливаем оставшееся время равным общей длительности
+      remainingTime: duration, // Устанавливаем оставшееся время равным общей длительности
     );
 
     // Сохраняем состояние

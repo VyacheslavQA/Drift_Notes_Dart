@@ -1,3 +1,5 @@
+// Путь: lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -38,6 +40,7 @@ import 'services/firebase/firebase_service.dart';
 import 'services/user_consent_service.dart';
 import 'services/scheduled_reminder_service.dart'; // ОБНОВЛЕНО: новый сервис
 import 'services/tournament_service.dart'; // НОВЫЙ: импорт сервиса турниров
+import 'services/timer/timer_service.dart'; // ДОБАВЛЕНО: импорт TimerService
 import 'screens/tournaments/tournament_detail_screen.dart'; // НОВЫЙ: импорт экрана турнира
 
 void main() async {
@@ -97,6 +100,14 @@ void main() async {
     debugPrint('✅ Сервис уведомлений инициализирован');
   } catch (e) {
     debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+  }
+
+  // ДОБАВЛЕНО: Инициализация TimerService
+  try {
+    await TimerService().initialize();
+    debugPrint('✅ TimerService инициализирован');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации TimerService: $e');
   }
 
   try {
@@ -255,6 +266,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       LocalPushNotificationService().dispose();
       WeatherNotificationService().dispose();
       ScheduledReminderService().dispose(); // ОБНОВЛЕНО: новый сервис
+      TimerService().dispose(); // ДОБАВЛЕНО: освобождение ресурсов TimerService
     } catch (e) {
       debugPrint('❌ Ошибка освобождения ресурсов уведомлений: $e');
     }
@@ -301,7 +313,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
       // Обрабатываем нажатия на уведомления
       pushService.notificationTapStream.listen(
-        (payload) {
+            (payload) {
           debugPrint(
             '📱 Приложение: получено нажатие на уведомление: $payload',
           );
@@ -339,7 +351,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     });
   }
 
-  // ОБНОВЛЕНО: Обработка нажатий на уведомления
+  // ОБНОВЛЕНО: Обработка нажатий на уведомления (ДОБАВЛЕНО обработка таймеров)
   void _handleNotificationTap(String payload) {
     try {
       debugPrint('📱 Обработка нажатия на уведомление: $payload');
@@ -359,8 +371,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         debugPrint('📱 Тип уведомления: $notificationType');
         debugPrint('📱 ID уведомления: $notificationId');
 
-        // Если это напоминание о турнире, нужно найти уведомление и извлечь sourceId
-        if (notificationType == 'NotificationType.tournamentReminder') {
+        // ДОБАВЛЕНО: Обработка уведомлений о завершении таймера
+        if (notificationType == 'timer_finished') {
+          _handleTimerNotification(payloadData);
+        } else if (notificationType == 'NotificationType.tournamentReminder') {
           _handleTournamentNotification(notificationId);
         } else if (notificationType == 'NotificationType.fishingReminder') {
           _navigateToFishingCalendar();
@@ -378,6 +392,28 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     }
   }
 
+  // ДОБАВЛЕНО: Обработка уведомления о завершении таймера
+  void _handleTimerNotification(Map<String, dynamic> payloadData) {
+    try {
+      final timerId = payloadData['timerId'] as String?;
+      final timerName = payloadData['timerName'] as String?;
+
+      debugPrint('⏰ Обработка уведомления о таймере: $timerName (ID: $timerId)');
+
+      // Переходим к экрану таймеров
+      _navigateToTimers();
+    } catch (e) {
+      debugPrint('❌ Ошибка обработки уведомления о таймере: $e');
+      _navigateToNotifications();
+    }
+  }
+
+  // ДОБАВЛЕНО: Переход к экрану таймеров
+  void _navigateToTimers() {
+    debugPrint('⏰ Переход к экрану таймеров');
+    _navigatorKey.currentState?.pushNamed('/timers');
+  }
+
   // НОВЫЙ МЕТОД: Обработка уведомления о турнире
   void _handleTournamentNotification(String notificationId) {
     try {
@@ -389,7 +425,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
       // Ищем уведомление по ID
       final notification = notifications.firstWhere(
-        (n) => n.id == notificationId,
+            (n) => n.id == notificationId,
         orElse: () => throw Exception('Notification not found'),
       );
 
@@ -418,7 +454,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     debugPrint('📱 Переход к уведомлениям');
     _navigatorKey.currentState?.pushNamed('/notifications');
   }
-
 
   // ИСПРАВЛЕНО: Переход к конкретному турниру
   void _navigateToTournamentDetail(String tournamentId) {
@@ -507,7 +542,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
     // Обработка deep links когда приложение уже запущено
     appLinks.uriLinkStream.listen(
-      (Uri uri) {
+          (Uri uri) {
         debugPrint('🔗 Deep link получен: $uri');
         _handleDeepLink(uri);
       },
@@ -570,7 +605,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       _pendingAction = actionType;
       _navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/auth_selection',
-        (route) => false,
+            (route) => false,
       );
       return;
     }
@@ -603,7 +638,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/home',
-      (route) => false,
+          (route) => false,
     );
 
     // Небольшая задержка для завершения навигации
@@ -624,7 +659,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/home',
-      (route) => false,
+          (route) => false,
     );
 
     // Небольшая задержка для завершения навигации
@@ -854,16 +889,16 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             '/splash': (context) => const SplashScreen(),
             '/auth_selection':
                 (context) => AuthSelectionScreenWithCallback(
-                  onAuthSuccess: () => executePendingAction(),
-                ),
+              onAuthSuccess: () => executePendingAction(),
+            ),
             '/login':
                 (context) => LoginScreenWithCallback(
-                  onAuthSuccess: () => executePendingAction(),
-                ),
+              onAuthSuccess: () => executePendingAction(),
+            ),
             '/register':
                 (context) => RegisterScreenWithCallback(
-                  onAuthSuccess: () => executePendingAction(),
-                ),
+              onAuthSuccess: () => executePendingAction(),
+            ),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
             '/help_contact': (context) => const HelpContactScreen(),

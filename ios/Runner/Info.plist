@@ -46,29 +46,116 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
-    <!-- Добавляем App Shortcuts для iOS -->
-        <key>UIApplicationShortcutItems</key>
-        <array>
-            <dict>
-                <key>UIApplicationShortcutItemType</key>
-                <string>create_note</string>
-                <key>UIApplicationShortcutItemTitle</key>
-                <string>Создать заметку</string>
-                <key>UIApplicationShortcutItemSubtitle</key>
-                <string>Быстрое создание новой заметки</string>
-                <key>UIApplicationShortcutItemIconType</key>
-                <string>UIApplicationShortcutIconTypeAdd</string>
-            </dict>
-            <dict>
-                <key>UIApplicationShortcutItemType</key>
-                <string>view_notes</string>
-                <key>UIApplicationShortcutItemTitle</key>
-                <string>Мои заметки</string>
-                <key>UIApplicationShortcutItemSubtitle</key>
-                <string>Просмотр всех заметок</string>
-                <key>UIApplicationShortcutItemIconType</key>
-                <string>UIApplicationShortcutIconTypeBookmark</string>
-            </dict>
-        </array>
+    <!-- КРИТИЧЕСКИ ВАЖНЫЕ РАЗРЕШЕНИЯ - ДОБАВИТЬ ЭТИ БЛОКИ -->
+
+    <!-- Разрешение на использование геолокации -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Приложение использует геолокацию для определения места рыбалки и привязки заметок к карте.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Приложение использует геолокацию для определения места рыбалки и привязки заметок к карте.</string>
+
+    <!-- Разрешение на использование камеры -->
+    <key>NSCameraUsageDescription</key>
+    <string>Приложение использует камеру для фотографирования улова и мест рыбалки.</string>
+
+    <!-- Разрешение на доступ к фотогалерее -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Приложение использует фотогалерею для выбора и сохранения изображений рыбалки.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Приложение сохраняет фотографии улова в вашу фотогалерею.</string>
+
+    <!-- Разрешение на использование микрофона (для аудио заметок) -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Приложение использует микрофон для записи голосовых заметок о рыбалке.</string>
+
+    <!-- ДОБАВЛЕНО: Разрешения для уведомлений -->
+    <key>NSUserNotificationUsageDescription</key>
+    <string>Приложение использует уведомления для напоминаний о завершении таймеров рыбалки.</string>
+
+    <!-- Для Firebase и Google Services -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>REVERSED_CLIENT_ID</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <!-- Этот ID нужно будет заменить на реальный из GoogleService-Info.plist -->
+                <string>com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Для работы с Google Maps -->
+    <key>io.flutter.embedded_views_preview</key>
+    <true/>
+
+    <!-- ОБНОВЛЕНО: Для уведомлений (включая таймеры) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>remote-notification</string>
+        <string>background-processing</string>
+    </array>
+
+    <!-- ДОБАВЛЕНО: Настройки категорий уведомлений для таймеров -->
+    <key>UNUserNotificationCenter</key>
+    <dict>
+        <key>UNAuthorizationOptionAlert</key>
+        <true/>
+        <key>UNAuthorizationOptionBadge</key>
+        <true/>
+        <key>UNAuthorizationOptionSound</key>
+        <true/>
+        <key>UNAuthorizationOptionCriticalAlert</key>
+        <false/>
+    </dict>
+
+    <!-- Для открытия ссылок в других приложениях -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>https</string>
+        <string>http</string>
+        <string>mailto</string>
+        <string>tel</string>
+        <string>googlemaps</string>
+        <string>comgooglemaps</string>
+    </array>
+
+    <!-- App Shortcuts для iOS -->
+    <key>UIApplicationShortcutItems</key>
+    <array>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>create_note</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Создать заметку</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Быстрое создание новой заметки</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeAdd</string>
+        </dict>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>view_notes</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Мои заметки</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Просмотр всех заметок</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeBookmark</string>
+        </dict>
+        <!-- ДОБАВЛЕНО: Быстрый доступ к таймерам -->
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>timers</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Таймеры</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Управление таймерами рыбалки</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeTime</string>
+        </dict>
+    </array>
 </dict>
 </plist>
