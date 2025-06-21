@@ -512,18 +512,24 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     });
   }
 
+  // ИСПРАВЛЕНО: Метод инициализации Quick Actions с обработкой ошибок
   void _initializeQuickActions() {
     try {
       const QuickActions quickActions = QuickActions();
 
-      // Устанавливаем список быстрых действий
+      // Устанавливаем список быстрых действий с обработкой ошибок
       quickActions.setShortcutItems(<ShortcutItem>[
         const ShortcutItem(
           type: 'create_note',
           localizedTitle: 'Создать заметку',
         ),
         const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
-      ]);
+      ]).then((_) {
+        debugPrint('✅ Quick Actions shortcuts успешно установлены');
+      }).catchError((error) {
+        debugPrint('❌ Ошибка установки Quick Actions shortcuts: $error');
+        // Приложение продолжит работать без shortcuts
+      });
 
       // Обрабатываем нажатия на быстрые действия
       quickActions.initialize((String shortcutType) {
@@ -534,6 +540,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       debugPrint('✅ Quick Actions успешно инициализированы');
     } catch (e) {
       debugPrint('❌ Ошибка инициализации Quick Actions: $e');
+      // Приложение продолжит работать без quick actions
     }
   }
 
