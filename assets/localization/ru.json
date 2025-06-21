@@ -1799,7 +1799,33 @@
   "ai_recommendation_based_on_relief_analysis": "Рекомендация основана на анализе рельефа и типа дна",
   "ai_standard_fishing_spot": "ИИ: Обычное место для ловли",
   "m": "м",
-  "show": "Показать"
+  "show": "Показать",
+  "analyzed_spot": "Проанализированная точка",
+  "dropoff_perspective_structure": "Drop-off - перспективная структура.",
+  "shelf_stable_zone": "Полка - стабильная зона.",
+  "slope_migration_path": "Склон - путь миграции.",
+  "interesting_relief": "Интересный рельеф.",
+  "proven_spot": "Проверенная точка.",
+  "feeding_base": "Кормовая база.",
+  "hard_bottom": "Твердое дно.",
+  "vegetation": "Растительность.",
+  "shelter": "Укрытие.",
+  "structure": "Структура.",
+  "relief_analysis": "Анализ рельефа.",
+  "insufficient_data_for_analysis": "Недостаточно данных для анализа",
+  "no_spots_to_evaluate": "Нет точек для оценки",
+  "analyzed_points": "Проанализировано",
+  "found_perspective_spots": "Найдено перспективных мест:",
+  "good_spots_count": "Хороших точек:",
+  "found_dropoff_zones": "Найдено drop-off зон:",
+  "found_feeding_tables": "Найдено кормовых столов:",
+  "found_slopes": "Найдено склонов:",
+  "shell_natural_feeding_base": "Ракушечник - естественная кормовая база.",
+  "proven_feeding_spots_found": "Проверенные точки кормления найдены.",
+  "vegetation_zones_find_edges": "Растительные зоны - ищите границы зарослей.",
+  "look_for_comfort_safety_food": "Ищите места где встречаются комфорт + безопасность + корм",
+  "bottom_transitions_perspective_spots": "Переходы типов дна = перспективные места"
+
 
 
 

@@ -82,7 +82,10 @@ class DepthChartScreenState extends State<DepthChartScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    _runAIAnalysis();
+    // Запускаем анализ после первого build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runAIAnalysis();
+    });
   }
 
   @override
@@ -97,9 +100,11 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   // Запуск ИИ анализа
   Future<void> _runAIAnalysis() async {
     try {
+      final localizations = AppLocalizations.of(context);
       final analysis = DepthAnalysisService.analyzeAllRays(
         widget.markerMap.markers,
         _analysisSettings,
+        localizations,
       );
 
       if (mounted) {

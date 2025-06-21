@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import '../models/depth_analysis_model.dart';
+import '../localization/app_localizations.dart';
 
 /// Универсальный сервис анализа рельефа для карпфишинга
 /// БЕЗ привязки к сезонам, погоде, времени - только физика водоема
@@ -54,6 +55,7 @@ class DepthAnalysisService {
   static MultiRayAnalysis analyzeAllRays(
       List<Map<String, dynamic>> allMarkers,
       AnalysisSettings settings,
+      AppLocalizations localizations,
       ) {
     final rayAnalyses = <DepthProfileAnalysis>[];
 
@@ -63,9 +65,9 @@ class DepthAnalysisService {
       rayAnalyses.add(analysis);
     }
 
-    final topRecommendations = _findTopSpots(rayAnalyses, settings);
-    final overallAssessment = _generateWaterBodyAssessment(rayAnalyses);
-    final professionalTips = _generateProfessionalTips(rayAnalyses);
+    final topRecommendations = _findTopSpots(rayAnalyses, settings, localizations);
+    final overallAssessment = _generateWaterBodyAssessment(rayAnalyses, localizations);
+    final professionalTips = _generateProfessionalTips(rayAnalyses, localizations);
 
     return MultiRayAnalysis(
       rayAnalyses: rayAnalyses,
@@ -389,6 +391,7 @@ class DepthAnalysisService {
   static List<FishingRecommendation> _findTopSpots(
       List<DepthProfileAnalysis> analyses,
       AnalysisSettings settings,
+      AppLocalizations localizations,
       ) {
     final recommendations = <FishingRecommendation>[];
 
@@ -401,8 +404,8 @@ class DepthAnalysisService {
             distance: point.distance,
             depth: point.depth,
             rating: point.fishingScore!,
-            reason: _generateShortReason(point, analysis.structures),
-            bestTime: 'Проанализированная точка', // ← КОРОТКИЙ ТЕКСТ!
+            reason: _generateShortReason(point, analysis.structures, localizations),
+            bestTime: localizations.translate('analyzed_spot'), // ← ЛОКАЛИЗОВАННЫЙ ТЕКСТ!
             type: _getProfessionalRecommendationType(point.fishingScore!),
           );
           recommendations.add(recommendation);
@@ -426,8 +429,9 @@ class DepthAnalysisService {
   static String _generateShortReason(
       DepthPoint point,
       List<BottomStructure> structures,
+      AppLocalizations localizations,
       ) {
-    String reason = '${point.bottomType}, ${point.depth.toStringAsFixed(1)}м. ';
+    String reason = '${_getBottomTypeName(point.bottomType, localizations)}, ${point.depth.toStringAsFixed(1)}${localizations.translate('m')}. ';
 
     // Анализ структур рельефа (если есть)
     final nearbyStructure = structures.where((s) =>
@@ -439,40 +443,40 @@ class DepthAnalysisService {
     if (nearbyStructure != null) {
       switch (nearbyStructure.type) {
         case StructureType.dropoff:
-          reason += 'Drop-off - перспективная структура.';
+          reason += localizations.translate('dropoff_perspective_structure');
           break;
         case StructureType.shelf:
-          reason += 'Полка - стабильная зона.';
+          reason += localizations.translate('shelf_stable_zone');
           break;
         case StructureType.slope:
-          reason += 'Склон - путь миграции.';
+          reason += localizations.translate('slope_migration_path');
           break;
         default:
-          reason += 'Интересный рельеф.';
+          reason += localizations.translate('interesting_relief');
       }
     } else {
       // Краткий анализ типа дна
       switch (point.bottomType) {
         case 'точка_кормления':
-          reason += 'Проверенная точка.';
+          reason += localizations.translate('proven_spot');
           break;
         case 'ракушка':
-          reason += 'Кормовая база.';
+          reason += localizations.translate('feeding_base');
           break;
         case 'ровно_твердо':
-          reason += 'Твердое дно.';
+          reason += localizations.translate('hard_bottom');
           break;
         case 'трава_водоросли':
-          reason += 'Растительность.';
+          reason += localizations.translate('vegetation');
           break;
         case 'зацеп':
-          reason += 'Укрытие.';
+          reason += localizations.translate('shelter');
           break;
         case 'бугор':
-          reason += 'Структура.';
+          reason += localizations.translate('structure');
           break;
         default:
-          reason += 'Анализ рельефа.';
+          reason += localizations.translate('relief_analysis');
       }
     }
 
@@ -480,9 +484,12 @@ class DepthAnalysisService {
   }
 
   /// Общая оценка водоема (БЕЗ хвалебных эпитетов!)
-  static String _generateWaterBodyAssessment(List<DepthProfileAnalysis> analyses) {
+  static String _generateWaterBodyAssessment(
+      List<DepthProfileAnalysis> analyses,
+      AppLocalizations localizations,
+      ) {
     final totalPoints = analyses.fold<int>(0, (sum, analysis) => sum + analysis.points.length);
-    if (totalPoints == 0) return 'Недостаточно данных для анализа';
+    if (totalPoints == 0) return localizations.translate('insufficient_data_for_analysis');
 
     final allPoints = analyses.expand((a) => a.points).toList();
     final validScores = allPoints
@@ -490,25 +497,28 @@ class DepthAnalysisService {
         .map((p) => p.fishingScore!)
         .toList();
 
-    if (validScores.isEmpty) return 'Нет точек для оценки';
+    if (validScores.isEmpty) return localizations.translate('no_spots_to_evaluate');
 
     final topSpots = validScores.where((score) => score >= 7.0).length;
     final eliteSpots = validScores.where((score) => score >= 8.5).length;
 
-    String assessment = 'Проанализировано $totalPoints точек. ';
+    String assessment = '${localizations.translate('analyzed_points')} $totalPoints ${localizations.translate('points')}. ';
 
     if (eliteSpots > 0) {
-      assessment += 'Найдено $eliteSpots перспективных мест (8.5+). ';
+      assessment += '${localizations.translate('found_perspective_spots')} $eliteSpots. ';
     }
     if (topSpots > 0) {
-      assessment += 'Хороших точек: $topSpots. ';
+      assessment += '${localizations.translate('good_spots_count')} $topSpots. ';
     }
 
     return assessment;
   }
 
   /// Профессиональные советы по рельефу (СОКРАЩЕННЫЕ!)
-  static List<String> _generateProfessionalTips(List<DepthProfileAnalysis> analyses) {
+  static List<String> _generateProfessionalTips(
+      List<DepthProfileAnalysis> analyses,
+      AppLocalizations localizations,
+      ) {
     final tips = <String>[];
     final allPoints = analyses.expand((a) => a.points).toList();
     final allStructures = analyses.expand((a) => a.structures).toList();
@@ -519,31 +529,31 @@ class DepthAnalysisService {
     final slopes = allStructures.where((s) => s.type == StructureType.slope).length;
 
     if (dropoffs > 0) {
-      tips.add('🎯 Найдено $dropoffs drop-off зон - концентрация корма.');
+      tips.add('🎯 ${localizations.translate('found_dropoff_zones')} $dropoffs');
     }
     if (shelves > 0) {
-      tips.add('📏 Найдено $shelves кормовых столов - стабильные зоны.');
+      tips.add('📏 ${localizations.translate('found_feeding_tables')} $shelves');
     }
     if (slopes > 0) {
-      tips.add('⛰️ Найдено $slopes склонов - пути миграции.');
+      tips.add('⛰️ ${localizations.translate('found_slopes')} $slopes');
     }
 
     // Анализ типов дна
     final bottomTypes = allPoints.map((p) => p.bottomType).toSet();
 
     if (bottomTypes.contains('ракушка')) {
-      tips.add('🐚 Ракушечник - естественная кормовая база.');
+      tips.add('🐚 ${localizations.translate('shell_natural_feeding_base')}');
     }
     if (bottomTypes.contains('точка_кормления')) {
-      tips.add('🎯 Проверенные точки кормления найдены.');
+      tips.add('🎯 ${localizations.translate('proven_feeding_spots_found')}');
     }
     if (bottomTypes.contains('заросли') || bottomTypes.contains('трава_водоросли')) {
-      tips.add('🌿 Растительные зоны - ищите границы зарослей.');
+      tips.add('🌿 ${localizations.translate('vegetation_zones_find_edges')}');
     }
 
     // Общие советы
-    tips.add('💡 Ищите места где встречаются комфорт + безопасность + корм');
-    tips.add('🔄 Переходы типов дна = перспективные места');
+    tips.add('💡 ${localizations.translate('look_for_comfort_safety_food')}');
+    tips.add('🔄 ${localizations.translate('bottom_transitions_perspective_spots')}');
 
     return tips;
   }
@@ -586,6 +596,21 @@ class DepthAnalysisService {
       'default': 'ил',
     };
     return conversionMap[type] ?? type;
+  }
+
+  static String _getBottomTypeName(String bottomType, AppLocalizations localizations) {
+    switch (bottomType) {
+      case 'ил': return localizations.translate('silt');
+      case 'глубокий_ил': return localizations.translate('deep_silt');
+      case 'ракушка': return localizations.translate('shell');
+      case 'ровно_твердо': return localizations.translate('firm_bottom');
+      case 'камни': return localizations.translate('stones');
+      case 'трава_водоросли': return localizations.translate('grass_algae');
+      case 'зацеп': return localizations.translate('snag');
+      case 'бугор': return localizations.translate('hill');
+      case 'точка_кормления': return localizations.translate('feeding_spot');
+      default: return localizations.translate('silt');
+    }
   }
 
   static Color _getBottomTypeColor(String bottomType) {
