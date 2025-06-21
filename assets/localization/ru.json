@@ -1748,7 +1748,13 @@
   "activity_poor": "Слабая",
   "activity_very_poor": "Очень слабая",
   "helping_factors": "Помогающие факторы",
-  "hindering_factors": "Мешающие факторы"
+  "hindering_factors": "Мешающие факторы",
+
+  "tap_for_details": "Нажмите для просмотра деталей",
+  "view_details": "Просмотр деталей",
+  "tournament_not_found": "Турнир не найден",
+  "tournament": "Турнир",
+  "completed": "Завершен"
 
 
 }

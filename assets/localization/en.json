@@ -1809,5 +1809,11 @@
   "activity_poor": "Poor",
   "activity_very_poor": "Very Poor",
   "helping_factors": "Helping factors",
-  "hindering_factors": "Hindering factors"
+  "hindering_factors": "Hindering factors",
+
+  "tap_for_details": "Tap for details",
+  "view_details": "View details",
+  "tournament_not_found": "Tournament not found",
+  "tournament": "Tournament",
+  "completed": "Completed"
 }

@@ -10,6 +10,8 @@ import '../../localization/app_localizations.dart';
 import '../fishing_note/fishing_note_detail_screen.dart';
 import '../fishing_note/add_fishing_note_screen.dart';
 import '../../services/calendar_event_service.dart';
+import '../tournaments/tournament_detail_screen.dart';
+import '../../services/tournament_service.dart';
 
 class FishingCalendarScreen extends StatefulWidget {
   const FishingCalendarScreen({super.key});
@@ -121,18 +123,18 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           note.date.day,
         );
         DateTime endDate =
-            note.endDate != null
-                ? DateTime(
-                  note.endDate!.year,
-                  note.endDate!.month,
-                  note.endDate!.day,
-                )
-                : startDate;
+        note.endDate != null
+            ? DateTime(
+          note.endDate!.year,
+          note.endDate!.month,
+          note.endDate!.day,
+        )
+            : startDate;
 
         // ИСПРАВЛЕННАЯ ЛОГИКА: используем количество дней между датами
         int totalDays =
             endDate.difference(startDate).inDays +
-            1; // +1 чтобы включить последний день
+                1; // +1 чтобы включить последний день
 
         for (int i = 0; i < totalDays; i++) {
           final currentDate = startDate.add(Duration(days: i));
@@ -204,12 +206,12 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
       MaterialPageRoute(
         builder:
             (context) => AddFishingNoteScreen(
-              fishingType:
-                  AppConstants
-                      .fishingTypes
-                      .first, // Используем первый тип по умолчанию
-              initialDate: selectedDate, // Передаем выбранную дату
-            ),
+          fishingType:
+          AppConstants
+              .fishingTypes
+              .first, // Используем первый тип по умолчанию
+          initialDate: selectedDate, // Передаем выбранную дату
+        ),
       ),
     );
 
@@ -226,12 +228,12 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
       MaterialPageRoute(
         builder:
             (context) => AddFishingNoteScreen(
-              fishingType:
-                  AppConstants
-                      .fishingTypes
-                      .first, // Используем первый тип по умолчанию
-              initialDate: date, // Передаем конкретную дату
-            ),
+          fishingType:
+          AppConstants
+              .fishingTypes
+              .first, // Используем первый тип по умолчанию
+          initialDate: date, // Передаем конкретную дату
+        ),
       ),
     );
 
@@ -251,6 +253,52 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         _loadFishingNotes();
       }
     });
+  }
+
+  // НОВЫЙ МЕТОД: для просмотра деталей турнира
+  void _viewTournamentDetails(CalendarEvent event) async {
+    try {
+      // Получаем полную информацию о турнире из сервиса турниров
+      final tournamentService = TournamentService();
+      final tournament = tournamentService.getTournamentById(event.sourceId ?? event.id);
+
+      if (tournament != null) {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TournamentDetailScreen(tournament: tournament),
+          ),
+        );
+
+        // Если турнир был удален из календаря, обновляем наш календарь
+        if (result == true) {
+          _loadFishingNotes();
+        }
+      } else {
+        // Если турнир не найден, показываем сообщение об ошибке
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).translate('tournament_not_found'),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_loading')}: $e',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Добавляем метод для быстрого выбора месяца и года
@@ -282,14 +330,14 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                     dropdownColor: AppConstants.cardColor,
                     style: TextStyle(color: AppConstants.textColor),
                     items:
-                        List.generate(11, (index) => 2020 + index)
-                            .map(
-                              (year) => DropdownMenuItem(
-                                value: year,
-                                child: Text(year.toString()),
-                              ),
-                            )
-                            .toList(),
+                    List.generate(11, (index) => 2020 + index)
+                        .map(
+                          (year) => DropdownMenuItem(
+                        value: year,
+                        child: Text(year.toString()),
+                      ),
+                    )
+                        .toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -305,16 +353,16 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                     dropdownColor: AppConstants.cardColor,
                     style: TextStyle(color: AppConstants.textColor),
                     items:
-                        List.generate(12, (index) => index + 1)
-                            .map(
-                              (month) => DropdownMenuItem(
-                                value: month,
-                                child: Text(
-                                  localizations.translate(_getMonthKey(month)),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                    List.generate(12, (index) => index + 1)
+                        .map(
+                          (month) => DropdownMenuItem(
+                        value: month,
+                        child: Text(
+                          localizations.translate(_getMonthKey(month)),
+                        ),
+                      ),
+                    )
+                        .toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -504,25 +552,25 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         ],
       ),
       body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppConstants.textColor,
-                  ),
-                ),
-              )
-              : FadeTransition(
-                opacity: _fadeAnimation,
-                child: Column(
-                  children: [
-                    _buildCalendarHeader(),
-                    _buildCalendar(),
-                    const SizedBox(height: 16),
-                    _buildEventsList(),
-                  ],
-                ),
-              ),
+      _isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(
+            AppConstants.textColor,
+          ),
+        ),
+      )
+          : FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            _buildCalendarHeader(),
+            _buildCalendar(),
+            const SizedBox(height: 16),
+            _buildEventsList(),
+          ],
+        ),
+      ),
     );
   }
 
@@ -712,9 +760,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                       margin: const EdgeInsets.only(right: 2),
                       decoration: BoxDecoration(
                         color:
-                            _isPastFishing(day)
-                                ? _pastFishingColor
-                                : _futureFishingColor,
+                        _isPastFishing(day)
+                            ? _pastFishingColor
+                            : _futureFishingColor,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -767,9 +815,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         text,
         style: TextStyle(
           color:
-              isWeekend
-                  ? AppConstants.textColor.withValues(alpha: 0.9)
-                  : AppConstants.textColor.withValues(alpha: 0.7),
+          isWeekend
+              ? AppConstants.textColor.withValues(alpha: 0.9)
+              : AppConstants.textColor.withValues(alpha: 0.7),
           fontSize: 14.0,
           fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
         ),
@@ -780,9 +828,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
   Widget _buildEventsList() {
     final localizations = AppLocalizations.of(context);
     final eventsForDay =
-        _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
+    _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
     final calendarEventsForDay =
-        _selectedDay != null ? _getCalendarEventsForDay(_selectedDay!) : [];
+    _selectedDay != null ? _getCalendarEventsForDay(_selectedDay!) : [];
 
     if (eventsForDay.isEmpty && calendarEventsForDay.isEmpty) {
       return Expanded(
@@ -836,7 +884,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
 
           // Турниры
           ...calendarEventsForDay.map(
-            (event) => _buildTournamentEventCard(event),
+                (event) => _buildTournamentEventCard(event),
           ),
         ],
       ),
@@ -848,9 +896,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     final isPast = _isPastFishing(note.date);
     final statusColor = isPast ? _pastFishingColor : _futureFishingColor;
     final statusText =
-        isPast
-            ? localizations.translate('past')
-            : localizations.translate('planned');
+    isPast
+        ? localizations.translate('past')
+        : localizations.translate('planned');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -905,10 +953,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
               Text(
                 note.isMultiDay
                     ? DateFormatter.formatDateRange(
-                      note.date,
-                      note.endDate!,
-                      context,
-                    )
+                  note.date,
+                  note.endDate!,
+                  context,
+                )
                     : DateFormatter.formatDate(note.date, context),
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
@@ -975,15 +1023,18 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     final localizations = AppLocalizations.of(context);
     final isPast = event.endDate.isBefore(DateTime.now());
     final statusColor = _tournamentColor;
-    final statusText = isPast ? 'Завершен' : 'Турнир';
+    final statusText = isPast
+        ? localizations.translate('completed')
+        : localizations.translate('tournament');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFF12332E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onLongPress:
-            () => _showTournamentEventOptions(context, event, localizations),
+        onTap: () => _viewTournamentDetails(event), // ДОБАВЛЕНО: обычное нажатие
+        onLongPress: () => _showTournamentEventOptions(context, event, localizations), // Оставляем длинное нажатие для удаления
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1061,8 +1112,9 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                 ),
               ],
               const SizedBox(height: 8),
+              // ОБНОВЛЕНО: изменили текст подсказки
               Text(
-                localizations.translate('tap_hold_for_options'),
+                localizations.translate('tap_for_details'),
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.5),
                   fontSize: 12,
@@ -1078,10 +1130,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
 
   // Новый метод для показа опций турнира
   void _showTournamentEventOptions(
-    BuildContext context,
-    CalendarEvent event,
-    AppLocalizations localizations,
-  ) {
+      BuildContext context,
+      CalendarEvent event,
+      AppLocalizations localizations,
+      ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.surfaceColor,
@@ -1116,6 +1168,22 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 24),
+
+              // Кнопка просмотра деталей
+              ListTile(
+                leading: Icon(Icons.info, color: AppConstants.primaryColor),
+                title: Text(
+                  localizations.translate('view_details'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _viewTournamentDetails(event);
+                },
+              ),
 
               // Кнопка удаления из календаря
               ListTile(
@@ -1157,41 +1225,41 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
 
   // Метод для удаления турнира из календаря
   void _removeTournamentFromCalendar(
-    BuildContext context,
-    CalendarEvent event,
-    AppLocalizations localizations,
-  ) async {
+      BuildContext context,
+      CalendarEvent event,
+      AppLocalizations localizations,
+      ) async {
     // Показываем диалог подтверждения
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: AppConstants.surfaceColor,
-            title: Text(
-              localizations.translate('remove_from_calendar'),
+        backgroundColor: AppConstants.surfaceColor,
+        title: Text(
+          localizations.translate('remove_from_calendar'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        content: Text(
+          localizations.translate('remove_tournament_confirmation'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              localizations.translate('cancel'),
               style: TextStyle(color: AppConstants.textColor),
             ),
-            content: Text(
-              localizations.translate('remove_tournament_confirmation'),
-              style: TextStyle(color: AppConstants.textColor),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  localizations.translate('remove'),
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              localizations.translate('remove'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
