@@ -421,19 +421,42 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                 break;
             }
 
+            // Получаем цвет луча для визуального разделения
+            final rayColor = _rayColors[rec.rayIndex];
+
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: ratingColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ratingColor.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: rayColor.withValues(alpha: 0.8), // Обводка цветом луча!
+                  width: 2,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
+                      // Индикатор луча с его цветом
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: rayColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Луч ${rec.rayIndex + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '${rec.distance.toInt()}м, ${rec.depth.toStringAsFixed(1)}м',
                         style: TextStyle(
@@ -460,27 +483,127 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    rec.reason,
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Лучшее время: ${rec.bestTime}',
-                    style: TextStyle(
-                      color: ratingColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const SizedBox(height: 6),
+                  // Кнопка "Перейти к лучу"
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          rec.reason,
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          // Закрываем модальное окно и переключаемся на нужный луч
+                          Navigator.pop(context);
+                          setState(() {
+                            _selectedRayIndex = rec.rayIndex;
+                            _isComparisonMode = false;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: rayColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: rayColor),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.my_location,
+                                color: rayColor,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Показать',
+                                style: TextStyle(
+                                  color: rayColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             );
           }).toList()),
+
+          // Дополнительная информация о лучах
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppConstants.primaryColor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '🎯 Легенда лучей:',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
+                  children: List.generate(5, (index) {
+                    final markersCount = _getMarkersForRay(index).length;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _rayColors[index],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Луч ${index + 1} ($markersCount точек)',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '💡 Нажмите "Показать" чтобы перейти к конкретному лучу с рекомендацией',
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -713,44 +836,76 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     );
   }
 
-  // Виджет с ИИ рекомендацией для конкретной точки
+  // Виджет с ИИ рекомендацией для конкретной точки - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
   Widget _buildAIRecommendationForPoint(Map<String, dynamic> marker) {
     if (_aiAnalysis == null) return const SizedBox.shrink();
 
     final distance = marker['distance'] as double;
+    final markerRayIndex = (marker['rayIndex'] as double?)?.toInt() ?? 0;
 
-    // Находим ближайшую рекомендацию для этой точки
+    print('🔍 Ищем рекомендацию для маркера:');
+    print('  луч маркера: $markerRayIndex');
+    print('  дистанция маркера: $distance');
+
+    // ВАРИАНТ 1: Ищем в topRecommendations (теперь с rayIndex)
     final nearbyRecommendation = _aiAnalysis!.topRecommendations
+        .where((rec) => rec.rayIndex == markerRayIndex) // Теперь rayIndex есть!
         .where((rec) => (rec.distance - distance).abs() < 5.0) // в пределах 5 метров
         .firstOrNull;
 
-    if (nearbyRecommendation == null) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.psychology, color: Colors.grey, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'ИИ: Карповый анализ',
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+    if (nearbyRecommendation != null) {
+      print('  найдена рекомендация в topRecommendations: ${nearbyRecommendation.rating}');
+      return _buildRecommendationWidget(nearbyRecommendation);
     }
 
+    // ВАРИАНТ 2: Ищем в rayAnalyses.points (если нет в топе)
+    final rayAnalysis = _aiAnalysis!.rayAnalyses
+        .where((analysis) => analysis.rayIndex == markerRayIndex)
+        .firstOrNull;
+
+    if (rayAnalysis != null) {
+      final nearbyPoint = rayAnalysis.points
+          .where((point) => (point.distance - distance).abs() < 5.0) // в пределах 5 метров
+          .where((point) => point.fishingScore != null && point.fishingScore! >= 6.0) // минимальный рейтинг
+          .firstOrNull;
+
+      if (nearbyPoint != null) {
+        print('  найдена точка в rayAnalyses: ${nearbyPoint.fishingScore}');
+        return _buildPointWidget(nearbyPoint);
+      }
+    }
+
+    print('  ничего не найдено');
+
+    // ВАРИАНТ 3: Показываем нейтральную оценку
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.psychology, color: Colors.grey, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'ИИ: Обычное место для ловли',
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Виджет для отображения рекомендации из topRecommendations
+  Widget _buildRecommendationWidget(FishingRecommendation recommendation) {
     Color recommendationColor;
-    switch (nearbyRecommendation.type) {
+    switch (recommendation.type) {
       case RecommendationType.excellent:
         recommendationColor = Colors.green;
         break;
@@ -795,7 +950,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${nearbyRecommendation.rating.toStringAsFixed(1)}/10',
+                  '${recommendation.rating.toStringAsFixed(1)}/10',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -807,7 +962,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            nearbyRecommendation.reason,
+            recommendation.reason,
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 14,
@@ -815,7 +970,88 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Лучшее время: ${nearbyRecommendation.bestTime}',
+            'Время: ${recommendation.bestTime}',
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.8),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Виджет для отображения точки из rayAnalyses
+  Widget _buildPointWidget(DepthPoint point) {
+    final score = point.fishingScore!;
+    Color recommendationColor;
+    String recommendationType;
+
+    if (score >= 9.0) {
+      recommendationColor = Colors.green;
+      recommendationType = 'Отличное';
+    } else if (score >= 8.0) {
+      recommendationColor = Colors.blue;
+      recommendationType = 'Хорошее';
+    } else if (score >= 7.0) {
+      recommendationColor = Colors.orange;
+      recommendationType = 'Среднее';
+    } else {
+      recommendationColor = Colors.red;
+      recommendationType = 'Слабое';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: recommendationColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: recommendationColor.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.psychology, color: recommendationColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'ИИ: Карповый потенциал',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: recommendationColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${score.toStringAsFixed(1)}/10',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$recommendationType место для карповой ловли',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Рекомендация основана на анализе рельефа и типа дна',
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 12,

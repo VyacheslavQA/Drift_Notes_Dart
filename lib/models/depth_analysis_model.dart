@@ -79,6 +79,7 @@ enum StructureType {
 
 /// Рекомендации ИИ для конкретного места
 class FishingRecommendation {
+  final int rayIndex;
   final double distance;
   final double depth;
   final double rating; // 0-10
@@ -87,6 +88,7 @@ class FishingRecommendation {
   final RecommendationType type;
 
   const FishingRecommendation({
+    required this.rayIndex,
     required this.distance,
     required this.depth,
     required this.rating,
