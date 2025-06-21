@@ -275,7 +275,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'ИИ Анализ: Карпфишинг',
+                        '${localizations.translate('ai_analysis')}: ${localizations.translate('carp_fishing')}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 20,
@@ -295,7 +295,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                         children: [
                           // Общая оценка
                           _buildAnalysisSection(
-                            'Общая оценка водоема',
+                            localizations.translate('overall_waterbody_assessment'),
                             _aiAnalysis!.overallAssessment,
                             Icons.assessment,
                           ),
@@ -380,6 +380,8 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   }
 
   Widget _buildTopRecommendationsSection() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -394,7 +396,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.star, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Лучшие места для карповых',
+                localizations.translate('best_spots_for_carp'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -448,7 +450,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Луч ${rec.rayIndex + 1}',
+                          '${localizations.translate('ray')} ${rec.rayIndex + 1}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -458,7 +460,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${rec.distance.toInt()}м, ${rec.depth.toStringAsFixed(1)}м',
+                        '${rec.distance.toInt()}${localizations.translate('m')}, ${rec.depth.toStringAsFixed(1)}${localizations.translate('m')}',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 14,
@@ -523,7 +525,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Показать',
+                                localizations.translate('show'),
                                 style: TextStyle(
                                   color: rayColor,
                                   fontSize: 11,
@@ -556,7 +558,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '🎯 Легенда лучей:',
+                  '🎯 ${localizations.translate('ray_legend')}:',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 14,
@@ -582,7 +584,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Луч ${index + 1} ($markersCount точек)',
+                          '${localizations.translate('ray')} ${index + 1} ($markersCount ${localizations.translate('points')})',
                           style: TextStyle(
                             color: AppConstants.textColor.withValues(alpha: 0.8),
                             fontSize: 12,
@@ -594,7 +596,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '💡 Нажмите "Показать" чтобы перейти к конкретному лучу с рекомендацией',
+                  '💡 ${localizations.translate('tap_show_for_ray_recommendation')}',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
                     fontSize: 11,
@@ -610,6 +612,8 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   }
 
   Widget _buildGeneralTipsSection() {
+    final localizations = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -624,7 +628,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.lightbulb, color: Colors.yellow, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Карпфишинг советы',
+                localizations.translate('carp_fishing_tips'),
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -735,7 +739,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                   Icon(Icons.straighten, color: AppConstants.textColor),
                   const SizedBox(width: 8),
                   Text(
-                    '${localizations.translate('distance_m')}: ${(marker['distance'] as double).toInt()} м',
+                    '${localizations.translate('distance_m')}: ${(marker['distance'] as double).toInt()} ${localizations.translate('m')}',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -753,7 +757,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                     Icon(Icons.waves, color: AppConstants.textColor),
                     const SizedBox(width: 8),
                     Text(
-                      '${localizations.translate('depth')}: ${marker['depth']} м',
+                      '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('m')}',
                       style: TextStyle(
                         color: AppConstants.textColor,
                         fontSize: 16,
@@ -838,6 +842,8 @@ class DepthChartScreenState extends State<DepthChartScreen> {
 
   // Виджет с ИИ рекомендацией для конкретной точки - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
   Widget _buildAIRecommendationForPoint(Map<String, dynamic> marker) {
+    final localizations = AppLocalizations.of(context);
+
     if (_aiAnalysis == null) return const SizedBox.shrink();
 
     final distance = marker['distance'] as double;
@@ -890,7 +896,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'ИИ: Обычное место для ловли',
+              localizations.translate('ai_standard_fishing_spot'),
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
                 fontSize: 14,
@@ -904,6 +910,8 @@ class DepthChartScreenState extends State<DepthChartScreen> {
 
   // Виджет для отображения рекомендации из topRecommendations
   Widget _buildRecommendationWidget(FishingRecommendation recommendation) {
+    final localizations = AppLocalizations.of(context);
+
     Color recommendationColor;
     switch (recommendation.type) {
       case RecommendationType.excellent:
@@ -935,7 +943,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.psychology, color: recommendationColor, size: 20),
               const SizedBox(width: 8),
               Text(
-                'ИИ: Карповый потенциал',
+                '${localizations.translate('ai_analysis')}: ${localizations.translate('carp_potential')}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 14,
@@ -970,7 +978,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Время: ${recommendation.bestTime}',
+            '${localizations.translate('time')}: ${recommendation.bestTime}',
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 12,
@@ -983,22 +991,23 @@ class DepthChartScreenState extends State<DepthChartScreen> {
 
   // Виджет для отображения точки из rayAnalyses
   Widget _buildPointWidget(DepthPoint point) {
+    final localizations = AppLocalizations.of(context);
     final score = point.fishingScore!;
     Color recommendationColor;
     String recommendationType;
 
     if (score >= 9.0) {
       recommendationColor = Colors.green;
-      recommendationType = 'Отличное';
+      recommendationType = localizations.translate('excellent');
     } else if (score >= 8.0) {
       recommendationColor = Colors.blue;
-      recommendationType = 'Хорошее';
+      recommendationType = localizations.translate('good');
     } else if (score >= 7.0) {
       recommendationColor = Colors.orange;
-      recommendationType = 'Среднее';
+      recommendationType = localizations.translate('average');
     } else {
       recommendationColor = Colors.red;
-      recommendationType = 'Слабое';
+      recommendationType = localizations.translate('poor');
     }
 
     return Container(
@@ -1016,7 +1025,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.psychology, color: recommendationColor, size: 20),
               const SizedBox(width: 8),
               Text(
-                'ИИ: Карповый потенциал',
+                '${localizations.translate('ai_analysis')}: ${localizations.translate('carp_potential')}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 14,
@@ -1043,7 +1052,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '$recommendationType место для карповой ловли',
+            '$recommendationType ${localizations.translate('carp_fishing_spot')}',
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 14,
@@ -1051,7 +1060,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Рекомендация основана на анализе рельефа и типа дна',
+            localizations.translate('ai_recommendation_based_on_relief_analysis'),
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.8),
               fontSize: 12,
@@ -1732,6 +1741,7 @@ class EnhancedDepthChartPainter extends CustomPainter {
 
   // Легенда для режима сравнения
   void _drawComparisonLegend(Canvas canvas, Size size, double rightPadding) {
+    final localizations = AppLocalizations.of(context);
     final legendX = size.width - rightPadding + 10;
     var legendY = 60.0;
 
@@ -1755,7 +1765,7 @@ class EnhancedDepthChartPainter extends CustomPainter {
 
       // Подпись луча
       textPainter.text = TextSpan(
-        text: 'Луч ${rayIndex + 1}',
+        text: '${localizations.translate('ray')} ${rayIndex + 1}',
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.9),
           fontSize: 12,

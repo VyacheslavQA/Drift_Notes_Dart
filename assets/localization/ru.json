@@ -1786,7 +1786,20 @@
   "grass_carp": "Амур",
   "wild_carp": "Сазан",
   "silver_carp": "Толстолобик",
-  "detailed_ai_analysis": "Детальный ИИ анализ"
+  "detailed_ai_analysis": "Детальный ИИ анализ",
+
+  "overall_waterbody_assessment": "Общая оценка водоема",
+  "best_spots_for_carp": "Лучшие места для карповых",
+  "ray_legend": "Легенда лучей",
+  "tap_show_for_ray_recommendation": "Нажмите \"Показать\" чтобы перейти к конкретному лучу с рекомендацией",
+  "carp_fishing_tips": "Карпфишинг советы",
+  "carp_potential": "Карповый потенциал",
+  "time": "Время",
+  "carp_fishing_spot": "место для карповой ловли",
+  "ai_recommendation_based_on_relief_analysis": "Рекомендация основана на анализе рельефа и типа дна",
+  "ai_standard_fishing_spot": "ИИ: Обычное место для ловли",
+  "m": "м",
+  "show": "Показать"
 
 
 

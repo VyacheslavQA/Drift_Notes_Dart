@@ -1847,5 +1847,18 @@
   "ai_analysis": "AI Analysis",
   "ai_settings": "AI Settings",
   "select_rays": "Select Rays",
-  "detailed_ai_analysis": "Detailed AI Analysis"
+  "detailed_ai_analysis": "Detailed AI Analysis",
+
+  "overall_waterbody_assessment": "Overall Waterbody Assessment",
+  "best_spots_for_carp": "Best Spots for Carp",
+  "ray_legend": "Ray Legend",
+  "tap_show_for_ray_recommendation": "Tap 'Show' to jump to specific ray with recommendation",
+  "carp_fishing_tips": "Carp Fishing Tips",
+  "carp_potential": "Carp Potential",
+  "time": "Time",
+  "carp_fishing_spot": "carp fishing spot",
+  "ai_recommendation_based_on_relief_analysis": "Recommendation based on relief and bottom type analysis",
+  "ai_standard_fishing_spot": "AI: Standard fishing spot",
+  "m": "m",
+  "show": "Show"
 }
