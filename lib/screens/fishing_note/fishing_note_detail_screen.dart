@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/marker_map_model.dart';
@@ -15,6 +17,7 @@ import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
 import '../../screens/fishing_note/edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
+import '../map/map_location_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
@@ -146,7 +149,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
       // Фильтруем только те, которые привязаны к текущей заметке
       final linkedMaps =
-          allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
+      allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
 
       if (mounted) {
         setState(() {
@@ -160,6 +163,310 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         setState(() {
           _isLoadingMarkerMaps = false;
         });
+      }
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Открытие карты с местом рыбалки
+  Future<void> _showLocationOnMap() async {
+    if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
+      final localizations = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(localizations.translate('location_not_available')),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Открываем карту с координатами места рыбалки
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MapLocationScreen(
+          initialLatitude: _note!.latitude,
+          initialLongitude: _note!.longitude,
+        ),
+      ),
+    );
+    // После возврата с карты ничего не делаем - просто остаемся в заметке
+  }
+
+  // НОВЫЙ МЕТОД: Построение маршрута до места рыбалки
+  Future<void> _navigateToLocation() async {
+    if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
+      final localizations = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(localizations.translate('location_not_available')),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем выбор навигационных приложений
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _buildNavigationOptionsSheet(),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: BottomSheet с выбором навигационных приложений
+  Widget _buildNavigationOptionsSheet() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                localizations.translate('choose_map'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: Icon(Icons.close, color: AppConstants.textColor),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Google Maps
+          _buildNavigationOption(
+            title: 'Google Maps',
+            subtitle: localizations.translate('universal_navigation'),
+            icon: Icons.map,
+            onTap: () => _openGoogleMaps(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Apple Maps (только для iOS)
+          if (Platform.isIOS)
+            _buildNavigationOption(
+              title: 'Apple Maps',
+              subtitle: localizations.translate('ios_navigation'),
+              icon: Icons.map_outlined,
+              onTap: () => _openAppleMaps(),
+            ),
+
+          if (Platform.isIOS) const SizedBox(height: 12),
+
+          // Яндекс.Карты
+          _buildNavigationOption(
+            title: localizations.translate('yandex_maps'),
+            subtitle: localizations.translate('detailed_russian_maps'),
+            icon: Icons.alt_route,
+            onTap: () => _openYandexMaps(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // 2GIS
+          _buildNavigationOption(
+            title: '2GIS',
+            subtitle: localizations.translate('detailed_city_maps'),
+            icon: Icons.location_city,
+            onTap: () => _open2GIS(),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Построение опции навигации
+  Widget _buildNavigationOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF12332E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.launch,
+              color: AppConstants.textColor.withValues(alpha: 0.5),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // НОВЫЕ МЕТОДЫ: Открытие различных навигационных приложений
+  Future<void> _openGoogleMaps() async {
+    Navigator.pop(context);
+    final url = 'https://www.google.com/maps/dir/?api=1&destination=${_note!.latitude},${_note!.longitude}';
+    await _launchURL(url, 'Google Maps');
+  }
+
+  Future<void> _openAppleMaps() async {
+    Navigator.pop(context);
+    final url = 'http://maps.apple.com/?daddr=${_note!.latitude},${_note!.longitude}&dirflg=d';
+    await _launchURL(url, 'Apple Maps');
+  }
+
+  Future<void> _openYandexMaps() async {
+    Navigator.pop(context);
+    final url = 'yandexmaps://maps.yandex.ru/?rtext=~${_note!.latitude},${_note!.longitude}&rtt=auto';
+    await _launchURL(url, 'Яндекс.Карты');
+  }
+
+  Future<void> _open2GIS() async {
+    Navigator.pop(context);
+    final url = 'dgis://2gis.ru/routeSearch/rsType/car/to/${_note!.longitude},${_note!.latitude}';
+    await _launchURL(url, '2GIS');
+  }
+
+  // НОВЫЙ МЕТОД: Универсальный запуск URL
+  Future<void> _launchURL(String url, String appName) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      final uri = Uri.parse(url);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        // Если приложение не установлено, показываем сообщение
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${localizations.translate('app_not_installed')}: $appName',
+              ),
+              backgroundColor: Colors.orange,
+              action: SnackBarAction(
+                label: localizations.translate('install'),
+                textColor: Colors.white,
+                onPressed: () => _openAppStore(appName),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_opening_app')}: $appName',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Открытие магазина приложений
+  Future<void> _openAppStore(String appName) async {
+    String storeUrl = '';
+
+    if (Platform.isAndroid) {
+      switch (appName) {
+        case 'Google Maps':
+          storeUrl = 'https://play.google.com/store/apps/details?id=com.google.android.apps.maps';
+          break;
+        case 'Яндекс.Карты':
+          storeUrl = 'https://play.google.com/store/apps/details?id=ru.yandex.yandexmaps';
+          break;
+        case '2GIS':
+          storeUrl = 'https://play.google.com/store/apps/details?id=ru.dublgis.dgismobile';
+          break;
+      }
+    } else if (Platform.isIOS) {
+      switch (appName) {
+        case 'Google Maps':
+          storeUrl = 'https://apps.apple.com/app/google-maps/id585027354';
+          break;
+        case 'Яндекс.Карты':
+          storeUrl = 'https://apps.apple.com/app/yandex-maps/id313877526';
+          break;
+        case '2GIS':
+          storeUrl = 'https://apps.apple.com/app/2gis/id481627348';
+          break;
+      }
+    }
+
+    if (storeUrl.isNotEmpty) {
+      final uri = Uri.parse(storeUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     }
   }
@@ -369,11 +676,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       MaterialPageRoute(
         builder:
             (context) => CoverPhotoSelectionScreen(
-              photoUrls: _note!.photoUrls,
-              currentCoverPhotoUrl:
-                  _note!.coverPhotoUrl.isNotEmpty ? _note!.coverPhotoUrl : null,
-              currentCropSettings: _note!.coverCropSettings,
-            ),
+          photoUrls: _note!.photoUrls,
+          currentCoverPhotoUrl:
+          _note!.coverPhotoUrl.isNotEmpty ? _note!.coverPhotoUrl : null,
+          currentCropSettings: _note!.coverCropSettings,
+        ),
       ),
     );
 
@@ -432,9 +739,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       MaterialPageRoute(
         builder:
             (context) => PhotoGalleryScreen(
-              photos: _note!.photoUrls,
-              initialIndex: initialIndex,
-            ),
+          photos: _note!.photoUrls,
+          initialIndex: initialIndex,
+        ),
       ),
     );
   }
@@ -447,33 +754,33 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: AppConstants.surfaceColor,
-            title: Text(
-              localizations.translate('delete_note'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              localizations.translate('delete_note_confirmation'),
+        backgroundColor: AppConstants.surfaceColor,
+        title: Text(
+          localizations.translate('delete_note'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          localizations.translate('delete_note_confirmation'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              localizations.translate('cancel'),
               style: TextStyle(color: AppConstants.textColor),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: Text(localizations.translate('delete')),
-              ),
-            ],
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(localizations.translate('delete')),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true && mounted) {
@@ -571,9 +878,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
   // Получение текста уровня активности
   String _getActivityLevelText(
-    ActivityLevel level,
-    AppLocalizations localizations,
-  ) {
+      ActivityLevel level,
+      AppLocalizations localizations,
+      ) {
     switch (level) {
       case ActivityLevel.excellent:
         return localizations.translate('excellent_activity');
@@ -637,44 +944,44 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       body: LoadingOverlay(
         isLoading: _isLoading || _isSaving,
         message:
-            _isLoading
-                ? localizations.translate('loading')
-                : localizations.translate('saving'),
+        _isLoading
+            ? localizations.translate('loading')
+            : localizations.translate('saving'),
         child:
-            _errorMessage != null
-                ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _loadNote,
-                        child: Text(localizations.translate('try_again')),
-                      ),
-                    ],
-                  ),
-                )
-                : _note == null
-                ? Center(
-                  child: Text(
-                    localizations.translate('bite_not_found'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                    ),
-                  ),
-                )
-                : _buildNoteDetails(),
+        _errorMessage != null
+            ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _loadNote,
+                child: Text(localizations.translate('try_again')),
+              ),
+            ],
+          ),
+        )
+            : _note == null
+            ? Center(
+          child: Text(
+            localizations.translate('bite_not_found'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+            ),
+          ),
+        )
+            : _buildNoteDetails(),
       ),
     );
   }
@@ -890,33 +1197,33 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     .take(3)
                     .map(
                       (tip) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '• ',
-                              style: TextStyle(
-                                color: AppConstants.primaryColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                tip,
-                                style: TextStyle(
-                                  color: AppConstants.textColor.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• ',
+                          style: TextStyle(
+                            color: AppConstants.primaryColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    )),
+                        Expanded(
+                          child: Text(
+                            tip,
+                            style: TextStyle(
+                              color: AppConstants.textColor.withValues(
+                                alpha: 0.9,
+                              ),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
               ],
             ],
           ),
@@ -948,9 +1255,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         else
           Column(
             children:
-                _linkedMarkerMaps
-                    .map((map) => _buildMarkerMapCard(map))
-                    .toList(),
+            _linkedMarkerMaps
+                .map((map) => _buildMarkerMapCard(map))
+                .toList(),
           ),
       ],
     );
@@ -1208,10 +1515,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   child: Text(
                     _note!.isMultiDay && _note!.endDate != null
                         ? DateFormatter.formatDateRange(
-                          _note!.date,
-                          _note!.endDate!,
-                          context,
-                        )
+                      _note!.date,
+                      _note!.endDate!,
+                      context,
+                    )
                         : DateFormatter.formatDate(_note!.date, context),
                     style: TextStyle(
                       color: AppConstants.textColor,
@@ -1370,32 +1677,68 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
 
-            // Если есть координаты
+            // ЗАМЕНЕНО: Вместо одной кнопки теперь две кнопки
             if (_note!.latitude != 0 && _note!.longitude != 0) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.map, color: AppConstants.textColor, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${localizations.translate('coordinates')}:',
+              const SizedBox(height: 16),
+
+              // Первая кнопка - Показать на карте
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _showLocationOnMap,
+                  icon: Icon(
+                    Icons.map,
+                    color: AppConstants.textColor,
+                    size: 20,
+                  ),
+                  label: Text(
+                    localizations.translate('show_on_map'),
                     style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_note!.latitude.toStringAsFixed(6)}, ${_note!.longitude.toStringAsFixed(6)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Вторая кнопка - Построить маршрут
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _navigateToLocation,
+                  icon: Icon(
+                    Icons.navigation,
+                    color: AppConstants.textColor,
+                    size: 20,
+                  ),
+                  label: Text(
+                    localizations.translate('build_route'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
               ),
             ],
           ],
@@ -1499,9 +1842,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
   // Новый метод для построения сетки погоды 2x3
   Widget _buildWeatherGrid(
-    AppLocalizations localizations,
-    FishingWeather weather,
-  ) {
+      AppLocalizations localizations,
+      FishingWeather weather,
+      ) {
     return Column(
       children: [
         // Первая строка
@@ -1512,7 +1855,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 icon: Icons.air,
                 label: localizations.translate('wind_short'),
                 value:
-                    '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
+                '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
               ),
             ),
             const SizedBox(width: 12),

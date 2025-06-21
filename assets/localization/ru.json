@@ -1754,7 +1754,21 @@
   "view_details": "Просмотр деталей",
   "tournament_not_found": "Турнир не найден",
   "tournament": "Турнир",
-  "completed": "Завершен"
+  "completed": "Завершен",
+
+  "show_on_map": "Показать на карте",
+  "location_not_available": "Местоположение недоступно",
+  "build_route": "Построить маршрут",
+  "choose_navigation_app": "Выберите навигационное приложение",
+  "universal_navigation": "Универсальная навигация",
+  "ios_navigation": "Встроенная навигация iOS",
+  "yandex_maps": "Яндекс.Карты",
+  "detailed_russian_maps": "Детальные карты России",
+  "detailed_city_maps": "Подробные карты городов",
+  "app_not_installed": "Приложение не установлено",
+  "install": "Установить",
+  "error_opening_app": "Ошибка открытия приложения",
+  "choose_map": "Выберите карту"
 
 
 }

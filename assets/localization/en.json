@@ -1815,5 +1815,19 @@
   "view_details": "View details",
   "tournament_not_found": "Tournament not found",
   "tournament": "Tournament",
-  "completed": "Completed"
+  "completed": "Completed",
+
+  "show_on_map": "Show on Map",
+  "location_not_available": "Location not available",
+  "build_route": "Build Route",
+  "choose_navigation_app": "Choose Navigation App",
+  "universal_navigation": "Universal navigation",
+  "ios_navigation": "Built-in iOS navigation",
+  "yandex_maps": "Yandex Maps",
+  "detailed_russian_maps": "Detailed maps of Russia",
+  "detailed_city_maps": "Detailed city maps",
+  "app_not_installed": "App not installed",
+  "install": "Install",
+  "error_opening_app": "Error opening app",
+  "choose_map": "Choose Map"
 }

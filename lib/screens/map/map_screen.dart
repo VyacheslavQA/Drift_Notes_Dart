@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../config/api_keys.dart';
 import '../../localization/app_localizations.dart';
+import '../../models/fishing_note_model.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -33,6 +36,9 @@ class _MapScreenState extends State<MapScreen> {
     target: LatLng(52.2788, 76.9419), // Павлодар
     zoom: 11.0,
   );
+
+  // НОВОЕ: Список заметок для построения маршрутов
+  List<FishingNoteModel> _fishingNotes = [];
 
   @override
   void initState() {
@@ -194,11 +200,11 @@ class _MapScreenState extends State<MapScreen> {
 
   // Опция выбора типа карты
   Widget _buildMapTypeOption(
-    MapType mapType,
-    String title,
-    String description,
-    IconData icon,
-  ) {
+      MapType mapType,
+      String title,
+      String description,
+      IconData icon,
+      ) {
     final isSelected = _currentMapType == mapType;
 
     return InkWell(
@@ -208,9 +214,9 @@ class _MapScreenState extends State<MapScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color:
-              isSelected
-                  ? AppConstants.primaryColor.withValues(alpha: 0.1)
-                  : const Color(0xFF12332E),
+          isSelected
+              ? AppConstants.primaryColor.withValues(alpha: 0.1)
+              : const Color(0xFF12332E),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppConstants.primaryColor : Colors.transparent,
@@ -225,17 +231,17 @@ class _MapScreenState extends State<MapScreen> {
               height: 60,
               decoration: BoxDecoration(
                 color:
-                    isSelected
-                        ? AppConstants.primaryColor
-                        : AppConstants.textColor.withValues(alpha: 0.1),
+                isSelected
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
                 color:
-                    isSelected
-                        ? AppConstants.textColor
-                        : AppConstants.textColor.withValues(alpha: 0.7),
+                isSelected
+                    ? AppConstants.textColor
+                    : AppConstants.textColor.withValues(alpha: 0.7),
                 size: 30,
               ),
             ),
@@ -285,6 +291,455 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     );
+  }
+
+  // НОВЫЙ МЕТОД: Показ информации о заметке рыбалки с возможностью построения маршрута
+  void _showFishingNoteInfo(FishingNoteModel note) {
+    final localizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Заголовок
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.location_on,
+                    color: AppConstants.primaryColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        note.location,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        localizations.translate(note.fishingType),
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.close, color: AppConstants.textColor),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Информация о рыбалке
+            _buildInfoRow(
+              Icons.calendar_today,
+              localizations.translate('date'),
+              note.isMultiDay && note.endDate != null
+                  ? '${_formatDate(note.date)} - ${_formatDate(note.endDate!)}'
+                  : _formatDate(note.date),
+            ),
+
+            const SizedBox(height: 12),
+
+            _buildInfoRow(
+              Icons.set_meal,
+              localizations.translate('bite_records'),
+              '${note.biteRecords.length} ${_getBiteRecordsText(note.biteRecords.length)}',
+            ),
+
+            const SizedBox(height: 12),
+
+            if (note.photoUrls.isNotEmpty)
+              _buildInfoRow(
+                Icons.photo_library,
+                localizations.translate('photos'),
+                '${note.photoUrls.length} ${localizations.translate('photos')}',
+              ),
+
+            const SizedBox(height: 20),
+
+            // Кнопки действий
+            Row(
+              children: [
+                // Кнопка "Построить маршрут"
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _navigateToFishingSpot(note);
+                    },
+                    icon: Icon(
+                      Icons.navigation,
+                      color: AppConstants.textColor,
+                      size: 20,
+                    ),
+                    label: Text(
+                      localizations.translate('build_route'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Построение строки информации
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: AppConstants.textColor.withValues(alpha: 0.7),
+          size: 18,
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: AppConstants.textColor.withValues(alpha: 0.7),
+            fontSize: 14,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Форматирование даты
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
+
+  // НОВЫЙ МЕТОД: Склонение слова "поклевка"
+  String _getBiteRecordsText(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'поклевка';
+    } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+        (count % 100 < 10 || count % 100 >= 20)) {
+      return 'поклевки';
+    } else {
+      return 'поклевок';
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Построение маршрута до места рыбалки
+  Future<void> _navigateToFishingSpot(FishingNoteModel note) async {
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем выбор навигационных приложений
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _buildNavigationOptionsSheet(note),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: BottomSheet с выбором навигационных приложений
+  Widget _buildNavigationOptionsSheet(FishingNoteModel note) {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                localizations.translate('choose_map'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: Icon(Icons.close, color: AppConstants.textColor),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Google Maps
+          _buildNavigationOption(
+            title: 'Google Maps',
+            subtitle: localizations.translate('universal_navigation'),
+            icon: Icons.map,
+            onTap: () => _openGoogleMaps(note),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Apple Maps (только для iOS)
+          if (Platform.isIOS)
+            _buildNavigationOption(
+              title: 'Apple Maps',
+              subtitle: localizations.translate('ios_navigation'),
+              icon: Icons.map_outlined,
+              onTap: () => _openAppleMaps(note),
+            ),
+
+          if (Platform.isIOS) const SizedBox(height: 12),
+
+          // Яндекс.Карты
+          _buildNavigationOption(
+            title: localizations.translate('yandex_maps'),
+            subtitle: localizations.translate('detailed_russian_maps'),
+            icon: Icons.alt_route,
+            onTap: () => _openYandexMaps(note),
+          ),
+
+          const SizedBox(height: 12),
+
+          // 2GIS
+          _buildNavigationOption(
+            title: '2GIS',
+            subtitle: localizations.translate('detailed_city_maps'),
+            icon: Icons.location_city,
+            onTap: () => _open2GIS(note),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Построение опции навигации
+  Widget _buildNavigationOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF12332E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: AppConstants.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.launch,
+              color: AppConstants.textColor.withValues(alpha: 0.5),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // НОВЫЕ МЕТОДЫ: Открытие различных навигационных приложений
+  Future<void> _openGoogleMaps(FishingNoteModel note) async {
+    Navigator.pop(context);
+    final url = 'https://www.google.com/maps/dir/?api=1&destination=${note.latitude},${note.longitude}';
+    await _launchURL(url, 'Google Maps');
+  }
+
+  Future<void> _openAppleMaps(FishingNoteModel note) async {
+    Navigator.pop(context);
+    final url = 'http://maps.apple.com/?daddr=${note.latitude},${note.longitude}&dirflg=d';
+    await _launchURL(url, 'Apple Maps');
+  }
+
+  Future<void> _openYandexMaps(FishingNoteModel note) async {
+    Navigator.pop(context);
+    final url = 'yandexmaps://maps.yandex.ru/?rtext=~${note.latitude},${note.longitude}&rtt=auto';
+    await _launchURL(url, 'Яндекс.Карты');
+  }
+
+  Future<void> _open2GIS(FishingNoteModel note) async {
+    Navigator.pop(context);
+    final url = 'dgis://2gis.ru/routeSearch/rsType/car/to/${note.longitude},${note.latitude}';
+    await _launchURL(url, '2GIS');
+  }
+
+  // НОВЫЙ МЕТОД: Универсальный запуск URL
+  Future<void> _launchURL(String url, String appName) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      final uri = Uri.parse(url);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        // Если приложение не установлено, показываем сообщение
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${localizations.translate('app_not_installed')}: $appName',
+              ),
+              backgroundColor: Colors.orange,
+              action: SnackBarAction(
+                label: localizations.translate('install'),
+                textColor: Colors.white,
+                onPressed: () => _openAppStore(appName),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_opening_app')}: $appName',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // НОВЫЙ МЕТОД: Открытие магазина приложений
+  Future<void> _openAppStore(String appName) async {
+    String storeUrl = '';
+
+    if (Platform.isAndroid) {
+      switch (appName) {
+        case 'Google Maps':
+          storeUrl = 'https://play.google.com/store/apps/details?id=com.google.android.apps.maps';
+          break;
+        case 'Яндекс.Карты':
+          storeUrl = 'https://play.google.com/store/apps/details?id=ru.yandex.yandexmaps';
+          break;
+        case '2GIS':
+          storeUrl = 'https://play.google.com/store/apps/details?id=ru.dublgis.dgismobile';
+          break;
+      }
+    } else if (Platform.isIOS) {
+      switch (appName) {
+        case 'Google Maps':
+          storeUrl = 'https://apps.apple.com/app/google-maps/id585027354';
+          break;
+        case 'Яндекс.Карты':
+          storeUrl = 'https://apps.apple.com/app/yandex-maps/id313877526';
+          break;
+        case '2GIS':
+          storeUrl = 'https://apps.apple.com/app/2gis/id481627348';
+          break;
+      }
+    }
+
+    if (storeUrl.isNotEmpty) {
+      final uri = Uri.parse(storeUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
   }
 
   // Загрузка текущей геолокации пользователя БЕЗ локализации (для initState)
@@ -426,7 +881,7 @@ class _MapScreenState extends State<MapScreen> {
 
           // Обновляем маркер текущей позиции
           _markers.removeWhere(
-            (marker) => marker.markerId.value == 'currentLocation',
+                (marker) => marker.markerId.value == 'currentLocation',
           );
           _markers.add(
             Marker(
@@ -462,16 +917,19 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Загрузка точек рыбалки пользователя БЕЗ локализации (для initState)
+  // ОБНОВЛЕНО: Загрузка точек рыбалки пользователя БЕЗ локализации (для initState)
   Future<void> _loadFishingSpotsWithoutLocalization() async {
     try {
       final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
 
       // Фильтруем заметки, у которых есть координаты
       final notesWithCoordinates =
-          fishingNotes
-              .where((note) => note.latitude != 0 && note.longitude != 0)
-              .toList();
+      fishingNotes
+          .where((note) => note.latitude != 0 && note.longitude != 0)
+          .toList();
+
+      // НОВОЕ: Сохраняем заметки для построения маршрутов
+      _fishingNotes = notesWithCoordinates;
 
       // Создаем маркеры для каждой точки рыбалки
       for (var note in notesWithCoordinates) {
@@ -482,13 +940,17 @@ class _MapScreenState extends State<MapScreen> {
             infoWindow: InfoWindow(
               title: note.location,
               snippet:
-                  note.isMultiDay
-                      ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
-                      : 'Дата: ${note.date.day}.${note.date.month}.${note.date.year}',
+              note.isMultiDay
+                  ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
+                  : 'Дата: ${note.date.day}.${note.date.month}.${note.date.year}',
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
+            // НОВОЕ: Обработчик нажатия на маркер
+            onTap: () {
+              _showFishingNoteInfo(note);
+            },
           ),
         );
       }
@@ -501,7 +963,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Загрузка точек рыбалки пользователя С локализацией
+  // ОБНОВЛЕНО: Загрузка точек рыбалки пользователя С локализацией
   Future<void> _loadFishingSpots() async {
     final localizations = AppLocalizations.of(context);
 
@@ -510,13 +972,16 @@ class _MapScreenState extends State<MapScreen> {
 
       // Фильтруем заметки, у которых есть координаты
       final notesWithCoordinates =
-          fishingNotes
-              .where((note) => note.latitude != 0 && note.longitude != 0)
-              .toList();
+      fishingNotes
+          .where((note) => note.latitude != 0 && note.longitude != 0)
+          .toList();
+
+      // НОВОЕ: Сохраняем заметки для построения маршрутов
+      _fishingNotes = notesWithCoordinates;
 
       // Очищаем старые маркеры рыбалки
       _markers.removeWhere(
-        (marker) => marker.markerId.value != 'currentLocation',
+            (marker) => marker.markerId.value != 'currentLocation',
       );
 
       // Создаем маркеры для каждой точки рыбалки
@@ -528,13 +993,17 @@ class _MapScreenState extends State<MapScreen> {
             infoWindow: InfoWindow(
               title: note.location,
               snippet:
-                  note.isMultiDay
-                      ? '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
-                      : '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year}',
+              note.isMultiDay
+                  ? '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
+                  : '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year}',
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
+            // НОВОЕ: Обработчик нажатия на маркер
+            onTap: () {
+              _showFishingNoteInfo(note);
+            },
           ),
         );
       }
@@ -670,104 +1139,104 @@ class _MapScreenState extends State<MapScreen> {
           // Основное содержимое
           _isLoading
               ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: AppConstants.primaryColor),
-                    const SizedBox(height: 16),
-                    Text(
-                      localizations.translate('loading_map'),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              : _errorLoadingMap
-              ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        !ApiKeys.hasGoogleMapsKey
-                            ? Icons.warning_amber_rounded
-                            : Icons.location_off,
-                        color:
-                            !ApiKeys.hasGoogleMapsKey
-                                ? Colors.orange
-                                : AppConstants.textColor,
-                        size: 64,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        !ApiKeys.hasGoogleMapsKey
-                            ? localizations.translate(
-                              'google_maps_not_configured',
-                            )
-                            : _errorMessage,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        !ApiKeys.hasGoogleMapsKey
-                            ? localizations.translate('api_key_needed_for_map')
-                            : localizations.translate(
-                              'check_internet_and_location_permissions',
-                            ),
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _retryLoading,
-                        icon: Icon(
-                          !ApiKeys.hasGoogleMapsKey
-                              ? Icons.info
-                              : Icons.refresh,
-                        ),
-                        label: Text(
-                          !ApiKeys.hasGoogleMapsKey
-                              ? localizations.translate('more_details')
-                              : localizations.translate('try_again'),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: AppConstants.primaryColor),
+                const SizedBox(height: 16),
+                Text(
+                  localizations.translate('loading_map'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
                   ),
                 ),
-              )
-              : GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition: _initialPosition,
-                markers: _markers,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false, // Отключаем стандартную кнопку
-                mapType: _currentMapType, // Используем выбранный тип карты
-                zoomControlsEnabled: true, // Включаем стандартные кнопки зума
-                compassEnabled: true,
+              ],
+            ),
+          )
+              : _errorLoadingMap
+              ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? Icons.warning_amber_rounded
+                        : Icons.location_off,
+                    color:
+                    !ApiKeys.hasGoogleMapsKey
+                        ? Colors.orange
+                        : AppConstants.textColor,
+                    size: 64,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? localizations.translate(
+                      'google_maps_not_configured',
+                    )
+                        : _errorMessage,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    !ApiKeys.hasGoogleMapsKey
+                        ? localizations.translate('api_key_needed_for_map')
+                        : localizations.translate(
+                      'check_internet_and_location_permissions',
+                    ),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _retryLoading,
+                    icon: Icon(
+                      !ApiKeys.hasGoogleMapsKey
+                          ? Icons.info
+                          : Icons.refresh,
+                    ),
+                    label: Text(
+                      !ApiKeys.hasGoogleMapsKey
+                          ? localizations.translate('more_details')
+                          : localizations.translate('try_again'),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: AppConstants.textColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          )
+              : GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: _initialPosition,
+            markers: _markers,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false, // Отключаем стандартную кнопку
+            mapType: _currentMapType, // Используем выбранный тип карты
+            zoomControlsEnabled: true, // Включаем стандартные кнопки зума
+            compassEnabled: true,
+          ),
 
           // Кнопка выбора типа карты (поверх карты, справа вверху)
           if (!_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
@@ -822,17 +1291,17 @@ class _MapScreenState extends State<MapScreen> {
 
       // FAB для местоположения (слева внизу, чтобы не мешать кнопкам зума)
       floatingActionButton:
-          !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
-              ? FloatingActionButton(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: AppConstants.textColor,
-                onPressed: _loadUserLocation,
-                tooltip: localizations.translate('my_location'),
-                child: const Icon(Icons.my_location),
-              )
-              : null,
+      !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
+          ? FloatingActionButton(
+        backgroundColor: AppConstants.primaryColor,
+        foregroundColor: AppConstants.textColor,
+        onPressed: _loadUserLocation,
+        tooltip: localizations.translate('my_location'),
+        child: const Icon(Icons.my_location),
+      )
+          : null,
       floatingActionButtonLocation:
-          FloatingActionButtonLocation.startFloat, // Слева внизу
+      FloatingActionButtonLocation.startFloat, // Слева внизу
     );
   }
 }
