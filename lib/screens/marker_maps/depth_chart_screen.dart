@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
+import '../../models/depth_analysis_model.dart';
+import '../../services/depth_analysis_service.dart';
 import '../../localization/app_localizations.dart';
 
 class DepthChartScreen extends StatefulWidget {
@@ -18,24 +20,37 @@ class DepthChartScreen extends StatefulWidget {
 
 class DepthChartScreenState extends State<DepthChartScreen> {
   int _selectedRayIndex = 0;
-  double _zoomLevel = 0.5; // Начальное значение 50%
+  double _zoomLevel = 0.5;
   final int _maxRays = 5;
 
+  // Новые переменные для улучшенного функционала
+  bool _isComparisonMode = false;
+  List<int> _selectedRaysForComparison = [0];
+  bool _showAIAnalysis = false;
+  MultiRayAnalysis? _aiAnalysis;
+  AnalysisSettings _analysisSettings = AnalysisSettings(
+    targetFish: ['карп', 'амур', 'сазан'],
+    season: SeasonType.summer,
+    timeOfDay: FishingTimeOfDay.morning,
+  );
+
+  // Цвета для разных лучей в режиме сравнения
+  final List<Color> _rayColors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+  ];
+
   // Константы для графика
-  static const double MAX_DISTANCE = 200.0; // Всегда полная шкала до 200м
-  static const double DISTANCE_STEP = 10.0; // Шаг в 10м
-
-  // Фиксированная высота графика - 5 см (примерно 190 пикселей при стандартной плотности)
+  static const double MAX_DISTANCE = 200.0;
+  static const double DISTANCE_STEP = 10.0;
   static const double FIXED_CHART_HEIGHT = 190.0;
+  static const double MIN_PIXELS_PER_METER = 4.6;
+  static const double MAX_PIXELS_PER_METER = 9.2;
 
-  // ИСПРАВЛЕНО: Увеличенные значения для достижения 7мм и 14мм
-  // Экспериментально подобранные значения для нужных размеров
-  static const double MIN_PIXELS_PER_METER =
-      4.6; // Для получения 7мм между отметками
-  static const double MAX_PIXELS_PER_METER =
-      9.2; // Для получения 14мм между отметками
-
-  // Цвета для типов дна (те же что и на карте)
+  // Цвета для типов дна
   final Map<String, Color> _bottomTypeColors = {
     'ил': Color(0xFFD4A574),
     'глубокий_ил': Color(0xFF8B4513),
@@ -50,9 +65,9 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   };
 
   final Map<String, IconData> _bottomTypeIcons = {
-    'ил': Icons.view_headline, // горизонтальные линии для ила
+    'ил': Icons.view_headline,
     'глубокий_ил': Icons.waves_outlined,
-    'ракушка': Icons.wifi, // волнистые линии WiFi для ракушки
+    'ракушка': Icons.wifi,
     'ровно_твердо': Icons.remove,
     'камни': Icons.more_horiz,
     'трава_водоросли': Icons.grass,
@@ -65,18 +80,17 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   @override
   void initState() {
     super.initState();
-    // Разрешаем поворот экрана для графиков
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    _runAIAnalysis();
   }
 
   @override
   void dispose() {
-    // Восстанавливаем ориентацию по умолчанию
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -84,31 +98,703 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     super.dispose();
   }
 
-  // ДОБАВЛЕНО: Функция для вычисления pixelsPerMeter на основе _zoomLevel
+  // Запуск ИИ анализа
+  Future<void> _runAIAnalysis() async {
+    try {
+      final analysis = DepthAnalysisService.analyzeAllRays(
+        widget.markerMap.markers,
+        _analysisSettings,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiAnalysis = analysis;
+        });
+      }
+    } catch (e) {
+      debugPrint('Ошибка ИИ анализа: $e');
+    }
+  }
+
   double get _pixelsPerMeterDistance {
-    // Интерполяция между минимальным и максимальным значением
     return MIN_PIXELS_PER_METER +
         (_zoomLevel * (MAX_PIXELS_PER_METER - MIN_PIXELS_PER_METER));
   }
 
   // Получение маркеров для выбранного луча
   List<Map<String, dynamic>> _getMarkersForRay(int rayIndex) {
-    final markersForRay =
-        widget.markerMap.markers
-            .where(
-              (marker) => (marker['rayIndex'] as double?)?.toInt() == rayIndex,
-            )
-            .where(
-              (marker) => marker['depth'] != null && marker['distance'] != null,
-            )
-            .toList();
+    final markersForRay = widget.markerMap.markers
+        .where((marker) => (marker['rayIndex'] as double?)?.toInt() == rayIndex)
+        .where((marker) => marker['depth'] != null && marker['distance'] != null)
+        .toList();
 
-    // Сортируем по дистанции
     markersForRay.sort(
-      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+          (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
     );
 
     return markersForRay;
+  }
+
+  // Получение маркеров для нескольких лучей
+  List<List<Map<String, dynamic>>> _getMarkersForSelectedRays() {
+    return _selectedRaysForComparison
+        .map((rayIndex) => _getMarkersForRay(rayIndex))
+        .toList();
+  }
+
+  // Переключение режима сравнения
+  void _toggleComparisonMode() {
+    setState(() {
+      _isComparisonMode = !_isComparisonMode;
+      if (!_isComparisonMode) {
+        _selectedRaysForComparison = [_selectedRayIndex];
+      }
+    });
+  }
+
+  // Переключение луча для сравнения
+  void _toggleRayForComparison(int rayIndex) {
+    setState(() {
+      if (_selectedRaysForComparison.contains(rayIndex)) {
+        if (_selectedRaysForComparison.length > 1) {
+          _selectedRaysForComparison.remove(rayIndex);
+        }
+      } else {
+        _selectedRaysForComparison.add(rayIndex);
+      }
+    });
+  }
+
+  // Переключение ИИ анализа
+  void _toggleAIAnalysis() {
+    setState(() {
+      _showAIAnalysis = !_showAIAnalysis;
+    });
+  }
+
+  // Показ настроек ИИ анализа
+  void _showAISettings() {
+    final localizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localizations.translate('ai_analysis_settings'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Целевая рыба
+                  Text(
+                    localizations.translate('target_fish'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  Wrap(
+                    spacing: 8,
+                    children: ['карп', 'амур', 'сазан', 'толстолобик', 'щука', 'судак', 'окунь', 'лещ'].map((fish) {
+                      final isSelected = _analysisSettings.targetFish.contains(fish);
+                      return FilterChip(
+                        label: Text(_getTranslatedFishName(fish, localizations)),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setModalState(() {
+                            final newTargetFish = List<String>.from(_analysisSettings.targetFish);
+                            if (selected) {
+                              newTargetFish.add(fish);
+                            } else {
+                              newTargetFish.remove(fish);
+                            }
+                            _analysisSettings = AnalysisSettings(
+                              targetFish: newTargetFish,
+                              season: _analysisSettings.season,
+                              timeOfDay: _analysisSettings.timeOfDay,
+                            );
+                          });
+                        },
+                        selectedColor: AppConstants.primaryColor.withValues(alpha: 0.3),
+                        checkmarkColor: AppConstants.textColor,
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Сезон
+                  Text(
+                    localizations.translate('season'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  DropdownButton<SeasonType>(
+                    value: _analysisSettings.season,
+                    dropdownColor: AppConstants.surfaceColor,
+                    style: TextStyle(color: AppConstants.textColor),
+                    items: SeasonType.values.map((season) {
+                      return DropdownMenuItem(
+                        value: season,
+                        child: Text(_getTranslatedSeason(season, localizations)),
+                      );
+                    }).toList(),
+                    onChanged: (season) {
+                      if (season != null) {
+                        setModalState(() {
+                          _analysisSettings = AnalysisSettings(
+                            targetFish: _analysisSettings.targetFish,
+                            season: season,
+                            timeOfDay: _analysisSettings.timeOfDay,
+                          );
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Кнопки
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          localizations.translate('cancel'),
+                          style: TextStyle(color: AppConstants.textColor),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _runAIAnalysis();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primaryColor,
+                        ),
+                        child: Text(
+                          localizations.translate('apply'),
+                          style: TextStyle(color: AppConstants.textColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Вспомогательные методы для переводов
+  String _getTranslatedFishName(String fish, AppLocalizations localizations) {
+    switch (fish) {
+      case 'карп': return localizations.translate('carp');
+      case 'амур': return localizations.translate('grass_carp');
+      case 'сазан': return localizations.translate('wild_carp');
+      case 'толстолобик': return localizations.translate('silver_carp');
+      case 'щука': return localizations.translate('pike');
+      case 'судак': return localizations.translate('zander');
+      case 'окунь': return localizations.translate('perch');
+      case 'лещ': return localizations.translate('bream');
+      default: return fish;
+    }
+  }
+
+  String _getTranslatedSeason(SeasonType season, AppLocalizations localizations) {
+    switch (season) {
+      case SeasonType.spring: return localizations.translate('spring');
+      case SeasonType.summer: return localizations.translate('summer');
+      case SeasonType.autumn: return localizations.translate('autumn');
+      case SeasonType.winter: return localizations.translate('winter');
+    }
+  }
+
+  // Компактная ИИ кнопка для размещения в строке с лучами
+  Widget _buildCompactAIButton() {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    String statusText = '';
+    Color statusColor = AppConstants.primaryColor;
+
+    if (_aiAnalysis != null && _aiAnalysis!.topRecommendations.isNotEmpty) {
+      final topRating = _aiAnalysis!.topRecommendations.first.rating;
+      if (topRating >= 9.0) {
+        statusText = '🟢';
+        statusColor = Colors.green;
+      } else if (topRating >= 8.0) {
+        statusText = '🔵';
+        statusColor = Colors.blue;
+      } else {
+        statusText = '🟠';
+        statusColor = Colors.orange;
+      }
+    }
+
+    return GestureDetector(
+      onTap: _showDetailedAIAnalysis,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isLandscape ? 8 : 12,
+          vertical: isLandscape ? 6 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppConstants.primaryColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.psychology,
+              color: statusColor,
+              size: isLandscape ? 16 : 18,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              statusText,
+              style: TextStyle(
+                fontSize: isLandscape ? 12 : 14,
+              ),
+            ),
+            if (_aiAnalysis != null && _aiAnalysis!.topRecommendations.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Text(
+                _aiAnalysis!.topRecommendations.first.rating.toStringAsFixed(1),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: isLandscape ? 10 : 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            const SizedBox(width: 4),
+            Icon(
+              Icons.info_outline,
+              color: AppConstants.textColor.withValues(alpha: 0.7),
+              size: isLandscape ? 14 : 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Показ детального ИИ анализа в модальном окне
+  void _showDetailedAIAnalysis() {
+    final localizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.cardColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Заголовок
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.psychology,
+                        color: AppConstants.primaryColor,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        localizations.translate('detailed_ai_analysis'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Содержимое с прокруткой
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Общая оценка
+                          _buildAnalysisSection(
+                            'Общая оценка',
+                            _aiAnalysis!.overallAssessment,
+                            Icons.assessment,
+                          ),
+
+                          // Топ рекомендации
+                          if (_aiAnalysis!.topRecommendations.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            _buildTopRecommendationsSection(),
+                          ],
+
+                          // Вероятности рыбы
+                          if (_aiAnalysis!.fishProbabilities.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            _buildFishProbabilitiesSection(),
+                          ],
+
+                          // Общие советы
+                          if (_aiAnalysis!.generalTips.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            _buildGeneralTipsSection(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Кнопка закрытия
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primaryColor,
+                        ),
+                        child: Text(
+                          localizations.translate('close'),
+                          style: TextStyle(color: AppConstants.textColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAnalysisSection(String title, String content, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppConstants.primaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            content,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopRecommendationsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.star, color: Colors.orange, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Топ места',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...(_aiAnalysis!.topRecommendations.take(5).map((rec) {
+            Color ratingColor;
+            switch (rec.type) {
+              case RecommendationType.excellent:
+                ratingColor = Colors.green;
+                break;
+              case RecommendationType.good:
+                ratingColor = Colors.blue;
+                break;
+              case RecommendationType.average:
+                ratingColor = Colors.orange;
+                break;
+              case RecommendationType.avoid:
+                ratingColor = Colors.red;
+                break;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ratingColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ratingColor.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '${rec.distance.toInt()}м, ${rec.depth.toStringAsFixed(1)}м',
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: ratingColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${rec.rating.toStringAsFixed(1)}/10',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    rec.reason,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (rec.targetFish.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Рыба: ${rec.targetFish.join(', ')}',
+                      style: TextStyle(
+                        color: ratingColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFishProbabilitiesSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bar_chart, color: AppConstants.primaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Прогноз по видам рыб',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...(_aiAnalysis!.fishProbabilities.entries.map((entry) {
+            final probability = entry.value;
+            final fishName = entry.key;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      fishName,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: LinearProgressIndicator(
+                      value: probability,
+                      backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        probability > 0.7 ? Colors.green :
+                        probability > 0.4 ? Colors.blue : Colors.orange,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${(probability * 100).toInt()}%',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeneralTipsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb, color: Colors.yellow, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Советы',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...(_aiAnalysis!.generalTips.map((tip) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.yellow.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.yellow.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.tips_and_updates,
+                    color: Colors.yellow,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tip,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList()),
+        ],
+      ),
+    );
   }
 
   // Получение названия типа дна
@@ -117,50 +803,33 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     if (type == null) return localizations.translate('silt');
 
     switch (type) {
-      case 'ил':
-        return localizations.translate('silt');
-      case 'глубокий_ил':
-        return localizations.translate('deep_silt');
-      case 'ракушка':
-        return localizations.translate('shell');
-      case 'ровно_твердо':
-        return localizations.translate('firm_bottom');
-      case 'камни':
-        return localizations.translate('stones');
-      case 'трава_водоросли':
-        return localizations.translate('grass_algae');
-      case 'зацеп':
-        return localizations.translate('snag');
-      case 'бугор':
-        return localizations.translate('hill');
-      case 'точка_кормления':
-        return localizations.translate('feeding_spot');
-      default:
-        return localizations.translate('silt');
+      case 'ил': return localizations.translate('silt');
+      case 'глубокий_ил': return localizations.translate('deep_silt');
+      case 'ракушка': return localizations.translate('shell');
+      case 'ровно_твердо': return localizations.translate('firm_bottom');
+      case 'камни': return localizations.translate('stones');
+      case 'трава_водоросли': return localizations.translate('grass_algae');
+      case 'зацеп': return localizations.translate('snag');
+      case 'бугор': return localizations.translate('hill');
+      case 'точка_кормления': return localizations.translate('feeding_spot');
+      default: return localizations.translate('silt');
     }
   }
 
-  // Конвертация старых типов в новые (для совместимости)
+  // Конвертация старых типов в новые
   String _convertLegacyTypeToNew(String? type) {
     if (type == null) return 'ил';
-
     switch (type) {
-      case 'dropoff':
-        return 'бугор';
-      case 'weed':
-        return 'трава_водоросли';
-      case 'sandbar':
-        return 'ровно_твердо';
-      case 'structure':
-        return 'зацеп';
-      case 'default':
-        return 'ил';
-      default:
-        return type;
+      case 'dropoff': return 'бугор';
+      case 'weed': return 'трава_водоросли';
+      case 'sandbar': return 'ровно_твердо';
+      case 'structure': return 'зацеп';
+      case 'default': return 'ил';
+      default: return type;
     }
   }
 
-  // Показ деталей маркера при тапе
+  // Показ деталей маркера
   void _showMarkerDetails(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
 
@@ -178,7 +847,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${localizations.translate('marker')} - ${localizations.translate('ray')} ${_selectedRayIndex + 1}',
+                '${localizations.translate('marker')} - ${localizations.translate('ray')} ${(marker['rayIndex'] as double).toInt() + 1}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 22,
@@ -193,7 +862,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                   Icon(Icons.straighten, color: AppConstants.textColor),
                   const SizedBox(width: 8),
                   Text(
-                    '${localizations.translate('distance_m')}: ${marker['distance'].toInt()} м',
+                    '${localizations.translate('distance_m')}: ${(marker['distance'] as double).toInt()} м',
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 16,
@@ -222,14 +891,18 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                 const SizedBox(height: 8),
               ],
 
+              // ИИ рекомендация для этой точки
+              if (_aiAnalysis != null) ...[
+                const SizedBox(height: 8),
+                _buildAIRecommendationForPoint(marker),
+              ],
+
               // Тип дна
               if (marker['bottomType'] != null || marker['type'] != null) ...[
                 Row(
                   children: [
                     Icon(
-                      _bottomTypeIcons[marker['bottomType'] ??
-                              _convertLegacyTypeToNew(marker['type'])] ??
-                          Icons.terrain,
+                      _bottomTypeIcons[marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type'])] ?? Icons.terrain,
                       color: AppConstants.textColor,
                     ),
                     const SizedBox(width: 8),
@@ -290,18 +963,133 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     );
   }
 
+  // Виджет с ИИ рекомендацией для конкретной точки
+  Widget _buildAIRecommendationForPoint(Map<String, dynamic> marker) {
+    if (_aiAnalysis == null) return const SizedBox.shrink();
+
+    final distance = marker['distance'] as double;
+    final rayIndex = (marker['rayIndex'] as double).toInt();
+
+    // Находим ближайшую рекомендацию для этой точки
+    final nearbyRecommendation = _aiAnalysis!.topRecommendations
+        .where((rec) => (rec.distance - distance).abs() < 5.0) // в пределах 5 метров
+        .firstOrNull;
+
+    if (nearbyRecommendation == null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.psychology, color: Colors.grey, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'ИИ: Обычное место, рейтинг средний',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Color recommendationColor;
+    switch (nearbyRecommendation.type) {
+      case RecommendationType.excellent:
+        recommendationColor = Colors.green;
+        break;
+      case RecommendationType.good:
+        recommendationColor = Colors.blue;
+        break;
+      case RecommendationType.average:
+        recommendationColor = Colors.orange;
+        break;
+      case RecommendationType.avoid:
+        recommendationColor = Colors.red;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: recommendationColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: recommendationColor.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.psychology, color: recommendationColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'ИИ рекомендация:',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: recommendationColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${nearbyRecommendation.rating.toStringAsFixed(1)}/10',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            nearbyRecommendation.reason,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+            ),
+          ),
+          if (nearbyRecommendation.targetFish.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Рыба: ${nearbyRecommendation.targetFish.join(', ')}',
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.8),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1F1D), // Тот же темный фон
+      backgroundColor: const Color(0xFF0B1F1D),
       body: SafeArea(
         child: Column(
           children: [
-            // Верхняя панель с переключением лучей
+            // Верхняя панель
             Container(
               height: isLandscape ? 50 : 60,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -330,60 +1118,200 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                     ),
                   ),
 
-                  // Переключатель лучей
-                  Container(
-                    height: isLandscape ? 35 : 40,
-                    decoration: BoxDecoration(
-                      color: AppConstants.backgroundColor.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
+                  // Кнопка режима сравнения
+                  IconButton(
+                    onPressed: _toggleComparisonMode,
+                    icon: Icon(
+                      _isComparisonMode ? Icons.layers : Icons.layers_outlined,
+                      color: _isComparisonMode ? AppConstants.primaryColor : AppConstants.textColor,
+                      size: isLandscape ? 20 : 24,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(_maxRays, (index) {
-                        final markersCount = _getMarkersForRay(index).length;
-                        final isSelected = index == _selectedRayIndex;
+                    tooltip: localizations.translate('comparison_mode'),
+                  ),
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedRayIndex = index;
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isLandscape ? 8 : 12,
-                              vertical: isLandscape ? 6 : 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  isSelected
-                                      ? AppConstants.primaryColor
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${index + 1}${markersCount > 0 ? ' ($markersCount)' : ''}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: isLandscape ? 12 : 14,
-                                fontWeight:
-                                    isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
+                  // Кнопка ИИ анализа
+                  IconButton(
+                    onPressed: _toggleAIAnalysis,
+                    icon: Icon(
+                      _showAIAnalysis ? Icons.psychology : Icons.psychology_outlined,
+                      color: _showAIAnalysis ? AppConstants.primaryColor : AppConstants.textColor,
+                      size: isLandscape ? 20 : 24,
                     ),
+                    tooltip: localizations.translate('ai_analysis'),
+                  ),
+
+                  // Настройки ИИ
+                  IconButton(
+                    onPressed: _showAISettings,
+                    icon: Icon(
+                      Icons.tune,
+                      color: AppConstants.textColor,
+                      size: isLandscape ? 20 : 24,
+                    ),
+                    tooltip: localizations.translate('ai_settings'),
                   ),
                 ],
               ),
             ),
 
-            // График с горизонтальной прокруткой и центрированием
+            // Панель выбора лучей (только в режиме сравнения)
+            if (_isComparisonMode) ...[
+              Container(
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text(
+                      '${localizations.translate('select_rays')}:',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
+                        children: List.generate(_maxRays, (index) {
+                          final markersCount = _getMarkersForRay(index).length;
+                          final isSelected = _selectedRaysForComparison.contains(index);
+
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () => _toggleRayForComparison(index),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 2),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? _rayColors[index].withValues(alpha: 0.3)
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? _rayColors[index]
+                                        : AppConstants.textColor.withValues(alpha: 0.3),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? _rayColors[index]
+                                            : AppConstants.textColor,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (markersCount > 0)
+                                      Text(
+                                        '($markersCount)',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? _rayColors[index]
+                                              : AppConstants.textColor.withValues(alpha: 0.7),
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    // ИИ кнопка справа в режиме сравнения
+                    if (_showAIAnalysis && _aiAnalysis != null) ...[
+                      const SizedBox(width: 12),
+                      _buildCompactAIButton(),
+                    ],
+                  ],
+                ),
+              ),
+            ] else ...[
+              // Обычная панель переключения лучей с ИИ кнопкой
+              Container(
+                height: isLandscape ? 50 : 60,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    // Лучи (смещены влево)
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: isLandscape ? 35 : 40,
+                            decoration: BoxDecoration(
+                              color: AppConstants.backgroundColor.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(_maxRays, (index) {
+                                final markersCount = _getMarkersForRay(index).length;
+                                final isSelected = index == _selectedRayIndex;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedRayIndex = index;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isLandscape ? 8 : 12,
+                                      vertical: isLandscape ? 6 : 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppConstants.primaryColor
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      '${index + 1}${markersCount > 0 ? ' ($markersCount)' : ''}',
+                                      style: TextStyle(
+                                        color: AppConstants.textColor,
+                                        fontSize: isLandscape ? 12 : 14,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ИИ кнопка справа
+                    if (_showAIAnalysis && _aiAnalysis != null) ...[
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _buildCompactAIButton(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            // График с горизонтальной прокруткой
             Expanded(
               child: Container(
                 margin: EdgeInsets.all(isLandscape ? 8 : 16),
@@ -416,15 +1344,13 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                         activeTrackColor: AppConstants.primaryColor,
                         inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
                         thumbColor: AppConstants.primaryColor,
-                        overlayColor: AppConstants.primaryColor.withValues(
-                          alpha: 0.3,
-                        ),
+                        overlayColor: AppConstants.primaryColor.withValues(alpha: 0.3),
                         trackHeight: 4,
                       ),
                       child: Slider(
                         value: _zoomLevel,
-                        min: 0.0, // От 0%
-                        max: 1.0, // До 100%
+                        min: 0.0,
+                        max: 1.0,
                         divisions: 10,
                         onChanged: (value) {
                           setState(() {
@@ -452,18 +1378,11 @@ class DepthChartScreenState extends State<DepthChartScreen> {
 
   Widget _buildChart(bool isLandscape) {
     final localizations = AppLocalizations.of(context);
-    final markersForRay = _getMarkersForRay(_selectedRayIndex);
 
-    // ИСПРАВЛЕНО: Используем геттер вместо локального вычисления
     final pixelsPerMeterDistance = _pixelsPerMeterDistance;
-
-    // Фиксированная высота графика 5 см = 190 пикселей
     final chartHeight = FIXED_CHART_HEIGHT;
-
-    // Вычисляем размеры графика
     final chartWidth = MAX_DISTANCE * pixelsPerMeterDistance;
 
-    // Отступы для осей и подписей
     final leftPadding = 80.0;
     final rightPadding = 40.0;
     final topPadding = 40.0;
@@ -471,6 +1390,11 @@ class DepthChartScreenState extends State<DepthChartScreen> {
 
     final totalWidth = chartWidth + leftPadding + rightPadding;
     final totalHeight = chartHeight + topPadding + bottomPadding;
+
+    // Получаем данные для отображения
+    final markersData = _isComparisonMode
+        ? _getMarkersForSelectedRays()
+        : [_getMarkersForRay(_selectedRayIndex)];
 
     return SizedBox(
       width: totalWidth,
@@ -481,12 +1405,14 @@ class DepthChartScreenState extends State<DepthChartScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: CustomPaint(
-          key: ValueKey(
-            '${_zoomLevel}_${_selectedRayIndex}',
-          ), // ИСПРАВЛЕНО: уникальный ключ
+          key: ValueKey('${_zoomLevel}_${_selectedRayIndex}_${_isComparisonMode}_${_selectedRaysForComparison.join('-')}_${_showAIAnalysis}'),
           size: Size(totalWidth, totalHeight),
-          painter: DepthChartPainter(
-            markers: markersForRay,
+          painter: EnhancedDepthChartPainter(
+            markersData: markersData,
+            allMarkers: widget.markerMap.markers,
+            selectedRays: _isComparisonMode ? _selectedRaysForComparison : [_selectedRayIndex],
+            rayColors: _rayColors,
+            isComparisonMode: _isComparisonMode,
             zoomLevel: _zoomLevel,
             bottomTypeColors: _bottomTypeColors,
             bottomTypeIcons: _bottomTypeIcons,
@@ -496,49 +1422,43 @@ class DepthChartScreenState extends State<DepthChartScreen> {
             convertLegacyType: _convertLegacyTypeToNew,
             fixedChartHeight: chartHeight,
             pixelsPerMeterDistance: pixelsPerMeterDistance,
+            aiAnalysis: _showAIAnalysis ? _aiAnalysis : null,
           ),
-          child:
-              markersForRay.isEmpty
-                  ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.show_chart,
-                          size: isLandscape ? 40 : 50,
-                          color: AppConstants.textColor.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          localizations.translate('no_data_to_display'),
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
-                            fontSize: isLandscape ? 12 : 14,
-                          ),
-                        ),
-                        Text(
-                          '${localizations.translate('ray')} ${_selectedRayIndex + 1}',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.3,
-                            ),
-                            fontSize: isLandscape ? 10 : 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                  : null,
+          child: markersData.every((markers) => markers.isEmpty)
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.show_chart,
+                  size: isLandscape ? 40 : 50,
+                  color: AppConstants.textColor.withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  localizations.translate('no_data_to_display'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                    fontSize: isLandscape ? 12 : 14,
+                  ),
+                ),
+              ],
+            ),
+          )
+              : null,
         ),
       ),
     );
   }
 }
 
-class DepthChartPainter extends CustomPainter {
-  final List<Map<String, dynamic>> markers;
+// Улучшенный painter с поддержкой сравнения и ИИ анализа
+class EnhancedDepthChartPainter extends CustomPainter {
+  final List<List<Map<String, dynamic>>> markersData;
+  final List<Map<String, dynamic>> allMarkers;
+  final List<int> selectedRays;
+  final List<Color> rayColors;
+  final bool isComparisonMode;
   final double zoomLevel;
   final Map<String, Color> bottomTypeColors;
   final Map<String, IconData> bottomTypeIcons;
@@ -548,13 +1468,17 @@ class DepthChartPainter extends CustomPainter {
   final String Function(String?) convertLegacyType;
   final double fixedChartHeight;
   final double pixelsPerMeterDistance;
+  final MultiRayAnalysis? aiAnalysis;
 
-  // Константы
   static const double MAX_DISTANCE = 200.0;
   static const double DISTANCE_STEP = 10.0;
 
-  DepthChartPainter({
-    required this.markers,
+  EnhancedDepthChartPainter({
+    required this.markersData,
+    required this.allMarkers,
+    required this.selectedRays,
+    required this.rayColors,
+    required this.isComparisonMode,
     required this.zoomLevel,
     required this.bottomTypeColors,
     required this.bottomTypeIcons,
@@ -564,11 +1488,11 @@ class DepthChartPainter extends CustomPainter {
     required this.convertLegacyType,
     required this.fixedChartHeight,
     required this.pixelsPerMeterDistance,
+    this.aiAnalysis,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Отступы
     final leftPadding = 80.0;
     final rightPadding = 40.0;
     final topPadding = 40.0;
@@ -577,29 +1501,21 @@ class DepthChartPainter extends CustomPainter {
     final chartWidth = size.width - leftPadding - rightPadding;
     final chartHeight = fixedChartHeight;
 
-    // Фиксированные диапазоны дистанций (ВСЕГДА 0-200м)
-    final minDistance = 0.0;
-    final maxDistance = MAX_DISTANCE;
-
-    // Используем переданный pixelsPerMeterDistance для расчета ширины
-    final actualChartWidth = maxDistance * pixelsPerMeterDistance;
-
-    // Диапазон глубин определяем по маркерам
+    // Определяем общий диапазон глубин для всех лучей
     double minDepth = 0.0;
     double maxDepth = 10.0;
 
-    if (markers.isNotEmpty) {
-      final depths = markers.map((m) => m['depth'] as double).toList();
+    final allVisibleMarkers = markersData.expand((markers) => markers).toList();
+    if (allVisibleMarkers.isNotEmpty) {
+      final depths = allVisibleMarkers.map((m) => m['depth'] as double).toList();
       minDepth = depths.reduce(math.min);
       maxDepth = depths.reduce(math.max);
 
-      // Добавляем отступы к диапазону глубин
       final depthRange = maxDepth - minDepth;
       if (depthRange > 0) {
         minDepth = math.max(0.0, minDepth - depthRange * 0.1);
         maxDepth = maxDepth + depthRange * 0.1;
       } else {
-        // Если все маркеры на одной глубине, создаем небольшой диапазон
         minDepth = math.max(0.0, minDepth - 1.0);
         maxDepth = maxDepth + 1.0;
       }
@@ -611,185 +1527,288 @@ class DepthChartPainter extends CustomPainter {
     }
 
     double depthToY(double depth) {
-      return topPadding +
-          (depth - minDepth) / (maxDepth - minDepth) * chartHeight;
+      return topPadding + (depth - minDepth) / (maxDepth - minDepth) * chartHeight;
     }
 
-    // Рисуем линию профиля дна и маркеры (только если есть маркеры)
-    if (markers.isNotEmpty) {
-      _drawGradientFill(
-        canvas,
-        distanceToX,
-        depthToY,
-        topPadding,
-        chartHeight,
-      ); // Градиентная заливка под профилем
-      _drawProfileLine(canvas, distanceToX, depthToY);
-      _drawMarkers(canvas, distanceToX, depthToY);
-      _drawBottomTypeIndicators(
-        canvas,
-        distanceToX,
-        topPadding,
-      ); // Новая функция для значков сверху
+    // Рисуем ИИ рекомендации для текущего луча (если включены)
+    if (aiAnalysis != null) {
+      if (isComparisonMode) {
+        _drawAIRecommendationsForSelectedRays(canvas, distanceToX, depthToY);
+      } else {
+        _drawAIRecommendationsForSingleRay(canvas, distanceToX, depthToY, selectedRays[0]);
+      }
     }
 
-    // Рисуем подписи осей (только глубина слева и дистанция снизу)
+    // Рисуем профили для всех выбранных лучей
+    for (int i = 0; i < markersData.length; i++) {
+      final markers = markersData[i];
+      final rayIndex = selectedRays[i];
+      final rayColor = isComparisonMode
+          ? rayColors[rayIndex].withValues(alpha: 0.8)
+          : const Color(0xFF6B9AC4);
+
+      if (markers.isNotEmpty) {
+        // Профильная линия (без градиентной заливки в режиме сравнения)
+        _drawProfileLine(canvas, distanceToX, depthToY, markers, rayColor);
+
+        // Маркеры
+        _drawMarkers(canvas, distanceToX, depthToY, markers, rayColor, rayIndex);
+
+        // Иконки типов дна (только для первого луча в режиме сравнения)
+        if (!isComparisonMode || i == 0) {
+          _drawBottomTypeIndicators(canvas, distanceToX, topPadding, markers);
+        }
+      }
+    }
+
+    // Рисуем подписи осей
     _drawAxisLabels(
       canvas,
       size,
       leftPadding,
       topPadding,
-      actualChartWidth,
+      chartWidth,
       chartHeight,
-      minDistance,
-      maxDistance,
+      0.0,
+      MAX_DISTANCE,
       minDepth,
       maxDepth,
     );
-  }
 
-  // Новая функция для отрисовки иконок типа дна сверху с пунктирными линиями
-  void _drawBottomTypeIndicators(
-    Canvas canvas,
-    double Function(double) distanceToX,
-    double topPadding,
-  ) {
-    for (final marker in markers) {
-      final x = distanceToX(marker['distance'] as double);
-      final y = marker['_chartY'] as double; // Позиция точки маркера
-
-      // Определяем тип дна
-      String bottomType =
-          marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
-
-      // Получаем Flutter иконку для типа дна
-      final iconData = bottomTypeIcons[bottomType] ?? Icons.location_on;
-
-      // Рисуем Flutter иконку в самом верху
-      _drawIcon(
-        canvas,
-        iconData,
-        Offset(x, topPadding - 20),
-        isLandscape ? 15.0 : 17.0,
-      );
-
-      // Рисуем тонкую пунктирную линию от иконки к точке
-      _drawDashedLine(canvas, Offset(x, topPadding - 5), Offset(x, y));
+    // Легенда для режима сравнения
+    if (isComparisonMode && selectedRays.length > 1) {
+      _drawComparisonLegend(canvas, size, rightPadding);
     }
   }
 
-  // Функция для рисования Flutter иконки
-  void _drawIcon(Canvas canvas, IconData iconData, Offset center, double size) {
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    textPainter.text = TextSpan(
-      text: String.fromCharCode(iconData.codePoint),
-      style: TextStyle(
-        fontSize: size,
-        fontFamily: iconData.fontFamily,
-        color: Colors.white,
-      ),
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        center.dx - textPainter.width / 2,
-        center.dy - textPainter.height / 2,
-      ),
-    );
+  // Отрисовка ИИ рекомендаций для одного выбранного луча
+  void _drawAIRecommendationsForSingleRay(
+      Canvas canvas,
+      double Function(double) distanceToX,
+      double Function(double) depthToY,
+      int selectedRayIndex,
+      ) {
+    if (aiAnalysis == null) return;
+
+    // Ищем анализ для конкретного луча
+    final rayAnalysis = aiAnalysis!.rayAnalyses
+        .where((a) => a.rayIndex == selectedRayIndex)
+        .firstOrNull;
+
+    if (rayAnalysis == null) return;
+
+    // Рисуем рекомендации для всех точек на этом луче с хорошим рейтингом
+    for (final point in rayAnalysis.points) {
+      if (point.fishingScore != null && point.fishingScore! >= 7.0) {
+        final x = distanceToX(point.distance);
+        final y = depthToY(point.depth);
+        final score = point.fishingScore!;
+
+        Color recommendationColor;
+        double glowRadius;
+
+        if (score >= 9.0) {
+          recommendationColor = Colors.green;
+          glowRadius = 20;
+        } else if (score >= 8.0) {
+          recommendationColor = Colors.blue;
+          glowRadius = 15;
+        } else {
+          recommendationColor = Colors.orange;
+          glowRadius = 12;
+        }
+
+        // Рисуем подсвечивающий круг
+        final glowPaint = Paint()
+          ..color = recommendationColor.withValues(alpha: 0.3)
+          ..style = PaintingStyle.fill;
+
+        canvas.drawCircle(Offset(x, y), glowRadius, glowPaint);
+
+        // Рисуем обводку
+        final borderPaint = Paint()
+          ..color = recommendationColor.withValues(alpha: 0.8)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
+
+        canvas.drawCircle(Offset(x, y), glowRadius, borderPaint);
+
+        // Рисуем звездочку для топ рекомендаций
+        if (score >= 9.0) {
+          _drawStar(canvas, Offset(x, y - glowRadius - 8), recommendationColor, 8);
+        }
+
+        // Рисуем рейтинг рядом с местом
+        _drawScoreLabel(canvas, Offset(x + glowRadius + 5, y), score, recommendationColor);
+      }
+    }
   }
 
-  // Функция для рисования градиентной заливки под профилем дна (как в эхолотах)
-  void _drawGradientFill(
-    Canvas canvas,
-    double Function(double) distanceToX,
-    double Function(double) depthToY,
-    double topPadding,
-    double chartHeight,
-  ) {
-    if (markers.length < 2) return;
+  // Отрисовка ИИ рекомендаций для выбранных лучей в режиме сравнения
+  void _drawAIRecommendationsForSelectedRays(
+      Canvas canvas,
+      double Function(double) distanceToX,
+      double Function(double) depthToY,
+      ) {
+    if (aiAnalysis == null) return;
 
-    // Создаем путь для заливки под профилем
+    // Проходим только по выбранным лучам
+    for (final rayIndex in selectedRays) {
+      final rayAnalysis = aiAnalysis!.rayAnalyses
+          .where((a) => a.rayIndex == rayIndex)
+          .firstOrNull;
+
+      if (rayAnalysis == null) continue;
+
+      // Рисуем рекомендации для этого луча
+      for (final point in rayAnalysis.points) {
+        if (point.fishingScore != null && point.fishingScore! >= 7.0) {
+          final x = distanceToX(point.distance);
+          final y = depthToY(point.depth);
+          final score = point.fishingScore!;
+
+          Color recommendationColor;
+          double glowRadius;
+
+          if (score >= 9.0) {
+            recommendationColor = Colors.green;
+            glowRadius = 20;
+          } else if (score >= 8.0) {
+            recommendationColor = Colors.blue;
+            glowRadius = 15;
+          } else {
+            recommendationColor = Colors.orange;
+            glowRadius = 12;
+          }
+
+          // Рисуем подсвечивающий круг
+          final glowPaint = Paint()
+            ..color = recommendationColor.withValues(alpha: 0.3)
+            ..style = PaintingStyle.fill;
+
+          canvas.drawCircle(Offset(x, y), glowRadius, glowPaint);
+
+          // Рисуем обводку с цветом луча для различения
+          final borderPaint = Paint()
+            ..color = rayColors[rayIndex].withValues(alpha: 0.8)
+            ..strokeWidth = 2
+            ..style = PaintingStyle.stroke;
+
+          canvas.drawCircle(Offset(x, y), glowRadius, borderPaint);
+
+          // Рисуем звездочку для топ рекомендаций
+          if (score >= 9.0) {
+            _drawStar(canvas, Offset(x, y - glowRadius - 8), recommendationColor, 8);
+          }
+
+          // Рисуем рейтинг рядом с местом
+          _drawScoreLabel(canvas, Offset(x + glowRadius + 5, y), score, recommendationColor);
+        }
+      }
+    }
+  }
+
+  // Рисование звездочки
+  void _drawStar(Canvas canvas, Offset center, Color color, double size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
     final path = Path();
+    const double angle = math.pi / 5;
 
-    // Начинаем от первой точки профиля
-    final firstMarker = markers.first;
-    final firstX = distanceToX(firstMarker['distance'] as double);
-    final firstY = depthToY(firstMarker['depth'] as double);
-    path.moveTo(firstX, firstY);
+    for (int i = 0; i < 10; i++) {
+      final radius = i.isEven ? size : size * 0.5;
+      final x = center.dx + radius * math.cos(i * angle - math.pi / 2);
+      final y = center.dy + radius * math.sin(i * angle - math.pi / 2);
 
-    // Добавляем все точки профиля
-    for (final marker in markers) {
-      final x = distanceToX(marker['distance'] as double);
-      final y = depthToY(marker['depth'] as double);
-      path.lineTo(x, y);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
+    path.close();
 
-    // Замыкаем путь до нижней границы графика
-    final lastMarker = markers.last;
-    final lastX = distanceToX(lastMarker['distance'] as double);
-    final bottomY = topPadding + chartHeight;
-
-    path.lineTo(lastX, bottomY); // Вниз от последней точки
-    path.lineTo(firstX, bottomY); // Влево по дну
-    path.close(); // Замыкаем к первой точке
-
-    // Создаем вертикальный градиент (сверху-желтый, снизу-коричневый)
-    final gradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Color(0xFFFFD700), // Ярко-желтый (сверху)
-        Color(0xFFFF8C00), // Оранжевый (середина)
-        Color(0xFF8B4513), // Темно-коричневый (снизу)
-      ],
-      stops: [0.0, 0.5, 1.0],
-    );
-
-    // Применяем градиент
-    final rect = Rect.fromLTWH(firstX, topPadding, lastX - firstX, chartHeight);
-    final paint = Paint()..shader = gradient.createShader(rect);
-
-    // Рисуем заливку
     canvas.drawPath(path, paint);
   }
 
-  void _drawDashedLine(Canvas canvas, Offset start, Offset end) {
-    final paint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.4)
-          ..strokeWidth = 1.0;
+  // Рисование рейтинга рядом с маркером
+  void _drawScoreLabel(Canvas canvas, Offset position, double score, Color color) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: score.toStringAsFixed(1),
+        style: TextStyle(
+          color: color,
+          fontSize: isLandscape ? 10 : 12,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              offset: const Offset(1, 1),
+              blurRadius: 2,
+              color: Colors.black.withValues(alpha: 0.8),
+            ),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
 
-    const dashWidth = 3.0;
-    const dashSpace = 3.0;
+    textPainter.layout();
+    textPainter.paint(canvas, position);
+  }
 
-    final distance = (end - start).distance;
-    final dashCount = (distance / (dashWidth + dashSpace)).floor();
+  // Легенда для режима сравнения
+  void _drawComparisonLegend(Canvas canvas, Size size, double rightPadding) {
+    final legendX = size.width - rightPadding + 10;
+    var legendY = 60.0;
 
-    for (int i = 0; i < dashCount; i++) {
-      final startOffset =
-          start + (end - start) * (i * (dashWidth + dashSpace) / distance);
-      final endOffset =
-          start +
-          (end - start) *
-              ((i * (dashWidth + dashSpace) + dashWidth) / distance);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-      canvas.drawLine(startOffset, endOffset, paint);
+    for (int i = 0; i < selectedRays.length; i++) {
+      final rayIndex = selectedRays[i];
+      final rayColor = rayColors[rayIndex];
+
+      // Цветная линия
+      final linePaint = Paint()
+        ..color = rayColor
+        ..strokeWidth = 3
+        ..style = PaintingStyle.stroke;
+
+      canvas.drawLine(
+        Offset(legendX, legendY),
+        Offset(legendX + 20, legendY),
+        linePaint,
+      );
+
+      // Подпись луча
+      textPainter.text = TextSpan(
+        text: 'Луч ${rayIndex + 1}',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 12,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(legendX + 25, legendY - 6));
+
+      legendY += 25;
     }
   }
 
   void _drawProfileLine(
-    Canvas canvas,
-    double Function(double) distanceToX,
-    double Function(double) depthToY,
-  ) {
+      Canvas canvas,
+      double Function(double) distanceToX,
+      double Function(double) depthToY,
+      List<Map<String, dynamic>> markers,
+      Color lineColor,
+      ) {
     if (markers.length < 2) return;
 
-    final paint =
-        Paint()
-          ..color = Color(0xFF6B9AC4) // Приглушенный голубой
-          ..strokeWidth = 2.0
-          ..style = PaintingStyle.stroke;
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
 
     final path = Path();
     bool isFirst = true;
@@ -810,45 +1829,42 @@ class DepthChartPainter extends CustomPainter {
   }
 
   void _drawMarkers(
-    Canvas canvas,
-    double Function(double) distanceToX,
-    double Function(double) depthToY,
-  ) {
+      Canvas canvas,
+      double Function(double) distanceToX,
+      double Function(double) depthToY,
+      List<Map<String, dynamic>> markers,
+      Color rayColor,
+      int rayIndex,
+      ) {
     for (final marker in markers) {
       final x = distanceToX(marker['distance'] as double);
       final y = depthToY(marker['depth'] as double);
 
-      // Определяем цвет маркера
-      String bottomType =
-          marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
-      final markerColor = bottomTypeColors[bottomType] ?? Colors.blue;
+      String bottomType = marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
+      final markerColor = isComparisonMode
+          ? rayColor
+          : (bottomTypeColors[bottomType] ?? Colors.blue);
 
-      // Рисуем точку маркера
-      final markerPaint =
-          Paint()
-            ..color = markerColor
-            ..style = PaintingStyle.fill;
+      final markerPaint = Paint()
+        ..color = markerColor
+        ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(x, y), isLandscape ? 2 : 2.5, markerPaint);
 
-      // Рисуем подпись глубины (желтым цветом)
-      _drawDepthLabel(canvas, x, y, marker['depth'] as double);
+      _drawDepthLabel(canvas, x, y, marker['depth'] as double, rayColor);
 
-      // Убираем отрисовку символа типа дна здесь - теперь он рисуется сверху
-
-      // Сохраняем позицию для обработки тапов
       marker['_chartX'] = x;
       marker['_chartY'] = y;
       marker['_hitRadius'] = isLandscape ? 15.0 : 20.0;
     }
   }
 
-  void _drawDepthLabel(Canvas canvas, double x, double y, double depth) {
+  void _drawDepthLabel(Canvas canvas, double x, double y, double depth, Color color) {
     final textPainter = TextPainter(
       text: TextSpan(
         text: depth.toStringAsFixed(1),
         style: TextStyle(
-          color: Colors.yellow.shade300,
+          color: isComparisonMode ? color : Colors.yellow.shade300,
           fontSize: isLandscape ? 9 : 10,
           fontWeight: FontWeight.bold,
           shadows: [
@@ -864,49 +1880,78 @@ class DepthChartPainter extends CustomPainter {
     );
 
     textPainter.layout();
-    // Глубина строго под точкой маркера (по центру)
     textPainter.paint(canvas, Offset(x - textPainter.width / 2, y + 12));
   }
 
-  // Убираем функцию _drawBottomTypeSymbol - больше не нужна
+  void _drawBottomTypeIndicators(
+      Canvas canvas,
+      double Function(double) distanceToX,
+      double topPadding,
+      List<Map<String, dynamic>> markers,
+      ) {
+    for (final marker in markers) {
+      final x = distanceToX(marker['distance'] as double);
+      final y = marker['_chartY'] as double;
 
-  String _getBottomTypeSymbol(String bottomType) {
-    switch (bottomType) {
-      case 'ил':
-        return '≈';
-      case 'глубокий_ил':
-        return '≋';
-      case 'ракушка':
-        return '◦';
-      case 'ровно_твердо':
-        return '■';
-      case 'камни':
-        return '●';
-      case 'трава_водоросли':
-        return '♠';
-      case 'зацеп':
-        return '⚠';
-      case 'бугор':
-        return '▲';
-      case 'точка_кормления':
-        return '✦';
-      default:
-        return '●';
+      String bottomType = marker['bottomType'] ?? convertLegacyType(marker['type']) ?? 'ил';
+      final iconData = bottomTypeIcons[bottomType] ?? Icons.location_on;
+
+      _drawIcon(canvas, iconData, Offset(x, topPadding - 20), isLandscape ? 15.0 : 17.0);
+      _drawDashedLine(canvas, Offset(x, topPadding - 5), Offset(x, y));
+    }
+  }
+
+  void _drawIcon(Canvas canvas, IconData iconData, Offset center, double size) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size,
+        fontFamily: iconData.fontFamily,
+        color: Colors.white,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
+      ),
+    );
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.4)
+      ..strokeWidth = 1.0;
+
+    const dashWidth = 3.0;
+    const dashSpace = 3.0;
+
+    final distance = (end - start).distance;
+    final dashCount = (distance / (dashWidth + dashSpace)).floor();
+
+    for (int i = 0; i < dashCount; i++) {
+      final startOffset = start + (end - start) * (i * (dashWidth + dashSpace) / distance);
+      final endOffset = start + (end - start) * ((i * (dashWidth + dashSpace) + dashWidth) / distance);
+
+      canvas.drawLine(startOffset, endOffset, paint);
     }
   }
 
   void _drawAxisLabels(
-    Canvas canvas,
-    Size size,
-    double leftPadding,
-    double topPadding,
-    double chartWidth,
-    double chartHeight,
-    double minDistance,
-    double maxDistance,
-    double minDepth,
-    double maxDepth,
-  ) {
+      Canvas canvas,
+      Size size,
+      double leftPadding,
+      double topPadding,
+      double chartWidth,
+      double chartHeight,
+      double minDistance,
+      double maxDistance,
+      double minDepth,
+      double maxDepth,
+      ) {
     final textStyle = TextStyle(
       color: Colors.white.withValues(alpha: 0.8),
       fontSize: isLandscape ? 10 : 12,
@@ -914,34 +1959,25 @@ class DepthChartPainter extends CustomPainter {
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // Подписи дистанции только снизу графика
+    // Подписи дистанции
     for (double d = 0; d <= maxDistance; d += DISTANCE_STEP) {
       final x = leftPadding + (d * pixelsPerMeterDistance);
 
       textPainter.text = TextSpan(text: '${d.toInt()}', style: textStyle);
       textPainter.layout();
 
-      // Только снизу графика
       textPainter.paint(
         canvas,
         Offset(x - textPainter.width / 2, topPadding + chartHeight + 8),
       );
     }
 
-    // Подписи глубины (ось Y) - оставляем как есть
+    // Подписи глубины
     final depthStep = _calculateDepthStep(maxDepth - minDepth);
-    for (
-      double d = (minDepth / depthStep).ceil() * depthStep;
-      d <= maxDepth;
-      d += depthStep
-    ) {
-      final y =
-          topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
+    for (double d = (minDepth / depthStep).ceil() * depthStep; d <= maxDepth; d += depthStep) {
+      final y = topPadding + (d - minDepth) / (maxDepth - minDepth) * chartHeight;
 
-      textPainter.text = TextSpan(
-        text: '${d.toStringAsFixed(1)}',
-        style: textStyle,
-      );
+      textPainter.text = TextSpan(text: '${d.toStringAsFixed(1)}', style: textStyle);
       textPainter.layout();
       textPainter.paint(canvas, Offset(8, y - textPainter.height / 2));
     }
@@ -950,8 +1986,7 @@ class DepthChartPainter extends CustomPainter {
   double _calculateDepthStep(double range) {
     if (range <= 0) return 1.0;
 
-    final magnitude =
-        math.pow(10, (math.log(range) / math.ln10).floor()).toDouble();
+    final magnitude = math.pow(10, (math.log(range) / math.ln10).floor()).toDouble();
     final normalized = range / magnitude;
 
     if (normalized <= 1) return magnitude * 0.2;
@@ -965,17 +2000,18 @@ class DepthChartPainter extends CustomPainter {
 
   @override
   bool? hitTest(Offset position) {
-    // Проверяем попадание по маркерам
-    for (final marker in markers) {
-      if (marker.containsKey('_chartX') &&
-          marker.containsKey('_chartY') &&
-          marker.containsKey('_hitRadius')) {
-        final center = Offset(marker['_chartX'], marker['_chartY']);
-        final radius = marker['_hitRadius'];
+    for (final markers in markersData) {
+      for (final marker in markers) {
+        if (marker.containsKey('_chartX') &&
+            marker.containsKey('_chartY') &&
+            marker.containsKey('_hitRadius')) {
+          final center = Offset(marker['_chartX'], marker['_chartY']);
+          final radius = marker['_hitRadius'];
 
-        if ((center - position).distance <= radius) {
-          onMarkerTap(marker);
-          return true;
+          if ((center - position).distance <= radius) {
+            onMarkerTap(marker);
+            return true;
+          }
         }
       }
     }

@@ -1829,5 +1829,23 @@
   "app_not_installed": "App not installed",
   "install": "Install",
   "error_opening_app": "Error opening app",
-  "choose_map": "Choose Map"
+  "choose_map": "Choose Map",
+
+  "ai_analysis_settings": "AI Analysis Settings",
+  "target_fish": "Target Fish",
+  "carp": "Carp",
+  "grass_carp": "Grass Carp",
+  "wild_carp": "Wild Carp",
+  "silver_carp": "Silver Carp",
+  "season": "Season",
+  "spring": "Spring",
+  "summer": "Summer",
+  "autumn": "Autumn",
+  "winter": "Winter",
+  "apply": "Apply",
+  "comparison_mode": "Comparison Mode",
+  "ai_analysis": "AI Analysis",
+  "ai_settings": "AI Settings",
+  "select_rays": "Select Rays",
+  "detailed_ai_analysis": "Detailed AI Analysis"
 }

@@ -1768,7 +1768,26 @@
   "app_not_installed": "Приложение не установлено",
   "install": "Установить",
   "error_opening_app": "Ошибка открытия приложения",
-  "choose_map": "Выберите карту"
+  "choose_map": "Выберите карту",
+
+  "ai_analysis_settings": "Настройки ИИ анализа",
+  "target_fish": "Целевая рыба",
+  "season": "Сезон",
+  "spring": "Весна",
+  "summer": "Лето",
+  "autumn": "Осень",
+  "winter": "Зима",
+  "apply": "Применить",
+  "comparison_mode": "Режим сравнения",
+  "ai_analysis": "ИИ анализ",
+  "ai_settings": "Настройки ИИ",
+  "select_rays": "Выберите лучи",
+  "carp": "Карп",
+  "grass_carp": "Амур",
+  "wild_carp": "Сазан",
+  "silver_carp": "Толстолобик",
+  "detailed_ai_analysis": "Детальный ИИ анализ"
+
 
 
 }
