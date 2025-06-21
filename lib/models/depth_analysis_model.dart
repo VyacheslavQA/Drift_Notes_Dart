@@ -52,7 +52,6 @@ class BottomStructure {
   final double slope; // Уклон в градусах
   final double fishingRating; // Рейтинг для рыбалки (0-10)
   final String description;
-  final List<String> recommendedFish; // Рекомендуемые виды рыб
 
   const BottomStructure({
     required this.type,
@@ -63,7 +62,6 @@ class BottomStructure {
     required this.slope,
     required this.fishingRating,
     required this.description,
-    required this.recommendedFish,
   });
 }
 
@@ -85,8 +83,6 @@ class FishingRecommendation {
   final double depth;
   final double rating; // 0-10
   final String reason;
-  final List<String> targetFish;
-  final List<String> recommendedBaits;
   final String bestTime; // Лучшее время для ловли
   final RecommendationType type;
 
@@ -95,8 +91,6 @@ class FishingRecommendation {
     required this.depth,
     required this.rating,
     required this.reason,
-    required this.targetFish,
-    required this.recommendedBaits,
     required this.bestTime,
     required this.type,
   });
@@ -110,54 +104,31 @@ enum RecommendationType {
   avoid, // Избегать
 }
 
-/// Настройки анализа
+/// Настройки анализа (упрощенные - всегда для карповых)
 class AnalysisSettings {
-  final List<String> targetFish;
-  final SeasonType season;
-  final FishingTimeOfDay timeOfDay;
   final bool includeStructureAnalysis;
   final bool includeBottomTypeAnalysis;
   final double minFishingRating; // Минимальный рейтинг для показа
 
   const AnalysisSettings({
-    required this.targetFish,
-    required this.season,
-    required this.timeOfDay,
     this.includeStructureAnalysis = true,
     this.includeBottomTypeAnalysis = true,
     this.minFishingRating = 6.0,
   });
 }
 
-/// Сезоны
-enum SeasonType {
-  spring,
-  summer,
-  autumn,
-  winter,
-}
 
-/// Время суток для анализа
-enum FishingTimeOfDay {
-  dawn, // Рассвет
-  morning, // Утро
-  day, // День
-  evening, // Вечер
-  night, // Ночь
-}
 
 /// Результат комплексного анализа всех лучей
 class MultiRayAnalysis {
   final List<DepthProfileAnalysis> rayAnalyses;
   final List<FishingRecommendation> topRecommendations;
-  final Map<String, double> fishProbabilities; // Вероятности по видам рыб
   final String overallAssessment; // Общая оценка водоема
   final List<String> generalTips; // Общие советы
 
   const MultiRayAnalysis({
     required this.rayAnalyses,
     required this.topRecommendations,
-    required this.fishProbabilities,
     required this.overallAssessment,
     required this.generalTips,
   });

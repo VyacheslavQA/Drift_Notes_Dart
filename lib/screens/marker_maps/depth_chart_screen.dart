@@ -28,11 +28,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
   List<int> _selectedRaysForComparison = [0];
   bool _showAIAnalysis = false;
   MultiRayAnalysis? _aiAnalysis;
-  AnalysisSettings _analysisSettings = AnalysisSettings(
-    targetFish: ['карп', 'амур', 'сазан'],
-    season: SeasonType.summer,
-    timeOfDay: FishingTimeOfDay.morning,
-  );
+  AnalysisSettings _analysisSettings = const AnalysisSettings(); // Упрощенные настройки
 
   // Цвета для разных лучей в режиме сравнения
   final List<Color> _rayColors = [
@@ -172,172 +168,6 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     });
   }
 
-  // Показ настроек ИИ анализа
-  void _showAISettings() {
-    final localizations = AppLocalizations.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppConstants.cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    localizations.translate('ai_analysis_settings'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Целевая рыба
-                  Text(
-                    localizations.translate('target_fish'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  Wrap(
-                    spacing: 8,
-                    children: ['карп', 'амур', 'сазан', 'толстолобик', 'щука', 'судак', 'окунь', 'лещ'].map((fish) {
-                      final isSelected = _analysisSettings.targetFish.contains(fish);
-                      return FilterChip(
-                        label: Text(_getTranslatedFishName(fish, localizations)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setModalState(() {
-                            final newTargetFish = List<String>.from(_analysisSettings.targetFish);
-                            if (selected) {
-                              newTargetFish.add(fish);
-                            } else {
-                              newTargetFish.remove(fish);
-                            }
-                            _analysisSettings = AnalysisSettings(
-                              targetFish: newTargetFish,
-                              season: _analysisSettings.season,
-                              timeOfDay: _analysisSettings.timeOfDay,
-                            );
-                          });
-                        },
-                        selectedColor: AppConstants.primaryColor.withValues(alpha: 0.3),
-                        checkmarkColor: AppConstants.textColor,
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Сезон
-                  Text(
-                    localizations.translate('season'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  DropdownButton<SeasonType>(
-                    value: _analysisSettings.season,
-                    dropdownColor: AppConstants.surfaceColor,
-                    style: TextStyle(color: AppConstants.textColor),
-                    items: SeasonType.values.map((season) {
-                      return DropdownMenuItem(
-                        value: season,
-                        child: Text(_getTranslatedSeason(season, localizations)),
-                      );
-                    }).toList(),
-                    onChanged: (season) {
-                      if (season != null) {
-                        setModalState(() {
-                          _analysisSettings = AnalysisSettings(
-                            targetFish: _analysisSettings.targetFish,
-                            season: season,
-                            timeOfDay: _analysisSettings.timeOfDay,
-                          );
-                        });
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Кнопки
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          localizations.translate('cancel'),
-                          style: TextStyle(color: AppConstants.textColor),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _runAIAnalysis();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                        ),
-                        child: Text(
-                          localizations.translate('apply'),
-                          style: TextStyle(color: AppConstants.textColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // Вспомогательные методы для переводов
-  String _getTranslatedFishName(String fish, AppLocalizations localizations) {
-    switch (fish) {
-      case 'карп': return localizations.translate('carp');
-      case 'амур': return localizations.translate('grass_carp');
-      case 'сазан': return localizations.translate('wild_carp');
-      case 'толстолобик': return localizations.translate('silver_carp');
-      case 'щука': return localizations.translate('pike');
-      case 'судак': return localizations.translate('zander');
-      case 'окунь': return localizations.translate('perch');
-      case 'лещ': return localizations.translate('bream');
-      default: return fish;
-    }
-  }
-
-  String _getTranslatedSeason(SeasonType season, AppLocalizations localizations) {
-    switch (season) {
-      case SeasonType.spring: return localizations.translate('spring');
-      case SeasonType.summer: return localizations.translate('summer');
-      case SeasonType.autumn: return localizations.translate('autumn');
-      case SeasonType.winter: return localizations.translate('winter');
-    }
-  }
-
   // Компактная ИИ кнопка для размещения в строке с лучами
   Widget _buildCompactAIButton() {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
@@ -445,7 +275,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        localizations.translate('detailed_ai_analysis'),
+                        'ИИ Анализ: Карпфишинг',
                         style: TextStyle(
                           color: AppConstants.textColor,
                           fontSize: 20,
@@ -465,7 +295,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                         children: [
                           // Общая оценка
                           _buildAnalysisSection(
-                            'Общая оценка',
+                            'Общая оценка водоема',
                             _aiAnalysis!.overallAssessment,
                             Icons.assessment,
                           ),
@@ -474,12 +304,6 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                           if (_aiAnalysis!.topRecommendations.isNotEmpty) ...[
                             const SizedBox(height: 20),
                             _buildTopRecommendationsSection(),
-                          ],
-
-                          // Вероятности рыбы
-                          if (_aiAnalysis!.fishProbabilities.isNotEmpty) ...[
-                            const SizedBox(height: 20),
-                            _buildFishProbabilitiesSection(),
                           ],
 
                           // Общие советы
@@ -570,7 +394,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.star, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Топ места',
+                'Лучшие места для карповых',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -644,85 +468,11 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       fontSize: 12,
                     ),
                   ),
-                  if (rec.targetFish.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Рыба: ${rec.targetFish.join(', ')}',
-                      style: TextStyle(
-                        color: ratingColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }).toList()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFishProbabilitiesSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bar_chart, color: AppConstants.primaryColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Прогноз по видам рыб',
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...(_aiAnalysis!.fishProbabilities.entries.map((entry) {
-            final probability = entry.value;
-            final fishName = entry.key;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      fishName,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: LinearProgressIndicator(
-                      value: probability,
-                      backgroundColor: Colors.grey.withValues(alpha: 0.3),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        probability > 0.7 ? Colors.green :
-                        probability > 0.4 ? Colors.blue : Colors.orange,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 4),
                   Text(
-                    '${(probability * 100).toInt()}%',
+                    'Лучшее время: ${rec.bestTime}',
                     style: TextStyle(
-                      color: AppConstants.textColor,
+                      color: ratingColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -751,7 +501,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.lightbulb, color: Colors.yellow, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Советы',
+                'Карпфишинг советы',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -968,7 +718,6 @@ class DepthChartScreenState extends State<DepthChartScreen> {
     if (_aiAnalysis == null) return const SizedBox.shrink();
 
     final distance = marker['distance'] as double;
-    final rayIndex = (marker['rayIndex'] as double).toInt();
 
     // Находим ближайшую рекомендацию для этой точки
     final nearbyRecommendation = _aiAnalysis!.topRecommendations
@@ -988,7 +737,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'ИИ: Обычное место, рейтинг средний',
+                'ИИ: Карповый анализ',
                 style: TextStyle(
                   color: AppConstants.textColor.withValues(alpha: 0.7),
                   fontSize: 14,
@@ -1031,7 +780,7 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               Icon(Icons.psychology, color: recommendationColor, size: 20),
               const SizedBox(width: 8),
               Text(
-                'ИИ рекомендация:',
+                'ИИ: Карповый потенциал',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 14,
@@ -1064,16 +813,14 @@ class DepthChartScreenState extends State<DepthChartScreen> {
               fontSize: 14,
             ),
           ),
-          if (nearbyRecommendation.targetFish.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Рыба: ${nearbyRecommendation.targetFish.join(', ')}',
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.8),
-                fontSize: 12,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            'Лучшее время: ${nearbyRecommendation.bestTime}',
+            style: TextStyle(
+              color: AppConstants.textColor.withValues(alpha: 0.8),
+              fontSize: 12,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -1138,17 +885,6 @@ class DepthChartScreenState extends State<DepthChartScreen> {
                       size: isLandscape ? 20 : 24,
                     ),
                     tooltip: localizations.translate('ai_analysis'),
-                  ),
-
-                  // Настройки ИИ
-                  IconButton(
-                    onPressed: _showAISettings,
-                    icon: Icon(
-                      Icons.tune,
-                      color: AppConstants.textColor,
-                      size: isLandscape ? 20 : 24,
-                    ),
-                    tooltip: localizations.translate('ai_settings'),
                   ),
                 ],
               ),
@@ -1554,8 +1290,8 @@ class EnhancedDepthChartPainter extends CustomPainter {
         // Маркеры
         _drawMarkers(canvas, distanceToX, depthToY, markers, rayColor, rayIndex);
 
-        // Иконки типов дна (только для первого луча в режиме сравнения)
-        if (!isComparisonMode || i == 0) {
+        // Иконки типов дна (только в обычном режиме, не в сравнении)
+        if (!isComparisonMode) {
           _drawBottomTypeIndicators(canvas, distanceToX, topPadding, markers);
         }
       }

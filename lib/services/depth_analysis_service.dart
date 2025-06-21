@@ -4,57 +4,42 @@ import 'dart:math' as math;
 import 'dart:ui';
 import '../models/depth_analysis_model.dart';
 
-/// Сервис для анализа глубин и структуры дна
+/// Предпочтения карповых рыб (упрощенные)
+class FishPreferences {
+  final List<double> preferredDepths; // [min, max]
+  final List<String> preferredBottomTypes;
+  final double baseActivity; // Базовая активность вида
+
+  const FishPreferences({
+    required this.preferredDepths,
+    required this.preferredBottomTypes,
+    required this.baseActivity,
+  });
+}
+
+/// Сервис для анализа глубин и структуры дна (карпфишинг)
 class DepthAnalysisService {
-  // База знаний о рыбе и их предпочтениях (карпфишинг)
-  static const Map<String, FishPreferences> _fishDatabase = {
+  // База знаний для карповых рыб
+  static const Map<String, FishPreferences> _carpFishDatabase = {
     'карп': FishPreferences(
       preferredDepths: [1.0, 8.0], // от 1 до 8 метров
-      preferredBottomTypes: ['ил', 'глубокий_ил', 'ракушка', 'ровно_твердо'],
-      preferredStructures: [StructureType.pit, StructureType.shelf, StructureType.plateau],
-      activityPeriods: [FishingTimeOfDay.dawn, FishingTimeOfDay.evening, FishingTimeOfDay.night],
-      seasonalFactors: {
-        SeasonType.spring: 1.3,
-        SeasonType.summer: 1.2,
-        SeasonType.autumn: 1.1,
-        SeasonType.winter: 0.4,
-      },
+      preferredBottomTypes: ['ил', 'глубокий_ил', 'ракушка', 'ровно_твердо', 'точка_кормления'],
+      baseActivity: 1.2,
     ),
     'амур': FishPreferences(
       preferredDepths: [0.5, 6.0], // от 0.5 до 6 метров
-      preferredBottomTypes: ['трава_водоросли', 'ил', 'ровно_твердо'],
-      preferredStructures: [StructureType.shallows, StructureType.shelf, StructureType.plateau],
-      activityPeriods: [FishingTimeOfDay.morning, FishingTimeOfDay.day, FishingTimeOfDay.evening],
-      seasonalFactors: {
-        SeasonType.spring: 1.1,
-        SeasonType.summer: 1.4,
-        SeasonType.autumn: 1.0,
-        SeasonType.winter: 0.2,
-      },
+      preferredBottomTypes: ['трава_водоросли', 'ил', 'ровно_твердо', 'точка_кормления'],
+      baseActivity: 1.1,
     ),
     'сазан': FishPreferences(
       preferredDepths: [2.0, 10.0], // от 2 до 10 метров
-      preferredBottomTypes: ['ил', 'глубокий_ил', 'ракушка'],
-      preferredStructures: [StructureType.pit, StructureType.channel, StructureType.dropoff],
-      activityPeriods: [FishingTimeOfDay.dawn, FishingTimeOfDay.evening, FishingTimeOfDay.night],
-      seasonalFactors: {
-        SeasonType.spring: 1.2,
-        SeasonType.summer: 1.3,
-        SeasonType.autumn: 1.1,
-        SeasonType.winter: 0.3,
-      },
+      preferredBottomTypes: ['ил', 'глубокий_ил', 'ракушка', 'точка_кормления'],
+      baseActivity: 1.3,
     ),
     'толстолобик': FishPreferences(
-      preferredDepths: [1.0, 5.0], // от 1 до 5 метров (планктон в верхних слоях)
-      preferredBottomTypes: ['ил', 'глубокий_ил', 'ровно_твердо'],
-      preferredStructures: [StructureType.plateau, StructureType.shelf, StructureType.shallows],
-      activityPeriods: [FishingTimeOfDay.morning, FishingTimeOfDay.day],
-      seasonalFactors: {
-        SeasonType.spring: 1.1,
-        SeasonType.summer: 1.3,
-        SeasonType.autumn: 0.9,
-        SeasonType.winter: 0.2,
-      },
+      preferredDepths: [1.0, 5.0], // от 1 до 5 метров
+      preferredBottomTypes: ['ил', 'глубокий_ил', 'ровно_твердо', 'точка_кормления'],
+      baseActivity: 1.0,
     ),
   };
 
@@ -138,9 +123,6 @@ class DepthAnalysisService {
     // Находим топ рекомендации
     final topRecommendations = _findTopRecommendations(rayAnalyses, settings);
 
-    // Вычисляем вероятности по видам рыб
-    final fishProbabilities = _calculateFishProbabilities(rayAnalyses, settings);
-
     // Общая оценка водоема
     final overallAssessment = _generateOverallAssessment(rayAnalyses, settings);
 
@@ -150,7 +132,6 @@ class DepthAnalysisService {
     return MultiRayAnalysis(
       rayAnalyses: rayAnalyses,
       topRecommendations: topRecommendations,
-      fishProbabilities: fishProbabilities,
       overallAssessment: overallAssessment,
       generalTips: generalTips,
     );
@@ -176,27 +157,23 @@ class DepthAnalysisService {
       StructureType? structureType;
       double fishingRating = 5.0;
       String description = '';
-      List<String> recommendedFish = [];
 
       // Определяем тип структуры по уклону
       if (slope.abs() > 45) {
-        // Крутой свал - хорошо для карпа (укрытие и кормовая база)
+        // Крутой свал - хорошо для рыбалки (укрытие и кормовая база)
         structureType = StructureType.dropoff;
         fishingRating = 7.5;
         description = slope > 0 ? 'Крутой свал в глубину' : 'Крутой подъем';
-        recommendedFish = ['карп', 'сазан'];
       } else if (slope.abs() > 20) {
-        // Обычный склон - подходит для карпфишинга
+        // Обычный склон - подходит для рыбалки
         structureType = StructureType.slope;
         fishingRating = 6.5;
         description = slope > 0 ? 'Склон в глубину' : 'Подъем к мелководью';
-        recommendedFish = ['карп', 'толстолобик'];
       } else if (slope.abs() < 5) {
-        // Ровная полка - отличное место для карпа
+        // Ровная полка - отличное место для рыбалки
         structureType = StructureType.shelf;
         fishingRating = 8.0;
         description = 'Ровная полка';
-        recommendedFish = ['карп', 'амур', 'толстолобик'];
       }
 
       // Корректируем рейтинг на основе типа дна
@@ -212,7 +189,6 @@ class DepthAnalysisService {
           slope: slope,
           fishingRating: math.min(10.0, fishingRating),
           description: description,
-          recommendedFish: recommendedFish,
         ));
       }
     }
@@ -220,46 +196,51 @@ class DepthAnalysisService {
     return structures;
   }
 
-  /// Вычисляет рейтинг точки для рыбалки
+  /// Вычисляет рейтинг точки для карповой рыбалки
   static double _calculatePointFishingScore(
       Map<String, dynamic> marker,
       AnalysisSettings settings,
       ) {
-    double score = 5.0; // Базовый рейтинг
+    double maxScore = 0.0; // Максимальный рейтинг среди всех карповых
 
     final depth = marker['depth'] as double;
     final bottomType = _getBottomType(marker);
 
-    // Анализируем по каждому целевому виду рыбы
-    for (final fish in settings.targetFish) {
-      final preferences = _fishDatabase[fish.toLowerCase()];
-      if (preferences == null) continue;
+    // Анализируем по каждому виду карповых
+    for (final entry in _carpFishDatabase.entries) {
+      final fishName = entry.key;
+      final preferences = entry.value;
 
-      double fishScore = 0.0;
+      double fishScore = 4.0; // Базовый рейтинг для карповых
 
       // Проверка глубины
       if (depth >= preferences.preferredDepths[0] && depth <= preferences.preferredDepths[1]) {
-        fishScore += 3.0;
+        fishScore += 3.0; // Идеальная глубина
       } else {
-        final depthDeviation = math.min(
-          (depth - preferences.preferredDepths[0]).abs(),
-          (depth - preferences.preferredDepths[1]).abs(),
-        );
-        fishScore += math.max(0, 3.0 - depthDeviation);
+        // Штраф за отклонение от оптимальной глубины
+        final minDistance = (depth - preferences.preferredDepths[0]).abs();
+        final maxDistance = (depth - preferences.preferredDepths[1]).abs();
+        final deviation = math.min(minDistance, maxDistance);
+        fishScore += math.max(0, 3.0 - deviation * 0.5);
       }
 
       // Проверка типа дна
       if (preferences.preferredBottomTypes.contains(bottomType)) {
-        fishScore += 2.0;
+        fishScore += 2.0; // Подходящий тип дна
+      } else {
+        fishScore += 0.5; // Неоптимальный, но приемлемый
       }
 
-      // Сезонная корректировка
-      fishScore *= preferences.seasonalFactors[settings.season] ?? 1.0;
+      // Применяем базовую активность вида
+      fishScore *= preferences.baseActivity;
 
-      score = math.max(score, fishScore);
+      // Корректируем на основе типа дна
+      fishScore *= _getBottomTypeMultiplier(bottomType);
+
+      maxScore = math.max(maxScore, fishScore);
     }
 
-    return math.min(10.0, score);
+    return math.min(10.0, maxScore);
   }
 
   /// Находит топ рекомендации
@@ -277,8 +258,6 @@ class DepthAnalysisService {
             depth: point.depth,
             rating: point.fishingScore!,
             reason: _generateRecommendationReason(point, analysis.structures),
-            targetFish: _getRecommendedFishForPoint(point, settings),
-            recommendedBaits: _getRecommendedBaits(point, settings),
             bestTime: _getBestTime(point, settings),
             type: _getRecommendationType(point.fishingScore!),
           );
@@ -348,30 +327,6 @@ class DepthAnalysisService {
     return math.sqrt(variance);
   }
 
-  static Map<String, double> _calculateFishProbabilities(
-      List<DepthProfileAnalysis> analyses,
-      AnalysisSettings settings,
-      ) {
-    final probabilities = <String, double>{};
-
-    for (final fish in ['карп', 'амур', 'сазан', 'толстолобик']) {
-      double totalScore = 0.0;
-      int pointCount = 0;
-
-      for (final analysis in analyses) {
-        for (final point in analysis.points) {
-          final score = point.fishingScore ?? 0.0;
-          totalScore += score;
-          pointCount++;
-        }
-      }
-
-      probabilities[fish] = pointCount > 0 ? (totalScore / pointCount) / 10.0 : 0.0;
-    }
-
-    return probabilities;
-  }
-
   static String _generateOverallAssessment(
       List<DepthProfileAnalysis> analyses,
       AnalysisSettings settings,
@@ -405,22 +360,60 @@ class DepthAnalysisService {
     // Анализ структур
     final allStructures = analyses.expand((a) => a.structures).toList();
     final dropoffs = allStructures.where((s) => s.type == StructureType.dropoff).length;
+    final shelves = allStructures.where((s) => s.type == StructureType.shelf).length;
 
     if (dropoffs > 0) {
-      tips.add('Найдено $dropoffs свал(ов) - перспективные места для карпа');
+      tips.add('Найдено $dropoffs свал(ов) - отличные места для карпа и сазана');
+    }
+
+    if (shelves > 0) {
+      tips.add('Найдено $shelves полок - идеальные места для кормления карповых');
     }
 
     // Анализ глубин
-    final avgDepth = analyses
-        .expand((a) => a.points)
-        .map((p) => p.depth)
-        .fold<double>(0.0, (sum, depth) => sum + depth) /
-        analyses.expand((a) => a.points).length;
+    final allPoints = analyses.expand((a) => a.points).toList();
+    if (allPoints.isNotEmpty) {
+      final avgDepth = allPoints.map((p) => p.depth).reduce((a, b) => a + b) / allPoints.length;
 
-    if (avgDepth > 8) {
-      tips.add('Глубокий водоем - подходит для крупного карпа и сазана');
-    } else if (avgDepth < 3) {
-      tips.add('Мелководный участок - хорош для амура и толстолобика');
+      if (avgDepth > 8) {
+        tips.add('Глубокий водоем - ищите бровки и свалы для крупного карпа');
+      } else if (avgDepth < 3) {
+        tips.add('Мелководный участок - хорош для амура и толстолобика');
+      } else {
+        tips.add('Средние глубины - универсальный участок для всех карповых');
+      }
+    }
+
+    // Анализ типов дна (карпфишинг специфика)
+    final bottomTypes = allPoints.map((p) => p.bottomType).toSet();
+    if (bottomTypes.contains('точка_кормления')) {
+      tips.add('Есть проверенные точки кормления - приоритет №1 для карпфишинга');
+    }
+    if (bottomTypes.contains('трава_водоросли')) {
+      tips.add('Много растительности - отлично для амура, используйте pop-up насадки');
+    }
+    if (bottomTypes.contains('ракушка')) {
+      tips.add('Ракушечное дно - естественная кормовая база для карпа');
+    }
+    if (bottomTypes.contains('ил')) {
+      tips.add('Илистое дно - классика карпфишинга, используйте бойлы');
+    }
+    if (bottomTypes.contains('зацеп')) {
+      tips.add('Есть закоряженные участки - перспективные, но осторожно с оснасткой');
+    }
+
+    // Добавляем карпфишинг советы
+    final avgRating = allPoints
+        .where((p) => p.fishingScore != null)
+        .map((p) => p.fishingScore!)
+        .fold<double>(0.0, (sum, score) => sum + score) / allPoints.length;
+
+    if (avgRating >= 8.0) {
+      tips.add('Отличный карповый водоем - готовьте дальние забросы и терпение');
+    } else if (avgRating >= 6.0) {
+      tips.add('Хороший потенциал - найдите рабочие точки и прикармливайте');
+    } else {
+      tips.add('Сложный водоем - требует разведки и поиска активной рыбы');
     }
 
     return tips;
@@ -438,46 +431,22 @@ class DepthAnalysisService {
         slope: 0,
         fishingRating: 0,
         description: 'Обычное место',
-        recommendedFish: [],
       ),
     );
 
     return '${nearbyStructure.description} с типом дна "${point.bottomType}"';
   }
 
-  static List<String> _getRecommendedFishForPoint(DepthPoint point, AnalysisSettings settings) {
-    return settings.targetFish.where((fish) {
-      final preferences = _fishDatabase[fish.toLowerCase()];
-      if (preferences == null) return false;
-
-      return point.depth >= preferences.preferredDepths[0] &&
-          point.depth <= preferences.preferredDepths[1] &&
-          preferences.preferredBottomTypes.contains(point.bottomType);
-    }).toList();
-  }
-
-  static List<String> _getRecommendedBaits(DepthPoint point, AnalysisSettings settings) {
-    // Рекомендации приманок для карпфишинга
-    if (point.bottomType == 'ил' || point.bottomType == 'глубокий_ил') {
-      return ['Бойлы', 'Пеллетс', 'Кукуруза', 'Червь'];
-    } else if (point.bottomType == 'ракушка') {
-      return ['Бойлы', 'Тигровые орехи', 'Пеллетс'];
-    } else if (point.bottomType == 'ровно_твердо') {
-      return ['Бойлы', 'Кукуруза', 'Конопля', 'Пеллетс'];
-    } else if (point.bottomType == 'трава_водоросли') {
-      return ['Pop-up бойлы', 'Плавающая кукуруза', 'Пеллетс'];
-    }
-    return ['Бойлы', 'Кукуруза', 'Пеллетс'];
-  }
-
   static String _getBestTime(DepthPoint point, AnalysisSettings settings) {
-    // Упрощенная логика времени
+    // Логика времени для карповых
     if (point.depth > 8) {
-      return 'Рассвет, вечер';
+      return 'Рассвет, вечер, ночь'; // Глубокие места
     } else if (point.depth < 3) {
-      return 'Утро, день';
+      return 'Утро, день, вечер'; // Мелкие места
+    } else if (point.bottomType == 'точка_кормления') {
+      return 'Любое время'; // Проверенные места
     }
-    return 'Утро, вечер';
+    return 'Рассвет, утро, вечер'; // Стандартное время для карпа
   }
 
   static RecommendationType _getRecommendationType(double rating) {
@@ -486,21 +455,4 @@ class DepthAnalysisService {
     if (rating >= 5.0) return RecommendationType.average;
     return RecommendationType.avoid;
   }
-}
-
-/// Предпочтения рыбы
-class FishPreferences {
-  final List<double> preferredDepths; // [min, max]
-  final List<String> preferredBottomTypes;
-  final List<StructureType> preferredStructures;
-  final List<FishingTimeOfDay> activityPeriods;
-  final Map<SeasonType, double> seasonalFactors;
-
-  const FishPreferences({
-    required this.preferredDepths,
-    required this.preferredBottomTypes,
-    required this.preferredStructures,
-    required this.activityPeriods,
-    required this.seasonalFactors,
-  });
 }
