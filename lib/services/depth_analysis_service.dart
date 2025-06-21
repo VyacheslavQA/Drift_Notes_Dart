@@ -4,401 +4,82 @@ import 'dart:math' as math;
 import 'dart:ui';
 import '../models/depth_analysis_model.dart';
 
-/// Сезоны года для анализа карпфишинга
-enum CarpSeason { spring, summer, autumn, winter }
-
-/// Время суток для карпфишинга
-enum CarpTimeOfDay { dawn, morning, day, evening, night }
-
-/// Предпочтения карповых рыб с учетом сезонности
-class CarpFishPreferences {
-  final Map<CarpSeason, SeasonalCarpData> seasonalData;
-  final double baseActivity;
-  final double optimalTempMin;
-  final double optimalTempMax;
-  final List<String> preferredBottomTypes;
-
-  const CarpFishPreferences({
-    required this.seasonalData,
-    required this.baseActivity,
-    required this.optimalTempMin,
-    required this.optimalTempMax,
-    required this.preferredBottomTypes,
-  });
-}
-
-/// Сезонные данные карпа
-class SeasonalCarpData {
-  final List<double> preferredDepths; // [min, max]
-  final List<String> primaryZones; // Приоритетные зоны
-  final Map<CarpTimeOfDay, double> timeMultipliers; // Активность по времени
-  final double seasonalBonus; // Сезонный бонус
-  final String behavior; // Описание поведения
-
-  const SeasonalCarpData({
-    required this.preferredDepths,
-    required this.primaryZones,
-    required this.timeMultipliers,
-    required this.seasonalBonus,
-    required this.behavior,
-  });
-}
-
-/// Улучшенный сервис анализа с автоматическим определением условий
+/// Универсальный сервис анализа рельефа для карпфишинга
+/// БЕЗ привязки к сезонам, погоде, времени - только физика водоема
 class DepthAnalysisService {
 
-  /// Карповая база знаний (ТОЛЬКО природные типы дна)
-  static const Map<String, CarpFishPreferences> _carpKnowledge = {
-    'карп': CarpFishPreferences(
-      baseActivity: 1.2,
-      optimalTempMin: 23.0,
-      optimalTempMax: 30.0,
-      preferredBottomTypes: [
-        // ТОЛЬКО природные типы (без пользовательских меток!)
-        'ил', 'глубокий_ил', 'трава_водоросли', 'ракушка',
-        'ровно_твердо', 'заросли', 'бровка', 'drop_off'
-      ],
-      seasonalData: {
-        CarpSeason.spring: SeasonalCarpData(
-          preferredDepths: [0.5, 2.5], // Мелководье для нереста
-          primaryZones: ['flat_с_растительностью', 'заросли', 'литораль'],
-          seasonalBonus: 1.4, // Высокая активность в нерест
-          behavior: 'Нерест в зарослях на мелководье (17-22°C)',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.2,
-            CarpTimeOfDay.morning: 1.3,
-            CarpTimeOfDay.day: 1.1,
-            CarpTimeOfDay.evening: 1.2,
-            CarpTimeOfDay.night: 0.9,
-          },
-        ),
-        CarpSeason.summer: SeasonalCarpData(
-          preferredDepths: [1.5, 4.0], // Бровки и столы
-          primaryZones: ['бровка', 'ровный_стол', 'drop_off'],
-          seasonalBonus: 1.3,
-          behavior: 'Активная кормежка на бровках, ночью на флэтах',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.4,
-            CarpTimeOfDay.morning: 1.1,
-            CarpTimeOfDay.day: 0.8, // Днем в укрытиях
-            CarpTimeOfDay.evening: 1.3,
-            CarpTimeOfDay.night: 1.5, // Пик активности ночью
-          },
-        ),
-        CarpSeason.autumn: SeasonalCarpData(
-          preferredDepths: [2.0, 5.0], // Переход на глубину
-          primaryZones: ['бровка', 'яма_неглубокая', 'ровный_стол'],
-          seasonalBonus: 1.1,
-          behavior: 'Запасы перед зимовкой, переход на глубину',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.2,
-            CarpTimeOfDay.morning: 1.2,
-            CarpTimeOfDay.day: 1.0,
-            CarpTimeOfDay.evening: 1.1,
-            CarpTimeOfDay.night: 1.0,
-          },
-        ),
-        CarpSeason.winter: SeasonalCarpData(
-          preferredDepths: [4.0, 8.0], // Глубокие ямы
-          primaryZones: ['яма_глубокая', 'ровное_дно_глубина'],
-          seasonalBonus: 0.6, // Низкая активность
-          behavior: 'Зимовка в глубоких ямах с ровным дном',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 0.8,
-            CarpTimeOfDay.morning: 0.9,
-            CarpTimeOfDay.day: 1.0, // Относительно стабильная активность
-            CarpTimeOfDay.evening: 0.9,
-            CarpTimeOfDay.night: 0.8,
-          },
-        ),
-      },
-    ),
+  /// Профессиональные мультипликаторы типов дна (опыт 20 лет)
+  /// ТОЛЬКО реальные типы из приложения!
+  static const Map<String, double> _bottomQualityScores = {
+    // ТОП локации (профессиональные точки)
+    'точка_кормления': 9.5,        // Проверенные годами места 🔵
 
-    'амур': CarpFishPreferences(
-      baseActivity: 1.1,
-      optimalTempMin: 20.0,
-      optimalTempMax: 28.0,
-      preferredBottomTypes: ['трава_водоросли', 'ил', 'ровно_твердо'],
-      seasonalData: {
-        CarpSeason.spring: SeasonalCarpData(
-          preferredDepths: [0.5, 2.0],
-          primaryZones: ['flat_с_растительностью', 'заросли'],
-          seasonalBonus: 1.2,
-          behavior: 'Активен в зарослях, питается растительностью',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.1,
-            CarpTimeOfDay.morning: 1.3,
-            CarpTimeOfDay.day: 1.2,
-            CarpTimeOfDay.evening: 1.1,
-            CarpTimeOfDay.night: 0.8,
-          },
-        ),
-        CarpSeason.summer: SeasonalCarpData(
-          preferredDepths: [1.0, 3.5],
-          primaryZones: ['заросли', 'flat_с_растительностью'],
-          seasonalBonus: 1.4, // Пик активности летом
-          behavior: 'Максимальная активность в растительности',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.2,
-            CarpTimeOfDay.morning: 1.4,
-            CarpTimeOfDay.day: 1.3,
-            CarpTimeOfDay.evening: 1.2,
-            CarpTimeOfDay.night: 0.9,
-          },
-        ),
-        CarpSeason.autumn: SeasonalCarpData(
-          preferredDepths: [1.5, 4.0],
-          primaryZones: ['заросли', 'бровка'],
-          seasonalBonus: 1.0,
-          behavior: 'Продолжает питаться растительностью',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.0,
-            CarpTimeOfDay.morning: 1.2,
-            CarpTimeOfDay.day: 1.1,
-            CarpTimeOfDay.evening: 1.0,
-            CarpTimeOfDay.night: 0.9,
-          },
-        ),
-        CarpSeason.winter: SeasonalCarpData(
-          preferredDepths: [3.0, 6.0],
-          primaryZones: ['яма_неглубокая', 'ровное_дно_глубина'],
-          seasonalBonus: 0.5,
-          behavior: 'Малоактивен зимой, редко питается',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 0.7,
-            CarpTimeOfDay.morning: 0.8,
-            CarpTimeOfDay.day: 0.9,
-            CarpTimeOfDay.evening: 0.8,
-            CarpTimeOfDay.night: 0.6,
-          },
-        ),
-      },
-    ),
+    // Отличные природные структуры
+    'ракушка': 8.5,                // Естественная кормовая база ⚪
+    'бугор': 6.0,                  // Структура, но карп больше у подножия 🟠
 
-    'сазан': CarpFishPreferences(
-      baseActivity: 1.3,
-      optimalTempMin: 20.0,
-      optimalTempMax: 28.0,
-      preferredBottomTypes: ['ил', 'глубокий_ил', 'ракушка', 'точка_кормления'],
-      seasonalData: {
-        CarpSeason.spring: SeasonalCarpData(
-          preferredDepths: [1.0, 3.0],
-          primaryZones: ['flat_с_растительностью', 'бровка'],
-          seasonalBonus: 1.3,
-          behavior: 'Активный нерест, агрессивная кормежка',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.3,
-            CarpTimeOfDay.morning: 1.2,
-            CarpTimeOfDay.day: 1.0,
-            CarpTimeOfDay.evening: 1.3,
-            CarpTimeOfDay.night: 1.1,
-          },
-        ),
-        CarpSeason.summer: SeasonalCarpData(
-          preferredDepths: [2.0, 5.0],
-          primaryZones: ['бровка', 'drop_off', 'яма_неглубокая'],
-          seasonalBonus: 1.4,
-          behavior: 'Пик активности, предпочитает бровки',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.5,
-            CarpTimeOfDay.morning: 1.2,
-            CarpTimeOfDay.day: 0.9,
-            CarpTimeOfDay.evening: 1.4,
-            CarpTimeOfDay.night: 1.6, // Максимальная активность ночью
-          },
-        ),
-        CarpSeason.autumn: SeasonalCarpData(
-          preferredDepths: [2.5, 6.0],
-          primaryZones: ['бровка', 'яма_неглубокая', 'drop_off'],
-          seasonalBonus: 1.2,
-          behavior: 'Интенсивная кормежка перед зимой',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 1.3,
-            CarpTimeOfDay.morning: 1.1,
-            CarpTimeOfDay.day: 1.0,
-            CarpTimeOfDay.evening: 1.2,
-            CarpTimeOfDay.night: 1.3,
-          },
-        ),
-        CarpSeason.winter: SeasonalCarpData(
-          preferredDepths: [4.0, 10.0],
-          primaryZones: ['яма_глубокая', 'ровное_дно_глубина'],
-          seasonalBonus: 0.7,
-          behavior: 'Зимовка в самых глубоких местах',
-          timeMultipliers: {
-            CarpTimeOfDay.dawn: 0.8,
-            CarpTimeOfDay.morning: 0.9,
-            CarpTimeOfDay.day: 1.0,
-            CarpTimeOfDay.evening: 0.9,
-            CarpTimeOfDay.night: 0.8,
-          },
-        ),
-      },
-    ),
+    // Хорошие типы дна
+    'ровно_твердо': 7.0,           // Стабильное твердое дно, отличное ложе 🟡
+    'трава_водоросли': 6.5,        // Растительность = укрытие + кислород + корм 🟢
+    'зацеп': 5.5,                  // Коряги - риск, но перспективно для крупного карпа 🔴
+    'камни': 6.0,                  // Твердое дно, ракообразные 🔘
+
+    // Стандартные типы
+    'ил': 4.5,                     // Стандартное карповое дно 🟤
+    'глубокий_ил': 3.5,            // Может быть бедным на корм, мягко 🟫
+
+    // Неопределенные
+    'default': 3.0,                // Неопределенные места
   };
 
-  /// Мультипликаторы типов дна для карпфишинга (РЕАЛИСТИЧНЫЕ)
-  static const Map<String, double> _bottomMultipliers = {
-    // Действительно ТОП локации (очень редкие!)
-    'точка_кормления': 1.6,        // Проверенные места
-    'заросли': 1.4,                // Site fidelity места
-    'flat_с_растительностью': 1.3, // Нерестовые зоны
-
-    // Хорошие структурные элементы
-    'бровка': 1.2,                 // Drop-off зоны
-    'drop_off': 1.2,               // Границы глубин
-    'зацеп': 1.1,                  // Коряги
-    'яма_неглубокая': 1.1,         // Летние стоянки
-    'яма_глубокая': 1.0,           // Зимовальные ямы
-
-    // Обычные типы дна (нейтральные)
-    'трава_водоросли': 1.1,        // Кислород + укрытие + корм
-    'ракушка': 1.0,                // Кормовая база
-    'ровный_стол': 0.9,            // Летние столы
-    'камни': 0.9,                  // Твердое дно
-    'ровно_твердо': 0.8,           // Стабильное дно
-    'ровное_дно_глубина': 0.8,     // Зимовальные зоны
-
-    // Менее привлекательные (штрафы)
-    'ил': 0.7,                     // Стандартное дно
-    'глубокий_ил': 0.6,            // Может быть бедным
-    'литораль': 0.7,               // Нейтральная зона
-    'default': 0.5,                // Неопределенные места
+  /// Анализ рельефа - ключевые структуры для карпа
+  /// УБРАЛИ неиспользуемые константы
+  static const Map<String, double> _reliefStructureScores = {
+    // Эти константы НЕ ИСПОЛЬЗУЮТСЯ в новом алгоритме
+    // Оставляем для совместимости, если понадобятся
+    'переход_глубин_резкий': 9.0,
+    'подножие_свала': 8.5,
+    'ровное_дно': 4.0,
   };
 
-  /// Автоматическое определение сезона
-  static CarpSeason _getCurrentSeason() {
-    final now = DateTime.now();
-    switch (now.month) {
-      case 3:
-      case 4:
-      case 5:
-        return CarpSeason.spring;
-      case 6:
-      case 7:
-      case 8:
-        return CarpSeason.summer;
-      case 9:
-      case 10:
-      case 11:
-        return CarpSeason.autumn;
-      case 12:
-      case 1:
-      case 2:
-        return CarpSeason.winter;
-      default:
-        return CarpSeason.summer;
-    }
-  }
+  /// Комбинированные бонусы - УБРАЛИ неиспользуемые
+  /// УБРАЛИ неиспользуемые константы
+  static const Map<String, double> _combinationBonuses = {
+    // Эти константы НЕ ИСПОЛЬЗУЮТСЯ в новом алгоритме
+    // Оставляем для совместимости
+    'стандартная_комбинация': 0.0,
+  };
 
-  /// Автоматическое определение времени суток
-  static CarpTimeOfDay _getCurrentTimeOfDay() {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 7) {
-      return CarpTimeOfDay.dawn;
-    } else if (hour >= 7 && hour < 12) {
-      return CarpTimeOfDay.morning;
-    } else if (hour >= 12 && hour < 17) {
-      return CarpTimeOfDay.day;
-    } else if (hour >= 17 && hour < 21) {
-      return CarpTimeOfDay.evening;
-    } else {
-      return CarpTimeOfDay.night;
-    }
-  }
-
-  /// Автоматическое определение температуры по сезону
-  static double _getSeasonalTemperature(CarpSeason season) {
-    switch (season) {
-      case CarpSeason.spring:
-        return 12.0;
-      case CarpSeason.summer:
-        return 24.0; // Оптимальная для карпа
-      case CarpSeason.autumn:
-        return 15.0;
-      case CarpSeason.winter:
-        return 4.0;
-    }
-  }
-
-  /// Температурный мультипликатор
-  static double _getTemperatureMultiplier(double temperature) {
-    if (temperature >= 23 && temperature <= 30) {
-      return 1.3; // Пик активности
-    } else if (temperature >= 17 && temperature <= 35) {
-      return 1.0; // Нормальная активность
-    } else if (temperature >= 10 && temperature <= 17) {
-      return 0.7; // Сниженная активность
-    } else if (temperature >= 3 && temperature <= 10) {
-      return 0.4; // Зимняя пассивность
-    } else {
-      return 0.1; // Экстремальные условия
-    }
-  }
-
-  /// Основной метод анализа всех лучей (АВТОМАТИЧЕСКИЙ)
+  /// Основной метод анализа всех лучей (УНИВЕРСАЛЬНЫЙ)
   static MultiRayAnalysis analyzeAllRays(
       List<Map<String, dynamic>> allMarkers,
       AnalysisSettings settings,
       ) {
-    // Автоматически определяем текущие условия
-    final currentSeason = _getCurrentSeason();
-    final currentTime = _getCurrentTimeOfDay();
-    final waterTemperature = _getSeasonalTemperature(currentSeason);
-
     final rayAnalyses = <DepthProfileAnalysis>[];
 
     // Анализируем каждый луч (0-4)
     for (int i = 0; i < 5; i++) {
-      final analysis = _analyzeRayProfile(
-        i,
-        allMarkers,
-        settings,
-        currentSeason,
-        currentTime,
-        waterTemperature,
-      );
+      final analysis = _analyzeRayProfile(i, allMarkers, settings);
       rayAnalyses.add(analysis);
     }
 
-    final topRecommendations = _findTopRecommendations(
-        rayAnalyses,
-        settings,
-        currentSeason,
-        currentTime
-    );
-
-    final overallAssessment = _generateScientificAssessment(
-        rayAnalyses,
-        settings,
-        currentSeason,
-        waterTemperature
-    );
-
-    final generalTips = _generateAdvancedTips(
-        rayAnalyses,
-        settings,
-        currentSeason,
-        currentTime,
-        waterTemperature
-    );
+    final topRecommendations = _findTopSpots(rayAnalyses, settings);
+    final overallAssessment = _generateWaterBodyAssessment(rayAnalyses);
+    final professionalTips = _generateProfessionalTips(rayAnalyses);
 
     return MultiRayAnalysis(
       rayAnalyses: rayAnalyses,
       topRecommendations: topRecommendations,
       overallAssessment: overallAssessment,
-      generalTips: generalTips,
+      generalTips: professionalTips,
     );
   }
 
-  /// Анализ профиля одного луча
+  /// Анализ профиля одного луча (ТОЛЬКО рельеф + дно)
   static DepthProfileAnalysis _analyzeRayProfile(
       int rayIndex,
       List<Map<String, dynamic>> markers,
       AnalysisSettings settings,
-      CarpSeason currentSeason,
-      CarpTimeOfDay currentTime,
-      double waterTemperature,
       ) {
     final rayMarkers = markers
         .where((m) => (m['rayIndex'] as double?)?.toInt() == rayIndex)
@@ -419,17 +100,11 @@ class DepthAnalysisService {
 
     rayMarkers.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
 
-    // Создаем точки с научным анализом
+    // Создаем точки с профессиональным анализом
     final points = rayMarkers.map((marker) {
       final bottomType = _getBottomType(marker);
       final color = _getBottomTypeColor(bottomType);
-      final fishingScore = _calculateAdvancedFishingScore(
-          marker,
-          settings,
-          currentSeason,
-          currentTime,
-          waterTemperature
-      );
+      final fishingScore = _calculateUniversalCarpScore(marker, rayMarkers);
 
       return DepthPoint(
         distance: marker['distance'] as double,
@@ -441,8 +116,8 @@ class DepthAnalysisService {
       );
     }).toList();
 
-    // Анализ структур
-    final structures = _analyzeBottomStructures(points, settings, currentSeason);
+    // Анализ структур рельефа
+    final structures = _analyzeReliefStructures(points);
 
     final depths = points.map((p) => p.depth).toList();
     final averageDepth = depths.reduce((a, b) => a + b) / depths.length;
@@ -461,164 +136,190 @@ class DepthAnalysisService {
     );
   }
 
-  /// ПРАВИЛЬНЫЙ расчет рейтинга (только природные данные!)
-  static double _calculateAdvancedFishingScore(
+  /// ПРОФЕССИОНАЛЬНЫЙ расчет рейтинга (опыт карпятника 20 лет)
+  static double _calculateUniversalCarpScore(
       Map<String, dynamic> marker,
-      AnalysisSettings settings,
-      CarpSeason currentSeason,
-      CarpTimeOfDay currentTime,
-      double waterTemperature,
+      List<Map<String, dynamic>> allRayMarkers,
       ) {
-    double maxScore = 0.0;
-
     final depth = marker['depth'] as double;
-    final bottomType = _getBottomType(marker);
+    final bottomType = _getBottomType(marker); // ТОЛЬКО реальный тип из маркера!
+    final distance = marker['distance'] as double;
 
-    // ИГНОРИРУЕМ пользовательские метки (точка_кормления)
-    final naturalBottomType = _getNaturalBottomType(bottomType);
+    // 🐛 ДЕБАГ: выводим что получили из маркера
+    print('🔍 ДЕБАГ МАРКЕРА:');
+    print('  distance: $distance');
+    print('  depth: $depth');
+    print('  marker[bottomType]: ${marker['bottomType']}');
+    print('  marker[type]: ${marker['type']}');
+    print('  итоговый bottomType: $bottomType');
+    print('  все поля маркера: ${marker.keys.toList()}');
 
-    // Анализируем каждый вид карповых
-    for (final entry in _carpKnowledge.entries) {
-      final fishName = entry.key;
-      final preferences = entry.value;
-      final seasonalData = preferences.seasonalData[currentSeason]!;
+    // 1. Базовый рейтинг по РЕАЛЬНОМУ типу дна из маркера
+    double score = _bottomQualityScores[bottomType] ?? 3.0;
+    print('  базовый рейтинг для $bottomType: $score');
 
-      // Строгий базовый рейтинг
-      double fishScore = 2.0;
+    // 2. Анализ рельефа в точке (отдельно от типа дна)
+    final reliefBonus = _analyzeLocalReliefBonus(marker, allRayMarkers);
+    print('  reliefBonus: $reliefBonus');
 
-      // 1. Сезонная глубина (главный фактор!)
-      final depthMin = seasonalData.preferredDepths[0];
-      final depthMax = seasonalData.preferredDepths[1];
+    // 3. Анализ переходов типов дна (КЛЮЧЕВОЙ фактор!)
+    final transitionBonus = _analyzeBottomTransitions(marker, allRayMarkers);
+    print('  transitionBonus: $transitionBonus');
 
-      if (depth >= depthMin && depth <= depthMax) {
-        fishScore += 3.0; // Идеальная глубина для сезона
-      } else {
-        final deviation = math.min(
-            (depth - depthMin).abs(),
-            (depth - depthMax).abs()
-        );
-        // Штраф за неподходящую глубину
-        fishScore += math.max(0, 3.0 - deviation * 1.0);
-      }
+    // 4. Глубинные предпочтения (универсальные для карпа)
+    final depthScore = _getDepthScore(depth);
+    print('  depthScore: $depthScore');
 
-      // 2. ТОЛЬКО природный тип дна
-      final bottomBonus = _getNaturalBottomBonus(naturalBottomType, currentSeason);
-      fishScore += bottomBonus;
+    // 5. Анализ микрорельефа
+    final microReliefBonus = _analyzeMicroRelief(marker, allRayMarkers);
+    print('  microReliefBonus: $microReliefBonus');
 
-      // 3. Сезонный фактор
-      fishScore *= seasonalData.seasonalBonus;
+    // Финальный расчет
+    double finalScore = score;                    // Базовый рейтинг типа дна
+    finalScore += reliefBonus;                    // Бонус за рельеф
+    finalScore += transitionBonus;                // Переходы - магнит карпа
+    finalScore += microReliefBonus;               // Мелкие детали
+    finalScore *= depthScore;                     // Глубинный мультипликатор
 
-      // 4. Время суток
-      final timeMultiplier = seasonalData.timeMultipliers[currentTime] ?? 1.0;
-      fishScore *= timeMultiplier;
+    final result = math.max(0.0, math.min(10.0, finalScore));
+    print('  ИТОГОВЫЙ рейтинг: $result');
+    print('');
 
-      // 5. Температурный фактор
-      final tempMultiplier = _getTemperatureMultiplier(waterTemperature);
-      fishScore *= tempMultiplier;
-
-      // 6. Природный мультипликатор дна
-      final bottomMultiplier = _getNaturalBottomMultiplier(naturalBottomType);
-      fishScore *= bottomMultiplier;
-
-      // 7. Базовая активность вида
-      fishScore *= preferences.baseActivity;
-
-      maxScore = math.max(maxScore, fishScore);
-    }
-
-    return math.min(10.0, maxScore);
+    return result;
   }
 
-  /// Получение ТОЛЬКО природного типа дна (без пользовательских меток)
-  static String _getNaturalBottomType(String bottomType) {
-    // Исключаем пользовательские метки
-    if (bottomType == 'точка_кормления') {
-      return 'ил'; // По умолчанию считаем илом
-    }
-    return bottomType;
-  }
-
-  /// Бонус за природный тип дна в зависимости от сезона
-  static double _getNaturalBottomBonus(String naturalBottomType, CarpSeason season) {
-    switch (naturalBottomType) {
-    // Растительность - отлично весной для нереста
-      case 'трава_водоросли':
-      case 'заросли':
-      case 'flat_с_растительностью':
-        return season == CarpSeason.spring ? 2.5 : 1.5;
-
-    // Ракушка - хорошая кормовая база
-      case 'ракушка':
-        return 2.0;
-
-    // Структуры - хороши летом
-      case 'бровка':
-      case 'drop_off':
-        return season == CarpSeason.summer ? 2.0 : 1.5;
-
-    // Зацепы - укрытие
-      case 'зацеп':
-        return 1.5;
-
-    // Твердое дно - средне
-      case 'ровно_твердо':
-      case 'камни':
-        return 1.0;
-
-    // Ил - зависит от глубины и сезона
-      case 'ил':
-        return season == CarpSeason.winter ? 1.2 : 0.8;
-
-      case 'глубокий_ил':
-        return season == CarpSeason.winter ? 1.0 : 0.5;
-
-      default:
-        return 0.8;
-    }
-  }
-
-  /// Природные мультипликаторы дна (без учета пользовательских меток)
-  static double _getNaturalBottomMultiplier(String naturalBottomType) {
-    const naturalMultipliers = {
-      // Растительность - отлично для карпа
-      'трава_водоросли': 1.3,
-      'заросли': 1.3,
-      'flat_с_растительностью': 1.2,
-
-      // Кормовая база
-      'ракушка': 1.2,
-
-      // Структуры
-      'бровка': 1.2,
-      'drop_off': 1.2,
-      'зацеп': 1.1,
-
-      // Ямы
-      'яма_неглубокая': 1.0,
-      'яма_глубокая': 1.0,
-
-      // Обычное дно
-      'ровно_твердо': 0.9,
-      'камни': 0.9,
-      'ровный_стол': 0.9,
-
-      // Ил
-      'ил': 0.8,
-      'глубокий_ил': 0.7,
-
-      // Прочее
-      'литораль': 0.8,
-      'default': 0.7,
-    };
-    return naturalMultipliers[naturalBottomType] ?? 0.7;
-  }
-
-  /// Анализ структур дна с учетом сезона
-  static List<BottomStructure> _analyzeBottomStructures(
-      List<DepthPoint> points,
-      AnalysisSettings settings,
-      CarpSeason currentSeason,
+  /// Анализ локального рельефа - только бонус, НЕ замена типа дна!
+  static double _analyzeLocalReliefBonus(
+      Map<String, dynamic> current,
+      List<Map<String, dynamic>> allMarkers,
       ) {
+    final currentDepth = current['depth'] as double;
+    final currentDistance = current['distance'] as double;
+
+    // Находим соседние точки
+    final neighbors = allMarkers.where((m) {
+      final dist = m['distance'] as double;
+      return (dist - currentDistance).abs() <= 20.0 && m != current;
+    }).toList();
+
+    if (neighbors.isEmpty) return 0.0;
+
+    // Анализ перепадов глубин
+    final depthChanges = neighbors.map((n) =>
+    (n['depth'] as double) - currentDepth).toList();
+
+    final maxIncrease = depthChanges.where((d) => d > 0).isEmpty ?
+    0.0 : depthChanges.where((d) => d > 0).reduce(math.max);
+    final maxDecrease = depthChanges.where((d) => d < 0).isEmpty ?
+    0.0 : depthChanges.where((d) => d < 0).reduce(math.min).abs();
+
+    // Бонусы за рельеф (НЕ замена типа дна!)
+    if (maxIncrease > 1.5 || maxDecrease > 1.5) {
+      return 2.0; // Drop-off >1.5м - отличный бонус
+    } else if (maxIncrease > 0.8 || maxDecrease > 0.8) {
+      return 1.0; // Средний перепад - хороший бонус
+    } else if (maxIncrease > 0.3 || maxDecrease > 0.3) {
+      return 0.5; // Небольшие неровности - малый бонус
+    } else {
+      return 0.0; // Плоский участок - без бонуса
+    }
+  }
+
+  /// Поиск переходов типов дна (КРИТИЧЕСКИ важно!)
+  static double _analyzeBottomTransitions(
+      Map<String, dynamic> current,
+      List<Map<String, dynamic>> allMarkers,
+      ) {
+    final currentType = _getBottomType(current);
+    final currentDistance = current['distance'] as double;
+
+    // Ищем изменения типа дна в радиусе 15м
+    final nearbyMarkers = allMarkers.where((m) {
+      final dist = m['distance'] as double;
+      return (dist - currentDistance).abs() <= 15.0 && m != current;
+    }).toList();
+
+    double transitionBonus = 0.0;
+
+    for (final marker in nearbyMarkers) {
+      final nearbyType = _getBottomType(marker);
+      if (nearbyType != currentType) {
+        // Найден переход! Оцениваем качество перехода
+        transitionBonus += _evaluateTransitionQuality(currentType, nearbyType);
+      }
+    }
+
+    return math.min(2.5, transitionBonus); // Максимум +2.5 балла за переходы
+  }
+
+  /// Оценка качества перехода между типами дна
+  static double _evaluateTransitionQuality(String type1, String type2) {
+    // ТОП переходы (магнит для карпа) - ТОЛЬКО реальные типы!
+    const topTransitions = {
+      'ил_ракушка': 2.0,              // Классика карпфишинга 🟤→⚪
+      'глубокий_ил_ракушка': 1.8,     // Мягкое → кормовая база 🟫→⚪
+      'ровно_твердо_ракушка': 1.7,    // Твердое → кормовая база 🟡→⚪
+      'ил_ровно_твердо': 1.5,         // Мягкое → твердое 🟤→🟡
+      'трава_водоросли_ил': 1.3,      // Растительность → нейтральное 🟢→🟤
+      'трава_водоросли_ровно_твердо': 1.2, // Растительность → твердое 🟢→🟡
+      'глубокий_ил_ил': 1.0,          // Переход глубины ила 🟫→🟤
+      'ил_камни': 1.1,                // Мягкое → твердое с рачками 🟤→🔘
+      'камни_ракушка': 1.4,           // Твердое → кормовая база 🔘→⚪
+    };
+
+    // Проверяем оба направления перехода
+    final key1 = '${type1}_${type2}';
+    final key2 = '${type2}_${type1}';
+
+    return topTransitions[key1] ?? topTransitions[key2] ?? 0.8; // Любой переход = +0.8
+  }
+
+  /// Универсальная оценка глубины для карпа
+  static double _getDepthScore(double depth) {
+    if (depth >= 1.5 && depth <= 4.5) {
+      return 1.2; // Оптимальная зона для большинства ситуаций
+    } else if (depth >= 0.8 && depth <= 6.0) {
+      return 1.0; // Хорошая зона
+    } else if (depth >= 0.3 && depth <= 8.0) {
+      return 0.8; // Приемлемая зона
+    } else {
+      return 0.6; // Экстремальные глубины
+    }
+  }
+
+  /// Анализ микрорельефа (мелкие детали)
+  static double _analyzeMicroRelief(
+      Map<String, dynamic> current,
+      List<Map<String, dynamic>> allMarkers,
+      ) {
+    final currentDepth = current['depth'] as double;
+    final currentDistance = current['distance'] as double;
+
+    // Анализ в радиусе 10м
+    final closeMarkers = allMarkers.where((m) {
+      final dist = m['distance'] as double;
+      return (dist - currentDistance).abs() <= 10.0 && m != current;
+    }).toList();
+
+    if (closeMarkers.length < 2) return 0.0;
+
+    final depthVariations = closeMarkers.map((m) =>
+        ((m['depth'] as double) - currentDepth).abs()).toList();
+
+    final avgVariation = depthVariations.reduce((a, b) => a + b) / depthVariations.length;
+
+    // Небольшие вариации = интересный микрорельеф
+    if (avgVariation > 0.1 && avgVariation < 0.8) {
+      return 0.5; // Бонус за интересный микрорельеф
+    }
+    return 0.0;
+  }
+
+  /// УБРАЛИ неиспользуемую функцию
+  /// Поиск комбинации - НЕ ИСПОЛЬЗУЕТСЯ в новом алгоритме
+
+  /// Анализ структур рельефа
+  static List<BottomStructure> _analyzeReliefStructures(List<DepthPoint> points) {
     if (points.length < 2) return [];
 
     final structures = <BottomStructure>[];
@@ -635,37 +336,38 @@ class DepthAnalysisService {
       double fishingRating = 5.0;
       String description = '';
 
-      // Анализ структур для карповых
-      if (slope.abs() > 30) {
+      // Профессиональная классификация структур
+      if (slope.abs() > 25) {
         structureType = StructureType.dropoff;
-        fishingRating = currentSeason == CarpSeason.summer ? 9.0 : 7.5;
+        fishingRating = 8.5; // ТОП структура для карпа
         description = slope > 0
-            ? 'Drop-off: граница мелководья и глубины (TOP для карпа!)'
-            : 'Подъем к мелководью';
-      } else if (slope.abs() > 15) {
+            ? 'Drop-off: резкий свал (ТОП для карпа!) - концентрация корма'
+            : 'Резкий подъем: граница мелководья';
+      } else if (slope.abs() > 12) {
         structureType = StructureType.slope;
         fishingRating = 7.0;
-        description = slope > 0 ? 'Склон к глубине' : 'Склон к мелководью';
-      } else if (slope.abs() < 3) {
+        description = slope > 0
+            ? 'Склон к глубине: путь миграции карпа'
+            : 'Склон к мелководью: выход на кормежку';
+      } else if (slope.abs() < 4) {
         structureType = StructureType.shelf;
-        if (currentSeason == CarpSeason.spring && current.depth < 2.5) {
-          fishingRating = 8.5; // Нерестовые флэты
-          description = 'Flat: нерестовая зона (весенний приоритет)';
-        } else if (currentSeason == CarpSeason.summer && current.depth > 1.5 && current.depth < 4.0) {
-          fishingRating = 8.0; // Летние столы
-          description = 'Стол: кормовая зона (летняя активность)';
-        } else if (currentSeason == CarpSeason.winter && current.depth > 4.0) {
-          fishingRating = 7.5; // Зимовальные ямы
-          description = 'Глубокий стол: зимовальная зона';
+        // Оценка полки зависит от глубины
+        if (current.depth >= 1.5 && current.depth <= 4.0) {
+          fishingRating = 7.5; // Идеальные кормовые столы
+          description = 'Кормовой стол: идеальная глубина для карпа';
+        } else if (current.depth < 1.0) {
+          fishingRating = 6.0; // Мелководные флэты
+          description = 'Мелководный флэт: возможны подходы карпа';
         } else {
-          fishingRating = 6.0;
-          description = 'Ровная полка';
+          fishingRating = 5.5; // Глубокие полки
+          description = 'Глубокая полка: стабильная зона';
         }
       }
 
       if (structureType != null) {
-        final bottomBonus = _bottomMultipliers[current.bottomType] ?? 1.0;
-        fishingRating *= bottomBonus;
+        // Бонус за качество дна на структуре
+        final bottomBonus = _bottomQualityScores[current.bottomType] ?? 4.0;
+        fishingRating += (bottomBonus - 5.0) * 0.3; // Влияние дна на структуру
 
         structures.add(BottomStructure(
           type: structureType,
@@ -674,7 +376,7 @@ class DepthAnalysisService {
           startDepth: current.depth,
           endDepth: next.depth,
           slope: slope,
-          fishingRating: math.min(10.0, fishingRating),
+          fishingRating: math.min(10.0, math.max(1.0, fishingRating)),
           description: description,
         ));
       }
@@ -683,26 +385,24 @@ class DepthAnalysisService {
     return structures;
   }
 
-  /// Поиск топ рекомендаций (ОЧЕНЬ строгий отбор)
-  static List<FishingRecommendation> _findTopRecommendations(
+  /// Поиск ТОП мест (строгий профессиональный отбор)
+  static List<FishingRecommendation> _findTopSpots(
       List<DepthProfileAnalysis> analyses,
       AnalysisSettings settings,
-      CarpSeason currentSeason,
-      CarpTimeOfDay currentTime,
       ) {
     final recommendations = <FishingRecommendation>[];
 
     for (final analysis in analyses) {
       for (final point in analysis.points) {
-        // ОЧЕНЬ СТРОГИЙ фильтр: только места с рейтингом 7.0+ (было 6.5+)
+        // СТРОГИЙ профессиональный фильтр: только 7.0+
         if (point.fishingScore != null && point.fishingScore! >= 7.0) {
           final recommendation = FishingRecommendation(
             distance: point.distance,
             depth: point.depth,
             rating: point.fishingScore!,
-            reason: _generateScientificReason(point, analysis.structures, currentSeason),
-            bestTime: _getOptimalTime(point, currentSeason, currentTime),
-            type: _getRecommendationType(point.fishingScore!),
+            reason: _generateProfessionalReason(point, analysis.structures),
+            bestTime: 'Универсально перспективное место',
+            type: _getProfessionalRecommendationType(point.fishingScore!),
           );
           recommendations.add(recommendation);
         }
@@ -710,154 +410,200 @@ class DepthAnalysisService {
     }
 
     recommendations.sort((a, b) => b.rating.compareTo(a.rating));
-    return recommendations.take(5).toList(); // Еще меньше рекомендаций - максимум 5!
+    return recommendations.take(8).toList(); // Топ-8 мест
   }
 
-  /// ОЧЕНЬ строгие типы рекомендаций
-  static RecommendationType _getRecommendationType(double rating) {
-    if (rating >= 8.0) return RecommendationType.excellent;  // Повышен с 8.5
-    if (rating >= 7.0) return RecommendationType.good;       // Понижен с 7.5
-    if (rating >= 6.0) return RecommendationType.average;    // Понижен с 6.5
+  /// Профессиональные типы рекомендаций
+  static RecommendationType _getProfessionalRecommendationType(double rating) {
+    if (rating >= 8.5) return RecommendationType.excellent;  // Элитные места
+    if (rating >= 7.5) return RecommendationType.good;       // Очень хорошие
+    if (rating >= 7.0) return RecommendationType.average;    // Хорошие
     return RecommendationType.avoid;
   }
 
-  /// Научно обоснованная общая оценка
-  static String _generateScientificAssessment(
-      List<DepthProfileAnalysis> analyses,
-      AnalysisSettings settings,
-      CarpSeason currentSeason,
-      double waterTemperature,
+  /// Генерация профессионального обоснования
+  static String _generateProfessionalReason(
+      DepthPoint point,
+      List<BottomStructure> structures,
       ) {
-    final totalPoints = analyses.fold<int>(0, (sum, analysis) => sum + analysis.points.length);
-    if (totalPoints == 0) return 'Недостаточно данных для научного анализа';
+    // 🐛 ДЕБАГ: что попало в генерацию причины
+    print('🎯 ГЕНЕРАЦИЯ ПРИЧИНЫ:');
+    print('  point.bottomType: ${point.bottomType}');
+    print('  point.depth: ${point.depth}');
+    print('  point.distance: ${point.distance}');
+    print('  point.fishingScore: ${point.fishingScore}');
 
-    final allPoints = analyses.expand((a) => a.points).toList();
-    final avgRating = allPoints
-        .where((p) => p.fishingScore != null)
-        .map((p) => p.fishingScore!)
-        .fold<double>(0.0, (sum, score) => sum + score) / totalPoints;
+    // ИСПОЛЬЗУЕМ ТОЛЬКО реальный тип дна из маркера!
+    String reason = 'Тип дна: ${point.bottomType}. ';
+    reason += 'Глубина: ${point.depth.toStringAsFixed(1)}м. ';
 
-    String seasonText = _getSeasonText(currentSeason);
-    String assessment = '$seasonText: ';
+    // Анализ структур рельефа (если есть)
+    final nearbyStructure = structures.where((s) =>
+    point.distance >= s.startDistance && point.distance <= s.endDistance
+    ).isNotEmpty ? structures.firstWhere((s) =>
+    point.distance >= s.startDistance && point.distance <= s.endDistance
+    ) : null;
 
-    if (avgRating >= 8.5) {
-      assessment += 'ОТЛИЧНЫЙ водоем! Высокий потенциал для карпфишинга. ';
-    } else if (avgRating >= 7.0) {
-      assessment += 'ХОРОШИЙ водоем с перспективными зонами. ';
-    } else if (avgRating >= 5.5) {
-      assessment += 'СРЕДНИЙ водоем, требует поиска активных точек. ';
+    if (nearbyStructure != null) {
+      reason += '${nearbyStructure.description}. ';
+      print('  найдена структура: ${nearbyStructure.description}');
     } else {
-      assessment += 'СЛОЖНЫЙ водоем, нужна детальная разведка. ';
+      print('  структур рядом не найдено');
     }
 
-    // Температурный анализ
-    if (waterTemperature >= 23 && waterTemperature <= 30) {
-      assessment += 'Температура воды ОПТИМАЛЬНАЯ ($waterTemperature°C) для карпа!';
-    } else if (waterTemperature >= 17 && waterTemperature <= 35) {
-      assessment += 'Температура воды ПРИЕМЛЕМАЯ ($waterTemperature°C).';
+    // Профессиональный анализ РЕАЛЬНОГО типа дна
+    switch (point.bottomType) {
+      case 'точка_кормления':
+        reason += 'Проверенная точка кормления - работает годами, максимальный приоритет!';
+        break;
+      case 'ракушка':
+        reason += 'Естественная кормовая база - карп найдет здесь мидий, личинок и ракообразных.';
+        break;
+      case 'ровно_твердо':
+        reason += 'Твердое дно - отличное ложе для оснастки, карп чувствует себя уверенно.';
+        break;
+      case 'трава_водоросли':
+        reason += 'Растительность - укрытие, кислород и корм, ищите границы зарослей.';
+        break;
+      case 'зацеп':
+        reason += 'Зацеп - риск для снастей, но крупный карп любит укрытия.';
+        break;
+      case 'бугор':
+        reason += 'Бугор - ищите подножие, а не вершину. Там скапливается смытый корм.';
+        break;
+      case 'камни':
+        reason += 'Каменистое дно - твердая основа плюс ракообразные.';
+        break;
+      case 'ил':
+        reason += 'Стандартное карповое дно - нейтральное место.';
+        break;
+      case 'глубокий_ил':
+        reason += 'Глубокий ил - может быть бедным на корм, мягкое ложе.';
+        break;
+      default:
+        reason += 'Анализ рельефа и структуры дна.';
+        print('  ⚠️ НЕИЗВЕСТНЫЙ ТИП ДНА: ${point.bottomType}');
+    }
+
+    print('  итоговая причина: $reason');
+    print('');
+    return reason;
+  }
+
+  /// Общая оценка водоема
+  static String _generateWaterBodyAssessment(List<DepthProfileAnalysis> analyses) {
+    final totalPoints = analyses.fold<int>(0, (sum, analysis) => sum + analysis.points.length);
+    if (totalPoints == 0) return 'Недостаточно данных для анализа рельефа';
+
+    final allPoints = analyses.expand((a) => a.points).toList();
+    final validScores = allPoints
+        .where((p) => p.fishingScore != null)
+        .map((p) => p.fishingScore!)
+        .toList();
+
+    if (validScores.isEmpty) return 'Нет точек для оценки';
+
+    final avgRating = validScores.reduce((a, b) => a + b) / validScores.length;
+    final topSpots = validScores.where((score) => score >= 7.0).length;
+    final eliteSpots = validScores.where((score) => score >= 8.5).length;
+
+    String assessment = '';
+
+    if (avgRating >= 7.5) {
+      assessment = '🔥 ЭЛИТНЫЙ водоем! ';
+    } else if (avgRating >= 6.5) {
+      assessment = '✅ ОТЛИЧНЫЙ водоем! ';
+    } else if (avgRating >= 5.5) {
+      assessment = '👍 ХОРОШИЙ водоем. ';
+    } else if (avgRating >= 4.5) {
+      assessment = '⚠️ СРЕДНИЙ водоем. ';
     } else {
-      assessment += 'Температура воды НЕ ОПТИМАЛЬНАЯ ($waterTemperature°C) - снижена активность.';
+      assessment = '❌ СЛОЖНЫЙ водоем. ';
+    }
+
+    assessment += 'Рейтинг рельефа: ${avgRating.toStringAsFixed(1)}/10. ';
+
+    if (eliteSpots > 0) {
+      assessment += 'Найдено $eliteSpots элитных мест (8.5+)! ';
+    }
+    if (topSpots > 0) {
+      assessment += 'Перспективных точек: $topSpots. ';
     }
 
     return assessment;
   }
 
-  /// Расширенные научные советы
-  static List<String> _generateAdvancedTips(
-      List<DepthProfileAnalysis> analyses,
-      AnalysisSettings settings,
-      CarpSeason currentSeason,
-      CarpTimeOfDay currentTime,
-      double waterTemperature,
-      ) {
+  /// Профессиональные советы по рельефу
+  static List<String> _generateProfessionalTips(List<DepthProfileAnalysis> analyses) {
     final tips = <String>[];
-
-    // Сезонные рекомендации
-    switch (currentSeason) {
-      case CarpSeason.spring:
-        tips.add('🌱 ВЕСНА: Ищите заросшие флэты 0.5-2.5м для нереста карпа');
-        tips.add('🎯 Site fidelity: Карп возвращается на одни места нереста годами');
-        tips.add('🌡️ Оптимум нереста: 17-22°C в зарослях мелководья');
-        break;
-      case CarpSeason.summer:
-        tips.add('☀️ ЛЕТО: Приоритет - бровки (drop-off) 2-4м глубиной');
-        tips.add('🌙 Ночью карп выходит кормиться на флэты, днем в укрытиях');
-        tips.add('🎣 Пик активности: рассвет и ночь на границах глубин');
-        break;
-      case CarpSeason.autumn:
-        tips.add('🍂 ОСЕНЬ: Карп запасается перед зимой, переходит на глубину');
-        tips.add('📍 Ищите переходные зоны 2-5м между летними и зимними стоянками');
-        break;
-      case CarpSeason.winter:
-        tips.add('❄️ ЗИМА: Карп концентрируется в глубоких ямах 4-8м');
-        tips.add('🐌 Минимальная активность, пассивные методы ловли');
-        tips.add('🎯 Ровное дно глубоких зон - основные зимовальные места');
-        break;
-    }
-
-    // Анализ структур
+    final allPoints = analyses.expand((a) => a.points).toList();
     final allStructures = analyses.expand((a) => a.structures).toList();
+
+    // Анализ найденных структур
     final dropoffs = allStructures.where((s) => s.type == StructureType.dropoff).length;
     final shelves = allStructures.where((s) => s.type == StructureType.shelf).length;
+    final slopes = allStructures.where((s) => s.type == StructureType.slope).length;
 
     if (dropoffs > 0) {
-      tips.add('📊 Найдено $dropoffs drop-off зон - ТОП места для карпа! (концентрация корма)');
+      tips.add('🎯 Найдено $dropoffs drop-off зон - ТОП места! Карп использует свалы как пути миграции и концентрации корма');
     }
     if (shelves > 0) {
-      tips.add('📏 Найдено $shelves столов/полок - отличные кормовые зоны');
+      tips.add('📏 Найдено $shelves кормовых столов - ставьте снасти на глубине 2-4м для максимального эффекта');
+    }
+    if (slopes > 0) {
+      tips.add('⛰️ Найдено $slopes склонов - ищите подножие склонов, там скапливается смытый корм');
     }
 
     // Анализ типов дна
-    final allPoints = analyses.expand((a) => a.points).toList();
     final bottomTypes = allPoints.map((p) => p.bottomType).toSet();
 
-    if (bottomTypes.contains('точка_кормления')) {
-      tips.add('🎯 ПРОВЕРЕННЫЕ точки кормления - максимальный приоритет!');
-    }
-    if (bottomTypes.contains('заросли') || bottomTypes.contains('flat_с_растительностью')) {
-      tips.add('🌿 Растительные зоны найдены - отлично для амура и нерестового карпа');
-    }
-    if (bottomTypes.contains('бровка') || bottomTypes.contains('drop_off')) {
-      tips.add('📈 Drop-off зоны - научно доказанные концентраторы карпа');
-    }
     if (bottomTypes.contains('ракушка')) {
-      tips.add('🐚 Ракушечник - естественная кормовая база карпа');
+      tips.add('🐚 Ракушечник обнаружен - естественная кормовая база! Карп найдет здесь мидий, личинок, ракообразных');
+    }
+    if (bottomTypes.contains('точка_кормления')) {
+      tips.add('🎯 Проверенные точки кормления - МАКСИМАЛЬНЫЙ приоритет! Эти места работают годами');
+    }
+    if (bottomTypes.contains('заросли') || bottomTypes.contains('трава_водоросли')) {
+      tips.add('🌿 Растительные зоны - ищите ГРАНИЦЫ зарослей, а не центр. Карп кормится по краям');
+    }
+    if (bottomTypes.any((type) => type.contains('бровка') || type.contains('drop_off'))) {
+      tips.add('📈 Drop-off структуры - золотая жила карпятника! Концентрация корма + пути миграции');
     }
 
-    // Температурные советы
-    if (waterTemperature < 10) {
-      tips.add('🧊 Низкая температура - карп малоактивен, используйте минимум прикорма');
-    } else if (waterTemperature >= 23 && waterTemperature <= 30) {
-      tips.add('🔥 ОПТИМАЛЬНАЯ температура для карпа - максимальная активность!');
-    }
-
-    // Временные рекомендации
-    switch (currentTime) {
-      case CarpTimeOfDay.night:
-        if (currentSeason == CarpSeason.summer) {
-          tips.add('🌙 НОЧЬ летом - пик активности карпа на флэтах и в зарослях');
-        }
-        break;
-      case CarpTimeOfDay.dawn:
-        tips.add('🌅 РАССВЕТ - одно из лучших времен для карпфишинга');
-        break;
-      case CarpTimeOfDay.day:
-        if (currentSeason == CarpSeason.summer) {
-          tips.add('☀️ ДЕНЬ летом - карп в укрытиях, ищите тенистые глубокие места');
-        }
-        break;
-      default:
-        break;
-    }
+    // Общие профессиональные советы
+    tips.add('💡 ЗОЛОТОЕ ПРАВИЛО: Ищите места где встречаются 2+ фактора: комфорт + безопасность + корм');
+    tips.add('🔄 Переходы типов дна (ил→ракушка, глина→песок) = магнит для карпа');
+    tips.add('🏔️ Подножие структур > вершина структур (карп редко лежит на буграх)');
+    tips.add('📍 Излом бровки > прямая бровка (непрямолинейные структуры интереснее)');
 
     return tips;
   }
 
-  // Вспомогательные методы
+  // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
+
   static String _getBottomType(Map<String, dynamic> marker) {
-    return marker['bottomType'] as String? ??
-        _convertLegacyType(marker['type'] as String?) ??
-        'ил';
+    // 🐛 ДЕБАГ: что у нас в маркере
+    print('📋 _getBottomType вызван:');
+    print('  marker keys: ${marker.keys.toList()}');
+    print('  marker[bottomType]: ${marker['bottomType']}');
+    print('  marker[type]: ${marker['type']}');
+
+    final bottomType = marker['bottomType'] as String?;
+    final legacyType = marker['type'] as String?;
+
+    if (bottomType != null && bottomType.isNotEmpty) {
+      print('  ✅ используем bottomType: $bottomType');
+      return bottomType;
+    }
+
+    if (legacyType != null) {
+      final converted = _convertLegacyType(legacyType);
+      print('  🔄 конвертируем type $legacyType → $converted');
+      return converted ?? 'ил';
+    }
+
+    print('  ⚠️ используем дефолт: ил');
+    return 'ил';
   }
 
   static String? _convertLegacyType(String? type) {
@@ -875,24 +621,17 @@ class DepthAnalysisService {
 
   static Color _getBottomTypeColor(String bottomType) {
     const colors = {
-      'ил': Color(0xFFD4A574),
-      'глубокий_ил': Color(0xFF8B4513),
-      'ракушка': Color(0xFFFFFFFF),
-      'ровно_твердо': Color(0xFFFFFF00),
-      'камни': Color(0xFF808080),
-      'трава_водоросли': Color(0xFF90EE90),
-      'зацеп': Color(0xFFFF0000),
-      'бугор': Color(0xFFFF8C00),
-      'точка_кормления': Color(0xFF00BFFF),
-      'заросли': Color(0xFF32CD32),
-      'flat_с_растительностью': Color(0xFF98FB98),
-      'бровка': Color(0xFF4169E1),
-      'drop_off': Color(0xFF1E90FF),
-      'яма_неглубокая': Color(0xFF6495ED),
-      'яма_глубокая': Color(0xFF191970),
-      'ровный_стол': Color(0xFFDDD8C7),
-      'ровное_дно_глубина': Color(0xFF696969),
-      'литораль': Color(0xFFF0E68C),
+      // ТОЧНЫЕ цвета из приложения
+      'ил': Color(0xFFD4A574),              // Светло ярко коричневый 🟤
+      'глубокий_ил': Color(0xFF8B4513),     // Темно коричневый 🟫
+      'ракушка': Color(0xFFFFFFFF),         // Белый ⚪
+      'ровно_твердо': Color(0xFFFFFF00),    // Желтый 🟡
+      'камни': Color(0xFF808080),           // Серый 🔘
+      'трава_водоросли': Color(0xFF90EE90), // Светло зеленый 🟢
+      'зацеп': Color(0xFFFF0000),           // Красный 🔴
+      'бугор': Color(0xFFFF8C00),           // Ярко оранжевый 🟠
+      'точка_кормления': Color(0xFF00BFFF), // Ярко голубой 🔵
+      'default': Color(0xFF0000FF),         // Синий для обратной совместимости
     };
     return colors[bottomType] ?? const Color(0xFF0000FF);
   }
@@ -902,77 +641,5 @@ class DepthAnalysisService {
     final mean = values.reduce((a, b) => a + b) / values.length;
     final variance = values.map((v) => math.pow(v - mean, 2)).reduce((a, b) => a + b) / values.length;
     return math.sqrt(variance);
-  }
-
-  static String _getSeasonText(CarpSeason season) {
-    switch (season) {
-      case CarpSeason.spring:
-        return 'Весенний период (нерест 17-22°C)';
-      case CarpSeason.summer:
-        return 'Летний период (активная кормежка)';
-      case CarpSeason.autumn:
-        return 'Осенний период (подготовка к зиме)';
-      case CarpSeason.winter:
-        return 'Зимний период (пассивная зимовка)';
-    }
-  }
-
-  static String _generateScientificReason(
-      DepthPoint point,
-      List<BottomStructure> structures,
-      CarpSeason currentSeason
-      ) {
-    final nearbyStructure = structures.firstWhere(
-          (s) => point.distance >= s.startDistance && point.distance <= s.endDistance,
-      orElse: () => BottomStructure(
-        type: StructureType.shelf,
-        startDistance: 0, endDistance: 0, startDepth: 0, endDepth: 0,
-        slope: 0, fishingRating: 0, description: 'Стандартная зона',
-      ),
-    );
-
-    String seasonalContext = '';
-    switch (currentSeason) {
-      case CarpSeason.spring:
-        seasonalContext = 'весенняя активность в нерестовых зонах';
-        break;
-      case CarpSeason.summer:
-        seasonalContext = 'летняя кормежка на бровках и столах';
-        break;
-      case CarpSeason.autumn:
-        seasonalContext = 'осенний жор перед зимовкой';
-        break;
-      case CarpSeason.winter:
-        seasonalContext = 'зимовальная концентрация в глубинах';
-        break;
-    }
-
-    return '${nearbyStructure.description} (${point.bottomType}) - $seasonalContext';
-  }
-
-  static String _getOptimalTime(DepthPoint point, CarpSeason currentSeason, CarpTimeOfDay currentTime) {
-    final naturalBottomType = _getNaturalBottomType(point.bottomType);
-
-    // Особые случаи для природных типов
-    if (['заросли', 'трава_водоросли', 'flat_с_растительностью'].contains(naturalBottomType)) {
-      return currentSeason == CarpSeason.spring ?
-      'Утро, день (нерестовая активность в растительности)' :
-      'Рассвет, вечер (кормежка в зарослях)';
-    }
-
-    switch (currentSeason) {
-      case CarpSeason.spring:
-        return 'Утро, день (нерестовая активность)';
-      case CarpSeason.summer:
-        if (point.depth < 2.0) {
-          return 'Ночь, рассвет (выход на мелководье)';
-        } else {
-          return 'Рассвет, вечер, ночь (бровки и глубины)';
-        }
-      case CarpSeason.autumn:
-        return 'Рассвет, утро, вечер (осенний жор)';
-      case CarpSeason.winter:
-        return 'День (минимальная активность)';
-    }
   }
 }
