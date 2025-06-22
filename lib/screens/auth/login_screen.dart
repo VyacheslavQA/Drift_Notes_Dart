@@ -174,30 +174,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Безопасный расчет размера шрифта с ограничением
-  double _getSafeFontSize(double baseSize) {
+  /// Безопасный адаптивный текст из гайда
+  Widget _buildSafeText(
+      BuildContext context,
+      String text, {
+        required double baseFontSize,
+        required bool isTablet,
+        FontWeight? fontWeight,
+        Color? color,
+        TextAlign? textAlign,
+        int? maxLines,
+      }) {
     final textScaler = MediaQuery.of(context).textScaler;
     final scale = textScaler.scale(1.0);
 
-    // КРИТИЧНО: еще более строгое ограничение
-    final adaptiveScale = scale > 1.1 ? 1.1 / scale : 1.0;
-    return baseSize * adaptiveScale;
+    // ВАЖНО: ограничиваем масштабирование (из гайда)
+    final adaptiveScale = scale > 1.3 ? 1.3 / scale : 1.0;
+    final fontSize = (isTablet ? baseFontSize * 1.2 : baseFontSize) * adaptiveScale;
+
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color ?? AppConstants.textColor,
+      ),
+      textAlign: textAlign,
+      overflow: TextOverflow.ellipsis,
+      maxLines: maxLines ?? 2,
+    );
   }
 
-  // Проверка, является ли экран планшетом
-  bool _isTablet() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return screenWidth >= 600;
-  }
-
-  // Безопасная кнопка с FittedBox (по гайду)
+  /// Безопасная кнопка из гайда
   Widget _buildSafeButton({
+    required BuildContext context,
     required String text,
     required VoidCallback? onPressed,
-    bool isLoading = false,
+    required bool isTablet,
     String? semanticLabel,
+    bool isLoading = false,
   }) {
-    final isTablet = _isTablet();
     final buttonHeight = isTablet ? 56.0 : 48.0;
 
     return Semantics(
@@ -207,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         constraints: BoxConstraints(
           minHeight: buttonHeight,
-          maxHeight: buttonHeight * 2.0, // УВЕЛИЧИВАЕМ лимит для больших шрифтов
+          maxHeight: buttonHeight * 1.5,
         ),
         child: ElevatedButton(
           onPressed: onPressed,
@@ -215,36 +231,33 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: Colors.transparent,
             foregroundColor: AppConstants.textColor,
             side: BorderSide(color: AppConstants.textColor),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(25),
-            ),
             padding: EdgeInsets.symmetric(
               horizontal: isTablet ? 32 : 24,
-              vertical: isTablet ? 16 : 12, // Уменьшаем вертикальный padding
+              vertical: isTablet ? 16 : 14,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
             ),
             elevation: 0,
           ),
           child: isLoading
               ? SizedBox(
-            width: 20,
-            height: 20,
+            width: isTablet ? 24 : 20,
+            height: isTablet ? 24 : 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                AppConstants.textColor,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
             ),
           )
-              : FittedBox( // КРИТИЧНО для предотвращения обрезания
+              : FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
+            child: _buildSafeText(
+              context,
               text,
-              style: TextStyle(
-                fontSize: _getSafeFontSize(16),
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1, // КРИТИЧНО: ограничиваем одной строкой
-              overflow: TextOverflow.ellipsis, // Fallback защита
+              baseFontSize: 16.0,
+              isTablet: isTablet,
+              fontWeight: FontWeight.bold,
+              color: AppConstants.textColor,
             ),
           ),
         ),
@@ -252,33 +265,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Безопасный текст с ограничением масштабирования
-  Widget _buildSafeText(String text, {
-    double baseFontSize = 16.0,
-    FontWeight? fontWeight,
-    Color? color,
-    TextAlign? textAlign,
-    int? maxLines,
-  }) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: _getSafeFontSize(baseFontSize),
-        fontWeight: fontWeight,
-        color: color ?? AppConstants.textColor,
-      ),
-      textAlign: textAlign,
-      maxLines: maxLines,
-      overflow: TextOverflow.ellipsis, // Fallback защита
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    final isTablet = _isTablet();
-
-    // 🛡️ БЕЗОПАСНАЯ ФОРМУЛА ЭКРАНА ИЗ ГАЙДА
+    // ✅ БЕЗОПАСНАЯ ФОРМУЛА ЭКРАНА из гайда
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -290,17 +279,190 @@ class _LoginScreenState extends State<LoginScreen> {
             colors: AppConstants.authGradient,
           ),
         ),
-        child: SafeArea( // ОБЯЗАТЕЛЬНО
-          child: LayoutBuilder( // КРИТИЧНО для предотвращения overflow
+        child: SafeArea(
+          child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView( // ВСЕГДА как fallback
+              final isTablet = MediaQuery.of(context).size.width >= 600;
+              final localizations = AppLocalizations.of(context);
+
+              return SingleChildScrollView(
                 padding: EdgeInsets.all(isTablet ? 32 : 24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: constraints.maxHeight,
                     maxWidth: isTablet ? 600 : double.infinity,
                   ),
-                  child: _buildContent(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Кнопка назад
+                      Row(
+                        children: [
+                          Semantics(
+                            label: 'Вернуться назад',
+                            hint: 'Возврат к предыдущему экрану',
+                            button: true,
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.arrow_back,
+                                  color: AppConstants.textColor,
+                                  size: isTablet ? 28 : 24,
+                                ),
+                                onPressed: () {
+                                  if (Navigator.canPop(context)) {
+                                    Navigator.pop(context);
+                                  } else {
+                                    Navigator.pushReplacementNamed(context, '/auth_selection');
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                        ],
+                      ),
+
+                      SizedBox(height: isTablet ? 32 : 24),
+
+                      // Заголовок и логотип
+                      Column(
+                        children: [
+                          _buildSafeText(
+                            context,
+                            localizations.translate('login_with_email_title'),
+                            baseFontSize: 24.0,
+                            isTablet: isTablet,
+                            fontWeight: FontWeight.bold,
+                            textAlign: TextAlign.center,
+                          ),
+
+                          SizedBox(height: isTablet ? 32 : 24),
+
+                          // Логотип
+                          Image.asset(
+                            'assets/images/app_logo.png',
+                            width: isTablet ? 100 : 80,
+                            height: isTablet ? 100 : 80,
+                          ),
+
+                          SizedBox(height: isTablet ? 24 : 16),
+
+                          _buildSafeText(
+                            context,
+                            'Drift Notes',
+                            baseFontSize: 30.0,
+                            isTablet: isTablet,
+                            fontWeight: FontWeight.bold,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: isTablet ? 48 : 36),
+
+                      // Форма входа
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            // Email поле
+                            _buildInputField(
+                              context: context,
+                              controller: _emailController,
+                              hintText: localizations.translate('email'),
+                              prefixIcon: Icons.email,
+                              validator: (value) => Validators.validateEmail(value, context),
+                              textInputAction: TextInputAction.next,
+                              isTablet: isTablet,
+                            ),
+
+                            SizedBox(height: isTablet ? 24 : 16),
+
+                            // Password поле
+                            _buildInputField(
+                              context: context,
+                              controller: _passwordController,
+                              hintText: localizations.translate('password'),
+                              prefixIcon: Icons.lock,
+                              obscureText: _obscurePassword,
+                              validator: (value) => Validators.validatePassword(value, context),
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _login(),
+                              isTablet: isTablet,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                  color: AppConstants.textColor,
+                                  size: isTablet ? 28 : 24,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                                style: IconButton.styleFrom(
+                                  minimumSize: Size(48, 48),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: isTablet ? 16 : 12),
+
+                            // Чекбокс и ссылка забыли пароль
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildRememberMeCheckbox(context, isTablet),
+                                _buildForgotPasswordButton(context, isTablet),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: isTablet ? 40 : 32),
+
+                      // Сообщение об ошибке
+                      if (_errorMessage.isNotEmpty) ...[
+                        Container(
+                          constraints: BoxConstraints(minHeight: 48),
+                          padding: EdgeInsets.all(12),
+                          margin: EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _buildSafeText(
+                            context,
+                            _errorMessage,
+                            baseFontSize: 14.0,
+                            isTablet: isTablet,
+                            color: Colors.redAccent,
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                          ),
+                        ),
+                      ],
+
+                      // Кнопка входа
+                      _buildSafeButton(
+                        context: context,
+                        text: localizations.translate('login'),
+                        onPressed: _isLoading ? null : _login,
+                        isTablet: isTablet,
+                        isLoading: _isLoading,
+                        semanticLabel: 'Войти в приложение',
+                      ),
+
+                      SizedBox(height: isTablet ? 24 : 16),
+
+                      // Ссылка на регистрацию
+                      _buildRegistrationLink(context, isTablet),
+                    ],
+                  ),
                 ),
               );
             },
@@ -310,196 +472,35 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Основной контент без сложных вложенностей
-  Widget _buildContent() {
-    final localizations = AppLocalizations.of(context);
-    final isTablet = _isTablet();
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Кнопка назад
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Semantics(
-            label: 'Вернуться назад',
-            hint: 'Возврат к предыдущему экрану',
-            button: true,
-            child: IconButton(
-              icon: Icon(
-                Icons.arrow_back,
-                color: AppConstants.textColor,
-                size: isTablet ? 28 : 24,
-              ),
-              onPressed: () {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                } else {
-                  Navigator.pushReplacementNamed(context, '/auth_selection');
-                }
-              },
-              style: IconButton.styleFrom(
-                minimumSize: Size(48, 48), // Минимум для аудита
-              ),
-            ),
-          ),
-        ),
-
-        // Заголовок и логотип
-        Column(
-          children: [
-            _buildSafeText(
-              localizations.translate('login_with_email_title'),
-              baseFontSize: isTablet ? 28 : 24,
-              fontWeight: FontWeight.bold,
-              textAlign: TextAlign.center,
-            ),
-
-            SizedBox(height: isTablet ? 32 : 24),
-
-            // Логотип
-            Image.asset(
-              'assets/images/app_logo.png',
-              width: isTablet ? 100 : 80,
-              height: isTablet ? 100 : 80,
-            ),
-
-            SizedBox(height: isTablet ? 24 : 16),
-
-            _buildSafeText(
-              'Drift Notes',
-              baseFontSize: isTablet ? 36 : 30,
-              fontWeight: FontWeight.bold,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-
-        // Форма входа
-        Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Email поле
-              _buildInputField(
-                controller: _emailController,
-                hintText: localizations.translate('email'),
-                prefixIcon: Icons.email,
-                validator: (value) => Validators.validateEmail(value, context),
-                textInputAction: TextInputAction.next,
-              ),
-
-              SizedBox(height: isTablet ? 24 : 16),
-
-              // Password поле
-              _buildInputField(
-                controller: _passwordController,
-                hintText: localizations.translate('password'),
-                prefixIcon: Icons.lock,
-                obscureText: _obscurePassword,
-                validator: (value) => Validators.validatePassword(value, context),
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _login(),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                    color: AppConstants.textColor,
-                    size: isTablet ? 28 : 24,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                  style: IconButton.styleFrom(
-                    minimumSize: Size(48, 48), // Минимум для аудита
-                  ),
-                ),
-              ),
-
-              SizedBox(height: isTablet ? 16 : 12),
-
-              // Чекбокс и ссылка забыли пароль
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildRememberMeCheckbox(),
-                  _buildForgotPasswordButton(),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // Нижняя часть: ошибка и кнопки
-        Column(
-          children: [
-            // Сообщение об ошибке
-            if (_errorMessage.isNotEmpty) ...[
-              Container(
-                constraints: BoxConstraints(minHeight: 48),
-                padding: EdgeInsets.all(12),
-                margin: EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: _buildSafeText(
-                  _errorMessage,
-                  baseFontSize: 14,
-                  color: Colors.redAccent,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-
-            // Кнопка входа
-            _buildSafeButton(
-              text: localizations.translate('login'),
-              onPressed: _isLoading ? null : _login,
-              isLoading: _isLoading,
-              semanticLabel: 'Войти в приложение',
-            ),
-
-            SizedBox(height: isTablet ? 24 : 16),
-
-            // Ссылка на регистрацию
-            _buildRegistrationLink(),
-          ],
-        ),
-      ],
-    );
-  }
-
   // Безопасное поле ввода
   Widget _buildInputField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hintText,
     required IconData prefixIcon,
     required String? Function(String?) validator,
+    required bool isTablet,
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputAction textInputAction = TextInputAction.next,
     Function(String)? onFieldSubmitted,
   }) {
-    final isTablet = _isTablet();
-
     return Container(
       constraints: BoxConstraints(
-        minHeight: 48, // Минимум для аудита
-        maxHeight: 72, // Позволяем расти
+        minHeight: 48,
+        maxHeight: 72,
       ),
       child: TextFormField(
         controller: controller,
         style: TextStyle(
           color: AppConstants.textColor,
-          fontSize: _getSafeFontSize(16),
+          fontSize: isTablet ? 18 : 16,
         ),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.5),
-            fontSize: _getSafeFontSize(16),
+            color: AppConstants.textColor.withOpacity(0.5),
+            fontSize: isTablet ? 18 : 16,
           ),
           filled: true,
           fillColor: const Color(0xFF12332E),
@@ -536,7 +537,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           errorStyle: TextStyle(
             color: Colors.redAccent,
-            fontSize: _getSafeFontSize(12),
+            fontSize: isTablet ? 14 : 12,
           ),
           contentPadding: EdgeInsets.symmetric(
             horizontal: isTablet ? 24 : 20,
@@ -552,14 +553,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // Чекбокс "Запомнить меня"
-  Widget _buildRememberMeCheckbox() {
+  Widget _buildRememberMeCheckbox(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 48, // Минимум для аудита
+          width: 48,
           height: 48,
           child: Checkbox(
             value: _rememberMe,
@@ -571,7 +572,7 @@ class _LoginScreenState extends State<LoginScreen> {
             activeColor: AppConstants.primaryColor,
             checkColor: AppConstants.textColor,
             side: BorderSide(
-              color: AppConstants.textColor.withValues(alpha: 0.5),
+              color: AppConstants.textColor.withOpacity(0.5),
               width: 1.5,
             ),
             materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -586,14 +587,16 @@ class _LoginScreenState extends State<LoginScreen> {
               });
             },
             child: Container(
-              constraints: BoxConstraints(minHeight: 48), // Минимум для аудита
+              constraints: BoxConstraints(minHeight: 48),
               alignment: Alignment.centerLeft,
-              child: FittedBox( // КРИТИЧНО для предотвращения обрезания
+              child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: _buildSafeText(
+                  context,
                   localizations.translate('remember_me'),
-                  baseFontSize: 13,
+                  baseFontSize: 13.0,
+                  isTablet: isTablet,
                 ),
               ),
             ),
@@ -604,7 +607,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // Кнопка "Забыли пароль?"
-  Widget _buildForgotPasswordButton() {
+  Widget _buildForgotPasswordButton(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
 
     return Semantics(
@@ -612,7 +615,7 @@ class _LoginScreenState extends State<LoginScreen> {
       label: 'Забыли пароль?',
       child: Container(
         constraints: BoxConstraints(
-          minHeight: 48, // Минимум для аудита
+          minHeight: 48,
           minWidth: 48,
         ),
         child: TextButton(
@@ -622,14 +625,16 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextButton.styleFrom(
             foregroundColor: AppConstants.textColor,
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            minimumSize: Size(48, 48), // Минимум для аудита
+            minimumSize: Size(48, 48),
             tapTargetSize: MaterialTapTargetSize.padded,
           ),
-          child: FittedBox( // КРИТИЧНО для предотвращения обрезания
+          child: FittedBox(
             fit: BoxFit.scaleDown,
             child: _buildSafeText(
+              context,
               localizations.translate('forgot_password'),
-              baseFontSize: 13,
+              baseFontSize: 13.0,
+              isTablet: isTablet,
             ),
           ),
         ),
@@ -638,36 +643,46 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // Ссылка на регистрацию
-  Widget _buildRegistrationLink() {
+  Widget _buildRegistrationLink(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
     final registrationText = localizations.translate('no_account_register');
     final parts = registrationText.split('?');
 
     if (parts.length < 2) {
       return _buildSafeText(
+        context,
         registrationText,
-        baseFontSize: 14,
+        baseFontSize: 14.0,
+        isTablet: isTablet,
         textAlign: TextAlign.center,
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.center,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildSafeText(
-          '${parts[0]}? ',
-          baseFontSize: 14,
-          color: AppConstants.textColor.withValues(alpha: 0.7),
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.pushReplacementNamed(context, '/register');
-          },
+        Flexible(
           child: _buildSafeText(
-            parts[1],
-            baseFontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: AppConstants.textColor,
+            context,
+            '${parts[0]}? ',
+            baseFontSize: 14.0,
+            isTablet: isTablet,
+            color: AppConstants.textColor.withOpacity(0.7),
+          ),
+        ),
+        Flexible(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/register');
+            },
+            child: _buildSafeText(
+              context,
+              parts[1],
+              baseFontSize: 14.0,
+              isTablet: isTablet,
+              fontWeight: FontWeight.bold,
+              color: AppConstants.textColor,
+            ),
           ),
         ),
       ],
