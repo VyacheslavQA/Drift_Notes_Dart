@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 import '../services/firebase/firebase_service.dart';
 import '../localization/app_localizations.dart';
+import '../utils/responsive_utils.dart';
+import '../constants/responsive_constants.dart';
+import '../widgets/responsive/responsive_text.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -163,6 +166,13 @@ class _SplashScreenState extends State<SplashScreen>
     final screenSize = MediaQuery.of(context).size;
     final localizations = AppLocalizations.of(context);
 
+    // Простые адаптивные размеры
+    final bool isTablet = screenSize.width >= 600;
+    final double buttonWidth = isTablet
+        ? (screenSize.width * 0.6).clamp(200.0, 400.0)
+        : screenSize.width * 0.8;
+    final double buttonHeight = isTablet ? 64.0 : 56.0;
+
     return AnimatedBuilder(
       animation: Listenable.merge([
         _pressAnimationController,
@@ -172,12 +182,11 @@ class _SplashScreenState extends State<SplashScreen>
       ]),
       builder: (context, child) {
         return Transform.scale(
-          scale:
-              _scaleAnimation.value *
+          scale: _scaleAnimation.value *
               (_isLoading ? 1.0 : _pulseAnimation.value),
           child: Container(
-            width: screenSize.width * 0.8,
-            height: 56,
+            width: buttonWidth,
+            height: buttonHeight,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28.0),
               boxShadow: [
@@ -204,10 +213,9 @@ class _SplashScreenState extends State<SplashScreen>
                   // Основной фон кнопки
                   Container(
                     decoration: BoxDecoration(
-                      color:
-                          _isPressed
-                              ? AppConstants.textColor.withOpacity(0.15)
-                              : Colors.transparent,
+                      color: _isPressed
+                          ? AppConstants.textColor.withOpacity(0.15)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(28.0),
                       border: Border.all(
                         color: AppConstants.textColor,
@@ -219,10 +227,10 @@ class _SplashScreenState extends State<SplashScreen>
                   // Шиммер эффект
                   if (!_isLoading)
                     Positioned(
-                      left: _shimmerAnimation.value * screenSize.width * 0.4,
+                      left: _shimmerAnimation.value * buttonWidth * 0.5,
                       child: Container(
-                        width: screenSize.width * 0.3,
-                        height: 56,
+                        width: buttonWidth * 0.3,
+                        height: buttonHeight,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
@@ -241,46 +249,44 @@ class _SplashScreenState extends State<SplashScreen>
 
                   // Содержимое кнопки
                   Center(
-                    child:
-                        _isLoading
-                            ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Transform.rotate(
-                                  angle: _loadingRotation.value * 2 * 3.14159,
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppConstants.textColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  localizations.translate('biting'),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.9,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                            : Text(
-                              localizations.translate('enter'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppConstants.textColor,
-                                letterSpacing: 0.5,
+                    child: _isLoading
+                        ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Transform.rotate(
+                          angle: _loadingRotation.value * 2 * 3.14159,
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppConstants.textColor,
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          localizations.translate('biting'),
+                          style: TextStyle(
+                            fontSize: isTablet ? 18 : 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppConstants.textColor.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    )
+                        : Text(
+                      localizations.translate('enter'),
+                      style: TextStyle(
+                        fontSize: isTablet ? 20 : 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppConstants.textColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
 
                   // Overlay для эффекта нажатия
@@ -306,6 +312,17 @@ class _SplashScreenState extends State<SplashScreen>
     final textScaler = MediaQuery.of(context).textScaler;
     final localizations = AppLocalizations.of(context);
 
+    // Простая адаптивность
+    final bool isTablet = screenSize.width >= 600;
+    final bool isSmallScreen = screenSize.height < 600;
+    final double availableHeight = screenSize.height;
+
+    // Адаптивные размеры шрифтов
+    final double titleFontSize = (isTablet ? 60 : (isSmallScreen ? 42 : 54)) *
+        (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1);
+    final double subtitleFontSize = (isTablet ? 22 : (isSmallScreen ? 16 : 20)) *
+        (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1);
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -322,119 +339,163 @@ class _SplashScreenState extends State<SplashScreen>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withValues(alpha: 0.6),
-                Colors.black.withValues(alpha: 0.4),
+                Colors.black.withOpacity(0.6),
+                Colors.black.withOpacity(0.4),
               ],
             ),
           ),
           child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(flex: 2),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Используем доступную высоту для расчета отступов
+                final double contentHeight = constraints.maxHeight;
+                final double buttonHeight = isTablet ? 64.0 : 56.0;
+                final double totalFixedHeight = titleFontSize +
+                    (subtitleFontSize * 2) +
+                    buttonHeight +
+                    200; // Приблизительная высота фиксированного контента
 
-                // Заголовок приложения
-                Text(
-                  'Drift Notes',
-                  style: TextStyle(
-                    fontSize:
-                        54 *
-                        (textScaler.scale(1.0) > 1.2
-                            ? 1.2 / textScaler.scale(1.0)
-                            : 1),
-                    fontWeight: FontWeight.bold,
-                    color: AppConstants.textColor,
-                  ),
-                ),
-                SizedBox(height: screenSize.height * 0.03),
-
-                // Подзаголовок
-                SizedBox(
-                  width: screenSize.width * 0.8,
-                  child: Text(
-                    localizations.translate('your_personal_fishing_journal'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize:
-                          20 *
-                          (textScaler.scale(1.0) > 1.2
-                              ? 1.2 / textScaler.scale(1.0)
-                              : 1),
-                      color: Colors.white,
+                // Если контент не помещается, делаем экран прокручиваемым
+                if (totalFixedHeight > contentHeight) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 32.0 : 16.0,
+                      vertical: 16.0,
                     ),
-                  ),
-                ),
-                SizedBox(height: screenSize.height * 0.02),
-
-                // Дополнительный текст
-                SizedBox(
-                  width: screenSize.width * 0.8,
-                  child: Text(
-                    localizations.translate('remember_great_trips'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize:
-                          20 *
-                          (textScaler.scale(1.0) > 1.2
-                              ? 1.2 / textScaler.scale(1.0)
-                              : 1),
-                      color: Colors.white,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: contentHeight,
+                      ),
+                      child: _buildContent(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
                     ),
-                  ),
-                ),
-
-                const Spacer(flex: 3),
-
-                // Крутая анимированная кнопка входа
-                GestureDetector(
-                  onTapDown: (_) {
-                    if (!_isLoading) {
-                      setState(() {
-                        _isPressed = true;
-                      });
-                      _pressAnimationController.forward();
-                    }
-                  },
-                  onTapUp: (_) {
-                    if (!_isLoading) {
-                      setState(() {
-                        _isPressed = false;
-                      });
-                      _pressAnimationController.reverse();
-                      _handleLogin();
-                    }
-                  },
-                  onTapCancel: () {
-                    if (!_isLoading) {
-                      setState(() {
-                        _isPressed = false;
-                      });
-                      _pressAnimationController.reverse();
-                    }
-                  },
-                  child: _buildAnimatedButton(),
-                ),
-
-                SizedBox(height: screenSize.height * 0.03),
-
-                // Кнопка "Выход"
-                TextButton(
-                  onPressed: _isLoading ? null : _handleExit,
-                  child: Text(
-                    localizations.translate('exit'),
-                    style: TextStyle(
-                      color: _isLoading ? Colors.white38 : Colors.white70,
-                      fontSize: 16,
+                  );
+                } else {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 32.0 : 16.0,
+                      vertical: 16.0,
                     ),
-                  ),
-                ),
-
-                SizedBox(height: screenSize.height * 0.05),
-              ],
+                    child: _buildContent(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
+                  );
+                }
+              },
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, bool isTablet, bool isSmallScreen, double titleFontSize, double subtitleFontSize) {
+    final screenSize = MediaQuery.of(context).size;
+    final localizations = AppLocalizations.of(context);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Гибкий верхний отступ
+        Flexible(
+          flex: isSmallScreen ? 1 : (isTablet ? 3 : 2),
+          child: Container(),
+        ),
+
+        // Заголовок приложения
+        Text(
+          'Drift Notes',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.bold,
+            color: AppConstants.textColor,
+          ),
+        ),
+
+        SizedBox(height: isTablet ? 32 : (isSmallScreen ? 16 : 24)),
+
+        // Подзаголовок
+        Container(
+          constraints: BoxConstraints(
+            maxWidth: isTablet ? 600 : screenSize.width * 0.85,
+          ),
+          child: Text(
+            localizations.translate('your_personal_fishing_journal'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: subtitleFontSize,
+              color: Colors.white,
+            ),
+          ),
+        ),
+
+        SizedBox(height: isSmallScreen ? 8 : 16),
+
+        // Дополнительный текст
+        Container(
+          constraints: BoxConstraints(
+            maxWidth: isTablet ? 600 : screenSize.width * 0.85,
+          ),
+          child: Text(
+            localizations.translate('remember_great_trips'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: subtitleFontSize,
+              color: Colors.white,
+            ),
+          ),
+        ),
+
+        // Гибкий средний отступ
+        Flexible(
+          flex: isSmallScreen ? 2 : (isTablet ? 4 : 3),
+          child: Container(),
+        ),
+
+        // Кнопка входа
+        GestureDetector(
+          onTapDown: (_) {
+            if (!_isLoading) {
+              setState(() {
+                _isPressed = true;
+              });
+              _pressAnimationController.forward();
+            }
+          },
+          onTapUp: (_) {
+            if (!_isLoading) {
+              setState(() {
+                _isPressed = false;
+              });
+              _pressAnimationController.reverse();
+              _handleLogin();
+            }
+          },
+          onTapCancel: () {
+            if (!_isLoading) {
+              setState(() {
+                _isPressed = false;
+              });
+              _pressAnimationController.reverse();
+            }
+          },
+          child: _buildAnimatedButton(),
+        ),
+
+        SizedBox(height: isTablet ? 32 : 24),
+
+        // Кнопка "Выход"
+        TextButton(
+          onPressed: _isLoading ? null : _handleExit,
+          child: Text(
+            localizations.translate('exit'),
+            style: TextStyle(
+              color: _isLoading ? Colors.white38 : Colors.white70,
+              fontSize: isTablet ? 18 : 16,
+            ),
+          ),
+        ),
+
+        SizedBox(height: isSmallScreen ? 16 : (isTablet ? 48 : 32)),
+      ],
     );
   }
 }
