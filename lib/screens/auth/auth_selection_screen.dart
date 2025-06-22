@@ -6,7 +6,7 @@ import '../../localization/app_localizations.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
-import '../../services/auth/google_auth_with_agreements.dart'; // ПРАВИЛЬНО
+import '../../services/auth/google_auth_with_agreements.dart';
 
 class AuthSelectionScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -19,276 +19,366 @@ class AuthSelectionScreen extends StatefulWidget {
 
 class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
   final GoogleAuthWithAgreements _googleAuthWithAgreements =
-  GoogleAuthWithAgreements(); // ИЗМЕНИТЬ эту строку
+  GoogleAuthWithAgreements();
   bool _isGoogleLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    // Получаем размеры экрана для адаптивности
-    final screenSize = MediaQuery.of(context).size;
-    final textScaler = MediaQuery.of(context).textScaler;
-    final localizations = AppLocalizations.of(context);
-
+    // ✅ БЕЗОПАСНАЯ ФОРМУЛА ЭКРАНА из гайда
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            children: [
-              // ДОБАВЛЕНО: Кнопка "Назад" в верхнем левом углу
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-                    onPressed: () {
-                      // Безопасный возврат назад
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        // Если не можем вернуться назад, переходим к splash экрану
-                        Navigator.pushReplacementNamed(context, '/splash');
-                      }
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const Spacer(),
-                ],
-              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = MediaQuery.of(context).size.width >= 600;
+            final localizations = AppLocalizations.of(context);
 
-              // ИЗМЕНЕНО: Оборачиваем основной контент в Expanded и центрируем
-              Expanded(
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(isTablet ? 32 : 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                  maxWidth: isTablet ? 600 : double.infinity,
+                ),
                 child: Column(
-                  mainAxisAlignment:
-                  MainAxisAlignment.center, // Центрируем содержимое
                   children: [
-                    // Логотип приложения
-                    SizedBox(
-                      width: screenSize.width * 0.5,
-                      height: screenSize.width * 0.5,
-                      child: Image.asset(
-                        'assets/images/app_logo.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          // Если логотип не найден, показываем иконку
-                          return Container(
-                            width: screenSize.width * 0.3,
-                            height: screenSize.width * 0.3,
-                            decoration: BoxDecoration(
-                              color: AppConstants.primaryColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
+                    // Кнопка "Назад" с правильной семантикой
+                    Row(
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: 'Вернуться назад',
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.arrow_back,
+                                color: AppConstants.textColor,
+                                size: isTablet ? 28 : 24,
+                              ),
+                              onPressed: () {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                } else {
+                                  Navigator.pushReplacementNamed(context, '/splash');
+                                }
+                              },
                             ),
-                            child: Icon(
-                              Icons.phishing,
-                              size: screenSize.width * 0.15,
-                              color: AppConstants.textColor,
-                            ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                        const Spacer(),
+                      ],
                     ),
-                    const SizedBox(height: 16),
 
-                    // Название приложения
-                    Text(
-                      'Drift Notes',
-                      style: TextStyle(
-                        fontSize:
-                        36 *
-                            (textScaler.scale(1.0) > 1.2
-                                ? 1.2 / textScaler.scale(1.0)
-                                : 1),
-                        fontWeight: FontWeight.bold,
-                        color: AppConstants.textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                    // Основной контент
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(height: isTablet ? 40 : 20),
 
-                    // Заголовок "Выберите способ входа"
-                    Text(
-                      localizations.translate('select_login_method'),
-                      style: TextStyle(
-                        fontSize:
-                        24 *
-                            (textScaler.scale(1.0) > 1.2
-                                ? 1.2 / textScaler.scale(1.0)
-                                : 1),
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                        // Логотип с адаптивным размером
+                        _buildAppLogo(context, isTablet),
 
-                    // Подзаголовок
-                    Text(
-                      localizations.translate('select_convenient_login_method'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize:
-                        16 *
-                            (textScaler.scale(1.0) > 1.2
-                                ? 1.2 / textScaler.scale(1.0)
-                                : 1),
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
+                        SizedBox(height: isTablet ? 24 : 16),
 
-                    // Кнопка входа через Email
-                    _buildAuthButton(
-                      context: context,
-                      icon: Icons.email_outlined,
-                      text: localizations.translate('login_with_email'),
-                      onPressed: () {
-                        // Переходим к экрану входа с передачей коллбэка
-                        Navigator.push(
+                        // Название приложения с безопасным текстом
+                        _buildSafeText(
                           context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => LoginScreen(
-                              onAuthSuccess: widget.onAuthSuccess,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
+                          'Drift Notes',
+                          baseFontSize: 32.0,
+                          isTablet: isTablet,
+                          fontWeight: FontWeight.bold,
+                          color: AppConstants.textColor,
+                        ),
 
-                    // Кнопка входа через Google
-                    SizedBox(
-                      width: double.infinity, // Занимает всю ширину
-                      child: ElevatedButton.icon(
-                        icon:
-                        _isGoogleLoading
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.black87,
-                            ),
-                          ),
-                        )
-                            : Image.asset(
-                          'assets/images/google_logo.png',
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Если изображение не найдено, показываем иконку
-                            return const Icon(
-                              Icons.account_circle,
-                              size: 24,
-                              color: Colors.black87,
+                        SizedBox(height: isTablet ? 32 : 24),
+
+                        // Заголовок
+                        _buildSafeText(
+                          context,
+                          localizations.translate('select_login_method'),
+                          baseFontSize: 24.0,
+                          isTablet: isTablet,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+
+                        SizedBox(height: isTablet ? 12 : 8),
+
+                        // Подзаголовок
+                        _buildSafeText(
+                          context,
+                          localizations.translate('select_convenient_login_method'),
+                          baseFontSize: 16.0,
+                          isTablet: isTablet,
+                          color: Colors.white70,
+                          textAlign: TextAlign.center,
+                        ),
+
+                        SizedBox(height: isTablet ? 48 : 36),
+
+                        // Кнопка Email с безопасной формулой
+                        _buildSafeButton(
+                          context: context,
+                          text: localizations.translate('login_with_email'),
+                          icon: Icons.email_outlined,
+                          isTablet: isTablet,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LoginScreen(
+                                  onAuthSuccess: widget.onAuthSuccess,
+                                ),
+                              ),
                             );
                           },
+                          semanticLabel: 'Войти через Email',
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: AppConstants.textColor,
+                          borderColor: AppConstants.textColor,
                         ),
-                        label: Text(
-                          localizations.translate('login_with_google'),
-                          style: TextStyle(
-                            fontSize:
-                            16 *
-                                (textScaler.scale(1.0) > 1.2
-                                    ? 1.2 / textScaler.scale(1.0)
-                                    : 1),
-                            color: Colors.black87,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25.0),
-                          ),
-                        ),
-                        onPressed: _isGoogleLoading ? null : _signInWithGoogle,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
 
-                    // ЗАКОММЕНТИРОВАННАЯ кнопка входа по номеру телефона
-                    // TODO: Раскомментировать и реализовать, когда будет готова функциональность
-                    /*
-                    _buildAuthButton(
-                      context: context,
-                      icon: Icons.phone,
-                      text: localizations.translate('login_with_phone'),
-                      onPressed: () {
-                        // Можно реализовать вход по телефону
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              localizations.translate('phone_login_later'),
+                        SizedBox(height: isTablet ? 20 : 16),
+
+                        // Кнопка Google с loading
+                        _buildGoogleButton(context, localizations, isTablet),
+
+                        SizedBox(height: isTablet ? 48 : 40),
+
+                        // Ссылка на регистрацию
+                        Semantics(
+                          button: true,
+                          label: 'Зарегистрироваться',
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 48),
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RegisterScreen(
+                                      onAuthSuccess: widget.onAuthSuccess,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildSafeText(
+                                context,
+                                localizations.translate('no_account_register'),
+                                baseFontSize: 16.0,
+                                isTablet: isTablet,
+                                color: AppConstants.textColor,
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    */
-
-                    // Увеличиваем отступ, так как убрали кнопку телефона
-                    const SizedBox(height: 40),
-
-                    // Ссылка на регистрацию
-                    TextButton(
-                      onPressed: () {
-                        // Переходим к экрану регистрации с передачей коллбэка
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => RegisterScreen(
-                              onAuthSuccess: widget.onAuthSuccess,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        localizations.translate('no_account_register'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize:
-                          16 *
-                              (textScaler.scale(1.0) > 1.2
-                                  ? 1.2 / textScaler.scale(1.0)
-                                  : 1),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ), // Закрываем Expanded
-            ], // Закрываем основной Column
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Безопасный адаптивный текст из гайда
+  Widget _buildSafeText(
+      BuildContext context,
+      String text, {
+        required double baseFontSize,
+        required bool isTablet,
+        FontWeight? fontWeight,
+        Color? color,
+        TextAlign? textAlign,
+      }) {
+    final textScaler = MediaQuery.of(context).textScaler;
+    final scale = textScaler.scale(1.0);
+
+    // ВАЖНО: ограничиваем масштабирование (из гайда)
+    final adaptiveScale = scale > 1.3 ? 1.3 / scale : 1.0;
+    final fontSize = (isTablet ? baseFontSize * 1.2 : baseFontSize) * adaptiveScale;
+
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+      ),
+      textAlign: textAlign,
+      overflow: TextOverflow.ellipsis,
+      maxLines: 2,
+    );
+  }
+
+  /// Безопасная кнопка из гайда
+  Widget _buildSafeButton({
+    required BuildContext context,
+    required String text,
+    required VoidCallback? onPressed,
+    required bool isTablet,
+    IconData? icon,
+    String? semanticLabel,
+    Color? backgroundColor,
+    Color? foregroundColor,
+    Color? borderColor,
+  }) {
+    final buttonHeight = isTablet ? 56.0 : 48.0;
+
+    return Semantics(
+      button: true,
+      label: semanticLabel ?? text,
+      child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(
+          minHeight: buttonHeight,
+          maxHeight: buttonHeight * 1.5,
+        ),
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            foregroundColor: foregroundColor,
+            side: borderColor != null ? BorderSide(color: borderColor) : null,
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 32 : 24,
+              vertical: isTablet ? 16 : 14,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          icon: icon != null ? Icon(icon, size: isTablet ? 28 : 24) : const SizedBox.shrink(),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: _buildSafeText(
+              context,
+              text,
+              baseFontSize: 16.0,
+              isTablet: isTablet,
+              fontWeight: FontWeight.bold,
+              color: foregroundColor,
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// Метод для входа через Google С ПРОВЕРКОЙ СОГЛАШЕНИЙ
+  /// Логотип приложения
+  Widget _buildAppLogo(BuildContext context, bool isTablet) {
+    final logoSize = isTablet ? 200.0 : MediaQuery.of(context).size.width * 0.3;
+
+    return SizedBox(
+      width: logoSize,
+      height: logoSize,
+      child: Image.asset(
+        'assets/images/app_logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: logoSize,
+            height: logoSize,
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.phishing,
+              size: logoSize * 0.5,
+              color: AppConstants.textColor,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Кнопка Google с loading состоянием
+  Widget _buildGoogleButton(BuildContext context, AppLocalizations localizations, bool isTablet) {
+    final buttonHeight = isTablet ? 56.0 : 48.0;
+
+    return Semantics(
+      button: true,
+      label: 'Войти через Google',
+      child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(
+          minHeight: buttonHeight,
+          maxHeight: buttonHeight * 1.5,
+        ),
+        child: ElevatedButton.icon(
+          onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black87,
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 32 : 24,
+              vertical: isTablet ? 16 : 14,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          icon: _isGoogleLoading
+              ? SizedBox(
+            width: isTablet ? 28 : 24,
+            height: isTablet ? 28 : 24,
+            child: const CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+            ),
+          )
+              : Image.asset(
+            'assets/images/google_logo.png',
+            height: isTablet ? 28 : 24,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                Icons.account_circle,
+                size: isTablet ? 28 : 24,
+                color: Colors.black87,
+              );
+            },
+          ),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: _buildSafeText(
+              context,
+              localizations.translate('login_with_google'),
+              baseFontSize: 16.0,
+              isTablet: isTablet,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Метод для входа через Google с проверкой соглашений
   Future<void> _signInWithGoogle() async {
     setState(() {
       _isGoogleLoading = true;
     });
 
     try {
-      // ЗАМЕНИТЬ этот вызов:
       final userCredential = await _googleAuthWithAgreements
           .signInWithGoogleAndCheckAgreements(
         context,
         onAuthSuccess: widget.onAuthSuccess,
       );
 
-      // Проверка результата уже обработана внутри сервиса
       if (userCredential == null && mounted) {
         debugPrint('❌ Google авторизация не завершена');
       }
     } catch (e) {
       debugPrint('❌ Ошибка входа через Google: $e');
-      // Ошибка уже обработана в GoogleAuthWithAgreements
     } finally {
       if (mounted) {
         setState(() {
@@ -296,41 +386,5 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
         });
       }
     }
-  }
-
-  // Метод для создания кнопок авторизации
-  Widget _buildAuthButton({
-    required BuildContext context,
-    required IconData icon,
-    required String text,
-    required VoidCallback onPressed,
-  }) {
-    final textScaler = MediaQuery.of(context).textScaler;
-
-    return SizedBox(
-      width: double.infinity, // Занимает всю доступную ширину
-      child: ElevatedButton.icon(
-        icon: Icon(icon, color: AppConstants.textColor),
-        label: Text(
-          text,
-          style: TextStyle(
-            fontSize:
-            16 *
-                (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          side: BorderSide(color: AppConstants.textColor),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25.0),
-          ),
-        ),
-        onPressed: onPressed,
-      ),
-    );
   }
 }
