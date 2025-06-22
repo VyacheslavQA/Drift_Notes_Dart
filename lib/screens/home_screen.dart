@@ -1,4 +1,5 @@
 // Путь: lib/screens/home_screen.dart
+// ИСПРАВЛЕНИЯ: YouTube карточка и навигация
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -41,20 +42,39 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   List<FishingNoteModel> _fishingNotes = [];
-  bool _hasNewNotifications =
-      true; // Временно устанавливаем в true для демонстрации
+  bool _hasNewNotifications = true;
 
-  // ДОБАВЛЕНО: Переменные для системы принудительного принятия политики
+  // Переменные для системы принудительного принятия политики
   ConsentRestrictionResult? _policyRestrictions;
-  bool _hasPolicyBeenChecked =
-      false; // Флаг для предотвращения повторных проверок
+  bool _hasPolicyBeenChecked = false;
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
+
+  // ХАРДКОР: Фиксированные размеры навигации (не зависят от адаптивности)
+  static const double _navBarHeight = 60.0; // Всегда 60px
+  static const double _centerButtonSize = 80.0; // УВЕЛИЧЕНО: 80px вместо 70px
+  static const double _navIconSize = 22.0; // УМЕНЬШЕНО: 22px вместо 24px
+  static const double _navTextSize = 10.0; // УМЕНЬШЕНО: 10px вместо 11px
+  static const double _navItemMinTouchTarget = 48.0; // Минимум для accessibility
+
+  // ХАРДКОР: Фиксированные размеры AppBar
+  static const double _appBarHeight = kToolbarHeight; // 56px стандарт
+  static const double _appBarTitleSize = 24.0; // Всегда 24px
+  static const double _appBarIconSize = 26.0; // Всегда 26px
+
+  // Простые адаптивные утилиты (БЕЗ навигации и AppBar)
+  bool get isTablet => MediaQuery.of(context).size.width >= 768;
+  double get screenWidth => MediaQuery.of(context).size.width;
+  double get horizontalPadding => isTablet ? 32.0 : 16.0;
+  double get cardPadding => isTablet ? 20.0 : 16.0;
+  double get iconSize => isTablet ? 28.0 : 24.0;
+  double get fontSize => isTablet ? 18.0 : 16.0;
+  double get buttonHeight => isTablet ? 56.0 : 48.0;
+  int get gridColumns => isTablet ? 4 : 2;
 
   @override
   void initState() {
     super.initState();
-    // ИЗМЕНЕНО: Убираем проверку политики из initState
     _loadFishingNotes();
     _fishingNoteRepository.syncOfflineDataOnStartup();
   }
@@ -62,7 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ДОБАВЛЕНО: Проверяем политику здесь, когда контекст готов
     if (!_hasPolicyBeenChecked) {
       _hasPolicyBeenChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -71,14 +90,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Проверяет соблюдение политики конфиденциальности
+  // Проверяет соблюдение политики конфиденциальности
   Future<void> _checkPolicyCompliance() async {
     try {
       if (!mounted) return;
 
-      String languageCode = 'ru'; // Дефолтный язык
+      String languageCode = 'ru';
 
-      // Безопасно получаем язык из локализации
       try {
         final localizations = AppLocalizations.of(context);
         languageCode = localizations.translate('language_code') ?? 'ru';
@@ -97,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // Получаем текущие ограничения с правильным языком
       _policyRestrictions = await UserConsentService().getConsentRestrictions(
         languageCode,
       );
@@ -111,7 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Показывает диалог обновления политики
   Future<void> _showPolicyUpdateDialog() async {
     if (!mounted) return;
 
@@ -120,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return WillPopScope(
-          onWillPop: () async => false, // Запрещаем закрытие диалога
+          onWillPop: () async => false,
           child: UserAgreementsDialog(
             onAgreementsAccepted: () async {
               debugPrint('✅ Политика принята пользователем');
@@ -137,13 +153,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// НОВЫЙ МЕТОД: Обновляет статус политики после изменений
   Future<void> _refreshPolicyStatus() async {
     if (!mounted) return;
 
-    String languageCode = 'ru'; // Дефолтный язык
+    String languageCode = 'ru';
 
-    // Безопасно получаем язык из локализации
     try {
       final localizations = AppLocalizations.of(context);
       languageCode = localizations.translate('language_code') ?? 'ru';
@@ -160,11 +174,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (mounted) {
-      setState(() {}); // Обновляем UI
+      setState(() {});
     }
   }
 
-  /// НОВЫЙ МЕТОД: Показывает баннер с ограничениями политики
   void _showPolicyRestrictionBanner() {
     if (!mounted || _policyRestrictions == null) return;
 
@@ -195,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
     }
 
-    // Показываем баннер через SnackBar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -229,9 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: bannerColor,
             duration: const Duration(seconds: 8),
             action: SnackBarAction(
-              label:
-                  localizations.translate('accept_policy') ??
-                  'Принять политику',
+              label: localizations.translate('accept_policy') ?? 'Принять политику',
               textColor: Colors.white,
               onPressed: () => _showPolicyUpdateDialog(),
             ),
@@ -241,10 +251,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// НОВЫЙ МЕТОД: Проверяет возможность создания контента
   bool get _canCreateContent => _policyRestrictions?.canCreateContent ?? true;
 
-  /// НОВЫЙ МЕТОД: Показывает сообщение о блокировке создания контента
   void _showContentCreationBlocked() {
     final localizations = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -317,25 +325,23 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
 
-    final localizations = AppLocalizations.of(context);
-
     switch (index) {
-      case 0: // Таймер
+      case 0:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const TimersScreen()),
         );
         break;
-      case 1: // Погода
+      case 1:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const WeatherScreen()),
         );
         break;
-      case 2: // Центральная кнопка - создание заметки
+      case 2:
         _navigateToAddNote();
         break;
-      case 3: // Календарь
+      case 3:
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -343,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
         break;
-      case 4: // Карта
+      case 4:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const MapScreen()),
@@ -353,7 +359,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToAddNote() {
-    // ДОБАВЛЕНО: Проверяем ограничения политики перед созданием заметки
     if (!_canCreateContent) {
       _showContentCreationBlocked();
       return;
@@ -377,12 +382,11 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (context) => const NotificationsScreen()),
     ).then((_) {
       setState(() {
-        _hasNewNotifications = false; // Сбрасываем индикатор после посещения
+        _hasNewNotifications = false;
       });
     });
   }
 
-  // Показ сообщения о том, что раздел в разработке
   void _showComingSoonMessage(String sectionName) {
     final localizations = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -394,14 +398,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Изменения в методе _calculateStatistics
   Map<String, dynamic> _calculateStatistics(List<FishingNoteModel> notes) {
     final stats = <String, dynamic>{};
-
-    // 1. Всего рыбалок
     stats['totalTrips'] = notes.length;
 
-    // 2. Самая долгая рыбалка
     int longestTrip = 0;
     String longestTripName = '';
     for (var note in notes) {
@@ -418,7 +418,6 @@ class _HomeScreenState extends State<HomeScreen> {
     stats['longestTrip'] = longestTrip;
     stats['longestTripName'] = longestTripName;
 
-    // 3. Всего дней на рыбалке
     Set<DateTime> uniqueFishingDays = {};
     for (var note in notes) {
       DateTime startDate = DateTime(
@@ -427,13 +426,13 @@ class _HomeScreenState extends State<HomeScreen> {
         note.date.day,
       );
       DateTime endDate =
-          note.endDate != null
-              ? DateTime(
-                note.endDate!.year,
-                note.endDate!.month,
-                note.endDate!.day,
-              )
-              : startDate;
+      note.endDate != null
+          ? DateTime(
+        note.endDate!.year,
+        note.endDate!.month,
+        note.endDate!.day,
+      )
+          : startDate;
 
       for (int i = 0; i <= endDate.difference(startDate).inDays; i++) {
         uniqueFishingDays.add(startDate.add(Duration(days: i)));
@@ -441,16 +440,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     stats['totalDaysFishing'] = uniqueFishingDays.length;
 
-    // 4. Всего поймано рыб и нереализованных поклевок
     int totalFish = 0;
     int missedBites = 0;
-    double totalWeight = 0.0; // Новая переменная для общего веса
+    double totalWeight = 0.0;
 
     for (var note in notes) {
       for (var record in note.biteRecords) {
         if (record.fishType.isNotEmpty && record.weight > 0) {
           totalFish++;
-          totalWeight += record.weight; // Добавляем вес к общему
+          totalWeight += record.weight;
         } else {
           missedBites++;
         }
@@ -458,9 +456,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     stats['totalFish'] = totalFish;
     stats['missedBites'] = missedBites;
-    stats['totalWeight'] = totalWeight; // Новое поле
+    stats['totalWeight'] = totalWeight;
 
-    // 5. Самая большая рыба
     BiteRecord? biggestFish;
     String biggestFishLocation = '';
     for (var note in notes) {
@@ -476,26 +473,21 @@ class _HomeScreenState extends State<HomeScreen> {
     stats['biggestFish'] = biggestFish;
     stats['biggestFishLocation'] = biggestFishLocation;
 
-    // 6. Последний выезд
     FishingNoteModel? lastTrip;
     if (notes.isNotEmpty) {
       lastTrip = notes.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
     }
     stats['lastTrip'] = lastTrip;
 
-    // 7. Лучший месяц по количеству рыбы - ИЗМЕНЕНО
     Map<String, int> fishByMonth = {};
-    Map<String, Map<String, int>> monthDetails =
-        {}; // Для хранения номера месяца и года
+    Map<String, Map<String, int>> monthDetails = {};
 
     for (var note in notes) {
       for (var record in note.biteRecords) {
         if (record.fishType.isNotEmpty && record.weight > 0) {
-          // Создаем ключ для группировки по месяцам
           String monthKey = '${record.time.year}-${record.time.month}';
           fishByMonth[monthKey] = (fishByMonth[monthKey] ?? 0) + 1;
 
-          // Сохраняем номер месяца и год для каждого ключа
           if (!monthDetails.containsKey(monthKey)) {
             monthDetails[monthKey] = {
               'month': record.time.month,
@@ -516,7 +508,6 @@ class _HomeScreenState extends State<HomeScreen> {
         bestMonthFish = count;
         bestMonthKey = monthKey;
 
-        // Получаем номер месяца и год из сохраненных данных
         if (monthDetails.containsKey(monthKey)) {
           bestMonthNumber = monthDetails[monthKey]!['month']!;
           bestYear = monthDetails[monthKey]!['year']!;
@@ -529,7 +520,6 @@ class _HomeScreenState extends State<HomeScreen> {
     stats['bestYear'] = bestYear;
     stats['bestMonthFish'] = bestMonthFish;
 
-    // 8. Процент реализации поклевок
     final totalBites = totalFish + missedBites;
     double realizationRate = 0;
     if (totalBites > 0) {
@@ -540,102 +530,54 @@ class _HomeScreenState extends State<HomeScreen> {
     return stats;
   }
 
-  // Новый метод для создания блока быстрых действий
+  // ИСПРАВЛЕНО: АДАПТИВНАЯ сетка быстрых действий без обрезания
   Widget _buildQuickActionsGrid() {
     final localizations = AppLocalizations.of(context);
 
-    return Column(
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: gridColumns,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      childAspectRatio: isTablet ? 1.1 : 1.0, // ИСПРАВЛЕНО: больше высоты для текста
       children: [
-        // Первая строка
-        Row(
-          children: [
-            // Новости
-            Expanded(
-              child: AspectRatio(
-                aspectRatio: 1.0, // Квадратные кнопки
-                child: _buildQuickActionItem(
-                  icon: Icons.newspaper_outlined,
-                  // Более интересная иконка газеты
-                  label: localizations.translate('news'),
-                  onTap:
-                      () => _showComingSoonMessage(
-                        localizations.translate('news'),
-                      ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Статьи
-            Expanded(
-              child: AspectRatio(
-                aspectRatio: 1.0, // Квадратные кнопки
-                child: _buildQuickActionItem(
-                  icon: Icons.menu_book_outlined, // Красивая книга с закладкой
-                  label: localizations.translate('articles'),
-                  onTap:
-                      () => _showComingSoonMessage(
-                        localizations.translate('articles'),
-                      ),
-                ),
-              ),
-            ),
-          ],
+        _buildQuickActionItem(
+          icon: Icons.newspaper_outlined,
+          label: localizations.translate('news'),
+          onTap: () => _showComingSoonMessage(localizations.translate('news')),
         ),
-
-        const SizedBox(height: 12), // Отступ между строками
-        // Вторая строка
-        Row(
-          children: [
-            // Магазины
-            Expanded(
-              child: AspectRatio(
-                aspectRatio: 1.0, // Квадратные кнопки
-                child: _buildQuickActionItem(
-                  icon: Icons.local_mall_outlined,
-                  // Современная иконка торгового центра
-                  label: localizations.translate('shops'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ShopsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Турниры
-            Expanded(
-              child: AspectRatio(
-                aspectRatio: 1.0, // Квадратные кнопки
-                child: _buildQuickActionItem(
-                  icon: Icons.emoji_events_outlined,
-                  // Красивый кубок с контуром
-                  label: localizations.translate('tournaments'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TournamentsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+        _buildQuickActionItem(
+          icon: Icons.menu_book_outlined,
+          label: localizations.translate('articles'),
+          onTap: () => _showComingSoonMessage(localizations.translate('articles')),
+        ),
+        _buildQuickActionItem(
+          icon: Icons.local_mall_outlined,
+          label: localizations.translate('shops'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ShopsScreen()),
+            );
+          },
+        ),
+        _buildQuickActionItem(
+          icon: Icons.emoji_events_outlined,
+          label: localizations.translate('tournaments'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TournamentsScreen()),
+            );
+          },
         ),
       ],
     );
   }
 
-  // Элемент быстрого действия
+  // ИСПРАВЛЕНО: Элемент быстрого действия с БОЛЬШИМИ иконками
   Widget _buildQuickActionItem({
     required IconData icon,
     required String label,
@@ -645,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(cardPadding),
         decoration: BoxDecoration(
           color: AppConstants.surfaceColor,
           borderRadius: BorderRadius.circular(16),
@@ -653,27 +595,29 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              flex: 3, // Больше места для иконки
+            // ИСПРАВЛЕНО: УВЕЛИЧЕНЫ иконки
+            Container(
+              height: isTablet ? 70 : 60, // ИСПРАВЛЕНО: больше места для иконки
               child: Icon(
                 icon,
                 color: AppConstants.textColor,
-                size: 80, // Увеличил иконку в 2 раза - с 40px до 80px
+                size: isTablet ? 60 : 50, // ИСПРАВЛЕНО: УВЕЛИЧЕНЫ иконки значительно
               ),
             ),
-            Expanded(
-              flex: 1, // Меньше места для текста (опускаем вниз)
-              child: Align(
-                alignment: Alignment.bottomCenter,
+            const SizedBox(height: 8),
+            // Контейнер для текста
+            Container(
+              height: isTablet ? 40 : 32,
+              child: Center(
                 child: Text(
                   label,
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 16,
+                    fontSize: isTablet ? 16 : 14,
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -684,44 +628,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Обновлённый метод _buildStatsGrid() с локализацией
   Widget _buildStatsGrid() {
     final localizations = AppLocalizations.of(context);
 
-    // Фильтруем только прошедшие и текущие заметки
     final now = DateTime.now();
-    final validNotes =
-        _fishingNotes
-            .where(
-              (note) =>
-                  note.date.isBefore(now) || note.date.isAtSameMomentAs(now),
-            )
-            .toList();
+    final validNotes = _fishingNotes
+        .where((note) => note.date.isBefore(now) || note.date.isAtSameMomentAs(now))
+        .toList();
 
-    // Расчет статистики
     final stats = _calculateStatistics(validNotes);
 
     return Column(
       children: [
-        // ДОБАВЛЕНО: Показываем баннер ограничений если есть
         if (_policyRestrictions?.hasRestrictions == true)
           _buildPolicyRestrictionCard(),
 
-        // 1. Самая большая рыба
-        if (stats['biggestFish'] != null)
+        if (stats['biggestFish'] != null) ...[
           _buildStatCard(
             icon: Icons.emoji_events,
             title: localizations.translate('biggest_fish'),
-            value:
-                '${stats['biggestFish'].weight} ${localizations.translate('kg')}',
-            subtitle:
-                '${stats['biggestFish'].fishType}, ${DateFormatter.formatDate(stats['biggestFish'].time, context)}',
+            value: '${stats['biggestFish'].weight} ${localizations.translate('kg')}',
+            subtitle: '${stats['biggestFish'].fishType}, ${DateFormatter.formatDate(stats['biggestFish'].time, context)}',
             valueColor: Colors.amber,
           ),
+          const SizedBox(height: 16),
+        ],
 
-        const SizedBox(height: 16),
-
-        // 2. Всего поймано рыб
         _buildStatCard(
           icon: Icons.set_meal,
           title: localizations.translate('total_fish_caught'),
@@ -729,10 +661,8 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: DateFormatter.getFishText(stats['totalFish'], context),
           valueColor: Colors.green,
         ),
-
         const SizedBox(height: 16),
 
-        // 3. Нереализованные поклевки
         _buildStatCard(
           icon: Icons.hourglass_empty,
           title: localizations.translate('missed_bites'),
@@ -740,11 +670,9 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: localizations.translate('bites_without_catch'),
           valueColor: Colors.red,
         ),
-
         const SizedBox(height: 16),
 
-        // 4. Реализация поклевок
-        if (stats['totalFish'] > 0 || stats['missedBites'] > 0)
+        if (stats['totalFish'] > 0 || stats['missedBites'] > 0) ...[
           _buildStatCard(
             icon: Icons.percent,
             title: localizations.translate('bite_realization'),
@@ -752,84 +680,67 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: localizations.translate('fishing_efficiency'),
             valueColor: _getRealizationColor(stats['realizationRate']),
           ),
+          const SizedBox(height: 16),
+        ],
 
-        const SizedBox(height: 16),
-
-        // 5. Общий вес пойманных рыб
         _buildStatCard(
           icon: Icons.scale,
           title: localizations.translate('total_catch_weight'),
-          value:
-              '${stats['totalWeight'].toStringAsFixed(1)} ${localizations.translate('kg')}',
+          value: '${stats['totalWeight'].toStringAsFixed(1)} ${localizations.translate('kg')}',
           subtitle: localizations.translate('total_weight_caught_fish'),
           valueColor: Colors.green,
         ),
-
         const SizedBox(height: 16),
 
-        // 6. Всего рыбалок
         _buildStatCard(
           icon: Icons.format_list_bulleted,
           title: localizations.translate('total_fishing_trips'),
           value: stats['totalTrips'].toString(),
-          subtitle: DateFormatter.getFishingTripsText(
-            stats['totalTrips'],
-            context,
-          ),
+          subtitle: DateFormatter.getFishingTripsText(stats['totalTrips'], context),
         ),
-
         const SizedBox(height: 16),
 
-        // 7. Самая долгая рыбалка
         _buildStatCard(
           icon: Icons.access_time,
           title: localizations.translate('longest_trip'),
           value: stats['longestTrip'].toString(),
           subtitle: DateFormatter.getDaysText(stats['longestTrip'], context),
         ),
-
         const SizedBox(height: 16),
 
-        // 8. Всего дней на рыбалке
         _buildStatCard(
           icon: Icons.calendar_today,
           title: localizations.translate('total_fishing_days'),
           value: stats['totalDaysFishing'].toString(),
           subtitle: localizations.translate('days_fishing'),
         ),
-
         const SizedBox(height: 16),
 
-        // 9. Последний выезд
-        if (stats['lastTrip'] != null)
+        if (stats['lastTrip'] != null) ...[
           _buildStatCard(
             icon: Icons.directions_car,
             title: localizations.translate('last_trip'),
-            value:
-                stats['lastTrip'].title.isNotEmpty
-                    ? '«${stats['lastTrip'].title}»'
-                    : stats['lastTrip'].location,
+            value: stats['lastTrip'].title.isNotEmpty
+                ? '«${stats['lastTrip'].title}»'
+                : stats['lastTrip'].location,
             subtitle: DateFormatter.formatDate(stats['lastTrip'].date, context),
           ),
+          const SizedBox(height: 16),
+        ],
 
-        const SizedBox(height: 16),
-
-        // 10. Лучший месяц
-        if (stats['bestMonth'].isNotEmpty)
+        if (stats['bestMonth'].isNotEmpty) ...[
           _buildStatCard(
             icon: Icons.star,
             title: localizations.translate('best_month'),
-            value:
-                '${DateFormatter.getMonthInNominative(stats['bestMonthNumber'], context)} ${stats['bestYear']}',
-            subtitle:
-                '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'], context)}',
+            value: '${DateFormatter.getMonthInNominative(stats['bestMonthNumber'], context)} ${stats['bestYear']}',
+            subtitle: '${stats['bestMonthFish']} ${DateFormatter.getFishText(stats['bestMonthFish'], context)}',
             valueColor: Colors.amber,
           ),
+        ],
       ],
     );
   }
 
-  /// НОВЫЙ МЕТОД: Строит карточку с ограничениями политики
   Widget _buildPolicyRestrictionCard() {
     if (_policyRestrictions == null || !_policyRestrictions!.hasRestrictions) {
       return const SizedBox.shrink();
@@ -846,30 +757,22 @@ class _HomeScreenState extends State<HomeScreen> {
       case ConsentRestrictionLevel.soft:
         cardColor = Colors.orange;
         cardIcon = Icons.warning_amber;
-        title =
-            localizations.translate('soft_restrictions_title') ??
-            'Мягкие ограничения';
+        title = localizations.translate('soft_restrictions_title') ?? 'Мягкие ограничения';
         break;
       case ConsentRestrictionLevel.hard:
         cardColor = Colors.red;
         cardIcon = Icons.warning;
-        title =
-            localizations.translate('hard_restrictions_title') ??
-            'Жесткие ограничения';
+        title = localizations.translate('hard_restrictions_title') ?? 'Жесткие ограничения';
         break;
       case ConsentRestrictionLevel.final_:
         cardColor = Colors.red[800]!;
         cardIcon = Icons.error;
-        title =
-            localizations.translate('final_warning_title') ??
-            'Финальное предупреждение';
+        title = localizations.translate('final_warning_title') ?? 'Финальное предупреждение';
         break;
       case ConsentRestrictionLevel.deletion:
         cardColor = Colors.red[900]!;
         cardIcon = Icons.delete_forever;
-        title =
-            localizations.translate('deletion_warning_title') ??
-            'Запланировано удаление';
+        title = localizations.translate('deletion_warning_title') ?? 'Запланировано удаление';
         break;
       default:
         return const SizedBox.shrink();
@@ -877,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: cardColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
@@ -893,7 +796,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: cardColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(cardIcon, color: cardColor, size: 24),
+                child: Icon(cardIcon, color: cardColor, size: iconSize),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -904,7 +807,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       title,
                       style: TextStyle(
                         color: cardColor,
-                        fontSize: 16,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -913,7 +816,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       restrictions.restrictionMessage,
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.8),
-                        fontSize: 14,
+                        fontSize: fontSize - 2,
                       ),
                     ),
                   ],
@@ -924,6 +827,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
+            height: buttonHeight,
             child: ElevatedButton(
               onPressed: () => _showPolicyUpdateDialog(),
               style: ElevatedButton.styleFrom(
@@ -946,7 +850,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Метод для определения цвета в зависимости от процента реализации
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
     if (rate >= 40) return Colors.orange;
@@ -966,18 +869,19 @@ class _HomeScreenState extends State<HomeScreen> {
             'Drift Notes',
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 24,
+              fontSize: _appBarTitleSize, // ХАРДКОР: Фиксированный размер
               fontWeight: FontWeight.bold,
             ),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
+          toolbarHeight: _appBarHeight, // ХАРДКОР: Фиксированная высота
           leading: IconButton(
             icon: Icon(
               Icons.menu_rounded,
               color: AppConstants.textColor,
-              size: 26,
+              size: _appBarIconSize, // ХАРДКОР: Фиксированный размер
             ),
             onPressed: () {
               _scaffoldKey.currentState?.openDrawer();
@@ -991,7 +895,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icon(
                     Icons.notifications_rounded,
                     color: AppConstants.textColor,
-                    size: 26,
+                    size: _appBarIconSize, // ХАРДКОР: Фиксированный размер
                   ),
                   onPressed: _navigateToNotifications,
                 ),
@@ -1015,7 +919,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         drawer: _buildDrawer(),
         body: RefreshIndicator(
-          // ИЗМЕНЕНО: Добавлена проверка политики при обновлении
           onRefresh: () async {
             await _checkPolicyCompliance();
             await _loadFishingNotes();
@@ -1023,43 +926,28 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              // Уменьшил отступы по краям с 12 до 8
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-
-                  // Блок с рекламой канала YouTube
                   _buildYoutubePromoCard(),
-
                   const SizedBox(height: 16),
-
-                  // Новый блок быстрых действий
                   _buildQuickActionsGrid(),
-
                   const SizedBox(height: 24),
-
-                  // Заголовок "Моя статистика"
                   Text(
                     localizations.translate('my_statistics'),
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: isTablet ? 26 : 22,
                       fontWeight: FontWeight.bold,
                       color: AppConstants.textColor,
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Статистика
                   _buildStatsGrid(),
-
                   const SizedBox(height: 40),
-                  // Убрали отображение заметок
-                  // Добавляем дополнительный отступ снизу для компенсации навигационной панели
-                  const SizedBox(height: 90),
-                  // Высота равна высоте bottomNavigationBar
+                  // ХАРДКОР ИСПРАВЛЕНО: Учитываем правильную высоту навигации
+                  SizedBox(height: _navBarHeight + (_centerButtonSize / 2) + 40),
                 ],
               ),
             ),
@@ -1071,15 +959,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ИСПРАВЛЕНО: YouTube карточка БЕЗ текста
   Widget _buildYoutubePromoCard() {
-    final localizations = AppLocalizations.of(context);
-
     return GestureDetector(
-      onTap:
-          () =>
-              _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
+      onTap: () => _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
       child: Container(
-        height: 180,
+        height: isTablet ? 200 : 160,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           image: const DecorationImage(
@@ -1087,37 +972,19 @@ class _HomeScreenState extends State<HomeScreen> {
             fit: BoxFit.cover,
           ),
         ),
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.2),
-                    Colors.black.withValues(alpha: 0.6),
-                  ],
-                ),
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.2),
+                Colors.black.withOpacity(0.5),
+              ],
             ),
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  localizations.translate('visit_youtube_channel'),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
+          // УБРАНО: весь текст удален
         ),
       ),
     );
@@ -1131,7 +998,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Color? valueColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: AppConstants.surfaceColor,
         borderRadius: BorderRadius.circular(16),
@@ -1141,13 +1008,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppConstants.primaryColor.withValues(alpha: 0.2),
+              color: AppConstants.primaryColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               color: valueColor ?? AppConstants.textColor,
-              size: 24,
+              size: iconSize,
             ),
           ),
           const SizedBox(width: 16),
@@ -1158,8 +1025,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: fontSize - 2,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1167,7 +1034,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   value,
                   style: TextStyle(
                     color: valueColor ?? AppConstants.textColor,
-                    fontSize: 20,
+                    fontSize: fontSize + 4,
                     fontWeight: FontWeight.bold,
                   ),
                   maxLines: 2,
@@ -1177,8 +1044,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: fontSize - 2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -1200,9 +1067,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        padding: const EdgeInsets.only(
-          bottom: 60,
-        ), // Добавляем отступ снизу для системных кнопок
+        padding: EdgeInsets.only(bottom: _navBarHeight + (_centerButtonSize / 2) + 20), // ХАРДКОР ИСПРАВЛЕНО
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {
@@ -1218,11 +1083,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Только логотип без контейнера
                           Image.asset(
                             'assets/images/drawer_logo.png',
-                            width: 110,
-                            height: 110,
+                            width: 110.0, // ХАРДКОР: Фиксированный размер
+                            height: 110.0,
                             fit: BoxFit.contain,
                           ),
                           const SizedBox(height: 16),
@@ -1230,7 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             userName,
                             style: TextStyle(
                               color: AppConstants.textColor,
-                              fontSize: 20,
+                              fontSize: 20.0, // ХАРДКОР: Фиксированный размер
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
@@ -1241,7 +1105,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             userEmail,
                             style: const TextStyle(
                               color: Colors.white60,
-                              fontSize: 14,
+                              fontSize: 14.0, // ХАРДКОР: Фиксированный размер
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1257,8 +1121,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: localizations.translate('profile'),
                   onTap: () {
                     Navigator.pop(context);
-
-                    // ДОБАВЛЕНО: Проверяем ограничения перед редактированием профиля
                     if (_policyRestrictions?.canEditProfile != true) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -1268,9 +1130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           backgroundColor: Colors.red,
                           action: SnackBarAction(
-                            label:
-                                localizations.translate('accept_policy') ??
-                                'Принять политику',
+                            label: localizations.translate('accept_policy') ?? 'Принять политику',
                             textColor: Colors.white,
                             onPressed: () => _showPolicyUpdateDialog(),
                           ),
@@ -1278,12 +1138,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                       return;
                     }
-
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfileScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
                     ).then((_) => setState(() {}));
                   },
                 ),
@@ -1295,9 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const StatisticsScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const StatisticsScreen()),
                     );
                   },
                 ),
@@ -1309,9 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const FishingNotesListScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
                     ).then((value) {
                       if (value == true) {
                         _loadFishingNotes();
@@ -1327,9 +1180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const TimersScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const TimersScreen()),
                     );
                   },
                 ),
@@ -1341,9 +1192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const FishingCalendarScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const FishingCalendarScreen()),
                     );
                   },
                 ),
@@ -1355,9 +1204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const MarkerMapsListScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
                     );
                   },
                 ),
@@ -1374,9 +1221,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
                     localizations.translate('other'),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
+                    style: const TextStyle(
+                      color: Color(0xFFB3B3B3), // ХАРДКОР: Фиксированный цвет
+                      fontSize: 14.0, // ХАРДКОР: Фиксированный размер
                     ),
                   ),
                 ),
@@ -1388,9 +1235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
                     );
                   },
                 ),
@@ -1429,35 +1274,37 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: AppConstants.textColor, size: 22),
+      leading: Icon(icon, color: AppConstants.textColor, size: 22.0), // ХАРДКОР: Фиксированный размер
       title: Text(
         title,
-        style: TextStyle(color: AppConstants.textColor, fontSize: 16),
+        style: TextStyle(color: AppConstants.textColor, fontSize: 16.0), // ХАРДКОР: Фиксированный размер
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 
+  // ХАРДКОР ИСПРАВЛЕНО: Фиксированная навигационная панель с правильным расположением
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return SizedBox(
-      height: 90 + bottomPadding,
+      height: _navBarHeight + (_centerButtonSize / 2) + bottomPadding, // ИСПРАВЛЕНО: учитываем высоту центральной кнопки
       child: Stack(
         children: [
+          // Нижняя панель
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
-              height: 60 + bottomPadding,
+              height: _navBarHeight + bottomPadding,
               decoration: BoxDecoration(
                 color: const Color(0xFF0B1F1D),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withOpacity(0.3),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, -1),
@@ -1471,156 +1318,35 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: EdgeInsets.only(bottom: bottomPadding),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Таймер
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _onItemTapped(0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.timelapse_rounded,
-                              color:
-                                  _selectedIndex == 0
-                                      ? AppConstants.textColor
-                                      : Colors.white54,
-                              size: 26,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              localizations.translate('timer'),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color:
-                                    _selectedIndex == 0
-                                        ? AppConstants.textColor
-                                        : Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Погода
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _onItemTapped(1),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.cloud_queue_rounded,
-                              color:
-                                  _selectedIndex == 1
-                                      ? AppConstants.textColor
-                                      : Colors.white54,
-                              size: 26,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              localizations.translate('weather'),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color:
-                                    _selectedIndex == 1
-                                        ? AppConstants.textColor
-                                        : Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Пустое место для центральной кнопки
-                    const Expanded(child: SizedBox()),
-
-                    // Календарь
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _onItemTapped(3),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.event_note_rounded,
-                              color:
-                                  _selectedIndex == 3
-                                      ? AppConstants.textColor
-                                      : Colors.white54,
-                              size: 26,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              localizations.translate('calendar'),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color:
-                                    _selectedIndex == 3
-                                        ? AppConstants.textColor
-                                        : Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Карта
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _onItemTapped(4),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.explore_rounded,
-                              color:
-                                  _selectedIndex == 4
-                                      ? AppConstants.textColor
-                                      : Colors.white54,
-                              size: 26,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              localizations.translate('map'),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color:
-                                    _selectedIndex == 4
-                                        ? AppConstants.textColor
-                                        : Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // ИСПРАВЛЕНО: Используем Expanded для равномерного распределения
+                    _buildNavItem(0, Icons.timelapse_rounded, localizations.translate('timer')),
+                    _buildNavItem(1, Icons.cloud_queue_rounded, localizations.translate('weather')),
+                    Expanded(child: Container()), // ИСПРАВЛЕНО: Пустое место для центральной кнопки
+                    _buildNavItem(3, Icons.event_note_rounded, localizations.translate('calendar')),
+                    _buildNavItem(4, Icons.explore_rounded, localizations.translate('map')),
                   ],
                 ),
               ),
             ),
           ),
 
-          // Центральная кнопка (ваш оригинальный стиль)
+          // ИСПРАВЛЕНО: Центральная кнопка ВЫШЕ панели
           Positioned(
-            top: 0,
+            top: 0, // ИСПРАВЛЕНО: Начинается с самого верха
             left: 0,
             right: 0,
             child: GestureDetector(
               onTap: () => _onItemTapped(2),
               child: Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: _centerButtonSize,
+                  height: _centerButtonSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: Colors.black.withOpacity(0.3),
                         blurRadius: 5,
                         spreadRadius: 1,
                       ),
@@ -1630,17 +1356,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Image.asset(
                         'assets/images/app_logo.png',
-                        width: 80,
-                        height: 80,
+                        width: _centerButtonSize,
+                        height: _centerButtonSize,
                       ),
-                      // ДОБАВЛЕНО: Показываем индикатор блокировки если создание контента заблокировано
                       if (!_canCreateContent)
                         Positioned(
                           top: 0,
                           right: 0,
                           child: Container(
-                            width: 24,
-                            height: 24,
+                            width: 22.0,
+                            height: 22.0,
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
@@ -1648,7 +1373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: const Icon(
                               Icons.lock,
                               color: Colors.white,
-                              size: 16,
+                              size: 14.0,
                             ),
                           ),
                         ),
@@ -1659,6 +1384,45 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ХАРДКОР ИСПРАВЛЕНО: Фиксированные элементы навигации без overflow
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _selectedIndex == index;
+
+    return Expanded(
+      child: Container(
+        height: _navItemMinTouchTarget, // 48px
+        child: InkWell(
+          onTap: () => _onItemTapped(index),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // ИСПРАВЛЕНО: минимальный размер
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? AppConstants.textColor : Colors.white54,
+                size: _navIconSize, // 22px
+              ),
+              const SizedBox(height: 2), // ИСПРАВЛЕНО: уменьшен отступ с 4 до 2
+              Flexible( // ИСПРАВЛЕНО: добавлен Flexible для текста
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: _navTextSize, // 10px
+                    color: isSelected ? AppConstants.textColor : Colors.white54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
