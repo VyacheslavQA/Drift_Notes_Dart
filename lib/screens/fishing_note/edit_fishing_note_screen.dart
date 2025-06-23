@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/responsive_constants.dart';
+import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../services/weather/weather_service.dart';
@@ -101,7 +103,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     // Настраиваем анимацию для плавного появления элементов
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: ResponsiveConstants.animationNormal,
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -150,7 +152,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         overallScore: aiMap['overallScore'] as int? ?? 50,
         activityLevel: activityLevel,
         confidence:
-            (aiMap['confidencePercent'] as int? ?? 50) /
+        (aiMap['confidencePercent'] as int? ?? 50) /
             100.0, // Конвертируем в double
         recommendation: aiMap['recommendation'] as String? ?? '',
         tips: List<String>.from(aiMap['tips'] ?? []),
@@ -299,9 +301,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       MaterialPageRoute(
         builder:
             (context) => MapLocationScreen(
-              initialLatitude: _hasLocation ? _latitude : null,
-              initialLongitude: _hasLocation ? _longitude : null,
-            ),
+          initialLatitude: _hasLocation ? _latitude : null,
+          initialLongitude: _hasLocation ? _longitude : null,
+        ),
       ),
     );
 
@@ -400,10 +402,10 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       MaterialPageRoute(
         builder:
             (context) => BiteRecordScreen(
-              fishingStartDate: _startDate,
-              fishingEndDate: _isMultiDay ? _endDate : null,
-              isMultiDay: _isMultiDay,
-            ),
+          fishingStartDate: _startDate,
+          fishingEndDate: _isMultiDay ? _endDate : null,
+          isMultiDay: _isMultiDay,
+        ),
       ),
     );
 
@@ -580,81 +582,106 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusXL),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20.0),
+        return Container(
+          padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 10.0,
+                padding: EdgeInsets.symmetric(
+                  vertical: ResponsiveConstants.spacingM,
                 ),
                 child: Text(
                   localizations.translate('select_fishing_type'),
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 20,
+                    fontSize: ResponsiveUtils.getOptimalFontSize(context, 18, maxSize: 20),
                     fontWeight: FontWeight.bold,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               const Divider(color: Colors.white24),
-              Expanded(
+              Flexible(
                 child: ListView.builder(
+                  shrinkWrap: true,
                   itemCount: AppConstants.fishingTypes.length,
                   itemBuilder: (context, index) {
                     final typeKey = AppConstants.fishingTypes[index];
-                    return ListTile(
-                      title: Text(
-                        localizations.translate(typeKey),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 16,
+                    return Container(
+                      margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: ResponsiveConstants.spacingM,
+                          vertical: ResponsiveConstants.spacingS,
                         ),
+                        minTileHeight: ResponsiveConstants.minTouchTarget,
+                        title: Text(
+                          localizations.translate(typeKey),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        leading: Container(
+                          width: ResponsiveConstants.minTouchTarget,
+                          height: ResponsiveConstants.minTouchTarget,
+                          alignment: Alignment.center,
+                          child: FishingTypeIcons.getIconWidget(typeKey),
+                        ),
+                        trailing: _selectedFishingType == typeKey
+                            ? Icon(
+                          Icons.check_circle,
+                          color: AppConstants.primaryColor,
+                          size: ResponsiveUtils.getIconSize(context),
+                        )
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedFishingType = typeKey;
+                            // Сбрасываем ИИ-анализ при смене типа
+                            _aiPrediction = null;
+                          });
+                          Navigator.pop(context);
+                        },
                       ),
-                      leading: FishingTypeIcons.getIconWidget(typeKey),
-                      trailing:
-                          _selectedFishingType == typeKey
-                              ? Icon(
-                                Icons.check_circle,
-                                color: AppConstants.primaryColor,
-                              )
-                              : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedFishingType = typeKey;
-                          // Сбрасываем ИИ-анализ при смене типа
-                          _aiPrediction = null;
-                        });
-                        Navigator.pop(context);
-                      },
                     );
                   },
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 10.0,
+                padding: EdgeInsets.symmetric(
+                  vertical: ResponsiveConstants.spacingM,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        minimumSize: Size(
+                          ResponsiveConstants.minTouchTarget * 2,
+                          ResponsiveConstants.minTouchTarget,
+                        ),
+                      ),
                       child: Text(
                         localizations.translate('cancel'),
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 16,
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -680,21 +707,38 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
             localizations.translate('cancel_editing'),
             style: TextStyle(
               color: AppConstants.textColor,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 16, maxSize: 18),
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           content: Text(
             localizations.translate('cancel_editing_confirmation'),
-            style: TextStyle(color: AppConstants.textColor),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Закрыть диалог
-              },
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                minimumSize: Size(
+                  ResponsiveConstants.minTouchTarget * 1.5,
+                  ResponsiveConstants.minTouchTarget,
+                ),
+              ),
               child: Text(
                 localizations.translate('no'),
-                style: TextStyle(color: AppConstants.textColor),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
             TextButton(
@@ -702,33 +746,25 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 Navigator.of(context).pop(); // Закрыть диалог
                 Navigator.of(context).pop(); // Вернуться на предыдущий экран
               },
+              style: TextButton.styleFrom(
+                minimumSize: Size(
+                  ResponsiveConstants.minTouchTarget * 1.5,
+                  ResponsiveConstants.minTouchTarget,
+                ),
+              ),
               child: Text(
                 localizations.translate('yes_cancel'),
-                style: TextStyle(color: Colors.redAccent),
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
         );
       },
-    );
-  }
-
-  // Создание кнопки "Отмена"
-  Widget _buildCancelButton() {
-    final localizations = AppLocalizations.of(context);
-
-    return ElevatedButton(
-      onPressed: _showCancelConfirmationDialog,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.redAccent,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      ),
-      child: Text(
-        localizations.translate('cancel').toUpperCase(),
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
     );
   }
 
@@ -739,11 +775,13 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     if (_aiPrediction == null) return const SizedBox();
 
     return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(top: ResponsiveConstants.spacingM),
+      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
       decoration: BoxDecoration(
         color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+          ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+        ),
         border: Border.all(
           color: AppConstants.primaryColor.withValues(alpha: 0.3),
           width: 1,
@@ -752,121 +790,149 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Используем адаптивную разметку для заголовка
+          ResponsiveUtils.isSmallScreen(context)
+              ? Column( // На маленьких экранах - вертикально
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _getScoreColor(
-                    _aiPrediction!.overallScore,
-                  ).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.psychology,
-                  color: _getScoreColor(_aiPrediction!.overallScore),
-                  size: 20,
-                ),
+              _buildAIHeader(localizations),
+              SizedBox(height: ResponsiveConstants.spacingS),
+              _buildAIScore(),
+            ],
+          )
+              : Row( // На больших экранах - горизонтально
+            children: [
+              Expanded(child: _buildAIHeader(localizations)),
+              _buildAIScore(),
+            ],
+          ),
+          SizedBox(height: ResponsiveConstants.spacingM),
+          Text(
+            _aiPrediction!.recommendation,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+              height: ResponsiveConstants.lineHeightNormal,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+          ),
+          if (_aiPrediction!.tips.isNotEmpty) ...[
+            SizedBox(height: ResponsiveConstants.spacingM),
+            Text(
+              localizations.translate('recommendations'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            ...(_aiPrediction!.tips
+                .take(2)
+                .map(
+                  (tip) => Padding(
+                padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
+                      '• ',
                       style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
+                        color: AppConstants.primaryColor,
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      _getActivityLevelText(
-                        _aiPrediction!.activityLevel,
-                        localizations,
-                      ),
-                      style: TextStyle(
-                        color: _getScoreColor(_aiPrediction!.overallScore),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        tip,
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.9),
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 11, maxSize: 13),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getScoreColor(
-                    _aiPrediction!.overallScore,
-                  ).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+            )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIHeader(AppLocalizations localizations) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(ResponsiveConstants.spacingS),
+          decoration: BoxDecoration(
+            color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
+          ),
+          child: Icon(
+            Icons.psychology,
+            color: _getScoreColor(_aiPrediction!.overallScore),
+            size: ResponsiveUtils.getIconSize(context, baseSize: 20),
+          ),
+        ),
+        SizedBox(width: ResponsiveConstants.spacingM),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Text(
-                  '${_aiPrediction!.confidencePercent}%',
-                  style: TextStyle(
-                    color: _getScoreColor(_aiPrediction!.overallScore),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              Text(
+                _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
+                style: TextStyle(
+                  color: _getScoreColor(_aiPrediction!.overallScore),
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                  fontWeight: FontWeight.w600,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            _aiPrediction!.recommendation,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
-          if (_aiPrediction!.tips.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              localizations.translate('recommendations'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            ...(_aiPrediction!.tips
-                .take(2)
-                .map(
-                  (tip) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '• ',
-                          style: TextStyle(
-                            color: AppConstants.primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.9,
-                              ),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )),
-          ],
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIScore() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveConstants.spacingS,
+        vertical: ResponsiveConstants.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
+      ),
+      child: Text(
+        '${_aiPrediction!.confidencePercent}%',
+        style: TextStyle(
+          color: _getScoreColor(_aiPrediction!.overallScore),
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 10, maxSize: 12),
+          fontWeight: FontWeight.bold,
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
       ),
     );
   }
@@ -882,9 +948,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
   // Получение текста уровня активности с правильной локализацией
   String _getActivityLevelText(
-    ActivityLevel level,
-    AppLocalizations localizations,
-  ) {
+      ActivityLevel level,
+      AppLocalizations localizations,
+      ) {
     switch (level) {
       case ActivityLevel.excellent:
         return localizations.translate('excellent_activity');
@@ -949,6 +1015,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
+    final horizontalPadding = ResponsiveUtils.getHorizontalPadding(context);
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -957,32 +1024,40 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           localizations.translate('edit_note'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 22,
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 20, maxSize: 22),
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          icon: Icon(
+            Icons.arrow_back,
+            color: AppConstants.textColor,
+            size: ResponsiveUtils.getIconSize(context),
+          ),
           onPressed: _showCancelConfirmationDialog,
         ),
         actions: [
           if (!_isSaving)
             IconButton(
-              icon: Icon(Icons.check, color: AppConstants.textColor),
+              icon: Icon(
+                Icons.check,
+                color: AppConstants.textColor,
+                size: ResponsiveUtils.getIconSize(context),
+              ),
               onPressed: _saveNote,
             )
           else
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: EdgeInsets.all(ResponsiveConstants.spacingS),
               child: SizedBox(
-                width: 40,
-                height: 40,
+                width: ResponsiveConstants.minTouchTarget,
+                height: ResponsiveConstants.minTouchTarget,
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppConstants.textColor,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
                   strokeWidth: 2.5,
                 ),
               ),
@@ -995,434 +1070,63 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(horizontalPadding),
               children: [
                 // Тип рыбалки (с иконкой)
                 _buildSectionHeader(localizations.translate('fishing_type')),
-                InkWell(
-                  onTap: _showFishingTypeDialog,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF12332E),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withValues(
-                              alpha: 0.2,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: FishingTypeIcons.getIconWidget(
-                            _selectedFishingType,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            localizations.translate(_selectedFishingType),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          color: AppConstants.textColor,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                _buildFishingTypeSelector(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Место рыбалки
-                _buildSectionHeader(
-                  '${localizations.translate('fishing_location')}*',
-                ),
-                TextFormField(
-                  controller: _locationController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('enter_location_name'),
-                    hintStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.5),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.location_on,
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return localizations.translate('required_field');
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 20),
+                _buildSectionHeader('${localizations.translate('fishing_location')}*'),
+                _buildLocationField(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Даты рыбалки с информацией о продолжительности
                 _buildSectionHeader(localizations.translate('fishing_dates')),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDateSelector(
-                        label: localizations.translate('start'),
-                        date: _startDate,
-                        onTap: () => _selectDate(context, true),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildDateSelector(
-                        label: localizations.translate('end'),
-                        date: _endDate,
-                        onTap: () => _selectDate(context, false),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Информация о продолжительности
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8),
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
+                _buildDateSelectors(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Точка на карте
                 _buildSectionHeader(localizations.translate('map_point')),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.map, color: AppConstants.textColor),
-                  label: Text(
-                    _hasLocation
-                        ? localizations.translate('change_map_point')
-                        : localizations.translate('select_map_point'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _selectLocation,
-                ),
-
-                if (_hasLocation) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 20),
+                _buildMapPointButton(localizations),
+                if (_hasLocation) _buildCoordinatesInfo(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Погода + ИИ-анализ
-                _buildSectionHeader(
-                  localizations.translate('weather_and_ai_analysis'),
-                ),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.psychology, color: AppConstants.textColor),
-                  label: Text(
-                    _weather != null || _aiPrediction != null
-                        ? localizations.translate('update_weather_and_ai')
-                        : localizations.translate('load_weather_ai'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed:
-                      (_isLoadingWeather || _isLoadingAI)
-                          ? null
-                          : _fetchWeatherAndAI,
-                ),
-
-                if (_isLoadingWeather || _isLoadingAI)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppConstants.textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _isLoadingAI
-                                ? localizations.translate('ai_analyzing')
-                                : localizations.translate('loading_weather'),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.7,
-                              ),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                if (_weather != null) ...[
-                  const SizedBox(height: 12),
-                  _buildWeatherCard(localizations),
-                ],
-
-                // Отображение ИИ-анализа
+                _buildSectionHeader(localizations.translate('weather_and_ai_analysis')),
+                _buildWeatherAIButton(localizations),
+                if (_isLoadingWeather || _isLoadingAI) _buildLoadingIndicator(localizations),
+                if (_weather != null) _buildWeatherCard(localizations),
                 if (_aiPrediction != null) _buildAIAnalysisCard(),
-
-                const SizedBox(height: 20),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Снасти
                 _buildSectionHeader(localizations.translate('tackle')),
-                TextFormField(
-                  controller: _tackleController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('describe_tackle'),
-                    hintStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.5),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  maxLines: 3,
-                ),
-
-                const SizedBox(height: 20),
+                _buildTackleField(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Заметки
                 _buildSectionHeader(localizations.translate('notes')),
-                TextFormField(
-                  controller: _notesController,
-                  style: TextStyle(color: AppConstants.textColor),
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFF12332E),
-                    filled: true,
-                    hintText: localizations.translate('notes_desc'),
-                    hintStyle: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.5),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  maxLines: 5,
-                ),
-
-                const SizedBox(height: 20),
+                _buildNotesField(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Фотографии
                 _buildSectionHeader(localizations.translate('photos')),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.photo_library),
-                        label: Text(localizations.translate('gallery')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _pickImages,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.camera_alt),
-                        label: Text(localizations.translate('camera')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _takePhoto,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Отображение существующих фото
-                if (_existingPhotoUrls.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _buildSectionHeader(
-                    localizations.translate('existing_photos'),
-                  ),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _existingPhotoUrls.length,
-                      itemBuilder: (context, index) {
-                        return _buildPhotoItem(
-                          _existingPhotoUrls[index],
-                          index,
-                          true,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-
-                // Отображение новых фото
-                if (_newPhotos.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _buildSectionHeader(localizations.translate('new_photos')),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _newPhotos.length,
-                      itemBuilder: (context, index) {
-                        return _buildPhotoItem(
-                          _newPhotos[index].path,
-                          index,
-                          false,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 20),
+                _buildPhotoButtons(localizations),
+                if (_existingPhotoUrls.isNotEmpty) _buildExistingPhotos(localizations),
+                if (_newPhotos.isNotEmpty) _buildNewPhotos(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Записи о поклевках
                 _buildSectionHeader(localizations.translate('bite_records')),
-                ElevatedButton.icon(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: AppConstants.textColor,
-                  ),
-                  label: Text(
-                    localizations.translate('add_bite_record'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF12332E),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _addBiteRecord,
-                ),
-
-                if (_biteRecords.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _buildBiteRecordsSection(localizations),
-                ],
-
-                const SizedBox(height: 40),
+                _buildAddBiteRecordButton(localizations),
+                if (_biteRecords.isNotEmpty) _buildBiteRecordsSection(localizations),
+                SizedBox(height: ResponsiveConstants.spacingXXL),
 
                 // Кнопки внизу экрана
-                Row(
-                  children: [
-                    Expanded(child: _buildCancelButton()),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveNote,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: AppConstants.textColor,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          disabledBackgroundColor: AppConstants.primaryColor
-                              .withValues(alpha: 0.5),
-                        ),
-                        child:
-                            _isSaving
-                                ? SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: AppConstants.textColor,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                                : Text(
-                                  localizations.translate('save').toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 40),
+                _buildBottomButtons(localizations),
+                SizedBox(height: ResponsiveConstants.spacingXXL),
               ],
             ),
           ),
@@ -1433,15 +1137,160 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
       child: Text(
         title,
         style: TextStyle(
           color: AppConstants.textColor,
-          fontSize: 18,
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 16, maxSize: 18),
           fontWeight: FontWeight.bold,
         ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
       ),
+    );
+  }
+
+  Widget _buildFishingTypeSelector(AppLocalizations localizations) {
+    return InkWell(
+      onTap: _showFishingTypeDialog,
+      borderRadius: BorderRadius.circular(
+        ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(ResponsiveConstants.spacingM),
+        decoration: BoxDecoration(
+          color: const Color(0xFF12332E),
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(ResponsiveConstants.spacingS),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: FishingTypeIcons.getIconWidget(
+                _selectedFishingType,
+                size: ResponsiveUtils.getIconSize(context, baseSize: 24),
+              ),
+            ),
+            SizedBox(width: ResponsiveConstants.spacingM),
+            Expanded(
+              child: Text(
+                localizations.translate(_selectedFishingType),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              color: AppConstants.textColor,
+              size: ResponsiveUtils.getIconSize(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationField(AppLocalizations localizations) {
+    return TextFormField(
+      controller: _locationController,
+      style: TextStyle(
+        color: AppConstants.textColor,
+        fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+      ),
+      decoration: InputDecoration(
+        fillColor: const Color(0xFF12332E),
+        filled: true,
+        hintText: localizations.translate('enter_location_name'),
+        hintStyle: TextStyle(
+          color: AppConstants.textColor.withValues(alpha: 0.5),
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+          borderSide: BorderSide.none,
+        ),
+        prefixIcon: Icon(
+          Icons.location_on,
+          color: AppConstants.textColor,
+          size: ResponsiveUtils.getIconSize(context),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: ResponsiveConstants.spacingM,
+          vertical: ResponsiveConstants.spacingM,
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return localizations.translate('required_field');
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDateSelectors(AppLocalizations localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ResponsiveUtils.isSmallScreen(context)
+            ? Column( // На маленьких экранах - вертикально
+          children: [
+            _buildDateSelector(
+              label: localizations.translate('start'),
+              date: _startDate,
+              onTap: () => _selectDate(context, true),
+            ),
+            SizedBox(height: ResponsiveConstants.spacingM),
+            _buildDateSelector(
+              label: localizations.translate('end'),
+              date: _endDate,
+              onTap: () => _selectDate(context, false),
+            ),
+          ],
+        )
+            : Row( // На больших экранах - горизонтально
+          children: [
+            Expanded(
+              child: _buildDateSelector(
+                label: localizations.translate('start'),
+                date: _startDate,
+                onTap: () => _selectDate(context, true),
+              ),
+            ),
+            SizedBox(width: ResponsiveConstants.spacingM),
+            Expanded(
+              child: _buildDateSelector(
+                label: localizations.translate('end'),
+                date: _endDate,
+                onTap: () => _selectDate(context, false),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: ResponsiveConstants.spacingS),
+        Text(
+          '${localizations.translate('duration')}: $_tripDays ${DateFormatter.getDaysText(_tripDays, context)}',
+          style: TextStyle(
+            color: AppConstants.textColor.withValues(alpha: 0.8),
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14),
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1453,10 +1302,15 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: EdgeInsets.symmetric(
+          vertical: ResponsiveConstants.spacingM,
+          horizontal: ResponsiveConstants.spacingM,
+        ),
         decoration: BoxDecoration(
           color: const Color(0xFF12332E),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1465,24 +1319,30 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
               label,
               style: TextStyle(
                 color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 14,
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: ResponsiveConstants.spacingXS),
             Row(
               children: [
                 Icon(
                   Icons.calendar_today,
                   color: AppConstants.textColor,
-                  size: 18,
+                  size: ResponsiveUtils.getIconSize(context, baseSize: 18),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  DateFormat('dd.MM.yyyy').format(date),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                SizedBox(width: ResponsiveConstants.spacingS),
+                Expanded(
+                  child: Text(
+                    DateFormat('dd.MM.yyyy').format(date),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ],
@@ -1493,35 +1353,148 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     );
   }
 
-  // ИСПРАВЛЕННАЯ карточка погоды - убрано дублирование
+  Widget _buildMapPointButton(AppLocalizations localizations) {
+    return ElevatedButton.icon(
+      icon: Icon(
+        Icons.map,
+        color: AppConstants.textColor,
+        size: ResponsiveUtils.getIconSize(context),
+      ),
+      label: Text(
+        _hasLocation
+            ? localizations.translate('change_map_point')
+            : localizations.translate('select_map_point'),
+        style: TextStyle(
+          color: AppConstants.textColor,
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF12332E),
+        minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+        padding: EdgeInsets.symmetric(
+          vertical: ResponsiveConstants.spacingM,
+          horizontal: ResponsiveConstants.spacingM,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+        ),
+      ),
+      onPressed: _selectLocation,
+    );
+  }
+
+  Widget _buildCoordinatesInfo(AppLocalizations localizations) {
+    return Padding(
+      padding: EdgeInsets.only(top: ResponsiveConstants.spacingS),
+      child: Text(
+        '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
+        style: TextStyle(
+          color: AppConstants.textColor.withValues(alpha: 0.7),
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
+      ),
+    );
+  }
+
+  Widget _buildWeatherAIButton(AppLocalizations localizations) {
+    return ElevatedButton.icon(
+      icon: Icon(
+        Icons.psychology,
+        color: AppConstants.textColor,
+        size: ResponsiveUtils.getIconSize(context),
+      ),
+      label: Text(
+        _weather != null || _aiPrediction != null
+            ? localizations.translate('update_weather_and_ai')
+            : localizations.translate('load_weather_ai'),
+        style: TextStyle(
+          color: AppConstants.textColor,
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF12332E),
+        minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+        padding: EdgeInsets.symmetric(
+          vertical: ResponsiveConstants.spacingM,
+          horizontal: ResponsiveConstants.spacingM,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+        ),
+      ),
+      onPressed: (_isLoadingWeather || _isLoadingAI) ? null : _fetchWeatherAndAI,
+    );
+  }
+
+  Widget _buildLoadingIndicator(AppLocalizations localizations) {
+    return Padding(
+      padding: EdgeInsets.all(ResponsiveConstants.spacingM),
+      child: Center(
+        child: Column(
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            Text(
+              _isLoadingAI
+                  ? localizations.translate('ai_analyzing')
+                  : localizations.translate('loading_weather'),
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.7),
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWeatherCard(AppLocalizations localizations) {
     if (_weather == null) return const SizedBox();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(top: ResponsiveConstants.spacingM),
+      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
       decoration: BoxDecoration(
         color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+          ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ВЕРХНЯЯ ЧАСТЬ: только температура и ощущается как (без дублирования)
+          // ВЕРХНЯЯ ЧАСТЬ: температура и ощущается как
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(ResponsiveConstants.spacingS),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
                 ),
                 child: Icon(
                   _weather!.isDay ? Icons.wb_sunny : Icons.nightlight_round,
                   color: _weather!.isDay ? Colors.amber : Colors.indigo[300],
-                  size: 30,
+                  size: ResponsiveUtils.getIconSize(context, baseSize: 30),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: ResponsiveConstants.spacingM),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1530,49 +1503,71 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                       _formatTemperature(_weather!.temperature),
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: 24,
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 22, maxSize: 24),
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: ResponsiveConstants.spacingXS),
                     Text(
                       '${localizations.translate('feels_like_short')}: ${_formatTemperature(_weather!.feelsLike)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-
-          // НИЖНЯЯ ЧАСТЬ: сетка 2x3 с остальными данными
+          SizedBox(height: ResponsiveConstants.spacingM),
+          // НИЖНЯЯ ЧАСТЬ: сетка с данными
           _buildWeatherGrid(localizations),
         ],
       ),
     );
   }
 
-  // Новый метод для построения сетки погоды 2x3
   Widget _buildWeatherGrid(AppLocalizations localizations) {
     return Column(
       children: [
         // Первая строка
-        Row(
+        ResponsiveUtils.isSmallScreen(context)
+            ? Column( // На маленьких экранах - вертикально
+          children: [
+            _buildWeatherInfoItem(
+              icon: Icons.air,
+              label: localizations.translate('wind_short'),
+              value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            _buildWeatherInfoItem(
+              icon: Icons.water_drop,
+              label: localizations.translate('humidity_short'),
+              value: '${_weather!.humidity}%',
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            _buildWeatherInfoItem(
+              icon: Icons.speed,
+              label: localizations.translate('pressure_short'),
+              value: _formatPressure(_weather!.pressure),
+            ),
+          ],
+        )
+            : Row( // На больших экранах - горизонтально
           children: [
             Expanded(
               child: _buildWeatherInfoItem(
                 icon: Icons.air,
                 label: localizations.translate('wind_short'),
-                value:
-                    '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+                value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveConstants.spacingM),
             Expanded(
               child: _buildWeatherInfoItem(
                 icon: Icons.water_drop,
@@ -1580,7 +1575,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 value: '${_weather!.humidity}%',
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveConstants.spacingM),
             Expanded(
               child: _buildWeatherInfoItem(
                 icon: Icons.speed,
@@ -1590,11 +1585,31 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
             ),
           ],
         ),
-
-        const SizedBox(height: 12),
-
+        SizedBox(height: ResponsiveConstants.spacingM),
         // Вторая строка
-        Row(
+        ResponsiveUtils.isSmallScreen(context)
+            ? Column(
+          children: [
+            _buildWeatherInfoItem(
+              icon: Icons.cloud,
+              label: localizations.translate('cloudiness_short'),
+              value: '${_weather!.cloudCover}%',
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            _buildWeatherInfoItem(
+              icon: Icons.wb_twilight,
+              label: localizations.translate('sunrise'),
+              value: _weather!.sunrise,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            _buildWeatherInfoItem(
+              icon: Icons.nights_stay,
+              label: localizations.translate('sunset'),
+              value: _weather!.sunset,
+            ),
+          ],
+        )
+            : Row(
           children: [
             Expanded(
               child: _buildWeatherInfoItem(
@@ -1603,7 +1618,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 value: '${_weather!.cloudCover}%',
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveConstants.spacingM),
             Expanded(
               child: _buildWeatherInfoItem(
                 icon: Icons.wb_twilight,
@@ -1611,7 +1626,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 value: _weather!.sunrise,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveConstants.spacingM),
             Expanded(
               child: _buildWeatherInfoItem(
                 icon: Icons.nights_stay,
@@ -1631,39 +1646,434 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(ResponsiveConstants.spacingM),
       decoration: BoxDecoration(
         color: AppConstants.backgroundColor.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
       ),
       child: Column(
         children: [
           Icon(
             icon,
             color: AppConstants.textColor.withValues(alpha: 0.8),
-            size: 20,
+            size: ResponsiveUtils.getIconSize(context, baseSize: 20),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: ResponsiveConstants.spacingS),
           Text(
             label,
             style: TextStyle(
               color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 11,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 9, maxSize: 11),
             ),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: ResponsiveConstants.spacingXS),
           Text(
             value,
             style: TextStyle(
               color: AppConstants.textColor,
-              fontSize: 12,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 10, maxSize: 12),
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTackleField(AppLocalizations localizations) {
+    return TextFormField(
+      controller: _tackleController,
+      style: TextStyle(
+        color: AppConstants.textColor,
+        fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+      ),
+      decoration: InputDecoration(
+        fillColor: const Color(0xFF12332E),
+        filled: true,
+        hintText: localizations.translate('describe_tackle'),
+        hintStyle: TextStyle(
+          color: AppConstants.textColor.withValues(alpha: 0.5),
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.all(ResponsiveConstants.spacingM),
+      ),
+      maxLines: 3,
+    );
+  }
+
+  Widget _buildNotesField(AppLocalizations localizations) {
+    return TextFormField(
+      controller: _notesController,
+      style: TextStyle(
+        color: AppConstants.textColor,
+        fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+      ),
+      decoration: InputDecoration(
+        fillColor: const Color(0xFF12332E),
+        filled: true,
+        hintText: localizations.translate('notes_desc'),
+        hintStyle: TextStyle(
+          color: AppConstants.textColor.withValues(alpha: 0.5),
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.all(ResponsiveConstants.spacingM),
+      ),
+      maxLines: 5,
+    );
+  }
+
+  Widget _buildPhotoButtons(AppLocalizations localizations) {
+    return ResponsiveUtils.isSmallScreen(context)
+        ? Column( // На маленьких экранах - вертикально
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: Icon(
+              Icons.photo_library,
+              size: ResponsiveUtils.getIconSize(context),
+            ),
+            label: Text(
+              localizations.translate('gallery'),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                ),
+              ),
+            ),
+            onPressed: _pickImages,
+          ),
+        ),
+        SizedBox(height: ResponsiveConstants.spacingM),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: Icon(
+              Icons.camera_alt,
+              size: ResponsiveUtils.getIconSize(context),
+            ),
+            label: Text(
+              localizations.translate('camera'),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                ),
+              ),
+            ),
+            onPressed: _takePhoto,
+          ),
+        ),
+      ],
+    )
+        : Row( // На больших экранах - горизонтально
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            icon: Icon(
+              Icons.photo_library,
+              size: ResponsiveUtils.getIconSize(context),
+            ),
+            label: Text(
+              localizations.translate('gallery'),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                ),
+              ),
+            ),
+            onPressed: _pickImages,
+          ),
+        ),
+        SizedBox(width: ResponsiveConstants.spacingM),
+        Expanded(
+          child: ElevatedButton.icon(
+            icon: Icon(
+              Icons.camera_alt,
+              size: ResponsiveUtils.getIconSize(context),
+            ),
+            label: Text(
+              localizations.translate('camera'),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                ),
+              ),
+            ),
+            onPressed: _takePhoto,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExistingPhotos(AppLocalizations localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: ResponsiveConstants.spacingM),
+        _buildSectionHeader(localizations.translate('existing_photos')),
+        SizedBox(
+          height: ResponsiveUtils.getResponsiveValue(
+            context,
+            mobile: 100,
+            tablet: 120,
+          ),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _existingPhotoUrls.length,
+            itemBuilder: (context, index) {
+              return _buildPhotoItem(_existingPhotoUrls[index], index, true);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNewPhotos(AppLocalizations localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: ResponsiveConstants.spacingM),
+        _buildSectionHeader(localizations.translate('new_photos')),
+        SizedBox(
+          height: ResponsiveUtils.getResponsiveValue(
+            context,
+            mobile: 100,
+            tablet: 120,
+          ),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _newPhotos.length,
+            itemBuilder: (context, index) {
+              return _buildPhotoItem(_newPhotos[index].path, index, false);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddBiteRecordButton(AppLocalizations localizations) {
+    return ElevatedButton.icon(
+      icon: Icon(
+        Icons.add_circle_outline,
+        color: AppConstants.textColor,
+        size: ResponsiveUtils.getIconSize(context),
+      ),
+      label: Text(
+        localizations.translate('add_bite_record'),
+        style: TextStyle(
+          color: AppConstants.textColor,
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF12332E),
+        minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+        padding: EdgeInsets.symmetric(
+          vertical: ResponsiveConstants.spacingM,
+          horizontal: ResponsiveConstants.spacingM,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+          ),
+        ),
+      ),
+      onPressed: _addBiteRecord,
+    );
+  }
+
+  Widget _buildBottomButtons(AppLocalizations localizations) {
+    return ResponsiveUtils.isSmallScreen(context)
+        ? Column( // На маленьких экранах - вертикально
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _showCancelConfirmationDialog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusXL),
+                ),
+              ),
+            ),
+            child: Text(
+              localizations.translate('cancel').toUpperCase(),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: ResponsiveConstants.spacingM),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _saveNote,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusXL),
+                ),
+              ),
+              disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
+            ),
+            child: _isSaving
+                ? SizedBox(
+              width: ResponsiveUtils.getIconSize(context, baseSize: 24),
+              height: ResponsiveUtils.getIconSize(context, baseSize: 24),
+              child: CircularProgressIndicator(
+                color: AppConstants.textColor,
+                strokeWidth: 2.5,
+              ),
+            )
+                : Text(
+              localizations.translate('save').toUpperCase(),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16, maxSize: 18),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    )
+        : Row( // На больших экранах - горизонтально
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: _showCancelConfirmationDialog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusXL),
+                ),
+              ),
+            ),
+            child: Text(
+              localizations.translate('cancel').toUpperCase(),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: ResponsiveConstants.spacingM),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _saveNote,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppConstants.primaryColor,
+              foregroundColor: AppConstants.textColor,
+              minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+              padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusXL),
+                ),
+              ),
+              disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
+            ),
+            child: _isSaving
+                ? SizedBox(
+              width: ResponsiveUtils.getIconSize(context, baseSize: 24),
+              height: ResponsiveUtils.getIconSize(context, baseSize: 24),
+              child: CircularProgressIndicator(
+                color: AppConstants.textColor,
+                strokeWidth: 2.5,
+              ),
+            )
+                : Text(
+              localizations.translate('save').toUpperCase(),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getOptimalFontSize(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1671,11 +2081,10 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SizedBox(height: ResponsiveConstants.spacingM),
         // График поклевок
         _buildBiteRecordsTimeline(localizations),
-
-        const SizedBox(height: 12),
-
+        SizedBox(height: ResponsiveConstants.spacingM),
         // Список поклевок
         ListView.builder(
           shrinkWrap: true,
@@ -1684,20 +2093,27 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           itemBuilder: (context, index) {
             final record = _biteRecords[index];
             return Card(
-              margin: const EdgeInsets.only(bottom: 8),
+              margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
               color: const Color(0xFF12332E),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                ),
               ),
               child: ListTile(
+                contentPadding: EdgeInsets.all(ResponsiveConstants.spacingM),
+                minTileHeight: ResponsiveConstants.minTouchTarget,
                 title: Text(
                   record.fishType.isEmpty
                       ? '${localizations.translate('bite_occurred')} #${index + 1}'
                       : record.fishType,
                   style: TextStyle(
                     color: AppConstants.textColor,
+                    fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
                     fontWeight: FontWeight.bold,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1706,6 +2122,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                       '${localizations.translate('bite_time')}: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
                       ),
                     ),
                     if (record.weight > 0)
@@ -1713,6 +2130,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                         '${localizations.translate('weight')}: ${record.weight} ${localizations.translate('kg')}',
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
                         ),
                       ),
                     if (record.notes.isNotEmpty)
@@ -1720,26 +2138,88 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                         '${localizations.translate('notes')}: ${record.notes}',
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                   ],
                 ),
-                trailing: Row(
+                trailing: ResponsiveUtils.isSmallScreen(context)
+                    ? PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppConstants.textColor,
+                    size: ResponsiveUtils.getIconSize(context),
+                  ),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: AppConstants.textColor),
+                          SizedBox(width: ResponsiveConstants.spacingS),
+                          Text(
+                            localizations.translate('edit'),
+                            style: TextStyle(color: AppConstants.textColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: ResponsiveConstants.spacingS),
+                          Text(
+                            localizations.translate('delete'),
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _editBiteRecord(index);
+                    } else if (value == 'delete') {
+                      setState(() {
+                        _biteRecords.removeAt(index);
+                      });
+                    }
+                  },
+                )
+                    : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.edit, color: AppConstants.textColor),
+                      icon: Icon(
+                        Icons.edit,
+                        color: AppConstants.textColor,
+                        size: ResponsiveUtils.getIconSize(context),
+                      ),
                       onPressed: () => _editBiteRecord(index),
+                      constraints: BoxConstraints.tightFor(
+                        width: ResponsiveConstants.minTouchTarget,
+                        height: ResponsiveConstants.minTouchTarget,
+                      ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: ResponsiveUtils.getIconSize(context),
+                      ),
                       onPressed: () {
                         setState(() {
                           _biteRecords.removeAt(index);
                         });
                       },
+                      constraints: BoxConstraints.tightFor(
+                        width: ResponsiveConstants.minTouchTarget,
+                        height: ResponsiveConstants.minTouchTarget,
+                      ),
                     ),
                   ],
                 ),
@@ -1764,47 +2244,59 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
+          padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
           child: Text(
             localizations.translate('bite_chart'),
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
         Container(
-          height: 100,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          height: ResponsiveUtils.getResponsiveValue(
+            context,
+            mobile: 100,
+            tablet: 120,
+          ),
+          padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingS),
           decoration: BoxDecoration(
             color: const Color(0xFF12332E),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(
+              ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+            ),
           ),
           child: Column(
             children: [
               Expanded(
                 child: CustomPaint(
-                  size: Size(MediaQuery.of(context).size.width - 50, 40),
+                  size: Size(
+                    MediaQuery.of(context).size.width - (ResponsiveUtils.getHorizontalPadding(context) * 4),
+                    40,
+                  ),
                   painter: _BiteRecordsTimelinePainter(
                     biteRecords: _biteRecords,
                     divisions: divisions,
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (int i = 0; i < hoursInDay; i += 3)
-                    Text(
-                      '$i:00',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.8),
-                        fontSize: 10,
+              SizedBox(height: ResponsiveConstants.spacingXS),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: ResponsiveConstants.spacingS),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (int i = 0; i < hoursInDay; i += 3)
+                      Text(
+                        '$i:00',
+                        style: TextStyle(
+                          color: AppConstants.textColor.withValues(alpha: 0.8),
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 8, maxSize: 10),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -1815,39 +2307,44 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
   // Построитель карточки фото
   Widget _buildPhotoItem(String source, int index, bool isExisting) {
+    final photoSize = ResponsiveUtils.getResponsiveValue(
+      context,
+      mobile: 100.0,
+      tablet: 120.0,
+    );
+
     return Stack(
       children: [
         Container(
-          width: 100,
-          height: 100,
-          margin: const EdgeInsets.only(right: 8),
+          width: photoSize,
+          height: photoSize,
+          margin: EdgeInsets.only(right: ResponsiveConstants.spacingS),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(
+              ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusS),
+            ),
             image: DecorationImage(
-              image:
-                  isExisting
-                      ? NetworkImage(source) as ImageProvider
-                      : FileImage(File(source)),
+              image: isExisting ? NetworkImage(source) as ImageProvider : FileImage(File(source)),
               fit: BoxFit.cover,
             ),
           ),
         ),
         Positioned(
-          top: 0,
-          right: 8,
+          top: ResponsiveConstants.spacingXS,
+          right: ResponsiveConstants.spacingS + ResponsiveConstants.spacingXS,
           child: GestureDetector(
-            onTap:
-                () =>
-                    isExisting
-                        ? _removeExistingPhoto(index)
-                        : _removeNewPhoto(index),
+            onTap: () => isExisting ? _removeExistingPhoto(index) : _removeNewPhoto(index),
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: EdgeInsets.all(ResponsiveConstants.spacingXS),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.7),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
+              child: Icon(
+                Icons.close,
+                color: Colors.white,
+                size: ResponsiveUtils.getIconSize(context, baseSize: 16),
+              ),
             ),
           ),
         ),
@@ -1868,10 +2365,9 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.3)
-          ..strokeWidth = 1.0;
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..strokeWidth = 1.0;
 
     // Рисуем горизонтальную линию
     canvas.drawLine(
@@ -1904,21 +2400,19 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
       // Используем разные цвета для пойманных рыб и просто поклевок
       final Color dotColor = isCaught ? Colors.green : Colors.red;
 
-      final dotPaint =
-          Paint()
-            ..color = dotColor
-            ..style = PaintingStyle.fill;
+      final dotPaint = Paint()
+        ..color = dotColor
+        ..style = PaintingStyle.fill;
 
       // Рисуем кружок для поклевки
       canvas.drawCircle(Offset(position, size.height / 2), 7, dotPaint);
 
       // Для пойманных рыб рисуем обводку, размер которой зависит от веса
       if (isCaught) {
-        final weightPaint =
-            Paint()
-              ..color = Colors.orange
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.0;
+        final weightPaint = Paint()
+          ..color = Colors.orange
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
 
         // Максимальный вес для отображения (15 кг)
         const maxWeight = 15.0;
@@ -1927,8 +2421,7 @@ class _BiteRecordsTimelinePainter extends CustomPainter {
         const maxRadius = 18.0;
 
         final weight = record.weight.clamp(0.1, maxWeight);
-        final radius =
-            minRadius + (weight / maxWeight) * (maxRadius - minRadius);
+        final radius = minRadius + (weight / maxWeight) * (maxRadius - minRadius);
 
         canvas.drawCircle(
           Offset(position, size.height / 2),
