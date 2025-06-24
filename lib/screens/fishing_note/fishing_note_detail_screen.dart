@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
+import '../../constants/responsive_constants.dart';
+import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/marker_map_model.dart';
 import '../../repositories/fishing_note_repository.dart';
@@ -224,7 +226,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final localizations = AppLocalizations.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -999,7 +1001,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final missedBitesCount = _note!.biteRecords.length - caughtFishCount;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1266,6 +1268,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   // Карточка для маркерной карты
   Widget _buildMarkerMapCard(MarkerMapModel map) {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1276,12 +1279,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: isSmallScreen
+              ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  // Иконка маркерной карты
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -1294,39 +1297,34 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       size: 24,
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Название и дата
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          map.name,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('dd.MM.yyyy').format(map.date),
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.7,
-                            ),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      map.name,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-
-                  // Количество маркеров
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat('dd.MM.yyyy').format(map.date),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(
+                        alpha: 0.7,
+                      ),
+                      fontSize: 14,
+                    ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -1351,8 +1349,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   ),
                 ],
               ),
-
-              // Сектор (если есть)
               if (map.sector != null && map.sector!.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(
@@ -1363,16 +1359,112 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       size: 16,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '${localizations.translate('sector')}: ${map.sector}',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        '${localizations.translate('sector')}: ${map.sector}',
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ],
+            ],
+          )
+              : Row(
+            children: [
+              // Иконка маркерной карты
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.map,
+                  color: AppConstants.primaryColor,
+                  size: 24,
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Название и дата
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      map.name,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('dd.MM.yyyy').format(map.date),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(
+                          alpha: 0.7,
+                        ),
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (map.sector != null && map.sector!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.grid_on,
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${localizations.translate('sector')}: ${map.sector}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Количество маркеров
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  '${map.markers.length} ${_getMarkerText(map.markers.length)}',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1420,6 +1512,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     required int missedBitesCount,
   }) {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
     // Получение самой крупной рыбы
     final biggestFish = _note!.biggestFish;
@@ -1435,13 +1528,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             // Тип рыбалки
             Row(
               children: [
-                Icon(Icons.category, color: AppConstants.textColor, size: 18),
+                Icon(Icons.category, color: AppConstants.textColor, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('fishing_type')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1452,7 +1545,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     ), // ИСПРАВЛЕНО: добавлен перевод
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1460,7 +1553,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Место
             Row(
@@ -1468,14 +1561,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Icon(
                   Icons.location_on,
                   color: AppConstants.textColor,
-                  size: 18,
+                  size: 16,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('location')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1484,7 +1577,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     _note!.location,
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1492,7 +1585,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Даты
             Row(
@@ -1500,14 +1593,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Icon(
                   Icons.calendar_today,
                   color: AppConstants.textColor,
-                  size: 18,
+                  size: 16,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('dates')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1522,7 +1615,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                         : DateFormatter.formatDate(_note!.date, context),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1530,18 +1623,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             /// Пойманные рыбы
             Row(
               children: [
-                Icon(Icons.set_meal, color: Colors.green, size: 18),
+                Icon(Icons.set_meal, color: Colors.green, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('caught')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1550,7 +1643,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     '$caughtFishCount ${DateFormatter.getFishText(caughtFishCount, context)}',
                     style: TextStyle(
                       color: Colors.green,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1558,18 +1651,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Нереализованные поклевки
             Row(
               children: [
-                Icon(Icons.hourglass_empty, color: Colors.red, size: 18),
+                Icon(Icons.hourglass_empty, color: Colors.red, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('not_realized')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1578,7 +1671,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     '$missedBitesCount ${_getBiteText(missedBitesCount)}',
                     style: TextStyle(
                       color: Colors.red,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1587,16 +1680,16 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             ),
 
             // Общий вес улова
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.scale, color: Colors.green, size: 18),
+                Icon(Icons.scale, color: Colors.green, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('total_catch_weight')}:',
                   style: TextStyle(
                     color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1605,7 +1698,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     '${_note!.totalFishWeight.toStringAsFixed(1)} ${localizations.translate('kg')}',
                     style: TextStyle(
                       color: Colors.green,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1615,23 +1708,23 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
             // Самая крупная рыба, если есть
             if (biggestFish != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.emoji_events, color: Colors.amber, size: 18),
+                  Icon(Icons.emoji_events, color: Colors.amber, size: 16),
                   const SizedBox(width: 8),
                   Text(
                     localizations.translate('biggest_fish'),
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
               Padding(
-                padding: const EdgeInsets.only(left: 26.0),
+                padding: const EdgeInsets.only(left: 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1640,7 +1733,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                         biggestFish.fishType,
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1650,7 +1743,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                           '${localizations.translate('weight')}: ${biggestFish.weight} ${localizations.translate('kg')}',
                           style: TextStyle(
                             color: AppConstants.textColor,
-                            fontSize: 15,
+                            fontSize: 13,
                           ),
                         ),
                         if (biggestFish.length > 0) ...[
@@ -1659,7 +1752,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                             '${localizations.translate('length')}: ${biggestFish.length} см',
                             style: TextStyle(
                               color: AppConstants.textColor,
-                              fontSize: 15,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -1669,7 +1762,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       '${localizations.translate('bite_time')}: ${DateFormat('dd.MM.yyyy HH:mm').format(biggestFish.time)}',
                       style: TextStyle(
                         color: AppConstants.textColor.withValues(alpha: 0.8),
-                        fontSize: 14,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -1677,68 +1770,135 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
 
-            // ЗАМЕНЕНО: Вместо одной кнопки теперь две кнопки
+            // ЗАМЕНЕНО: Кнопки навигации - адаптивный layout
             if (_note!.latitude != 0 && _note!.longitude != 0) ...[
               const SizedBox(height: 16),
 
-              // Первая кнопка - Показать на карте
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _showLocationOnMap,
-                  icon: Icon(
-                    Icons.map,
-                    color: AppConstants.textColor,
-                    size: 20,
-                  ),
-                  label: Text(
-                    localizations.translate('show_on_map'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+              // На маленьких экранах - вертикально, на больших - горизонтально
+              isSmallScreen
+                  ? Column(
+                children: [
+                  // Первая кнопка - Показать на карте
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _showLocationOnMap,
+                      icon: Icon(
+                        Icons.map,
+                        color: AppConstants.textColor,
+                        size: 20,
+                      ),
+                      label: Text(
+                        localizations.translate('show_on_map'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ),
 
-              const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-              // Вторая кнопка - Построить маршрут
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _navigateToLocation,
-                  icon: Icon(
-                    Icons.navigation,
-                    color: AppConstants.textColor,
-                    size: 20,
-                  ),
-                  label: Text(
-                    localizations.translate('build_route'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                  // Вторая кнопка - Построить маршрут
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _navigateToLocation,
+                      icon: Icon(
+                        Icons.navigation,
+                        color: AppConstants.textColor,
+                        size: 20,
+                      ),
+                      label: Text(
+                        localizations.translate('build_route'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                ],
+              )
+                  : Row(
+                children: [
+                  // Первая кнопка - Показать на карте
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _showLocationOnMap,
+                      icon: Icon(
+                        Icons.map,
+                        color: AppConstants.textColor,
+                        size: 20,
+                      ),
+                      label: Text(
+                        localizations.translate('show_on_map'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
                     ),
-                    elevation: 2,
                   ),
-                ),
+
+                  const SizedBox(width: 12),
+
+                  // Вторая кнопка - Построить маршрут
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _navigateToLocation,
+                      icon: Icon(
+                        Icons.navigation,
+                        color: AppConstants.textColor,
+                        size: 20,
+                      ),
+                      label: Text(
+                        localizations.translate('build_route'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -1831,7 +1991,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // НИЖНЯЯ ЧАСТЬ: сетка 2x3 с остальными данными
+              // НИЖНЯЯ ЧАСТЬ: сетка с остальными данными
               _buildWeatherGrid(localizations, weather),
             ],
           ),
@@ -1840,11 +2000,88 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Новый метод для построения сетки погоды 2x3
+  // Новый метод для построения сетки погоды
   Widget _buildWeatherGrid(
       AppLocalizations localizations,
       FishingWeather weather,
       ) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
+    // На маленьких экранах делаем 2 колонки, на больших - 3
+    if (isSmallScreen) {
+      return Column(
+        children: [
+          // Первая строка
+          Row(
+            children: [
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.air,
+                  label: localizations.translate('wind_short'),
+                  value: '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.water_drop,
+                  label: localizations.translate('humidity_short'),
+                  value: '${weather.humidity}%',
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Вторая строка
+          Row(
+            children: [
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.speed,
+                  label: localizations.translate('pressure_short'),
+                  value: _formatPressure(weather.pressure),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.cloud,
+                  label: localizations.translate('cloudiness_short'),
+                  value: '${weather.cloudCover}%',
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Третья строка
+          Row(
+            children: [
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.wb_twilight,
+                  label: localizations.translate('sunrise'),
+                  value: weather.sunrise,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.nights_stay,
+                  label: localizations.translate('sunset'),
+                  value: weather.sunset,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // На больших экранах оставляем 3 колонки
     return Column(
       children: [
         // Первая строка
@@ -1854,8 +2091,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               child: _buildWeatherInfoItem(
                 icon: Icons.air,
                 label: localizations.translate('wind_short'),
-                value:
-                '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
+                value: '${weather.windDirection}\n${_formatWindSpeed(weather.windSpeed)}',
               ),
             ),
             const SizedBox(width: 12),
