@@ -11,7 +11,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
-import 'dart:convert'; // ДОБАВЛЕНО для json.decode
+import 'dart:convert';
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -31,26 +31,19 @@ import 'providers/statistics_provider.dart';
 import 'services/offline/offline_storage_service.dart';
 import 'services/offline/sync_service.dart';
 import 'utils/network_utils.dart';
-import 'config/api_keys.dart';
 import 'services/weather_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/local_push_notification_service.dart';
 import 'services/weather_settings_service.dart';
 import 'services/firebase/firebase_service.dart';
 import 'services/user_consent_service.dart';
-import 'services/scheduled_reminder_service.dart'; // ОБНОВЛЕНО: новый сервис
-import 'services/tournament_service.dart'; // НОВЫЙ: импорт сервиса турниров
-import 'services/timer/timer_service.dart'; // ДОБАВЛЕНО: импорт TimerService
-import 'screens/tournaments/tournament_detail_screen.dart'; // НОВЫЙ: импорт экрана турнира
+import 'services/scheduled_reminder_service.dart';
+import 'services/tournament_service.dart';
+import 'services/timer/timer_service.dart';
+import 'screens/tournaments/tournament_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ ПРОВЕРКИ
-  debugPrint('=== ПРОВЕРКА API КЛЮЧЕЙ ===');
-  debugPrint('Google Maps ключ установлен: ${ApiKeys.hasGoogleMapsKey}');
-  debugPrint('Weather ключ установлен: ${ApiKeys.hasWeatherKey}');
-  debugPrint('==============================');
 
   // Инициализация локали для форматирования дат
   await initializeDateFormatting('ru_RU', null);
@@ -72,111 +65,66 @@ void main() async {
     ),
   );
 
-  // КРИТИЧЕСКИ ВАЖНО: Инициализация Firebase ПЕРВОЙ перед всеми другими сервисами
+  // Инициализация Firebase
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('✅ Firebase успешно инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации Firebase: $e');
-    // Если Firebase не инициализируется, приложение не должно продолжать работу
     return;
   }
 
-  // ОБНОВЛЕНО: Инициализация сервисов уведомлений в правильном порядке
+  // Инициализация сервисов уведомлений
   try {
-    // 1. Сначала инициализируем локальные push-уведомления
     await LocalPushNotificationService().initialize();
-    debugPrint('✅ Сервис локальных push-уведомлений инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации локальных push-уведомлений: $e');
+    // Продолжаем работу без push-уведомлений
   }
 
-  // ТОЛЬКО ПОСЛЕ успешной инициализации Firebase инициализируем другие сервисы
   try {
-    // 2. Инициализация основного сервиса уведомлений (он теперь использует push-сервис)
     await NotificationService().initialize();
-    debugPrint('✅ Сервис уведомлений инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+    // Продолжаем работу без сервиса уведомлений
   }
 
-  // ДОБАВЛЕНО: Инициализация TimerService
   try {
     await TimerService().initialize();
-    debugPrint('✅ TimerService инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации TimerService: $e');
+    // Продолжаем работу без TimerService
   }
 
   try {
-    // 3. Инициализация погодных уведомлений
     await WeatherNotificationService().initialize();
-    debugPrint('✅ Сервис погодных уведомлений инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации сервиса погодных уведомлений: $e');
+    // Продолжаем работу без погодных уведомлений
   }
 
   try {
     await WeatherSettingsService().initialize();
-    debugPrint('✅ Сервис настроек погоды инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации сервиса настроек погоды: $e');
+    // Продолжаем работу без настроек погоды
   }
 
-  // ОБНОВЛЕНО: Инициализация нового сервиса точных напоминаний
   try {
     await ScheduledReminderService().initialize();
-    debugPrint('✅ Сервис точных напоминаний инициализирован');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации сервиса точных напоминаний: $e');
+    // Продолжаем работу без точных напоминаний
   }
 
-  // ТЕПЕРЬ можно безопасно создать UserConsentService
+  // Инициализация UserConsentService
   UserConsentService? consentService;
   try {
     consentService = UserConsentService();
-    debugPrint('✅ UserConsentService создан успешно');
-
-    // ДИАГНОСТИКА ПЕРЕД ОЧИСТКОЙ
-    final statusBefore = await consentService.getUserConsentStatus();
-    debugPrint(
-      '🔍 ДО очистки: Privacy=${statusBefore.privacyPolicyAccepted}, Terms=${statusBefore.termsOfServiceAccepted}',
-    );
-    debugPrint('🔍 ДО очистки: Version=${statusBefore.consentVersion}');
-
-    // ОЧИСТКА
-    await consentService.clearAllConsents();
-    debugPrint('🧹 ТЕСТ: Выполнена очистка согласий');
-
-    // ДИАГНОСТИКА ПОСЛЕ ОЧИСТКИ
-    final statusAfter = await consentService.getUserConsentStatus();
-    debugPrint(
-      '🔍 ПОСЛЕ очистки: Privacy=${statusAfter.privacyPolicyAccepted}, Terms=${statusAfter.termsOfServiceAccepted}',
-    );
-    debugPrint('🔍 ПОСЛЕ очистки: Version=${statusAfter.consentVersion}');
   } catch (e) {
-    debugPrint('❌ Ошибка создания UserConsentService: $e');
-  }
-
-  // Инициализация Google Sign-In (тихий вход)
-  try {
-    // Импорт будет добавлен автоматически
-    // final googleSignInService = GoogleSignInService();
-    // await googleSignInService.signInSilently();
-    debugPrint('Google Sign-In будет инициализирован после создания сервиса');
-  } catch (e) {
-    debugPrint('Ошибка инициализации Google Sign-In: $e');
+    // Продолжаем работу без сервиса согласий
   }
 
   // Инициализация сервисов для офлайн режима
   try {
     final offlineStorage = OfflineStorageService();
     await offlineStorage.initialize();
-    debugPrint('✅ Офлайн хранилище инициализировано');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации офлайн хранилища: $e');
+    // Продолжаем работу без офлайн хранилища
   }
 
   // Запуск мониторинга сети
@@ -184,25 +132,15 @@ void main() async {
     final networkMonitor = NetworkUtils();
     networkMonitor.startNetworkMonitoring();
 
-    // Добавление слушателя для запуска синхронизации при появлении сети
     networkMonitor.addConnectionListener((isConnected) {
       if (isConnected) {
-        debugPrint(
-          '🌐 Соединение с интернетом восстановлено, запускаем синхронизацию',
-        );
         SyncService().syncAll();
-      } else {
-        debugPrint(
-          '🔴 Соединение с интернетом потеряно, переход в офлайн режим',
-        );
       }
     });
 
-    // Запуск периодической синхронизации
     SyncService().startPeriodicSync();
-    debugPrint('✅ Мониторинг сети и синхронизация запущены');
   } catch (e) {
-    debugPrint('❌ Ошибка запуска мониторинга сети: $e');
+    // Продолжаем работу без мониторинга сети
   }
 
   // Запуск приложения
@@ -232,7 +170,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final _firebaseService = FirebaseService();
 
-  // Для отслеживания pending действий
   String? _pendingAction;
   StreamSubscription<Uri>? _linkSubscription;
 
@@ -240,17 +177,13 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void initState() {
     super.initState();
 
-    // ДОБАВИТЬ ЭТУ СТРОКУ:
     WeatherNotificationService.setNavigatorKey(_navigatorKey);
 
     _initializeQuickActions();
     _initializeDeepLinkHandling();
     _checkDocumentUpdatesAfterAuth();
-
-    // ОБНОВЛЕНО: Настройка обработчиков уведомлений
     _setupNotificationHandlers();
 
-    // ОБНОВЛЕНО: Инициализация контекста для сервиса точных напоминаний
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScheduledReminderContext();
     });
@@ -260,118 +193,79 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void dispose() {
     _linkSubscription?.cancel();
 
-    // ОБНОВЛЕНО: Освобождение ресурсов сервисов уведомлений и нового сервиса напоминаний
     try {
       NotificationService().dispose();
       LocalPushNotificationService().dispose();
       WeatherNotificationService().dispose();
-      ScheduledReminderService().dispose(); // ОБНОВЛЕНО: новый сервис
-      TimerService().dispose(); // ДОБАВЛЕНО: освобождение ресурсов TimerService
+      ScheduledReminderService().dispose();
+      TimerService().dispose();
     } catch (e) {
-      debugPrint('❌ Ошибка освобождения ресурсов уведомлений: $e');
+      // Ошибки при освобождении ресурсов не критичны
     }
 
     super.dispose();
   }
 
-  // ОБНОВЛЕНО: Инициализация контекста для сервиса точных напоминаний
   void _initializeScheduledReminderContext() {
     try {
       if (_navigatorKey.currentContext != null) {
         ScheduledReminderService().setContext(_navigatorKey.currentContext!);
-        debugPrint('✅ Контекст для сервиса точных напоминаний установлен');
-
-        // НОВЫЙ: Дополнительная попытка подключить обработчик уведомлений
         _ensureNotificationHandlerIsActive();
-      } else {
-        debugPrint('⚠️ Контекст еще не готов для сервиса напоминаний');
       }
     } catch (e) {
-      debugPrint('❌ Ошибка установки контекста для сервиса напоминаний: $e');
+      // Ошибка установки контекста не критична
     }
   }
 
-  // НОВЫЙ: Проверяем и переподключаем обработчик если нужно
   void _ensureNotificationHandlerIsActive() {
     try {
-      debugPrint('🔍 Проверяем активность обработчика уведомлений...');
-
-      // Просто переподключаем обработчик для уверенности
-      debugPrint('🔄 Переподключаем обработчик уведомлений...');
       _setupNotificationHandlers();
     } catch (e) {
-      debugPrint('❌ Ошибка проверки обработчика: $e');
+      // Ошибка проверки обработчика не критична
     }
   }
 
-  // ОБНОВЛЕНО: Настройка обработчиков уведомлений
   void _setupNotificationHandlers() {
     try {
-      debugPrint('🔧 Настройка обработчиков уведомлений...');
-
       final pushService = LocalPushNotificationService();
 
-      // Обрабатываем нажатия на уведомления
       pushService.notificationTapStream.listen(
             (payload) {
-          debugPrint(
-            '📱 Приложение: получено нажатие на уведомление: $payload',
-          );
           _handleNotificationTap(payload);
         },
         onError: (error) {
-          debugPrint('❌ Ошибка в stream уведомлений: $error');
+          // Ошибки в stream уведомлений не критичны
         },
       );
-
-      debugPrint('✅ Обработчики уведомлений настроены');
     } catch (e) {
-      debugPrint('❌ Ошибка настройки обработчиков уведомлений: $e');
-      // Пробуем альтернативный способ
       _setupAlternativeNotificationHandler();
     }
   }
 
-  // НОВЫЙ: Альтернативный способ подключения обработчика
   void _setupAlternativeNotificationHandler() {
-    debugPrint('🔧 Пробуем альтернативный способ подключения...');
-
-    // Добавляем задержку и пробуем снова
     Future.delayed(const Duration(seconds: 1), () {
       try {
         final pushService = LocalPushNotificationService();
         pushService.notificationTapStream.listen((payload) {
-          debugPrint('📱 АЛЬТЕРНАТИВНЫЙ обработчик: $payload');
           _handleNotificationTap(payload);
         });
-        debugPrint('✅ Альтернативный обработчик подключен');
       } catch (e) {
-        debugPrint('❌ Альтернативный обработчик тоже не работает: $e');
+        // Альтернативный обработчик тоже не критичен
       }
     });
   }
 
-  // ОБНОВЛЕНО: Обработка нажатий на уведомления (ДОБАВЛЕНО обработка таймеров)
   void _handleNotificationTap(String payload) {
     try {
-      debugPrint('📱 Обработка нажатия на уведомление: $payload');
-
-      // Проверяем, готово ли приложение для навигации
       if (_navigatorKey.currentContext == null) {
-        debugPrint('⏳ Приложение не готово для навигации');
         return;
       }
 
-      // ИСПРАВЛЕНО: Обработка уведомлений с правильным извлечением данных
       try {
         final payloadData = json.decode(payload);
         final notificationType = payloadData['type'];
         final notificationId = payloadData['id'];
 
-        debugPrint('📱 Тип уведомления: $notificationType');
-        debugPrint('📱 ID уведомления: $notificationId');
-
-        // ДОБАВЛЕНО: Обработка уведомлений о завершении таймера
         if (notificationType == 'timer_finished') {
           _handleTimerNotification(payloadData);
         } else if (notificationType == 'NotificationType.tournamentReminder') {
@@ -379,132 +273,85 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         } else if (notificationType == 'NotificationType.fishingReminder') {
           _navigateToFishingCalendar();
         } else {
-          // Для других типов переходим к списку уведомлений
           _navigateToNotifications();
         }
       } catch (e) {
-        debugPrint('❌ Ошибка парсинга payload: $e');
-        // Fallback - переходим к уведомлениям
         _navigateToNotifications();
       }
     } catch (e) {
-      debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
+      // Ошибка обработки уведомления не критична
     }
   }
 
-  // ДОБАВЛЕНО: Обработка уведомления о завершении таймера
   void _handleTimerNotification(Map<String, dynamic> payloadData) {
     try {
-      final timerId = payloadData['timerId'] as String?;
-      final timerName = payloadData['timerName'] as String?;
-
-      debugPrint('⏰ Обработка уведомления о таймере: $timerName (ID: $timerId)');
-
-      // Переходим к экрану таймеров
       _navigateToTimers();
     } catch (e) {
-      debugPrint('❌ Ошибка обработки уведомления о таймере: $e');
       _navigateToNotifications();
     }
   }
 
-  // ДОБАВЛЕНО: Переход к экрану таймеров
   void _navigateToTimers() {
-    debugPrint('⏰ Переход к экрану таймеров');
     _navigatorKey.currentState?.pushNamed('/timers');
   }
 
-  // НОВЫЙ МЕТОД: Обработка уведомления о турнире
   void _handleTournamentNotification(String notificationId) {
     try {
-      debugPrint('🏆 Обработка уведомления о турнире: $notificationId');
-
-      // Получаем уведомление из сервиса
       final notificationService = NotificationService();
       final notifications = notificationService.getAllNotifications();
 
-      // Ищем уведомление по ID
       final notification = notifications.firstWhere(
             (n) => n.id == notificationId,
         orElse: () => throw Exception('Notification not found'),
       );
 
-      debugPrint('📱 Найдено уведомление: ${notification.title}');
-      debugPrint('📱 Данные уведомления: ${notification.data}');
-
-      // Извлекаем sourceId из данных уведомления
       final sourceId = notification.data['sourceId'] as String?;
-
-      debugPrint('📱 Source ID из уведомления: $sourceId');
 
       if (sourceId != null && sourceId.isNotEmpty) {
         _navigateToTournamentDetail(sourceId);
       } else {
-        debugPrint('❌ Source ID не найден в данных уведомления');
         _navigateToNotifications();
       }
     } catch (e) {
-      debugPrint('❌ Ошибка обработки уведомления о турнире: $e');
       _navigateToNotifications();
     }
   }
 
-  // ОБНОВЛЕНО: Навигация к разным экранам
   void _navigateToNotifications() {
-    debugPrint('📱 Переход к уведомлениям');
     _navigatorKey.currentState?.pushNamed('/notifications');
   }
 
-  // ИСПРАВЛЕНО: Переход к конкретному турниру
   void _navigateToTournamentDetail(String tournamentId) {
-    debugPrint('🏆 Переход к турниру: $tournamentId');
-
     try {
-      // Получаем турнир по ID
       final tournamentService = TournamentService();
       final tournament = tournamentService.getTournamentById(tournamentId);
 
       if (tournament == null) {
-        debugPrint('❌ Турнир с ID $tournamentId не найден');
-        // Fallback - переходим к уведомлениям
         _navigateToNotifications();
         return;
       }
 
-      // Проверяем, готово ли приложение для навигации
       if (_navigatorKey.currentContext == null) {
-        debugPrint('⏳ Контекст не готов для навигации');
         return;
       }
 
-      // Переходим к детальной информации о турнире
       Navigator.of(_navigatorKey.currentContext!).push(
         MaterialPageRoute(
           builder: (context) => TournamentDetailScreen(tournament: tournament),
         ),
       );
-
-      debugPrint('✅ Успешный переход к турниру: ${tournament.name}');
     } catch (e) {
-      debugPrint('❌ Ошибка перехода к турниру: $e');
-      // Fallback - переходим к уведомлениям
       _navigateToNotifications();
     }
   }
 
   void _navigateToFishingCalendar() {
-    debugPrint('📅 Переход к календарю рыбалки');
     _navigatorKey.currentState?.pushNamed('/fishing_calendar');
   }
 
   void _checkDocumentUpdatesAfterAuth() {
-    // Слушаем изменения состояния авторизации через FirebaseAuth напрямую
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null && widget.consentService != null) {
-        // Пользователь авторизован - можно добавить дополнительную логику если нужно
-        debugPrint('✅ Пользователь авторизован: ${user.uid}');
-
-        // ОБНОВЛЕНО: Обновляем контекст сервиса напоминаний при авторизации
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _initializeScheduledReminderContext();
         });
@@ -512,53 +359,40 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     });
   }
 
-  // ИСПРАВЛЕНО: Метод инициализации Quick Actions с обработкой ошибок
   void _initializeQuickActions() {
     try {
       const QuickActions quickActions = QuickActions();
 
-      // Устанавливаем список быстрых действий с обработкой ошибок
       quickActions.setShortcutItems(<ShortcutItem>[
         const ShortcutItem(
           type: 'create_note',
           localizedTitle: 'Создать заметку',
         ),
         const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
-      ]).then((_) {
-        debugPrint('✅ Quick Actions shortcuts успешно установлены');
-      }).catchError((error) {
-        debugPrint('❌ Ошибка установки Quick Actions shortcuts: $error');
-        // Приложение продолжит работать без shortcuts
+      ]).catchError((error) {
+        // Ошибка установки shortcuts не критична
       });
 
-      // Обрабатываем нажатия на быстрые действия
       quickActions.initialize((String shortcutType) {
-        debugPrint('🚀 Quick Action получен: $shortcutType');
         _handleShortcutAction(shortcutType);
       });
-
-      debugPrint('✅ Quick Actions успешно инициализированы');
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации Quick Actions: $e');
-      // Приложение продолжит работать без quick actions
+      // Ошибка инициализации Quick Actions не критична
     }
   }
 
   void _initializeDeepLinkHandling() {
     final appLinks = AppLinks();
 
-    // Обработка deep links когда приложение уже запущено
     appLinks.uriLinkStream.listen(
           (Uri uri) {
-        debugPrint('🔗 Deep link получен: $uri');
         _handleDeepLink(uri);
       },
       onError: (err) {
-        debugPrint('❌ Ошибка deep link: $err');
+        // Ошибка deep link не критична
       },
     );
 
-    // Обработка deep link при запуске приложения
     _handleInitialLink();
   }
 
@@ -567,19 +401,14 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       final appLinks = AppLinks();
       final initialLink = await appLinks.getInitialLink();
       if (initialLink != null) {
-        debugPrint('🚀 Начальный deep link: $initialLink');
         _handleDeepLink(initialLink);
       }
     } catch (e) {
-      debugPrint('❌ Ошибка получения начального deep link: $e');
+      // Ошибка получения начального deep link не критична
     }
   }
 
   void _handleDeepLink(Uri uri) {
-    debugPrint(
-      '🔍 Обработка deep link: ${uri.scheme}://${uri.host}${uri.path}',
-    );
-
     if (uri.scheme == 'driftnotes') {
       switch (uri.host) {
         case 'create_note':
@@ -588,27 +417,17 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         case 'view_notes':
           _handleShortcutAction('view_notes');
           break;
-        default:
-          debugPrint('❓ Неизвестный deep link: ${uri.host}');
       }
     }
   }
 
   void _handleShortcutAction(String actionType) {
-    debugPrint('🎯 Обработка действия: $actionType');
-
-    // Проверяем, готово ли приложение для навигации
     if (_navigatorKey.currentContext == null) {
-      debugPrint('⏳ Приложение не готово, сохраняем действие: $actionType');
       _pendingAction = actionType;
       return;
     }
 
-    // Проверяем авторизацию
     if (!_firebaseService.isUserLoggedIn) {
-      debugPrint(
-        '🔐 Пользователь не авторизован, сохраняем действие и переходим к авторизации',
-      );
       _pendingAction = actionType;
       _navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/auth_selection',
@@ -617,13 +436,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       return;
     }
 
-    // Выполняем действие
     _executeAction(actionType);
   }
 
   void _executeAction(String actionType) {
-    debugPrint('⚡ Выполняем действие: $actionType');
-
     switch (actionType) {
       case 'create_note':
         _navigateToCreateNote();
@@ -631,24 +447,17 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       case 'view_notes':
         _navigateToViewNotes();
         break;
-      default:
-        debugPrint('❓ Неизвестное действие: $actionType');
     }
 
-    // Очищаем pending действие
     _pendingAction = null;
   }
 
   void _navigateToCreateNote() {
-    debugPrint('📝 Переход к созданию заметки');
-
-    // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/home',
           (route) => false,
     );
 
-    // Небольшая задержка для завершения навигации
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_navigatorKey.currentContext != null) {
         Navigator.of(_navigatorKey.currentContext!).push(
@@ -661,15 +470,11 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   }
 
   void _navigateToViewNotes() {
-    debugPrint('📋 Переход к просмотру заметок');
-
-    // Сначала переходим на главный экран
     _navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/home',
           (route) => false,
     );
 
-    // Небольшая задержка для завершения навигации
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_navigatorKey.currentContext != null) {
         Navigator.of(_navigatorKey.currentContext!).push(
@@ -681,14 +486,11 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     });
   }
 
-  // Метод для выполнения отложенного действия после успешной авторизации
   void executePendingAction() {
     if (_pendingAction != null) {
-      debugPrint('🔄 Выполняем отложенное действие: $_pendingAction');
       final action = _pendingAction!;
       _pendingAction = null;
 
-      // Небольшая задержка, чтобы дать приложению время на переход к главному экрану
       Future.delayed(const Duration(milliseconds: 1000), () {
         _executeAction(action);
       });
@@ -699,7 +501,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // ОБНОВЛЕНО: Обработка изменений состояния приложения для уведомлений
     switch (state) {
       case AppLifecycleState.resumed:
         _onAppResumed();
@@ -715,12 +516,8 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     }
   }
 
-  // ОБНОВЛЕНО: Обработка возобновления приложения
   void _onAppResumed() {
-    debugPrint('📱 Приложение возобновлено');
-
     try {
-      // Обновляем бейдж при возобновлении приложения
       final notificationService = NotificationService();
       final unreadCount = notificationService.getUnreadCount();
 
@@ -729,22 +526,17 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         pushService.clearBadge();
       }
 
-      // ОБНОВЛЕНО: Обновляем контекст сервиса напоминаний при возобновлении
       _initializeScheduledReminderContext();
     } catch (e) {
-      debugPrint('❌ Ошибка обновления бейджа при возобновлении: $e');
+      // Ошибка обновления бейджа не критична
     }
   }
 
-  // ОБНОВЛЕНО: Обработка паузы приложения
   void _onAppPaused() {
-    debugPrint('📱 Приложение на паузе');
-    // Здесь можно сохранить текущее состояние
+    // Сохранение состояния при паузе
   }
 
-  // ОБНОВЛЕНО: Обработка закрытия приложения
   void _onAppDetached() {
-    debugPrint('📱 Приложение закрывается');
     // Ресурсы освобождаются в dispose()
   }
 
@@ -767,16 +559,12 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             GlobalCupertinoLocalizations.delegate,
           ],
 
-          // ОБНОВЛЕНО: builder: Добавляем установку контекста для сервиса напоминаний
           builder: (context, widget) {
-            // Устанавливаем контекст для сервиса напоминаний при каждом rebuild
             WidgetsBinding.instance.addPostFrameCallback((_) {
               try {
                 ScheduledReminderService().setContext(context);
               } catch (e) {
-                debugPrint(
-                  '❌ Ошибка установки контекста сервиса напоминаний в builder: $e',
-                );
+                // Ошибка установки контекста не критична
               }
             });
 
@@ -879,10 +667,8 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             ),
           ),
 
-          // Начальный экран приложения
           home: SplashScreenWithPendingAction(
             onAppReady: () {
-              // Выполняем отложенное действие после загрузки приложения
               if (_pendingAction != null) {
                 Future.delayed(const Duration(milliseconds: 500), () {
                   _handleShortcutAction(_pendingAction!);
@@ -891,26 +677,21 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             },
           ),
 
-          // Определение маршрутов для навигации
           routes: {
             '/splash': (context) => const SplashScreen(),
-            '/auth_selection':
-                (context) => AuthSelectionScreenWithCallback(
+            '/auth_selection': (context) => AuthSelectionScreenWithCallback(
               onAuthSuccess: () => executePendingAction(),
             ),
-            '/login':
-                (context) => LoginScreenWithCallback(
+            '/login': (context) => LoginScreenWithCallback(
               onAuthSuccess: () => executePendingAction(),
             ),
-            '/register':
-                (context) => RegisterScreenWithCallback(
+            '/register': (context) => RegisterScreenWithCallback(
               onAuthSuccess: () => executePendingAction(),
             ),
             '/home': (context) => const HomeScreen(),
             '/forgot_password': (context) => const ForgotPasswordScreen(),
             '/help_contact': (context) => const HelpContactScreen(),
-            '/settings/accepted_agreements':
-                (context) => const AcceptedAgreementsScreen(),
+            '/settings/accepted_agreements': (context) => const AcceptedAgreementsScreen(),
           },
         );
       },
@@ -934,7 +715,6 @@ class _SplashScreenWithPendingActionState
   @override
   void initState() {
     super.initState();
-    // Вызываем коллбэк после инициализации
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onAppReady();
     });

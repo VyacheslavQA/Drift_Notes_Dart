@@ -1886,5 +1886,38 @@
   "proven_feeding_spots_found": "Proven feeding spots found.",
   "vegetation_zones_find_edges": "Vegetation zones - look for weed edges.",
   "look_for_comfort_safety_food": "Look for places where comfort + safety + food meet",
-  "bottom_transitions_perspective_spots": "Bottom transitions = perspective spots"
+  "bottom_transitions_perspective_spots": "Bottom transitions = perspective spots",
+  "test_notification": "Test Notification",
+  "weather_pressure_change_title": "Atmospheric Pressure Change",
+  "weather_pressure_change_message": "Pressure {trend} by {change} mmHg. Expected {impact}.",
+  "weather_pressure_rising": "rising",
+  "weather_pressure_falling": "falling",
+  "weather_pressure_bite_improve": "bite improvement",
+  "weather_pressure_bite_worsen": "bite worsening",
+
+  "weather_temp_change_title": "Sharp Temperature Change",
+  "weather_temp_change_message": "Temperature {trend} by {change}°C. Fish behavior may change.",
+  "weather_temp_rising": "rising",
+  "weather_temp_falling": "falling",
+
+  "weather_wind_change_title": "Wind Speed Change",
+  "weather_wind_change_message": "Wind {trend}. Speed changed by {change} m/s.",
+  "weather_wind_increasing": "increasing",
+  "weather_wind_decreasing": "decreasing",
+
+  "weather_favorable_title": "Great Fishing Conditions!",
+  "weather_favorable_message": "Bite forecast: {score} points out of 100.{timeInfo}",
+  "weather_best_time_info": " Best time: {start} - {end}",
+
+  "weather_storm_title": "Weather Warning",
+  "weather_storm_thunder": "Thunderstorm expected! Fishing may be dangerous.",
+  "weather_storm_wind": "Strong wind {speed} m/s. Be careful on water!",
+  "weather_storm_rain": "Heavy rain expected. Recommended to postpone fishing.",
+
+  "weather_daily_title": "Today's Fishing Forecast",
+  "weather_daily_message": "{conditions} ({score}/100)\nT: {temp}°C, Wind: {wind} m/s, Pressure: {pressure} mmHg",
+  "weather_conditions_excellent": "Excellent conditions",
+  "weather_conditions_good": "Good conditions",
+  "weather_conditions_fair": "Fair conditions",
+  "weather_conditions_poor": "Poor conditions"
 }

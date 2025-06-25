@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/responsive_constants.dart';
+import '../../utils/responsive_utils.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/user_consent_service.dart';
 import '../settings/document_version_history_screen.dart';
@@ -20,7 +22,6 @@ class HelpContactScreen extends StatefulWidget {
 }
 
 class _HelpContactScreenState extends State<HelpContactScreen> {
-  // Константы приложения (легко изменяемые)
   static const String appVersion = '1.0.0';
   static const String appSize = '25.4 МБ';
   static const String supportEmail = 'support@driftnotesapp.com';
@@ -33,36 +34,31 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   @override
   void initState() {
     super.initState();
-    // НЕ вызываем _checkAgreementUpdates() здесь!
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Выполняем инициализацию только один раз после того, как dependencies готовы
     if (!_isDependenciesInitialized) {
       _isDependenciesInitialized = true;
       _checkAgreementUpdates();
     }
   }
 
-  // ИСПРАВЛЕНО: Используем селективную проверку вместо общей
   Future<void> _checkAgreementUpdates() async {
     if (!mounted) return;
 
     try {
-      // Теперь безопасно использовать AppLocalizations.of(context)
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
 
-      // НОВОЕ: Используем селективную проверку согласий
       final consentResult = await _consentService.checkUserConsents(
         languageCode,
       );
 
       if (mounted) {
         setState(() {
-          _hasAgreementUpdates = consentResult.hasChanges; // ИСПРАВЛЕНО
+          _hasAgreementUpdates = consentResult.hasChanges;
           _isLoading = false;
         });
 
@@ -83,6 +79,8 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -91,15 +89,26 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
           localizations.translate('help_contact'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 22,
+            fontSize: isSmallScreen ? 18 : (isTablet ? 24 : 22),
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        toolbarHeight: isTablet ? kToolbarHeight + 8 : kToolbarHeight,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
+          icon: Icon(
+            Icons.arrow_back,
+            color: AppConstants.textColor,
+            size: isSmallScreen ? 24 : 28,
+          ),
           onPressed: () => Navigator.pop(context),
+          constraints: BoxConstraints(
+            minWidth: ResponsiveConstants.minTouchTarget,
+            minHeight: ResponsiveConstants.minTouchTarget,
+          ),
         ),
       ),
       body: Container(
@@ -115,49 +124,49 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Информация о приложении - компактное расположение
+                // Информация о приложении - адаптивная
                 _buildCompactAppInfoSection(localizations),
 
-                const SizedBox(height: 24),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Кнопка руководства пользователя
                 _buildUserGuideButton(context, localizations),
 
-                const SizedBox(height: 16),
+                SizedBox(height: ResponsiveConstants.spacingM),
 
-                // НОВАЯ КНОПКА: Принятые соглашения
+                // Кнопка принятых соглашений
                 _buildAcceptedAgreementsButton(context, localizations),
 
-                const SizedBox(height: 16),
+                SizedBox(height: ResponsiveConstants.spacingM),
 
                 // Кнопка пользовательского соглашения
                 _buildTermsOfServiceButton(context, localizations),
 
-                const SizedBox(height: 16),
+                SizedBox(height: ResponsiveConstants.spacingM),
 
                 // Кнопка политики конфиденциальности
                 _buildPrivacyPolicyButton(context, localizations),
 
-                const SizedBox(height: 16),
+                SizedBox(height: ResponsiveConstants.spacingM),
 
                 // Кнопка истории версий документов
                 _buildDocumentVersionHistoryButton(context, localizations),
 
-                const SizedBox(height: 32),
+                SizedBox(height: ResponsiveConstants.spacingXL),
 
                 // Текст обратной связи
                 _buildContactSection(localizations),
 
-                const SizedBox(height: 24),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Кнопка связаться с нами
                 _buildContactButton(context, localizations),
 
-                const SizedBox(height: 40),
+                SizedBox(height: ResponsiveConstants.spacingXXL),
               ],
             ),
           ),
@@ -167,100 +176,70 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   Widget _buildCompactAppInfoSection(AppLocalizations localizations) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
         border: Border.all(
           color: AppConstants.textColor.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Только логотип без контейнера
-          Image.asset(
-            'assets/images/app_logo.png',
-            width: 120,
-            height: 120,
-            fit: BoxFit.contain,
-          ),
-
-          const SizedBox(width: 20),
-
-          // Информация справа
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Название приложения
-                Text(
+          // Верхняя часть - логотип и название на одном уровне
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center, // Выравниваем по центру
+            children: [
+              // Логотип слева
+              Image.asset(
+                'assets/images/app_logo.png',
+                width: isSmallScreen ? 60 : (isTablet ? 80 : 70),
+                height: isSmallScreen ? 60 : (isTablet ? 80 : 70),
+                fit: BoxFit.contain,
+              ),
+              SizedBox(width: ResponsiveConstants.spacingM),
+              // Название справа, выровнено по центру логотипа
+              Expanded(
+                child: Text(
                   'Drift Notes',
                   style: TextStyle(
                     color: AppConstants.textColor,
-                    fontSize: 24,
+                    fontSize: isSmallScreen ? 18 : (isTablet ? 26 : 22),
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ),
+            ],
+          ),
 
-                const SizedBox(height: 12),
+          SizedBox(height: ResponsiveConstants.spacingM),
 
-                // Версия и размер в строку
-                Row(
-                  children: [
-                    // Версия
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            localizations.translate('version'),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.7,
-                              ),
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            appVersion,
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Размер
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            localizations.translate('size'),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.7,
-                              ),
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            appSize,
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          // Нижняя часть - версия и размер под логотипом и названием
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 12), // Добавляем отступы слева и справа
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildInfoColumn(
+                    localizations.translate('version'),
+                    appVersion,
+                    isSmallScreen,
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildInfoColumn(
+                    localizations.translate('size'),
+                    appSize,
+                    isSmallScreen,
+                  ),
                 ),
               ],
             ),
@@ -270,82 +249,60 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  Widget _buildUserGuideButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppConstants.textColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _openUserGuide(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.help_outline,
-                    color: AppConstants.textColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    localizations.translate('user_guide') ??
-                        'Руководство пользователя',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  size: 16,
-                ),
-              ],
-            ),
+  Widget _buildInfoColumn(String label, String value, bool isSmall) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppConstants.textColor.withValues(alpha: 0.7),
+            fontSize: isSmall ? 10 : 12,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
-      ),
+        SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: isSmall ? 12 : 14, // Уменьшили размер
+            fontWeight: FontWeight.w600,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+      ],
     );
   }
 
-  /// НОВЫЙ ВИДЖЕТ: Кнопка принятых соглашений с уведомлениями
+  Widget _buildUserGuideButton(
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    return _buildMenuButton(
+      icon: Icons.help_outline,
+      title: localizations.translate('user_guide') ?? 'Руководство пользователя',
+      onTap: () => _openUserGuide(context),
+    );
+  }
+
   Widget _buildAcceptedAgreementsButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
         border: Border.all(
-          color:
-              _hasAgreementUpdates
-                  ? Colors.orange.withOpacity(0.5)
-                  : AppConstants.textColor.withValues(alpha: 0.1),
+          color: _hasAgreementUpdates
+              ? Colors.orange.withOpacity(0.5)
+              : AppConstants.textColor.withValues(alpha: 0.1),
           width: _hasAgreementUpdates ? 2 : 1,
         ),
       ),
@@ -359,46 +316,39 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 builder: (context) => const AcceptedAgreementsScreen(),
               ),
             );
-
-            // Обновляем статус после возвращения
             _checkAgreementUpdates();
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             child: Row(
               children: [
                 Stack(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: isSmallScreen ? 40 : 48,
+                      height: isSmallScreen ? 40 : 48,
                       decoration: BoxDecoration(
-                        color:
-                            _hasAgreementUpdates
-                                ? Colors.orange.withOpacity(0.2)
-                                : AppConstants.primaryColor.withValues(
-                                  alpha: 0.2,
-                                ),
+                        color: _hasAgreementUpdates
+                            ? Colors.orange.withOpacity(0.2)
+                            : AppConstants.primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.assignment_turned_in,
-                        color:
-                            _hasAgreementUpdates
-                                ? Colors.orange
-                                : AppConstants.textColor,
-                        size: 24,
+                        color: _hasAgreementUpdates
+                            ? Colors.orange
+                            : AppConstants.textColor,
+                        size: isSmallScreen ? 20 : 24,
                       ),
                     ),
-                    // Красная точка уведомления
                     if (_hasAgreementUpdates)
                       Positioned(
                         right: 0,
                         top: 0,
                         child: Container(
-                          width: 12,
-                          height: 12,
+                          width: isSmallScreen ? 10 : 12,
+                          height: isSmallScreen ? 10 : 12,
                           decoration: const BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
@@ -407,7 +357,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: ResponsiveConstants.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,32 +367,31 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                             'Принятые соглашения',
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 16,
+                          fontSize: isSmallScreen ? 13 : 15, // Уменьшили
                           fontWeight: FontWeight.w600,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2, // Увеличили до 2 строк
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: ResponsiveConstants.spacingXS),
                       Text(
                         _hasAgreementUpdates
                             ? (localizations.translate(
-                                  'new_agreement_version_available',
-                                ) ??
-                                'Доступна новая версия соглашений')
+                            'new_agreement_version_available') ??
+                            'Доступна новая версия соглашений')
                             : (localizations.translate('agreement_status') ??
-                                'Статус принятых соглашений'),
+                            'Статус принятых соглашений'),
                         style: TextStyle(
-                          color:
-                              _hasAgreementUpdates
-                                  ? Colors.orange
-                                  : AppConstants.textColor.withValues(
-                                    alpha: 0.7,
-                                  ),
-                          fontSize: 12,
-                          fontWeight:
-                              _hasAgreementUpdates
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
+                          color: _hasAgreementUpdates
+                              ? Colors.orange
+                              : AppConstants.textColor.withValues(alpha: 0.7),
+                          fontSize: isSmallScreen ? 10 : 12,
+                          fontWeight: _hasAgreementUpdates
+                              ? FontWeight.w500
+                              : FontWeight.normal,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ],
                   ),
@@ -464,16 +413,16 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                           'NEW',
                           style: TextStyle(
                             color: Colors.orange,
-                            fontSize: 10,
+                            fontSize: isSmallScreen ? 8 : 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: ResponsiveConstants.spacingS),
                     Icon(
                       Icons.arrow_forward_ios,
                       color: AppConstants.textColor.withValues(alpha: 0.6),
-                      size: 16,
+                      size: isSmallScreen ? 14 : 16,
                     ),
                   ],
                 ),
@@ -486,137 +435,40 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   Widget _buildTermsOfServiceButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppConstants.textColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _openTermsOfService(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.description_outlined,
-                    color: AppConstants.textColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    localizations.translate('terms_of_service') ??
-                        'Пользовательское соглашение',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    return _buildMenuButton(
+      icon: Icons.description_outlined,
+      title: localizations.translate('terms_of_service') ??
+          'Пользовательское соглашение',
+      onTap: () => _openTermsOfService(context),
     );
   }
 
   Widget _buildPrivacyPolicyButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppConstants.textColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _openPrivacyPolicy(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.privacy_tip_outlined,
-                    color: AppConstants.textColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    localizations.translate('privacy_policy') ??
-                        'Политика конфиденциальности',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    return _buildMenuButton(
+      icon: Icons.privacy_tip_outlined,
+      title: localizations.translate('privacy_policy') ??
+          'Политика конфиденциальности',
+      onTap: () => _openPrivacyPolicy(context),
     );
   }
 
-  /// Кнопка истории версий документов
   Widget _buildDocumentVersionHistoryButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
         border: Border.all(
           color: AppConstants.textColor.withValues(alpha: 0.1),
           width: 1,
@@ -626,14 +478,14 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showDocumentVersionsMenu(context, localizations),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: isSmallScreen ? 40 : 48,
+                  height: isSmallScreen ? 40 : 48,
                   decoration: BoxDecoration(
                     color: AppConstants.primaryColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -641,10 +493,10 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                   child: Icon(
                     Icons.history,
                     color: AppConstants.textColor,
-                    size: 24,
+                    size: isSmallScreen ? 20 : 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: ResponsiveConstants.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,20 +506,22 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                             'История версий',
                         style: TextStyle(
                           color: AppConstants.textColor,
-                          fontSize: 16,
+                          fontSize: isSmallScreen ? 14 : 16,
                           fontWeight: FontWeight.w600,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: ResponsiveConstants.spacingXS),
                       Text(
-                        localizations.translate(
-                              'version_history_description',
-                            ) ??
+                        localizations.translate('version_history_description') ??
                             'Просмотр изменений в документах',
                         style: TextStyle(
                           color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 12,
+                          fontSize: isSmallScreen ? 10 : 12,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ],
                   ),
@@ -675,7 +529,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                 Icon(
                   Icons.arrow_forward_ios,
                   color: AppConstants.textColor.withValues(alpha: 0.6),
-                  size: 16,
+                  size: isSmallScreen ? 14 : 16,
                 ),
               ],
             ),
@@ -685,133 +539,199 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
     );
   }
 
-  /// Показывает меню выбора документа для просмотра истории версий
+  // Универсальный виджет для простых кнопок меню
+  Widget _buildMenuButton({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+        border: Border.all(
+          color: AppConstants.textColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+          child: Padding(
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+            child: Row(
+              children: [
+                Container(
+                  width: isSmallScreen ? 40 : 48,
+                  height: isSmallScreen ? 40 : 48,
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: AppConstants.textColor,
+                    size: isSmallScreen ? 20 : 24,
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: isSmallScreen ? 13 : 15, // Уменьшили размер
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2, // Больше строк для переноса
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppConstants.textColor.withValues(alpha: 0.6),
+                  size: isSmallScreen ? 14 : 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showDocumentVersionsMenu(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder:
-          (context) => Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Заголовок
+            Row(
               children: [
-                // Заголовок
-                Row(
-                  children: [
-                    Icon(
-                      Icons.history,
-                      color: AppConstants.primaryColor,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      localizations.translate('version_history') ??
-                          'История версий',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  Icons.history,
+                  color: AppConstants.primaryColor,
+                  size: isSmallScreen ? 20 : 24,
                 ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  localizations.translate('select_document_for_history') ??
-                      'Выберите документ для просмотра истории версий',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: Text(
+                    localizations.translate('version_history') ??
+                        'История версий',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Политика конфиденциальности
-                _buildDocumentHistoryOption(
-                  context,
-                  localizations,
-                  title:
-                      localizations.translate('privacy_policy') ??
-                      'Политика конфиденциальности',
-                  description:
-                      localizations.translate(
-                        'privacy_policy_history_description',
-                      ) ??
-                      'Просмотр истории изменений политики конфиденциальности',
-                  icon: Icons.security,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => const DocumentVersionHistoryScreen(
-                              documentType: 'privacy_policy',
-                            ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                // Пользовательское соглашение
-                _buildDocumentHistoryOption(
-                  context,
-                  localizations,
-                  title:
-                      localizations.translate('terms_of_service') ??
-                      'Пользовательское соглашение',
-                  description:
-                      localizations.translate('terms_history_description') ??
-                      'Просмотр истории изменений пользовательского соглашения',
-                  icon: Icons.description,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => const DocumentVersionHistoryScreen(
-                              documentType: 'terms_of_service',
-                            ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
               ],
             ),
-          ),
+
+            SizedBox(height: ResponsiveConstants.spacingS),
+
+            Text(
+              localizations.translate('select_document_for_history') ??
+                  'Выберите документ для просмотра истории версий',
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.7),
+                fontSize: isSmallScreen ? 12 : 14,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            SizedBox(height: ResponsiveConstants.spacingL),
+
+            // Политика конфиденциальности
+            _buildDocumentHistoryOption(
+              context,
+              localizations,
+              title: localizations.translate('privacy_policy') ??
+                  'Политика конфиденциальности',
+              description: localizations
+                  .translate('privacy_policy_history_description') ??
+                  'Просмотр истории изменений политики конфиденциальности',
+              icon: Icons.security,
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DocumentVersionHistoryScreen(
+                      documentType: 'privacy_policy',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            SizedBox(height: ResponsiveConstants.spacingM),
+
+            // Пользовательское соглашение
+            _buildDocumentHistoryOption(
+              context,
+              localizations,
+              title: localizations.translate('terms_of_service') ??
+                  'Пользовательское соглашение',
+              description:
+              localizations.translate('terms_history_description') ??
+                  'Просмотр истории изменений пользовательского соглашения',
+              icon: Icons.description,
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DocumentVersionHistoryScreen(
+                      documentType: 'terms_of_service',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            SizedBox(height: ResponsiveConstants.spacingL),
+          ],
+        ),
+      ),
     );
   }
 
-  /// Опция для выбора документа
   Widget _buildDocumentHistoryOption(
-    BuildContext context,
-    AppLocalizations localizations, {
-    required String title,
-    required String description,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context,
+      AppLocalizations localizations, {
+        required String title,
+        required String description,
+        required IconData icon,
+        required VoidCallback onTap,
+      }) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
         decoration: BoxDecoration(
           color: AppConstants.backgroundColor,
           borderRadius: BorderRadius.circular(12),
@@ -823,15 +743,19 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
               decoration: BoxDecoration(
                 color: AppConstants.primaryColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: AppConstants.primaryColor, size: 20),
+              child: Icon(
+                icon,
+                color: AppConstants.primaryColor,
+                size: isSmallScreen ? 16 : 20,
+              ),
             ),
 
-            const SizedBox(width: 12),
+            SizedBox(width: ResponsiveConstants.spacingM),
 
             Expanded(
               child: Column(
@@ -841,17 +765,21 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
                     title,
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 14,
+                      fontSize: isSmallScreen ? 12 : 14,
                       fontWeight: FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: ResponsiveConstants.spacingXS),
                   Text(
                     description,
                     style: TextStyle(
                       color: AppConstants.textColor.withValues(alpha: 0.6),
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 10 : 12,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                 ],
               ),
@@ -860,7 +788,7 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
             Icon(
               Icons.arrow_forward_ios,
               color: AppConstants.textColor.withValues(alpha: 0.3),
-              size: 16,
+              size: isSmallScreen ? 12 : 16,
             ),
           ],
         ),
@@ -869,6 +797,9 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   Widget _buildContactSection(AppLocalizations localizations) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -876,26 +807,39 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
           localizations.translate('contact_us_title'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 20,
+            fontSize: isSmallScreen ? 16 : (isTablet ? 22 : 20),
             fontWeight: FontWeight.bold,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2, // Увеличили до 2 строк
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: ResponsiveConstants.spacingM),
         Text(
           localizations.translate('contact_us_text'),
           style: TextStyle(
             color: AppConstants.textColor.withValues(alpha: 0.8),
-            fontSize: 16,
-            height: 1.5,
+            fontSize: isSmallScreen ? 13 : 15, // Уменьшили размер
+            height: 1.4, // Уменьшили межстрочный интервал
           ),
+          maxLines: isSmallScreen ? 6 : null, // Больше строк
+          overflow: isSmallScreen ? TextOverflow.ellipsis : null,
         ),
-        const SizedBox(height: 8),
-        Text(
-          supportEmail,
-          style: TextStyle(
-            color: AppConstants.primaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+        SizedBox(height: ResponsiveConstants.spacingS),
+        // Email в отдельном контейнере для лучшего переноса
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              supportEmail,
+              style: TextStyle(
+                color: AppConstants.primaryColor,
+                fontSize: isSmallScreen ? 11 : 13, // Еще меньше
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],
@@ -903,29 +847,48 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
   }
 
   Widget _buildContactButton(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
-    return SizedBox(
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
+    return Container(
       width: double.infinity,
-      child: ElevatedButton.icon(
+      height: ResponsiveConstants.minTouchTarget,
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextButton(
         onPressed: () => _sendEmail(context),
-        icon: Icon(Icons.email_outlined, color: AppConstants.textColor),
-        label: Text(
-          localizations.translate('contact_us_button'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppConstants.primaryColor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.email_outlined,
+              color: AppConstants.textColor,
+              size: isSmallScreen ? 18 : 20,
+            ),
+            SizedBox(width: ResponsiveConstants.spacingS),
+            Flexible(
+              child: Text(
+                localizations.translate('contact_us_button'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: isSmallScreen ? 14 : 16, // Уменьшили размер
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
         ),
       ),
     );
