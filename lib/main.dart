@@ -74,6 +74,11 @@ void main() async {
     return;
   }
 
+  // ИСПРАВЛЕНО: Инициализация LanguageProvider ДО создания приложения
+  final languageProvider = LanguageProvider();
+  await languageProvider.initialize();
+  debugPrint('🌐 LanguageProvider инициализирован с языком: ${languageProvider.languageCode}');
+
   // Инициализация сервисов уведомлений
   try {
     await LocalPushNotificationService().initialize();
@@ -143,13 +148,13 @@ void main() async {
     // Продолжаем работу без мониторинга сети
   }
 
-  // Запуск приложения
+  // ИСПРАВЛЕНО: Передаем уже инициализированный languageProvider
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => TimerProvider()),
         ChangeNotifierProvider(create: (context) => StatisticsProvider()),
-        ChangeNotifierProvider(create: (context) => LanguageProvider()),
+        ChangeNotifierProvider.value(value: languageProvider), // ИСПРАВЛЕНО: используем .value
       ],
       child: DriftNotesApp(consentService: consentService),
     ),
@@ -544,6 +549,21 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   Widget build(BuildContext context) {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
+        // ИСПРАВЛЕНО: Проверяем инициализацию перед построением UI
+        if (!languageProvider.isInitialized) {
+          return MaterialApp(
+            home: Scaffold(
+              backgroundColor: AppConstants.backgroundColor,
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: AppConstants.textColor,
+                ),
+              ),
+            ),
+            debugShowCheckedModeBanner: false,
+          );
+        }
+
         return MaterialApp(
           navigatorKey: _navigatorKey,
           title: 'Drift Notes',

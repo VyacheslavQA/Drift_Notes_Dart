@@ -9,9 +9,12 @@ class LanguageProvider extends ChangeNotifier {
   static const String _prefsKey = 'app_language';
   static const String _systemLanguageKey = 'use_system_language';
 
+  // ИСПРАВЛЕНО: Флаг инициализации
+  bool _isInitialized = false;
+
   LanguageProvider() {
-    // При создании провайдера загружаем сохраненный язык
-    _loadSavedLanguage();
+    // ИСПРАВЛЕНО: Убираем асинхронный вызов из конструктора
+    debugPrint('🏗️ LanguageProvider создан с дефолтным языком: ${_currentLocale.languageCode}');
   }
 
   // Геттер для получения текущей локали
@@ -19,6 +22,19 @@ class LanguageProvider extends ChangeNotifier {
 
   // Геттер для получения кода языка
   String get languageCode => _currentLocale.languageCode;
+
+  // Геттер для проверки инициализации
+  bool get isInitialized => _isInitialized;
+
+  // ИСПРАВЛЕНО: Публичный метод для инициализации (вызывается из main)
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    debugPrint('🚀 Инициализация LanguageProvider...');
+    await _loadSavedLanguage();
+    _isInitialized = true;
+    debugPrint('✅ LanguageProvider инициализирован');
+  }
 
   // Загрузка сохраненного языка из SharedPreferences
   Future<void> _loadSavedLanguage() async {
@@ -30,18 +46,25 @@ class LanguageProvider extends ChangeNotifier {
         // Используем системный язык
         final systemLocale = await getDeviceLocale();
         _currentLocale = systemLocale;
+        debugPrint('📱 Загружен системный язык: ${_currentLocale.languageCode}');
       } else {
         // Используем сохраненный язык
         final savedLanguage = prefs.getString(_prefsKey);
         if (savedLanguage != null) {
           _currentLocale = Locale(savedLanguage);
+          debugPrint('💾 Загружен сохраненный язык: ${_currentLocale.languageCode}');
+        } else {
+          debugPrint('🔧 Используем дефолтный язык: ${_currentLocale.languageCode}');
         }
       }
 
-      debugPrint('📱 Загружен язык: ${_currentLocale.languageCode}');
-      notifyListeners();
+      // ИСПРАВЛЕНО: notifyListeners только если есть слушатели
+      if (_isInitialized) {
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint('❌ Ошибка при загрузке языка: $e');
+      // При ошибке оставляем дефолтный язык
     }
   }
 
@@ -75,6 +98,9 @@ class LanguageProvider extends ChangeNotifier {
 
     // Принудительно уведомляем всех слушателей об изменении
     notifyListeners();
+
+    // Очищаем кэш географических данных при смене языка
+    CountriesData.clearGeographyCache();
   }
 
   // Установка системного языка
@@ -172,5 +198,11 @@ class LanguageProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  // ДОБАВЛЕНО: Метод для принудительного обновления локали
+  Future<void> refreshLanguage() async {
+    debugPrint('🔄 Принудительное обновление языка');
+    await _loadSavedLanguage();
   }
 }

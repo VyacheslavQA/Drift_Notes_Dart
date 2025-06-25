@@ -166,9 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Загрузка городов для страны
   Future<void> _loadCitiesForCountry(
-    String country, {
-    bool autoSetCity = false,
-  }) async {
+      String country, {
+        bool autoSetCity = false,
+      }) async {
     setState(() {
       _isLoadingCities = true;
       _availableCities = [];
@@ -406,37 +406,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
           MaterialPageRoute(
             builder:
                 (context) => Scaffold(
-                  backgroundColor: AppConstants.backgroundColor,
-                  body: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 64),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Аккаунт успешно удален',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Пожалуйста, перезапустите приложение',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.7,
-                            ),
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+              backgroundColor: AppConstants.backgroundColor,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 64),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Аккаунт успешно удален',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Пожалуйста, перезапустите приложение',
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(
+                          alpha: 0.7,
+                        ),
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
+              ),
+            ),
           ),
         );
       }
@@ -480,286 +480,286 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(color: AppConstants.textColor),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 24),
+      _isLoading
+          ? Center(
+        child: CircularProgressIndicator(color: AppConstants.textColor),
+      )
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
 
-                      // Имя пользователя
-                      TextFormField(
-                        controller: _displayNameController,
-                        decoration: InputDecoration(
-                          labelText: localizations.translate('name'),
-                          prefixIcon: const Icon(Icons.person),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return localizations.translate('please_enter_name');
-                          }
-                          return null;
-                        },
+              // Имя пользователя
+              TextFormField(
+                controller: _displayNameController,
+                decoration: InputDecoration(
+                  labelText: localizations.translate('name'),
+                  prefixIcon: const Icon(Icons.person),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return localizations.translate('please_enter_name');
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Email (не редактируемый)
+              TextFormField(
+                controller: _emailController,
+                enabled: false,
+                decoration: InputDecoration(
+                  labelText: localizations.translate('email'),
+                  prefixIcon: const Icon(Icons.email),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Выпадающий список стран
+              _buildCountryDropdown(localizations),
+
+              const SizedBox(height: 16),
+
+              // Выпадающий список городов
+              _buildCityDropdown(localizations),
+
+              const SizedBox(height: 24),
+
+              // Уровень опыта
+              Text(
+                localizations.translate('experience_level'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Wrap(
+                spacing: 8,
+                children:
+                AppConstants.experienceLevels.map((levelKey) {
+                  String translatedLevel = localizations.translate(
+                    levelKey,
+                  );
+
+                  return ChoiceChip(
+                    label: Text(translatedLevel),
+                    selected: _selectedExperience == levelKey,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedExperience = levelKey;
+                        });
+                      }
+                    },
+                    selectedColor: AppConstants.primaryColor,
+                    labelStyle: TextStyle(
+                      color:
+                      _selectedExperience == levelKey
+                          ? AppConstants.textColor
+                          : AppConstants.textColor.withValues(
+                        alpha: 0.7,
                       ),
+                    ),
+                    backgroundColor: AppConstants.surfaceColor,
+                  );
+                }).toList(),
+              ),
 
-                      const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-                      // Email (не редактируемый)
-                      TextFormField(
-                        controller: _emailController,
-                        enabled: false,
-                        decoration: InputDecoration(
-                          labelText: localizations.translate('email'),
-                          prefixIcon: const Icon(Icons.email),
-                        ),
+              // Типы рыбалки
+              Text(
+                localizations.translate('preferred_fishing_types'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Wrap(
+                spacing: 8,
+                children:
+                AppConstants.fishingTypes.map((typeKey) {
+                  String translatedType = localizations.translate(
+                    typeKey,
+                  );
+
+                  return FilterChip(
+                    label: Text(translatedType),
+                    selected: _selectedFishingTypes.contains(
+                      typeKey,
+                    ),
+                    onSelected: (_) => _toggleFishingType(typeKey),
+                    selectedColor: AppConstants.primaryColor,
+                    labelStyle: TextStyle(
+                      color:
+                      _selectedFishingTypes.contains(typeKey)
+                          ? AppConstants.textColor
+                          : AppConstants.textColor.withValues(
+                        alpha: 0.7,
                       ),
+                    ),
+                    backgroundColor: AppConstants.surfaceColor,
+                  );
+                }).toList(),
+              ),
 
-                      const SizedBox(height: 16),
+              const SizedBox(height: 32),
 
-                      // Выпадающий список стран
-                      _buildCountryDropdown(localizations),
-
-                      const SizedBox(height: 16),
-
-                      // Выпадающий список городов
-                      _buildCityDropdown(localizations),
-
-                      const SizedBox(height: 24),
-
-                      // Уровень опыта
-                      Text(
-                        localizations.translate('experience_level'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Wrap(
-                        spacing: 8,
-                        children:
-                            AppConstants.experienceLevels.map((levelKey) {
-                              String translatedLevel = localizations.translate(
-                                levelKey,
-                              );
-
-                              return ChoiceChip(
-                                label: Text(translatedLevel),
-                                selected: _selectedExperience == levelKey,
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    setState(() {
-                                      _selectedExperience = levelKey;
-                                    });
-                                  }
-                                },
-                                selectedColor: AppConstants.primaryColor,
-                                labelStyle: TextStyle(
-                                  color:
-                                      _selectedExperience == levelKey
-                                          ? AppConstants.textColor
-                                          : AppConstants.textColor.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                ),
-                                backgroundColor: AppConstants.surfaceColor,
-                              );
-                            }).toList(),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Типы рыбалки
-                      Text(
-                        localizations.translate('preferred_fishing_types'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Wrap(
-                        spacing: 8,
-                        children:
-                            AppConstants.fishingTypes.map((typeKey) {
-                              String translatedType = localizations.translate(
-                                typeKey,
-                              );
-
-                              return FilterChip(
-                                label: Text(translatedType),
-                                selected: _selectedFishingTypes.contains(
-                                  typeKey,
-                                ),
-                                onSelected: (_) => _toggleFishingType(typeKey),
-                                selectedColor: AppConstants.primaryColor,
-                                labelStyle: TextStyle(
-                                  color:
-                                      _selectedFishingTypes.contains(typeKey)
-                                          ? AppConstants.textColor
-                                          : AppConstants.textColor.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                ),
-                                backgroundColor: AppConstants.surfaceColor,
-                              );
-                            }).toList(),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Кнопка сохранения
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _updateProfile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppConstants.primaryColor,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
-                          child:
-                              _isSaving
-                                  ? SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: AppConstants.textColor,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                  : Text(
-                                    localizations.translate('save'),
-                                    style: TextStyle(
-                                      color: AppConstants.textColor,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 48),
-
-                      // Секция "Опасная зона"
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.red.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: Colors.red,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  localizations.translate('danger_zone'),
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            Text(
-                              localizations.translate(
-                                'delete_account_warning_text',
-                              ),
-                              style: TextStyle(
-                                color: AppConstants.textColor.withValues(
-                                  alpha: 0.8,
-                                ),
-                                fontSize: 14,
-                                height: 1.4,
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            Text(
-                              localizations.translate(
-                                'this_action_cannot_be_undone',
-                              ),
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _showDeleteAccountDialog,
-                                icon: const Icon(
-                                  Icons.delete_forever,
-                                  color: Colors.red,
-                                ),
-                                label: Text(
-                                  localizations.translate(
-                                    'delete_account_permanently',
-                                  ),
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                    color: Colors.red,
-                                    width: 2,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-                    ],
+              // Кнопка сохранения
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _updateProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child:
+                  _isSaving
+                      ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: AppConstants.textColor,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                      : Text(
+                    localizations.translate('save'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
+
+              const SizedBox(height: 48),
+
+              // Секция "Опасная зона"
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.red.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          localizations.translate('danger_zone'),
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Text(
+                      localizations.translate(
+                        'delete_account_warning_text',
+                      ),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(
+                          alpha: 0.8,
+                        ),
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      localizations.translate(
+                        'this_action_cannot_be_undone',
+                      ),
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showDeleteAccountDialog,
+                        icon: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.red,
+                        ),
+                        label: Text(
+                          localizations.translate(
+                            'delete_account_permanently',
+                          ),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Colors.red,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -769,51 +769,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
         labelText: localizations.translate('country'),
         prefixIcon: const Icon(Icons.public),
         suffixIcon:
-            _isLoadingCountries
-                ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                )
-                : null,
+        _isLoadingCountries
+            ? SizedBox(
+          width: 20,
+          height: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppConstants.textColor,
+            ),
+          ),
+        )
+            : null,
       ),
       isExpanded: true,
       value:
-          (_selectedCountry != null &&
-                  _availableCountries.contains(_selectedCountry!))
-              ? _selectedCountry
-              : null,
+      (_selectedCountry != null &&
+          _availableCountries.contains(_selectedCountry!))
+          ? _selectedCountry
+          : null,
       hint: Text(
         _isLoadingCountries
             ? localizations.translate('loading')
             : localizations.translate('select_country'),
       ),
       items:
-          _availableCountries.map((country) {
-            return DropdownMenuItem<String>(
-              value: country,
-              child: Text(country),
-            );
-          }).toList(),
+      _availableCountries.map((country) {
+        return DropdownMenuItem<String>(
+          value: country,
+          child: Text(country),
+        );
+      }).toList(),
       onChanged:
-          _isLoadingCountries
-              ? null
-              : (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedCountry = value;
-                    _selectedCity = null;
-                    _savedCityKey = null;
-                  });
-                  _loadCitiesForCountry(value);
-                }
-              },
+      _isLoadingCountries
+          ? null
+          : (value) {
+        if (value != null) {
+          setState(() {
+            _selectedCountry = value;
+            _selectedCity = null;
+            _savedCityKey = null;
+          });
+          _loadCitiesForCountry(value);
+        }
+      },
     );
   }
 
@@ -823,25 +823,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         labelText: localizations.translate('city'),
         prefixIcon: const Icon(Icons.location_city),
         suffixIcon:
-            _isLoadingCities
-                ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppConstants.textColor,
-                    ),
-                  ),
-                )
-                : null,
+        _isLoadingCities
+            ? SizedBox(
+          width: 20,
+          height: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppConstants.textColor,
+            ),
+          ),
+        )
+            : null,
       ),
       isExpanded: true,
       value:
-          (_selectedCity != null && _availableCities.contains(_selectedCity!))
-              ? _selectedCity
-              : null,
+      (_selectedCity != null && _availableCities.contains(_selectedCity!))
+          ? _selectedCity
+          : null,
       hint: Text(
         _isLoadingCities
             ? localizations.translate('loading')
@@ -850,17 +850,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : localizations.translate('first_select_country'),
       ),
       items:
-          _availableCities.map((city) {
-            return DropdownMenuItem<String>(value: city, child: Text(city));
-          }).toList(),
+      _availableCities.map((city) {
+        return DropdownMenuItem<String>(value: city, child: Text(city));
+      }).toList(),
       onChanged:
-          (_selectedCountry != null && !_isLoadingCities)
-              ? (value) {
-                setState(() {
-                  _selectedCity = value;
-                });
-              }
-              : null,
+      (_selectedCountry != null && !_isLoadingCities)
+          ? (value) {
+        setState(() {
+          _selectedCity = value;
+        });
+      }
+          : null,
       disabledHint: Text(
         _selectedCountry == null
             ? localizations.translate('first_select_country')
