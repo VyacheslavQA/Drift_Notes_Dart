@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/responsive_constants.dart';
+import '../../utils/responsive_utils.dart';
 import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
 import 'add_fishing_note_screen.dart';
@@ -17,14 +19,11 @@ class FishingTypeSelectionScreen extends StatefulWidget {
 class _FishingTypeSelectionScreenState
     extends State<FishingTypeSelectionScreen> {
   String _selectedFishingType = AppConstants.fishingTypes.first;
-  bool _dialogShown =
-      false; // ДОБАВЛЕНО: флаг для предотвращения повторного показа диалога
+  bool _dialogShown = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Сразу показываем выпадающий список при открытии экрана
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_dialogShown) {
         _dialogShown = true;
@@ -33,78 +32,67 @@ class _FishingTypeSelectionScreenState
     });
   }
 
-  // ИСПРАВЛЕНО: метод теперь правильно обрабатывает результат
   void _continueToNoteCreation() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) =>
-                AddFishingNoteScreen(fishingType: _selectedFishingType),
+        builder: (context) => AddFishingNoteScreen(fishingType: _selectedFishingType),
       ),
     );
 
-    // ИСПРАВЛЕНО: передаем результат дальше только если заметка была создана
     if (mounted) {
       if (result == true) {
-        // Заметка была успешно создана
         Navigator.pop(context, true);
       } else {
-        // Пользователь отменил создание заметки - просто закрываем этот экран без результата
         Navigator.pop(context);
       }
     }
   }
 
-  // ИСПРАВЛЕНО: метод для безопасного закрытия без результата
   void _cancelAndClose() {
     if (mounted) {
-      Navigator.pop(context); // Закрываем БЕЗ возврата результата
+      Navigator.pop(context);
     }
   }
 
-  // ДОБАВЛЕНО: обработчик системной кнопки "назад"
   Future<bool> _onWillPop() async {
-    // При нажатии системной кнопки "назад" просто закрываем без результата
     return true;
   }
 
-  // Метод для отображения выпадающего списка типов рыбалки как на скриншоте
   void _showFishingTypeDialog() {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Запрещаем закрытие по нажатию вне диалога
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return WillPopScope(
-          // ДОБАВЛЕНО: обработка системной кнопки "назад"
           onWillPop: () async {
-            // При нажатии системной кнопки "назад" в диалоге - закрываем весь экран
-            Navigator.pop(context); // Закрываем диалог
-            _cancelAndClose(); // Закрываем экран без результата
-            return false; // Предотвращаем стандартное поведение
+            Navigator.pop(context);
+            _cancelAndClose();
+            return false;
           },
           child: Dialog(
-            backgroundColor: Colors.transparent, // Прозрачный фон
+            backgroundColor: Colors.transparent,
             elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 40,
-            ), // Отступы по бокам
+            insetPadding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 20 : 40),
             child: Container(
+              width: double.infinity,
+              constraints: BoxConstraints(maxWidth: 500),
               decoration: BoxDecoration(
-                color: const Color(0xFF0B1F1D), // Цвет как на скриншоте
+                color: const Color(0xFF0B1F1D),
                 borderRadius: BorderRadius.circular(16),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              padding: EdgeInsets.all(isSmallScreen ? 12 : 20), // Еще меньше padding
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Иконка рыбы сверху (как на скриншоте)
+                  // Иконка - уменьшаем размер
                   Container(
-                    width: 70,
-                    height: 70,
-                    padding: const EdgeInsets.all(8),
+                    width: isSmallScreen ? 50 : 60, // Уменьшили
+                    height: isSmallScreen ? 50 : 60,
+                    padding: const EdgeInsets.all(6), // Уменьшили padding
                     decoration: const BoxDecoration(
                       color: Color(0xFF12332E),
                       shape: BoxShape.circle,
@@ -114,30 +102,30 @@ class _FishingTypeSelectionScreenState
                       color: AppConstants.textColor,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 12 : 16), // Уменьшили отступы
 
-                  // Заголовок
+                  // Заголовок - еще меньше
                   Text(
                     localizations.translate('select_fishing_type'),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 28,
+                      fontSize: isSmallScreen ? 18 : 22, // Еще меньше
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 12 : 16),
 
-                  // Выпадающий список
+                  // Dropdown - делаем компактнее
                   Container(
+                    constraints: BoxConstraints(minHeight: 44), // Чуть меньше
                     decoration: BoxDecoration(
                       color: const Color(0xFF12332E),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2), // Меньше padding
                     child: StatefulBuilder(
                       builder: (context, setState) {
                         return DropdownButtonHideUnderline(
@@ -148,36 +136,38 @@ class _FishingTypeSelectionScreenState
                             icon: Icon(
                               Icons.arrow_drop_down,
                               color: AppConstants.textColor,
+                              size: 20, // Уменьшили иконку
                             ),
                             style: TextStyle(
                               color: AppConstants.textColor,
-                              fontSize: 18,
+                              fontSize: 16, // Уменьшили шрифт
                             ),
-                            items:
-                                AppConstants.fishingTypes.map((String typeKey) {
-                                  return DropdownMenuItem<String>(
-                                    value: typeKey,
-                                    child: Row(
-                                      children: [
-                                        // Используем FishingTypeIcons.getIconWidget для ключа
-                                        FishingTypeIcons.getIconWidget(
-                                          typeKey,
-                                          size: 36.0,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        // Переводим ключ в локализованный текст
-                                        Text(localizations.translate(typeKey)),
-                                      ],
+                            items: AppConstants.fishingTypes.map((String typeKey) {
+                              return DropdownMenuItem<String>(
+                                value: typeKey,
+                                child: Row(
+                                  children: [
+                                    FishingTypeIcons.getIconWidget(
+                                      typeKey,
+                                      size: isSmallScreen ? 28 : 32, // Уменьшили иконки
                                     ),
-                                  );
-                                }).toList(),
+                                    const SizedBox(width: 10), // Меньше отступ
+                                    Expanded(
+                                      child: Text(
+                                        localizations.translate(typeKey),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
                             onChanged: (String? newValue) {
                               if (newValue != null) {
                                 setState(() {
                                   _selectedFishingType = newValue;
                                 });
-
-                                // Обновляем состояние родительского виджета
                                 this.setState(() {
                                   _selectedFishingType = newValue;
                                 });
@@ -188,51 +178,59 @@ class _FishingTypeSelectionScreenState
                       },
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: isSmallScreen ? 12 : 16), // Уменьшили отступ перед кнопками
 
-                  // Кнопки внизу
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Кнопки - ВСЕГДА в два ряда для экономии места
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Кнопка "Отмена"
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context); // Закрываем диалог
-                          _cancelAndClose(); // ИСПРАВЛЕНО: закрываем без результата
-                        },
-                        child: Text(
-                          localizations.translate('cancel'),
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-
-                      // Кнопка "Продолжить"
+                      // Первый ряд - главная кнопка Continue
                       Container(
+                        width: double.infinity,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color:
-                              Colors.green, // Зеленая кнопка как на скриншоте
-                          borderRadius: BorderRadius.circular(24),
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(22),
                         ),
                         child: TextButton(
                           onPressed: () {
-                            Navigator.pop(context); // Закрываем диалог
-                            _continueToNoteCreation(); // Переходим к заполнению заметки
+                            Navigator.pop(context);
+                            _continueToNoteCreation();
                           },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero, // Убираем дефолтный padding
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22),
                             ),
-                            child: Text(
-                              localizations.translate('continue'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                          child: Text(
+                            localizations.translate('continue'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8), // Маленький отступ между рядами
+                      // Второй ряд - кнопка Cancel
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _cancelAndClose();
+                          },
+                          child: Text(
+                            localizations.translate('cancel'),
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
@@ -252,7 +250,6 @@ class _FishingTypeSelectionScreenState
     final localizations = AppLocalizations.of(context);
 
     return WillPopScope(
-      // ДОБАВЛЕНО: обработка системной кнопки "назад"
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: AppConstants.backgroundColor,
@@ -264,17 +261,20 @@ class _FishingTypeSelectionScreenState
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-            onPressed:
-                _cancelAndClose, // ИСПРАВЛЕНО: используем безопасное закрытие
+            icon: Icon(
+              Icons.arrow_back,
+              color: AppConstants.textColor,
+            ),
+            onPressed: _cancelAndClose,
           ),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
         body: SafeArea(
-          child: Container(
+          child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -287,6 +287,8 @@ class _FishingTypeSelectionScreenState
                       color: AppConstants.textColor,
                       fontSize: 20,
                     ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
