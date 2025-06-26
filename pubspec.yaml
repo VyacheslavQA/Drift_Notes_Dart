@@ -25,7 +25,7 @@ dependencies:
   cloud_firestore: ^4.17.5
   firebase_storage: ^11.7.7
 
-  # Google Sign-In - ДОБАВЛЯЕМ ЭТУ СТРОКУ
+  # Google Sign-In
   google_sign_in: ^6.2.1
 
   # UI и дизайн
@@ -59,26 +59,27 @@ dependencies:
 
   crypto: ^3.0.3
 
-  # Добавь эти, если их нет:
+  # ИСПРАВЛЕНО: Разрешения и уведомления
   permission_handler: ^11.1.0
+  flutter_local_notifications: ^17.2.2  # ИСПРАВЛЕНО: добавлен знак ^
+  timezone: ^0.9.4  # ИСПРАВЛЕНО: добавлен знак ^
 
-  fl_chart: ^0.68.0
-  flutter_local_notifications: 17.2.2
-  timezone: 0.9.4
+  # УБРАНО: workmanager вызывает конфликты
+  # workmanager: ^0.5.2
 
   # Альтернативная библиотека для бейджа
   app_badge_plus: ^1.1.4
 
-  quick_actions: ^1.0.7  # Добавь эту строку
-  app_links: ^6.3.2  # Добавь эту строку
+  quick_actions: ^1.0.7
+  app_links: ^6.3.2
+
+  fl_chart: ^0.68.0
 
   # Добавьте эти зависимости для тестирования:
   fake_cloud_firestore: ^2.4.1+1
   firebase_auth_mocks: ^0.13.0
   mockito: ^5.4.2
   build_runner: ^2.4.7
-
-
 
 dev_dependencies:
   flutter_test:
@@ -103,9 +104,9 @@ flutter:
     - assets/privacy_policy/privacy_policy_en.txt
     - assets/user_guide/
     - assets/icon/
-    - assets/terms_of_service/                    # ДОБАВИТЬ ЭТУ СТРОКУ
-    - assets/terms_of_service/terms_of_service_ru.txt  # ДОБАВИТЬ ЭТУ СТРОКУ
-    - assets/terms_of_service/terms_of_service_en.txt  # ДОБАВИТЬ ЭТУ СТРОКУ
+    - assets/terms_of_service/
+    - assets/terms_of_service/terms_of_service_ru.txt
+    - assets/terms_of_service/terms_of_service_en.txt
 
 # ОБНОВЛЕННАЯ КОНФИГУРАЦИЯ ИКОНОК
 flutter_launcher_icons:

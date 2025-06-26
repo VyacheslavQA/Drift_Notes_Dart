@@ -46,7 +46,7 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
-    <!-- КРИТИЧЕСКИ ВАЖНЫЕ РАЗРЕШЕНИЯ - ДОБАВИТЬ ЭТИ БЛОКИ -->
+    <!-- КРИТИЧЕСКИ ВАЖНЫЕ РАЗРЕШЕНИЯ ДЛЯ УВЕДОМЛЕНИЙ -->
 
     <!-- Разрешение на использование геолокации -->
     <key>NSLocationWhenInUseUsageDescription</key>
@@ -68,9 +68,9 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Приложение использует микрофон для записи голосовых заметок о рыбалке.</string>
 
-    <!-- ДОБАВЛЕНО: Разрешения для уведомлений -->
+    <!-- КРИТИЧЕСКИ ВАЖНО: Разрешения для уведомлений -->
     <key>NSUserNotificationUsageDescription</key>
-    <string>Приложение использует уведомления для напоминаний о завершении таймеров рыбалки.</string>
+    <string>Приложение отправляет уведомления о завершении таймеров рыбалки и важных событиях.</string>
 
     <!-- Для Firebase и Google Services -->
     <key>CFBundleURLTypes</key>
@@ -90,26 +90,26 @@
     <key>io.flutter.embedded_views_preview</key>
     <true/>
 
-    <!-- ОБНОВЛЕНО: Для уведомлений (включая таймеры) -->
+    <!-- КРИТИЧЕСКИ ВАЖНО: Фоновые режимы для уведомлений таймеров -->
     <key>UIBackgroundModes</key>
     <array>
-        <string>fetch</string>
-        <string>remote-notification</string>
+        <string>background-app-refresh</string>
         <string>background-processing</string>
+        <string>remote-notification</string>
     </array>
 
-    <!-- ДОБАВЛЕНО: Настройки категорий уведомлений для таймеров -->
-    <key>UNUserNotificationCenter</key>
+    <!-- ДОБАВЛЕНО: Настройки для критических уведомлений -->
+    <key>UNNotificationServiceExtension</key>
     <dict>
-        <key>UNAuthorizationOptionAlert</key>
-        <true/>
-        <key>UNAuthorizationOptionBadge</key>
-        <true/>
-        <key>UNAuthorizationOptionSound</key>
-        <true/>
-        <key>UNAuthorizationOptionCriticalAlert</key>
-        <false/>
+        <key>NSExtensionMainStoryboard</key>
+        <string>MainInterface</string>
+        <key>NSExtensionPointIdentifier</key>
+        <string>com.apple.usernotifications.service</string>
     </dict>
+
+    <!-- ИСПРАВЛЕНО: Правильные настройки уведомлений -->
+    <key>UIUserInterfaceStyle</key>
+    <string>Automatic</string>
 
     <!-- Для открытия ссылок в других приложениях -->
     <key>LSApplicationQueriesSchemes</key>
@@ -156,6 +156,13 @@
             <key>UIApplicationShortcutItemIconType</key>
             <string>UIApplicationShortcutIconTypeTime</string>
         </dict>
+    </array>
+
+    <!-- ДОБАВЛЕНО: Настройки для работы в фоне -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.driftnotes.timer-refresh</string>
+        <string>com.driftnotes.notification-processing</string>
     </array>
 </dict>
 </plist>
