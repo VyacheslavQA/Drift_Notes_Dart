@@ -1857,7 +1857,24 @@
   "weather_conditions_excellent": "Отличные условия",
   "weather_conditions_good": "Хорошие условия",
   "weather_conditions_fair": "Средние условия",
-  "weather_conditions_poor": "Слабые условия"
+  "weather_conditions_poor": "Слабые условия",
+
+  "unit_ms": "м/с",
+  "unit_kmh": "км/ч",
+  "unit_mph": "mph",
+  "unit_hpa": "гПа",
+  "unit_mmhg": "мм рт.ст.",
+  "unit_inhg": "inHg",
+  "no_internet_connection": "Нет подключения к интернету",
+  "retry": "Повторить",
+  "ai_analysis_failed": "Не удалось получить ИИ-анализ",
+  "weather_service_unavailable": "Сервис погоды недоступен",
+  "request_timeout": "Превышено время ожидания",
+  "weather_service_error": "Ошибка сервиса погоды",
+  "weather_loading_failed": "Не удалось загрузить данные о погоде",
+  "error_selecting_images": "Ошибка выбора изображений",
+  "error_taking_photo": "Ошибка при съемке фото",
+  "error_saving_note": "Ошибка сохранения заметки"
 
 
 

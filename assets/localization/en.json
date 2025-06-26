@@ -1919,5 +1919,18 @@
   "weather_conditions_excellent": "Excellent conditions",
   "weather_conditions_good": "Good conditions",
   "weather_conditions_fair": "Fair conditions",
-  "weather_conditions_poor": "Poor conditions"
+  "weather_conditions_poor": "Poor conditions",
+  "no_internet_connection": "No internet connection",
+  "retry": "Retry",
+  "ai_analysis_failed": "Failed to get AI analysis",
+  "weather_service_unavailable": "Weather service unavailable",
+  "request_timeout": "Request timeout",
+  "weather_service_error": "Weather service error",
+  "weather_loading_failed": "Failed to load weather data",
+  "unit_ms": "m/s",
+  "unit_kmh": "km/h",
+  "unit_mph": "mph",
+  "unit_hpa": "hPa",
+  "unit_mmhg": "mmHg",
+  "unit_inhg": "inHg"
 }

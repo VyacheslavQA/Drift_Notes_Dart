@@ -183,8 +183,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${localizations.translate('error_selecting_images')}: $e',
+              localizations.translate('error_selecting_images'),
             ),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -212,8 +213,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${localizations.translate('error_taking_photo')}: $e',
+              localizations.translate('error_taking_photo'),
             ),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -270,6 +272,32 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       _isLoadingAI = true;
     });
 
+    // Сначала проверяем подключение к интернету
+    final hasInternet = await NetworkUtils.isNetworkAvailable();
+
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+          _isLoadingAI = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('no_internet_connection')),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: localizations.translate('retry'),
+              textColor: Colors.white,
+              onPressed: _fetchWeatherAndAI,
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+      return;
+    }
+
     try {
       final weatherData = await _weatherService.getWeatherForLocation(
         _latitude,
@@ -306,19 +334,62 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           setState(() {
             _isLoadingAI = false;
           });
+
+          // Показываем понятную ошибку для ИИ
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('ai_analysis_failed')),
+              backgroundColor: Colors.orange,
+              action: SnackBarAction(
+                label: localizations.translate('retry'),
+                textColor: Colors.white,
+                onPressed: _fetchWeatherAndAI,
+              ),
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.translate('error_loading')}: $e'),
-          ),
-        );
         setState(() {
           _isLoadingWeather = false;
           _isLoadingAI = false;
         });
+
+        // Определяем тип ошибки и показываем понятное сообщение
+        String errorMessage;
+        if (e.toString().contains('SocketException') ||
+            e.toString().contains('Failed host lookup') ||
+            e.toString().contains('Network is unreachable') ||
+            e.toString().contains('ClientException')) {
+          errorMessage = localizations.translate('weather_service_unavailable');
+        } else if (e.toString().contains('timeout') ||
+            e.toString().contains('TimeoutException')) {
+          errorMessage = localizations.translate('request_timeout');
+        } else if (e.toString().contains('HttpException') ||
+            e.toString().contains('400') ||
+            e.toString().contains('401') ||
+            e.toString().contains('403') ||
+            e.toString().contains('404') ||
+            e.toString().contains('500')) {
+          errorMessage = localizations.translate('weather_service_error');
+        } else {
+          errorMessage = localizations.translate('weather_loading_failed');
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: localizations.translate('retry'),
+              textColor: Colors.white,
+              onPressed: _fetchWeatherAndAI,
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     }
   }
@@ -436,7 +507,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${localizations.translate('error_saving')}: $e'),
+            content: Text(localizations.translate('error_saving_note')),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: localizations.translate('retry'),
+              textColor: Colors.white,
+              onPressed: _saveNote,
+            ),
           ),
         );
       }

@@ -1,4 +1,5 @@
 // Путь: lib/services/notification_service.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'dart:async';
 import 'dart:convert';
@@ -18,17 +19,174 @@ class NotificationService {
 
   // НОВЫЙ: Интеграция с push-сервисом
   final LocalPushNotificationService _pushService =
-      LocalPushNotificationService();
+  LocalPushNotificationService();
 
   // Stream для уведомления UI об изменениях
   final StreamController<List<NotificationModel>> _notificationsController =
-      StreamController<List<NotificationModel>>.broadcast();
+  StreamController<List<NotificationModel>>.broadcast();
 
   Stream<List<NotificationModel>> get notificationsStream =>
       _notificationsController.stream;
 
   // Ключ для SharedPreferences
   static const String _notificationsKey = 'local_notifications';
+
+  /// НОВЫЙ: Фильтр для очистки технических ошибок
+  String _cleanErrorMessage(String message, String title) {
+    final lowercaseMessage = message.toLowerCase();
+    final lowercaseTitle = title.toLowerCase();
+
+    // Проверяем различные типы сетевых ошибок
+    if (_isNetworkError(lowercaseMessage, lowercaseTitle)) {
+      return 'Проверьте подключение к интернету';
+    }
+
+    // Проверяем ошибки API
+    if (_isApiError(lowercaseMessage, lowercaseTitle)) {
+      return 'Ошибка загрузки данных. Попробуйте позже';
+    }
+
+    // Проверяем ошибки погоды
+    if (_isWeatherError(lowercaseMessage, lowercaseTitle)) {
+      return 'Не удалось загрузить погоду. Проверьте интернет';
+    }
+
+    // Проверяем другие технические ошибки
+    if (_isTechnicalError(message)) {
+      return 'Произошла ошибка. Попробуйте позже';
+    }
+
+    // Если сообщение слишком длинное (больше 200 символов), обрезаем
+    if (message.length > 200) {
+      return 'Произошла ошибка при загрузке данных';
+    }
+
+    return message;
+  }
+
+  /// Проверка сетевых ошибок
+  bool _isNetworkError(String message, String title) {
+    final networkKeywords = [
+      'socketexception',
+      'failed host lookup',
+      'network is unreachable',
+      'connection timed out',
+      'connection refused',
+      'no address associated with hostname',
+      'clientexception',
+      'handshakeexception',
+      'certificateexception',
+      'нет подключения',
+      'отсутствует соединение',
+      'проверьте интернет',
+      'no internet',
+      'connection error',
+      'network error',
+    ];
+
+    final combinedText = '$message $title';
+    return networkKeywords.any((keyword) => combinedText.contains(keyword));
+  }
+
+  /// Проверка ошибок API
+  bool _isApiError(String message, String title) {
+    final apiKeywords = [
+      'weather api error',
+      'api key',
+      'invalid key',
+      'access denied',
+      'unauthorized',
+      '401',
+      '403',
+      '500',
+      '502',
+      '503',
+      '504',
+      'ошибка api',
+      'неверный ключ',
+    ];
+
+    final combinedText = '$message $title';
+    return apiKeywords.any((keyword) => combinedText.contains(keyword));
+  }
+
+  /// Проверка ошибок погоды
+  bool _isWeatherError(String message, String title) {
+    final weatherKeywords = [
+      'weather',
+      'погода',
+      'прогноз',
+      'forecast',
+      'метео',
+      'open-meteo',
+      'weatherapi',
+    ];
+
+    final errorKeywords = [
+      'ошибка',
+      'error',
+      'failed',
+      'exception',
+    ];
+
+    final combinedText = '$message $title';
+    return weatherKeywords.any((keyword) => combinedText.contains(keyword)) &&
+        errorKeywords.any((keyword) => combinedText.contains(keyword));
+  }
+
+  /// Проверка технических ошибок (по длине и наличию технических терминов)
+  bool _isTechnicalError(String message) {
+    // Если сообщение очень длинное, скорее всего это техническая ошибка
+    if (message.length > 300) return true;
+
+    final technicalKeywords = [
+      'exception',
+      'stacktrace',
+      'at line',
+      'http://',
+      'https://',
+      'api.',
+      '.com/',
+      'latitude=',
+      'longitude=',
+      'temperature_',
+      'pressure_',
+      'wind_',
+      'humidity_',
+      'errno',
+      'uri=',
+      'stacktrace',
+      'runtimeerror',
+      'formatexception',
+    ];
+
+    return technicalKeywords.any((keyword) => message.toLowerCase().contains(keyword));
+  }
+
+  /// НОВЫЙ: Очистка заголовка от технических терминов
+  String _cleanErrorTitle(String title) {
+    if (title.toLowerCase().contains('ошибка загрузки') &&
+        title.toLowerCase().contains('exception')) {
+      return 'Ошибка загрузки';
+    }
+
+    if (title.toLowerCase().contains('clientexception') ||
+        title.toLowerCase().contains('socketexception')) {
+      return 'Ошибка подключения';
+    }
+
+    if (title.toLowerCase().contains('weather') &&
+        title.toLowerCase().contains('error')) {
+      return 'Ошибка погоды';
+    }
+
+    // Если заголовок слишком длинный, сокращаем
+    if (title.length > 50) {
+      return 'Ошибка приложения';
+    }
+
+    return title;
+  }
 
   /// Инициализация сервиса
   Future<void> initialize() async {
@@ -42,9 +200,6 @@ class NotificationService {
 
       // НОВЫЙ: Обновляем бейдж на основе непрочитанных уведомлений
       await _updateBadgeCount();
-
-      // УДАЛЕНО: Подписка на нажатия уведомлений (теперь обрабатывается в main.dart)
-      // _pushService.notificationTapStream.listen(_handleNotificationTap);
 
       debugPrint(
         '✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений',
@@ -106,9 +261,9 @@ class NotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notificationsJson =
-          _notifications
-              .map((notification) => json.encode(notification.toJson()))
-              .toList();
+      _notifications
+          .map((notification) => json.encode(notification.toJson()))
+          .toList();
 
       await prefs.setStringList(_notificationsKey, notificationsJson);
     } catch (e) {
@@ -126,20 +281,37 @@ class NotificationService {
     }
   }
 
-  /// Добавление нового уведомления
+  /// ИСПРАВЛЕНО: Добавление нового уведомления с фильтрацией ошибок
   Future<void> addNotification(NotificationModel notification) async {
     try {
+      // НОВЫЙ: Очищаем сообщение и заголовок от технических ошибок
+      final cleanedTitle = _cleanErrorTitle(notification.title);
+      final cleanedMessage = _cleanErrorMessage(notification.message, notification.title);
+
+      // Создаем очищенное уведомление
+      final cleanedNotification = notification.copyWith(
+        title: cleanedTitle,
+        message: cleanedMessage,
+      );
+
+      // Логируем очистку для отладки
+      if (cleanedTitle != notification.title || cleanedMessage != notification.message) {
+        debugPrint('🧹 Уведомление очищено:');
+        debugPrint('   Было: ${notification.title} - ${notification.message}');
+        debugPrint('   Стало: $cleanedTitle - $cleanedMessage');
+      }
+
       // Проверяем, нет ли уже такого уведомления (по ID)
       final existingIndex = _notifications.indexWhere(
-        (n) => n.id == notification.id,
+            (n) => n.id == cleanedNotification.id,
       );
 
       if (existingIndex != -1) {
         // Обновляем существующее
-        _notifications[existingIndex] = notification;
+        _notifications[existingIndex] = cleanedNotification;
       } else {
         // Добавляем новое в начало списка
-        _notifications.insert(0, notification);
+        _notifications.insert(0, cleanedNotification);
       }
 
       // Ограничиваем количество уведомлений
@@ -149,8 +321,8 @@ class NotificationService {
 
       await _saveNotificationsToStorage();
 
-      // НОВЫЙ: Отправляем push-уведомление
-      await _pushService.showNotification(notification);
+      // НОВЫЙ: Отправляем очищенное push-уведомление
+      await _pushService.showNotification(cleanedNotification);
 
       // НОВЫЙ: Обновляем бейдж
       await _updateBadgeCount();
@@ -158,7 +330,7 @@ class NotificationService {
       // Уведомляем слушателей об изменениях
       _notificationsController.add(List.from(_notifications));
 
-      debugPrint('✅ Уведомление добавлено: ${notification.title}');
+      debugPrint('✅ Уведомление добавлено: ${cleanedNotification.title}');
     } catch (e) {
       debugPrint('❌ Ошибка добавления уведомления: $e');
     }
@@ -197,14 +369,14 @@ class NotificationService {
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
       final filteredLines =
-          lines.where((line) {
-            return !line.startsWith('eventId:') &&
-                !line.startsWith('eventType:') &&
-                !line.startsWith('location:') &&
-                !line.startsWith('eventTitle:') &&
-                !line.startsWith('eventStartDate:') &&
-                !line.trim().startsWith('Дополнительные данные:');
-          }).toList();
+      lines.where((line) {
+        return !line.startsWith('eventId:') &&
+            !line.startsWith('eventType:') &&
+            !line.startsWith('location:') &&
+            !line.startsWith('eventTitle:') &&
+            !line.startsWith('eventStartDate:') &&
+            !line.trim().startsWith('Дополнительные данные:');
+      }).toList();
 
       cleanMessage = filteredLines.join('\n').trim();
 
@@ -240,14 +412,14 @@ class NotificationService {
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
       final filteredLines =
-          lines.where((line) {
-            return !line.startsWith('eventId:') &&
-                !line.startsWith('eventType:') &&
-                !line.startsWith('location:') &&
-                !line.startsWith('eventTitle:') &&
-                !line.startsWith('eventStartDate:') &&
-                !line.trim().startsWith('Дополнительные данные:');
-          }).toList();
+      lines.where((line) {
+        return !line.startsWith('eventId:') &&
+            !line.startsWith('eventType:') &&
+            !line.startsWith('location:') &&
+            !line.startsWith('eventTitle:') &&
+            !line.startsWith('eventStartDate:') &&
+            !line.trim().startsWith('Дополнительные данные:');
+      }).toList();
 
       cleanMessage = filteredLines.join('\n').trim();
 
@@ -338,7 +510,7 @@ class NotificationService {
     try {
       final initialLength = _notifications.length;
       _notifications.removeWhere(
-        (notification) => notification.id == notificationId,
+            (notification) => notification.id == notificationId,
       );
 
       if (_notifications.length != initialLength) {
