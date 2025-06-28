@@ -19,11 +19,12 @@ dependencies:
   # Основные
   cupertino_icons: ^1.0.8
 
-  # Firebase
+  # Firebase - СТАРЫЕ СОВМЕСТИМЫЕ ВЕРСИИ (без конфликтов Kotlin)
   firebase_core: ^2.32.0
   firebase_auth: ^4.20.0
   cloud_firestore: ^4.17.5
   firebase_storage: ^11.7.7
+  firebase_app_check: ^0.2.2+7  # Совместимая с старыми версиями
 
   # Google Sign-In
   google_sign_in: ^6.2.1
@@ -61,11 +62,8 @@ dependencies:
 
   # ИСПРАВЛЕНО: Разрешения и уведомления
   permission_handler: ^11.1.0
-  flutter_local_notifications: ^17.2.2  # ИСПРАВЛЕНО: добавлен знак ^
-  timezone: ^0.9.4  # ИСПРАВЛЕНО: добавлен знак ^
-
-  # УБРАНО: workmanager вызывает конфликты
-  # workmanager: ^0.5.2
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
 
   # Альтернативная библиотека для бейджа
   app_badge_plus: ^1.1.4
@@ -75,17 +73,15 @@ dependencies:
 
   fl_chart: ^0.68.0
 
-  # Добавьте эти зависимости для тестирования:
-  fake_cloud_firestore: ^2.4.1+1
-  firebase_auth_mocks: ^0.13.0
-  mockito: ^5.4.2
-  build_runner: ^2.4.7
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+
+  # Безопасные dev-зависимости
+  mockito: ^5.4.2
+  build_runner: ^2.4.7
 
 flutter:
   uses-material-design: true

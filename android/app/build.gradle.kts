@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "com.driftnotes.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 23                          // ОБНОВЛЕНО для Firebase App Check
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -42,13 +42,13 @@ flutter {
     source = "../.."
 }
 
-// Эти зависимости могут потребоваться для Firebase
+// Совместимые зависимости для старых версий Firebase
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:32.2.0"))  // Старая совместимая версия
     implementation("com.google.firebase:firebase-analytics")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     // ДОБАВЛЯЕМ ЭТУ СТРОКУ для Google Sign-In
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")  // Совместимая версия
 }

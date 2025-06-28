@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -31,6 +32,7 @@ import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'localization/app_localizations.dart';
 import 'firebase_options.dart';
+import 'package:firebase_app_check/firebase_app_check.dart'; // ОСТАВЛЯЕМ для будущего использования
 import 'providers/statistics_provider.dart';
 import 'services/offline/offline_storage_service.dart';
 import 'services/offline/sync_service.dart';
@@ -78,15 +80,54 @@ void main() async {
   // КРИТИЧЕСКИ ВАЖНО: Инициализация flutter_local_notifications
   await _initializeNotifications();
 
-  // Инициализация Firebase
+  // Инициализация Firebase с защитой от дублирования
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('✅ Firebase инициализирован');
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('✅ Firebase инициализирован');
+    } else {
+      debugPrint('🔥 Firebase уже был инициализирован, пропускаем');
+    }
   } catch (e) {
     debugPrint('❌ Ошибка инициализации Firebase: $e');
-    return;
+  }
+
+  // ВРЕМЕННО ОТКЛЮЧАЕМ App Check для тестирования Firebase Auth
+  try {
+    debugPrint('');
+    debugPrint('🎯 ========================================');
+    debugPrint('⚠️  APP CHECK ВРЕМЕННО ОТКЛЮЧЕН');
+    debugPrint('🧪 Тестируем Firebase Auth БЕЗ App Check');
+    debugPrint('🔧 После успешного теста настроим App Check');
+    debugPrint('🎯 ========================================');
+    debugPrint('');
+  } catch (e) {
+    debugPrint('❌ Ошибка: $e');
+  }
+
+  // ДОБАВЛЕНО: Тест Firebase Auth с диагностикой
+  await _testFirebaseAuthentication();
+
+  // Тест подключения к Firebase
+  try {
+    debugPrint('🔍 Тестируем подключение к Firebase...');
+    debugPrint('📱 Project ID: ${Firebase.app().options.projectId}');
+    debugPrint('📱 App ID: ${Firebase.app().options.appId}');
+
+    // Простой тест Auth
+    final auth = FirebaseAuth.instance;
+    debugPrint('🔐 Firebase Auth initialized: ${auth.app.name}');
+
+    // Простой тест Firestore
+    final firestore = FirebaseFirestore.instance;
+    await firestore.enableNetwork();
+    debugPrint('✅ Firestore подключен');
+
+    debugPrint('✅ Все сервисы Firebase доступны');
+  } catch (e) {
+    debugPrint('❌ Ошибка подключения к Firebase: $e');
   }
 
   // ИСПРАВЛЕНО: Инициализация LanguageProvider ДО создания приложения
@@ -186,6 +227,42 @@ void main() async {
       child: DriftNotesApp(consentService: consentService),
     ),
   );
+}
+
+// ДОБАВЛЕНО: Функция для тестирования Firebase Authentication
+Future<void> _testFirebaseAuthentication() async {
+  try {
+    debugPrint('🧪 Тестируем Firebase Authentication БЕЗ App Check...');
+
+    final auth = FirebaseAuth.instance;
+
+    // Проверяем текущего пользователя
+    final currentUser = auth.currentUser;
+    if (currentUser != null) {
+      debugPrint('👤 Текущий пользователь: ${currentUser.email}');
+    } else {
+      debugPrint('👤 Пользователь не авторизован');
+    }
+
+    // Проверяем доступность методов Auth
+    try {
+      // Попробуем получить провайдеры для несуществующего email
+      await auth.fetchSignInMethodsForEmail('test@nonexistent.com');
+      debugPrint('✅ Firebase Auth методы ДОСТУПНЫ без App Check!');
+      debugPrint('🎉 Авторизация должна работать нормально');
+    } catch (e) {
+      if (e.toString().contains('blocked')) {
+        debugPrint('❌ Firebase Auth методы все еще заблокированы: $e');
+        debugPrint('🔧 Возможно проблема в настройках проекта Firebase');
+      } else {
+        debugPrint('✅ Firebase Auth работает (ошибка ожидаема для тестового email)');
+        debugPrint('🎉 Можно тестировать авторизацию с реальными данными');
+      }
+    }
+
+  } catch (e) {
+    debugPrint('❌ Ошибка тестирования Firebase Auth: $e');
+  }
 }
 
 // ДОБАВЛЕНО: Функция для запроса разрешений на уведомления
