@@ -1,5 +1,5 @@
 // Путь: lib/screens/home_screen.dart
-// ИСПРАВЛЕНИЯ: YouTube карточка и навигация
+// ИСПРАВЛЕНИЯ: YouTube карточка и навигация + НОВЫЕ КНОПКИ
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -530,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return stats;
   }
 
-  // ИСПРАВЛЕНО: АДАПТИВНАЯ сетка быстрых действий без обрезания
+  // ИСПРАВЛЕНО: АДАПТИВНАЯ сетка быстрых действий без обрезания + НОВЫЕ КНОПКИ
   Widget _buildQuickActionsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -543,15 +543,22 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       childAspectRatio: isTablet ? 1.1 : 1.0, // ИСПРАВЛЕНО: больше высоты для текста
       children: [
+        // ИЗМЕНЕНО: Новости → Маркерная карта
         _buildQuickActionItem(
-          icon: Icons.newspaper_outlined,
-          label: localizations.translate('news'),
-          onTap: () => _showComingSoonMessage(localizations.translate('news')),
+          icon: Icons.map_outlined,
+          label: localizations.translate('marker_map'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
+            );
+          },
         ),
+        // ИЗМЕНЕНО: Статьи → Бюджет рыбалок
         _buildQuickActionItem(
-          icon: Icons.menu_book_outlined,
-          label: localizations.translate('articles'),
-          onTap: () => _showComingSoonMessage(localizations.translate('articles')),
+          icon: Icons.account_balance_wallet_outlined,
+          label: localizations.translate('fishing_budget'),
+          onTap: () => _showComingSoonMessage(localizations.translate('fishing_budget')),
         ),
         _buildQuickActionItem(
           icon: Icons.local_mall_outlined,
@@ -577,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ИСПРАВЛЕНО: Элемент быстрого действия с БОЛЬШИМИ иконками
+  // ИСПРАВЛЕНО: Элемент быстрого действия с адаптивным текстом
   Widget _buildQuickActionItem({
     required IconData icon,
     required String label,
@@ -605,9 +612,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            // Контейнер для текста
-            Container(
-              height: isTablet ? 40 : 32,
+            // ИСПРАВЛЕНО: Адаптивный контейнер для текста
+            Expanded(
               child: Center(
                 child: Text(
                   label,

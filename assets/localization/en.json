@@ -1943,5 +1943,10 @@
   "until_sunrise": "Until sunrise",
   "until_sunset": "Until sunset",
   "daylight_duration": "Daylight Duration",
-  "current_time": "Current Time"
+  "current_time": "Current Time",
+
+  "marker_map": "Marker Map",
+  "fishing_budget": "Fishing Budget",
+  "fishing_budget_management": "Fishing budget management",
+  "budget_coming_soon": "Budget feature coming soon"
 }

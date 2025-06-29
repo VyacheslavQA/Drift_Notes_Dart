@@ -1885,7 +1885,12 @@
   "until_sunrise": "До восхода",
   "until_sunset": "До заката",
   "daylight_duration": "Продолжительность дня",
-  "current_time": "Текущее время"
+  "current_time": "Текущее время",
+
+  "marker_map": "Маркерная карта",
+  "fishing_budget": "Бюджет рыбалок",
+  "fishing_budget_management": "Управление бюджетом рыбалки",
+  "budget_coming_soon": "Функция бюджета скоро появится"
 
 
 
