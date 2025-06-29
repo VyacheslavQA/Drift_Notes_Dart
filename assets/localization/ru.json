@@ -1874,7 +1874,18 @@
   "weather_loading_failed": "Не удалось загрузить данные о погоде",
   "error_selecting_images": "Ошибка выбора изображений",
   "error_taking_photo": "Ошибка при съемке фото",
-  "error_saving_note": "Ошибка сохранения заметки"
+  "error_saving_note": "Ошибка сохранения заметки",
+
+  "daylight_hours": "Световой день",
+  "sunrise": "Восход",
+  "sunset": "Закат",
+  "now": "Сейчас",
+  "day": "День",
+  "night": "Ночь",
+  "until_sunrise": "До восхода",
+  "until_sunset": "До заката",
+  "daylight_duration": "Продолжительность дня",
+  "current_time": "Текущее время"
 
 
 

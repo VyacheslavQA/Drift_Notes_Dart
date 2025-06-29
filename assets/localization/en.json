@@ -1932,5 +1932,16 @@
   "unit_mph": "mph",
   "unit_hpa": "hPa",
   "unit_mmhg": "mmHg",
-  "unit_inhg": "inHg"
+  "unit_inhg": "inHg",
+
+  "daylight_hours": "Daylight Hours",
+  "sunrise": "Sunrise",
+  "sunset": "Sunset",
+  "now": "Now",
+  "day": "Day",
+  "night": "Night",
+  "until_sunrise": "Until sunrise",
+  "until_sunset": "Until sunset",
+  "daylight_duration": "Daylight Duration",
+  "current_time": "Current Time"
 }
