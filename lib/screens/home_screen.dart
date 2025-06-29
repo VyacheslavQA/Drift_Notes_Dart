@@ -27,6 +27,7 @@ import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 import 'tournaments/tournaments_screen.dart';
 import 'shops/shops_screen.dart';
+import 'budget/fishing_budget_screen.dart'; // ДОБАВЛЕНО: импорт экрана бюджета
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -554,11 +555,16 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
         ),
-        // ИЗМЕНЕНО: Статьи → Бюджет рыбалок
+        // Замените на:
         _buildQuickActionItem(
           icon: Icons.account_balance_wallet_outlined,
           label: localizations.translate('fishing_budget'),
-          onTap: () => _showComingSoonMessage(localizations.translate('fishing_budget')),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FishingBudgetScreen()),
+            );
+          },
         ),
         _buildQuickActionItem(
           icon: Icons.local_mall_outlined,
