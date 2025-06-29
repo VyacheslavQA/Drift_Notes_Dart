@@ -65,8 +65,33 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _categoryNotes[category] = '';
       _expandedCategories[category] = false;
     }
+
     // Автоматически раскрываем первую категорию
-    _expandedCategories[FishingExpenseCategory.tackle] = true;
+    if (FishingExpenseCategory.allCategories.isNotEmpty) {
+      _expandedCategories[FishingExpenseCategory.allCategories.first] = true;
+    }
+
+    // Если редактируем существующий расход, загружаем его данные
+    if (widget.expenseToEdit != null) {
+      _loadExpenseForEditing(widget.expenseToEdit!);
+    }
+  }
+
+  void _loadExpenseForEditing(FishingExpenseModel expense) {
+    setState(() {
+      _selectedDate = expense.date;
+      _selectedCurrency = expense.currency;
+      _locationController.text = expense.locationName ?? '';
+      _tripNotesController.text = expense.notes ?? '';
+
+      // Загружаем данные конкретной категории
+      _categoryAmounts[expense.category] = expense.amount;
+      _categoryDescriptions[expense.category] = expense.description;
+      _categoryNotes[expense.category] = expense.notes ?? '';
+      _expandedCategories[expense.category] = true;
+
+      _updateTotalAmount();
+    });
   }
 
   @override
@@ -87,7 +112,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _toggleCategory(FishingExpenseCategory category) {
     setState(() {
-      _expandedCategories[category] = !_expandedCategories[category]!;
+      _expandedCategories[category] = !(_expandedCategories[category] ?? false);
     });
   }
 
@@ -117,6 +142,40 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         return localizations.translate('category_food');
       case FishingExpenseCategory.license:
         return localizations.translate('category_license');
+    }
+  }
+
+  String _getCategoryDescriptionHint(FishingExpenseCategory category, AppLocalizations localizations) {
+    switch (category) {
+      case FishingExpenseCategory.tackle:
+        return localizations.translate('category_tackle_hint');
+      case FishingExpenseCategory.bait:
+        return localizations.translate('category_bait_hint');
+      case FishingExpenseCategory.transport:
+        return localizations.translate('category_transport_hint');
+      case FishingExpenseCategory.accommodation:
+        return localizations.translate('category_accommodation_hint');
+      case FishingExpenseCategory.food:
+        return localizations.translate('category_food_hint');
+      case FishingExpenseCategory.license:
+        return localizations.translate('category_license_hint');
+    }
+  }
+
+  String _getCategoryNotesHint(FishingExpenseCategory category, AppLocalizations localizations) {
+    switch (category) {
+      case FishingExpenseCategory.tackle:
+        return localizations.translate('category_tackle_notes_hint');
+      case FishingExpenseCategory.bait:
+        return localizations.translate('category_bait_notes_hint');
+      case FishingExpenseCategory.transport:
+        return localizations.translate('category_transport_notes_hint');
+      case FishingExpenseCategory.accommodation:
+        return localizations.translate('category_accommodation_notes_hint');
+      case FishingExpenseCategory.food:
+        return localizations.translate('category_food_notes_hint');
+      case FishingExpenseCategory.license:
+        return localizations.translate('category_license_notes_hint');
     }
   }
 
@@ -171,6 +230,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     final localizations = AppLocalizations.of(context);
     final userId = _firebaseService.currentUserId;
+
     if (userId == null) {
       _showErrorSnackBar(localizations.translate('error_user_not_authorized'));
       return;
@@ -178,6 +238,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     // Проверяем, что хотя бы один расход указан
     final hasExpenses = _categoryAmounts.values.any((amount) => amount > 0);
+
     if (!hasExpenses) {
       _showErrorSnackBar(localizations.translate('error_no_expenses'));
       return;
@@ -186,48 +247,29 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final List<FishingExpenseModel> expenses = [];
-
-      // Создаем расходы только для категорий с указанной суммой
-      for (final category in FishingExpenseCategory.allCategories) {
-        final amount = _categoryAmounts[category] ?? 0.0;
-        if (amount > 0) {
-          final description = _categoryDescriptions[category]?.trim() ?? '';
-          final notes = _categoryNotes[category]?.trim() ?? '';
-
-          // Если описание пустое, используем название категории
-          final finalDescription = description.isNotEmpty
-              ? description
-              : _getCategoryName(category, localizations);
-
-          final expense = FishingExpenseModel.create(
-            userId: userId,
-            amount: amount,
-            description: finalDescription,
-            category: category,
-            date: _selectedDate,
-            currency: _selectedCurrency,
-            notes: notes.isEmpty ? null : notes,
-            locationName: _locationController.text.trim().isEmpty
-                ? null
-                : _locationController.text.trim(),
-          );
-
-          expenses.add(expense);
-        }
-      }
-
-      // Сохраняем все расходы
-      for (final expense in expenses) {
-        await _expenseRepository.addExpense(expense);
-      }
+      // Создаем поездку с расходами одним вызовом
+      final trip = await _expenseRepository.createTripWithExpenses(
+        date: _selectedDate,
+        locationName: _locationController.text.trim().isEmpty
+            ? null
+            : _locationController.text.trim(),
+        notes: _tripNotesController.text.trim().isEmpty
+            ? null
+            : _tripNotesController.text.trim(),
+        currency: _selectedCurrency,
+        categoryAmounts: _categoryAmounts,
+        categoryDescriptions: _categoryDescriptions,
+        categoryNotes: _categoryNotes,
+      );
 
       if (mounted) {
+        final expenseCount = trip.expenses?.length ?? 0;
         final symbol = _currencySymbols[_selectedCurrency] ?? '';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${localizations.translate('fishing_trip_expenses_saved')} ${expenses.length} ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                '${localizations.translate('fishing_trip_expenses_saved')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
             ),
             backgroundColor: AppConstants.primaryColor,
             duration: const Duration(seconds: 3),
@@ -691,7 +733,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               fontSize: 16,
             ),
             decoration: InputDecoration(
-              hintText: localizations.translate('category_description_hint'),
+              hintText: _getCategoryDescriptionHint(category, localizations),
               hintStyle: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.5),
               ),
@@ -718,7 +760,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               fontSize: 16,
             ),
             decoration: InputDecoration(
-              hintText: localizations.translate('category_notes_hint'),
+              hintText: _getCategoryNotesHint(category, localizations),
               hintStyle: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.5),
               ),

@@ -12,17 +12,13 @@ import '../../widgets/responsive/responsive_text.dart';
 import '../../widgets/responsive/responsive_button.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 
-/// Экран списка расходов на рыбалку
+/// Экран списка суммированных расходов по категориям
 class ExpenseListScreen extends StatefulWidget {
-  /// Список расходов для отображения
-  final List<FishingExpenseModel> expenses;
-
   /// Callback при обновлении расходов
   final VoidCallback? onExpenseUpdated;
 
   const ExpenseListScreen({
     super.key,
-    required this.expenses,
     this.onExpenseUpdated,
   });
 
@@ -34,26 +30,18 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
   final TextEditingController _searchController = TextEditingController();
 
-  List<FishingExpenseModel> _filteredExpenses = [];
-  FishingExpenseCategory? _selectedCategoryFilter;
-  String _sortBy = 'date'; // date, amount, category
+  Map<FishingExpenseCategory, CategoryExpenseSummary> _categorySummaries = {};
+  List<CategoryExpenseSummary> _filteredSummaries = [];
+  String _sortBy = 'amount'; // amount, trips, category
   bool _sortAscending = false;
+  String _selectedPeriod = 'all'; // month, year, all
+  bool _isLoading = true;
   bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _filteredExpenses = List.from(widget.expenses);
-    _sortExpenses();
-  }
-
-  @override
-  void didUpdateWidget(ExpenseListScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.expenses != widget.expenses) {
-      _filteredExpenses = List.from(widget.expenses);
-      _applyFilters();
-    }
+    _loadCategorySummaries();
   }
 
   @override
@@ -62,41 +50,78 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     super.dispose();
   }
 
-  void _applyFilters() {
-    _filteredExpenses = List.from(widget.expenses);
+  Future<void> _loadCategorySummaries() async {
+    try {
+      setState(() => _isLoading = true);
 
-    // Поиск по тексту
+      DateTime? startDate;
+      DateTime? endDate;
+
+      final now = DateTime.now();
+      switch (_selectedPeriod) {
+        case 'month':
+          startDate = DateTime(now.year, now.month, 1);
+          endDate = DateTime(now.year, now.month + 1, 0);
+          break;
+        case 'year':
+          startDate = DateTime(now.year, 1, 1);
+          endDate = DateTime(now.year, 12, 31);
+          break;
+        case 'all':
+        default:
+          startDate = null;
+          endDate = null;
+          break;
+      }
+
+      final summaries = await _expenseRepository.getCategorySummaries(
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      if (mounted) {
+        setState(() {
+          _categorySummaries = summaries;
+          _isLoading = false;
+        });
+        _applyFilters();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showErrorSnackBar('Ошибка загрузки данных: $e');
+      }
+    }
+  }
+
+  void _applyFilters() {
+    _filteredSummaries = _categorySummaries.values.toList();
+
+    // Поиск по названию категории
     final searchQuery = _searchController.text.toLowerCase().trim();
     if (searchQuery.isNotEmpty) {
-      _filteredExpenses = _filteredExpenses.where((expense) {
-        return expense.description.toLowerCase().contains(searchQuery) ||
-            expense.notes?.toLowerCase().contains(searchQuery) == true ||
-            expense.locationName?.toLowerCase().contains(searchQuery) == true;
+      final localizations = AppLocalizations.of(context);
+      _filteredSummaries = _filteredSummaries.where((summary) {
+        final categoryName = _getCategoryName(summary.category, localizations).toLowerCase();
+        return categoryName.contains(searchQuery);
       }).toList();
     }
 
-    // Фильтр по категории
-    if (_selectedCategoryFilter != null) {
-      _filteredExpenses = _filteredExpenses
-          .where((expense) => expense.category == _selectedCategoryFilter)
-          .toList();
-    }
-
-    _sortExpenses();
+    _sortSummaries();
   }
 
-  void _sortExpenses() {
+  void _sortSummaries() {
     switch (_sortBy) {
-      case 'date':
-        _filteredExpenses.sort((a, b) =>
-        _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date));
-        break;
       case 'amount':
-        _filteredExpenses.sort((a, b) =>
-        _sortAscending ? a.amount.compareTo(b.amount) : b.amount.compareTo(a.amount));
+        _filteredSummaries.sort((a, b) =>
+        _sortAscending ? a.totalAmount.compareTo(b.totalAmount) : b.totalAmount.compareTo(a.totalAmount));
+        break;
+      case 'trips':
+        _filteredSummaries.sort((a, b) =>
+        _sortAscending ? a.tripCount.compareTo(b.tripCount) : b.tripCount.compareTo(a.tripCount));
         break;
       case 'category':
-        _filteredExpenses.sort((a, b) {
+        _filteredSummaries.sort((a, b) {
           final categoryComparison = a.category.id.compareTo(b.category.id);
           return _sortAscending ? categoryComparison : -categoryComparison;
         });
@@ -120,6 +145,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     _applyFilters();
   }
 
+  void _onPeriodChanged(String period) {
+    setState(() {
+      _selectedPeriod = period;
+    });
+    _loadCategorySummaries();
+  }
+
   void _showSortDialog() {
     final localizations = AppLocalizations.of(context);
 
@@ -128,23 +160,23 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
         title: ResponsiveText(
-          localizations.translate('sort_by'),
+          localizations.translate('sort_by') ?? 'Сортировать по',
           type: ResponsiveTextType.titleLarge,
           fontWeight: FontWeight.w600,
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildSortOption('date', localizations.translate('date'), Icons.calendar_today),
-            _buildSortOption('amount', localizations.translate('amount'), Icons.attach_money),
-            _buildSortOption('category', localizations.translate('category'), Icons.category),
+            _buildSortOption('amount', localizations.translate('amount') ?? 'Сумма', Icons.attach_money),
+            _buildSortOption('trips', localizations.translate('trips_count') ?? 'Количество поездок', Icons.trip_origin),
+            _buildSortOption('category', localizations.translate('category') ?? 'Категория', Icons.category),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: ResponsiveText(
-              localizations.translate('cancel'),
+              localizations.translate('cancel') ?? 'Отмена',
               type: ResponsiveTextType.labelLarge,
               color: AppConstants.textColor.withOpacity(0.7),
             ),
@@ -180,70 +212,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             _sortAscending = false;
           }
         });
-        _sortExpenses();
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  void _showCategoryFilter() {
-    final localizations = AppLocalizations.of(context);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.cardColor,
-        title: ResponsiveText(
-          localizations.translate('filter_by_category'),
-          type: ResponsiveTextType.titleLarge,
-          fontWeight: FontWeight.w600,
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildCategoryFilterOption(null, localizations.translate('all_categories')),
-              ...FishingExpenseCategory.allCategories.map(
-                    (category) => _buildCategoryFilterOption(category, _getCategoryName(category, localizations)),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: ResponsiveText(
-              localizations.translate('cancel'),
-              type: ResponsiveTextType.labelLarge,
-              color: AppConstants.textColor.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryFilterOption(FishingExpenseCategory? category, String label) {
-    final isSelected = _selectedCategoryFilter == category;
-
-    return ListTile(
-      leading: category != null
-          ? Text(category.icon, style: const TextStyle(fontSize: 20))
-          : Icon(Icons.all_inclusive, color: AppConstants.textColor),
-      title: ResponsiveText(
-        label,
-        type: ResponsiveTextType.bodyLarge,
-        color: isSelected ? AppConstants.primaryColor : AppConstants.textColor,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      ),
-      trailing: isSelected
-          ? Icon(Icons.check, color: AppConstants.primaryColor)
-          : null,
-      onTap: () {
-        setState(() {
-          _selectedCategoryFilter = category;
-        });
-        _applyFilters();
+        _sortSummaries();
         Navigator.pop(context);
       },
     );
@@ -252,17 +221,34 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   String _getCategoryName(FishingExpenseCategory category, AppLocalizations localizations) {
     switch (category) {
       case FishingExpenseCategory.tackle:
-        return localizations.translate('category_tackle');
+        return localizations.translate('category_tackle') ?? 'Снасти';
       case FishingExpenseCategory.bait:
-        return localizations.translate('category_bait');
+        return localizations.translate('category_bait') ?? 'Наживка';
       case FishingExpenseCategory.transport:
-        return localizations.translate('category_transport');
+        return localizations.translate('category_transport') ?? 'Транспорт';
       case FishingExpenseCategory.accommodation:
-        return localizations.translate('category_accommodation');
+        return localizations.translate('category_accommodation') ?? 'Проживание';
       case FishingExpenseCategory.food:
-        return localizations.translate('category_food');
+        return localizations.translate('category_food') ?? 'Питание';
       case FishingExpenseCategory.license:
-        return localizations.translate('category_license');
+        return localizations.translate('category_license') ?? 'Лицензии';
+    }
+  }
+
+  String _getCategoryDescription(FishingExpenseCategory category, AppLocalizations localizations) {
+    switch (category) {
+      case FishingExpenseCategory.tackle:
+        return localizations.translate('category_tackle_desc') ?? 'Удочки, катушки, приманки';
+      case FishingExpenseCategory.bait:
+        return localizations.translate('category_bait_desc') ?? 'Черви, опарыш, прикормка';
+      case FishingExpenseCategory.transport:
+        return localizations.translate('category_transport_desc') ?? 'Бензин, такси, аренда';
+      case FishingExpenseCategory.accommodation:
+        return localizations.translate('category_accommodation_desc') ?? 'Отель, база отдыха';
+      case FishingExpenseCategory.food:
+        return localizations.translate('category_food_desc') ?? 'Еда и напитки';
+      case FishingExpenseCategory.license:
+        return localizations.translate('category_license_desc') ?? 'Путевки, лицензии';
     }
   }
 
@@ -283,84 +269,18 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     }
   }
 
-  Future<void> _deleteExpense(FishingExpenseModel expense) async {
-    final localizations = AppLocalizations.of(context);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.cardColor,
-        title: ResponsiveText(
-          localizations.translate('delete_expense'),
-          type: ResponsiveTextType.titleLarge,
-          fontWeight: FontWeight.w600,
-        ),
-        content: ResponsiveText(
-          localizations.translate('delete_expense_confirm'),
-          type: ResponsiveTextType.bodyLarge,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: ResponsiveText(
-              localizations.translate('cancel'),
-              type: ResponsiveTextType.labelLarge,
-              color: AppConstants.textColor.withOpacity(0.7),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: ResponsiveText(
-              localizations.translate('delete'),
-              type: ResponsiveTextType.labelLarge,
-              color: Colors.red,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
       ),
     );
-
-    if (confirmed == true) {
-      try {
-        await _expenseRepository.deleteExpense(expense.id);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations.translate('expense_deleted')),
-              backgroundColor: Colors.green,
-            ),
-          );
-          widget.onExpenseUpdated?.call();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${localizations.translate('delete_error')}: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
   }
 
-  Future<void> _editExpense(FishingExpenseModel expense) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddExpenseScreen(expenseToEdit: expense),
-      ),
-    );
-
-    if (result == true) {
-      widget.onExpenseUpdated?.call();
-    }
-  }
-
-  void _showExpenseDetails(FishingExpenseModel expense) {
+  void _showCategoryDetails(CategoryExpenseSummary summary) {
     final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -372,257 +292,234 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       isScrollControlled: true,
       builder: (context) => Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
         ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Заголовок
-                Row(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: _getCategoryColor(summary.category).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(summary.category.icon, style: const TextStyle(fontSize: 24)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getCategoryName(summary.category, localizations),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppConstants.textColor,
+                          ),
+                        ),
+                        Text(
+                          _getCategoryDescription(summary.category, localizations),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppConstants.textColor.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Статистика
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _getCategoryColor(summary.category).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
                   children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: _getCategoryColor(expense.category).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(expense.category.icon, style: const TextStyle(fontSize: 24)),
-                      ),
+                    _buildStatRow(
+                      localizations.translate('total_amount') ?? 'Общая сумма',
+                      summary.formattedAmount,
+                      _getCategoryColor(summary.category),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            expense.description,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppConstants.textColor,
-                            ),
-                            maxLines: 2,
-                          ),
-                          Text(
-                            _getCategoryName(expense.category, localizations),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppConstants.textColor.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    _buildStatRow(
+                      localizations.translate('expense_count') ?? 'Количество расходов',
+                      '${summary.expenseCount}',
+                      AppConstants.textColor,
                     ),
-                    Text(
-                      expense.formattedAmount,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _getCategoryColor(expense.category),
-                      ),
+                    const SizedBox(height: 12),
+                    _buildStatRow(
+                      localizations.translate('trips_with_category') ?? 'Поездок с категорией',
+                      summary.tripCountDescription,
+                      AppConstants.textColor,
                     ),
+                    if (summary.tripCount > 0) ...[
+                      const SizedBox(height: 12),
+                      _buildStatRow(
+                        localizations.translate('avg_per_trip') ?? 'Среднее за поездку',
+                        '${summary.currencySymbol} ${(summary.totalAmount / summary.tripCount).toStringAsFixed(0)}',
+                        AppConstants.textColor,
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 24),
+              ),
+              const SizedBox(height: 24),
 
-                // Детали
-                _buildDetailRow(Icons.calendar_today, localizations.translate('date'), _formatDate(expense.date, localizations)),
-                if (expense.locationName != null)
-                  _buildDetailRow(Icons.location_on, localizations.translate('location'), expense.locationName!),
-                if (expense.notes != null && expense.notes!.isNotEmpty)
-                  _buildDetailRow(Icons.notes, localizations.translate('notes'), expense.notes!),
-                _buildDetailRow(Icons.access_time, localizations.translate('created'), _formatDateTime(expense.createdAt, localizations)),
-                if (expense.createdAt != expense.updatedAt)
-                  _buildDetailRow(Icons.update, localizations.translate('updated'), _formatDateTime(expense.updatedAt, localizations)),
-
-                const SizedBox(height: 24),
-
-                // Действия
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _editExpense(expense);
-                        },
-                        icon: const Icon(Icons.edit),
-                        label: Text(localizations.translate('edit')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppConstants.primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _deleteExpense(expense);
-                        },
-                        icon: const Icon(Icons.delete),
-                        label: Text(localizations.translate('delete')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+              // Дополнительная информация
+              Text(
+                localizations.translate('category_info') ?? 'Информация о категории',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppConstants.textColor,
                 ),
-                const SizedBox(height: 40),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _getCategoryDescription(summary.category, localizations),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppConstants.textColor.withOpacity(0.8),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            color: AppConstants.textColor.withOpacity(0.7),
-            size: 20,
+  Widget _buildStatRow(String label, String value, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: AppConstants.textColor.withOpacity(0.8),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppConstants.textColor.withOpacity(0.7),
-              ),
-            ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: valueColor,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppConstants.textColor,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  String _formatDate(DateTime date, AppLocalizations localizations) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
-
-    if (dateOnly == today) {
-      return localizations.translate('today');
-    } else if (dateOnly == yesterday) {
-      return localizations.translate('yesterday');
-    } else {
-      return '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-    }
-  }
-
-  String _formatDateTime(DateTime dateTime, AppLocalizations localizations) {
-    return '${_formatDate(dateTime, localizations)} ${localizations.translate('at')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    if (widget.expenses.isEmpty) {
-      return _buildEmptyState(localizations);
-    }
-
     return ResponsiveContainer(
       type: ResponsiveContainerType.page,
       useSafeArea: true,
       addHorizontalPadding: true,
       addVerticalPadding: true,
-      child: Column(
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
+          _buildHeaderSection(localizations),
+          const SizedBox(height: 16),
           _buildSearchAndFilters(localizations),
           const SizedBox(height: 16),
-          _buildFilterChips(localizations),
           Expanded(
-            child: _filteredExpenses.isEmpty
+            child: _categorySummaries.isEmpty
+                ? _buildEmptyState(localizations)
+                : _filteredSummaries.isEmpty
                 ? _buildNoResultsState(localizations)
-                : _buildExpensesList(),
+                : _buildCategoriesList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations localizations) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long,
-            size: 80,
-            color: AppConstants.textColor.withOpacity(0.3),
-          ),
-          const SizedBox(height: 24),
-          ResponsiveText(
-            localizations.translate('no_expenses_yet'),
-            type: ResponsiveTextType.titleLarge,
-            fontWeight: FontWeight.w600,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          ResponsiveText(
-            localizations.translate('add_first_expense'),
-            type: ResponsiveTextType.bodyMedium,
-            color: AppConstants.textColor.withOpacity(0.7),
-            textAlign: TextAlign.center,
-          ),
-        ],
+  Widget _buildHeaderSection(AppLocalizations localizations) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.cardColor,
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  Widget _buildNoResultsState(AppLocalizations localizations) {
-    return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 60,
-            color: AppConstants.textColor.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
           ResponsiveText(
-            localizations.translate('no_results'),
+            localizations.translate('expense_categories') ?? 'Категории расходов',
             type: ResponsiveTextType.titleMedium,
             fontWeight: FontWeight.w600,
           ),
           const SizedBox(height: 8),
           ResponsiveText(
-            localizations.translate('try_different_search'),
+            localizations.translate('categories_summary_desc') ?? 'Суммированные расходы по категориям со всех поездок',
             type: ResponsiveTextType.bodyMedium,
             color: AppConstants.textColor.withOpacity(0.7),
+          ),
+          const SizedBox(height: 16),
+          _buildPeriodSelector(localizations),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodSelector(AppLocalizations localizations) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц'),
+        _buildPeriodButton('year', localizations.translate('year') ?? 'Год'),
+        _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время'),
+      ],
+    );
+  }
+
+  Widget _buildPeriodButton(String period, String label) {
+    final isSelected = _selectedPeriod == period;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onPeriodChanged(period),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : AppConstants.textColor,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 14,
+            ),
             textAlign: TextAlign.center,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -638,7 +535,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
             ),
             decoration: InputDecoration(
-              hintText: localizations.translate('search_expenses'),
+              hintText: localizations.translate('search_categories') ?? 'Поиск категорий',
               hintStyle: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.5),
               ),
@@ -679,79 +576,88 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             padding: const EdgeInsets.all(12),
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: Icon(
-            Icons.filter_list,
-            color: _selectedCategoryFilter != null ? AppConstants.primaryColor : AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context),
-          ),
-          onPressed: _showCategoryFilter,
-          style: IconButton.styleFrom(
-            backgroundColor: AppConstants.surfaceColor,
-            padding: const EdgeInsets.all(12),
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildFilterChips(AppLocalizations localizations) {
-    final chips = <Widget>[];
-
-    if (_selectedCategoryFilter != null) {
-      chips.add(
-        Chip(
-          label: ResponsiveText(
-            _getCategoryName(_selectedCategoryFilter!, localizations),
-            type: ResponsiveTextType.labelMedium,
-            color: AppConstants.textColor,
+  Widget _buildEmptyState(AppLocalizations localizations) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.category,
+            size: 80,
+            color: AppConstants.textColor.withOpacity(0.3),
           ),
-          avatar: Text(_selectedCategoryFilter!.icon),
-          deleteIcon: const Icon(Icons.close, size: 18),
-          onDeleted: () {
-            setState(() {
-              _selectedCategoryFilter = null;
-            });
-            _applyFilters();
-          },
-          backgroundColor: AppConstants.primaryColor.withOpacity(0.2),
-        ),
-      );
-    }
-
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      height: 40,
-      alignment: Alignment.centerLeft,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: chips.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => chips[index],
+          const SizedBox(height: 24),
+          ResponsiveText(
+            localizations.translate('no_expenses_yet') ?? 'Пока нет расходов',
+            type: ResponsiveTextType.titleLarge,
+            fontWeight: FontWeight.w600,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          ResponsiveText(
+            localizations.translate('add_first_expense') ?? 'Добавьте первую поездку с расходами',
+            type: ResponsiveTextType.bodyMedium,
+            color: AppConstants.textColor.withOpacity(0.7),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildExpensesList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _filteredExpenses.length,
-      itemBuilder: (context, index) => _buildExpenseItem(_filteredExpenses[index]),
+  Widget _buildNoResultsState(AppLocalizations localizations) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 60,
+            color: AppConstants.textColor.withOpacity(0.3),
+          ),
+          const SizedBox(height: 16),
+          ResponsiveText(
+            localizations.translate('no_results') ?? 'Нет результатов',
+            type: ResponsiveTextType.titleMedium,
+            fontWeight: FontWeight.w600,
+          ),
+          const SizedBox(height: 8),
+          ResponsiveText(
+            localizations.translate('try_different_search') ?? 'Попробуйте другой поиск',
+            type: ResponsiveTextType.bodyMedium,
+            color: AppConstants.textColor.withOpacity(0.7),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildExpenseItem(FishingExpenseModel expense) {
+  Widget _buildCategoriesList() {
+    return RefreshIndicator(
+      onRefresh: _loadCategorySummaries,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: _filteredSummaries.length,
+        itemBuilder: (context, index) => _buildCategoryItem(_filteredSummaries[index]),
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(CategoryExpenseSummary summary) {
     final localizations = AppLocalizations.of(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () => _showExpenseDetails(expense),
+        onTap: () => _showCategoryDetails(summary),
         onLongPress: () {
           HapticFeedback.mediumImpact();
-          _showExpenseDetails(expense);
+          _showCategoryDetails(summary);
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -760,7 +666,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             color: AppConstants.cardColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppConstants.textColor.withOpacity(0.1),
+              color: _getCategoryColor(summary.category).withOpacity(0.2),
               width: 1,
             ),
           ),
@@ -771,97 +677,60 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _getCategoryColor(expense.category).withOpacity(0.2),
+                  color: _getCategoryColor(summary.category).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
-                    expense.category.icon,
+                    summary.category.icon,
                     style: const TextStyle(fontSize: 20),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
 
-              // Детали расхода
+              // Детали категории
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      expense.shortDescription,
+                      _getCategoryName(summary.category, localizations),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AppConstants.textColor,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          _formatDate(expense.date, localizations),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppConstants.textColor.withOpacity(0.7),
-                          ),
-                        ),
-                        if (expense.locationName != null) ...[
-                          Text(
-                            ' • ',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppConstants.textColor.withOpacity(0.7),
-                            ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              expense.locationName!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppConstants.textColor.withOpacity(0.7),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      summary.tripCountDescription,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppConstants.textColor.withOpacity(0.7),
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Сумма и статус синхронизации
+              // Сумма и стрелка
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    expense.formattedAmount,
+                    summary.formattedAmount,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: _getCategoryColor(expense.category),
+                      color: _getCategoryColor(summary.category),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!expense.isSynced)
-                        const Icon(
-                          Icons.sync_disabled,
-                          size: 16,
-                          color: Colors.orange,
-                        ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 12,
-                        color: AppConstants.textColor.withOpacity(0.3),
-                      ),
-                    ],
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: AppConstants.textColor.withOpacity(0.3),
                   ),
                 ],
               ),

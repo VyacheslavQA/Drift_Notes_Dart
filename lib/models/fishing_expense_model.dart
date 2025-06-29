@@ -35,6 +35,9 @@ class FishingExpenseModel {
   /// ID пользователя
   final String userId;
 
+  /// ID поездки на рыбалку
+  final String tripId;
+
   /// Сумма расхода
   final double amount;
 
@@ -53,7 +56,7 @@ class FishingExpenseModel {
   /// Дата последнего обновления
   final DateTime updatedAt;
 
-  /// Связанная заметка о рыбалке (опционально)
+  /// Связанная заметка о рыбалке (опционально, для совместимости)
   final String? fishingNoteId;
 
   /// Валюта (по умолчанию тенге)
@@ -74,6 +77,7 @@ class FishingExpenseModel {
   const FishingExpenseModel({
     required this.id,
     required this.userId,
+    required this.tripId,
     required this.amount,
     required this.category,
     required this.description,
@@ -92,6 +96,7 @@ class FishingExpenseModel {
   FishingExpenseModel copyWith({
     String? id,
     String? userId,
+    String? tripId,
     double? amount,
     FishingExpenseCategory? category,
     String? description,
@@ -108,6 +113,7 @@ class FishingExpenseModel {
     return FishingExpenseModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      tripId: tripId ?? this.tripId,
       amount: amount ?? this.amount,
       category: category ?? this.category,
       description: description ?? this.description,
@@ -128,6 +134,7 @@ class FishingExpenseModel {
     return FishingExpenseModel(
       id: map['id'] as String,
       userId: map['userId'] as String,
+      tripId: map['tripId'] as String,
       amount: (map['amount'] as num).toDouble(),
       category: FishingExpenseCategory.fromId(map['category'] as String) ??
           FishingExpenseCategory.tackle,
@@ -149,6 +156,7 @@ class FishingExpenseModel {
     return {
       'id': id,
       'userId': userId,
+      'tripId': tripId,
       'amount': amount,
       'category': category.id,
       'description': description,
@@ -169,6 +177,7 @@ class FishingExpenseModel {
     return {
       'id': id,
       'userId': userId,
+      'tripId': tripId,
       'amount': amount,
       'category': category.id,
       'description': description,
@@ -192,6 +201,7 @@ class FishingExpenseModel {
     return FishingExpenseModel(
       id: json['id'] as String,
       userId: json['userId'] as String,
+      tripId: json['tripId'] as String,
       amount: (json['amount'] as num).toDouble(),
       category: FishingExpenseCategory.fromId(json['category'] as String) ??
           FishingExpenseCategory.tackle,
@@ -215,6 +225,7 @@ class FishingExpenseModel {
   /// Создать новый расход
   factory FishingExpenseModel.create({
     required String userId,
+    required String tripId,
     required double amount,
     required FishingExpenseCategory category,
     required String description,
@@ -229,6 +240,7 @@ class FishingExpenseModel {
     return FishingExpenseModel(
       id: 'expense_${now.millisecondsSinceEpoch}',
       userId: userId,
+      tripId: tripId,
       amount: amount,
       category: category,
       description: description,
@@ -275,6 +287,7 @@ class FishingExpenseModel {
   bool get isValid {
     return id.isNotEmpty &&
         userId.isNotEmpty &&
+        tripId.isNotEmpty &&
         amount > 0 &&
         description.isNotEmpty;
   }
@@ -300,7 +313,7 @@ class FishingExpenseModel {
 
   @override
   String toString() {
-    return 'FishingExpenseModel(id: $id, amount: $formattedAmount, category: ${category.id}, description: $description)';
+    return 'FishingExpenseModel(id: $id, tripId: $tripId, amount: $formattedAmount, category: ${category.id}, description: $description)';
   }
 }
 

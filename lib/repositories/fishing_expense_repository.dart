@@ -2,7 +2,9 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import '../models/fishing_expense_model.dart';
+import '../models/fishing_trip_model.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/offline/offline_storage_service.dart';
 import '../utils/network_utils.dart';
@@ -42,24 +44,21 @@ class FishingExpenseRepository {
         // Сохраняем в офлайн кеш
         await _cacheExpensesOffline(onlineExpenses);
 
-        debugPrint('✅ Загружено ${onlineExpenses.length} расходов из Firestore');
         return onlineExpenses;
       } else {
         // Загружаем из офлайн кеша
         final offlineExpenses = await _getExpensesFromOfflineCache();
-        debugPrint('📱 Загружено ${offlineExpenses.length} расходов из офлайн кеша');
         return offlineExpenses;
       }
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки расходов: $e');
+      debugPrint('Ошибка загрузки расходов: $e');
 
       // При ошибке пытаемся загрузить из офлайн кеша
       try {
         final offlineExpenses = await _getExpensesFromOfflineCache();
-        debugPrint('📱 Fallback: загружено ${offlineExpenses.length} расходов из кеша');
         return offlineExpenses;
       } catch (offlineError) {
-        debugPrint('❌ Ошибка загрузки из офлайн кеша: $offlineError');
+        debugPrint('Ошибка загрузки из офлайн кеша: $offlineError');
         return [];
       }
     }
@@ -67,64 +66,70 @@ class FishingExpenseRepository {
 
   /// Получить расходы из Firestore
   Future<List<FishingExpenseModel>> _getExpensesFromFirestore(String userId) async {
-    final snapshot = await _firestore
-        .collection(_collectionName)
-        .where('userId', isEqualTo: userId)
-        .get();
+    try {
+      final snapshot = await _firestore
+          .collection(_collectionName)
+          .where('userId', isEqualTo: userId)
+          .get();
 
-    final expenses = snapshot.docs
-        .map((doc) => FishingExpenseModel.fromMap(doc.data()))
-        .toList();
+      final expenses = <FishingExpenseModel>[];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data();
+          final expense = FishingExpenseModel.fromMap(data);
+          expenses.add(expense);
+        } catch (e) {
+          debugPrint('Ошибка парсинга документа ${doc.id}: $e');
+        }
+      }
 
-    // Сортируем в коде вместо Firestore
-    expenses.sort((a, b) => b.date.compareTo(a.date));
+      // Сортируем в коде вместо Firestore
+      expenses.sort((a, b) => b.date.compareTo(a.date));
 
-    return expenses;
+      return expenses;
+    } catch (e) {
+      debugPrint('Ошибка запроса к Firestore: $e');
+      rethrow;
+    }
   }
 
   /// Получить расходы из офлайн кеша
   Future<List<FishingExpenseModel>> _getExpensesFromOfflineCache() async {
-    final prefs = await _offlineStorage.preferences;
-    final expensesJson = prefs.getStringList(_offlineKey) ?? [];
+    try {
+      final prefs = await _offlineStorage.preferences;
+      final expensesJsonList = prefs.getStringList(_offlineKey) ?? [];
 
-    final List<FishingExpenseModel> expenses = [];
-    for (var expenseJsonString in expensesJson) {
-      try {
-        final expenseJson = Map<String, dynamic>.from(
-            await compute(_parseJson, expenseJsonString)
-        );
-        expenses.add(FishingExpenseModel.fromJson(expenseJson));
-      } catch (e) {
-        debugPrint('⚠️ Ошибка парсинга офлайн расхода: $e');
+      final List<FishingExpenseModel> expenses = [];
+      for (var expenseJsonString in expensesJsonList) {
+        try {
+          final expenseJson = jsonDecode(expenseJsonString) as Map<String, dynamic>;
+          final expense = FishingExpenseModel.fromJson(expenseJson);
+          expenses.add(expense);
+        } catch (e) {
+          debugPrint('Ошибка парсинга офлайн расхода: $e');
+        }
       }
+
+      // Сортируем по дате (новые сначала)
+      expenses.sort((a, b) => b.date.compareTo(a.date));
+      return expenses;
+    } catch (e) {
+      debugPrint('Ошибка загрузки из офлайн кеша: $e');
+      return [];
     }
-
-    // Сортируем по дате (новые сначала)
-    expenses.sort((a, b) => b.date.compareTo(a.date));
-    return expenses;
-  }
-
-  /// Вспомогательная функция для парсинга JSON в изоляте
-  static Map<String, dynamic> _parseJson(String jsonString) {
-    return Map<String, dynamic>.from(
-      // Используем более безопасный парсинг
-        Uri.splitQueryString(jsonString.isEmpty ? '{}' : jsonString)
-    );
   }
 
   /// Кешировать расходы офлайн
   Future<void> _cacheExpensesOffline(List<FishingExpenseModel> expenses) async {
     try {
       final prefs = await _offlineStorage.preferences;
-      final expensesJson = expenses
-          .map((expense) => expense.toJson())
-          .map((json) => json.toString())
+      final expensesJsonList = expenses
+          .map((expense) => jsonEncode(expense.toJson()))
           .toList();
 
-      await prefs.setStringList(_offlineKey, expensesJson);
-      debugPrint('💾 Кешировано ${expenses.length} расходов офлайн');
+      await prefs.setStringList(_offlineKey, expensesJsonList);
     } catch (e) {
-      debugPrint('⚠️ Ошибка кеширования расходов: $e');
+      debugPrint('Ошибка кеширования расходов: $e');
     }
   }
 
@@ -144,26 +149,26 @@ class FishingExpenseRepository {
 
       if (isOnline) {
         // Сохраняем в Firestore
+        final docData = expenseWithUserId.toMap();
+
         await _firestore
             .collection(_collectionName)
             .doc(expenseWithUserId.id)
-            .set(expenseWithUserId.toMap());
+            .set(docData);
 
         final syncedExpense = expenseWithUserId.markAsSynced();
         await _addExpenseToOfflineCache(syncedExpense);
 
-        debugPrint('✅ Расход добавлен в Firestore: ${expenseWithUserId.id}');
         return syncedExpense;
       } else {
         // Сохраняем офлайн для последующей синхронизации
         await _offlineStorage.saveOfflineNote(expenseWithUserId.toJson());
         await _addExpenseToOfflineCache(expenseWithUserId);
 
-        debugPrint('📱 Расход сохранен офлайн: ${expenseWithUserId.id}');
         return expenseWithUserId;
       }
     } catch (e) {
-      debugPrint('❌ Ошибка добавления расхода: $e');
+      debugPrint('Ошибка добавления расхода: $e');
       rethrow;
     }
   }
@@ -186,7 +191,7 @@ class FishingExpenseRepository {
 
       await _cacheExpensesOffline(currentExpenses);
     } catch (e) {
-      debugPrint('⚠️ Ошибка добавления в офлайн кеш: $e');
+      debugPrint('Ошибка добавления в офлайн кеш: $e');
     }
   }
 
@@ -214,18 +219,16 @@ class FishingExpenseRepository {
         final syncedExpense = updatedExpense.markAsSynced();
         await _updateExpenseInOfflineCache(syncedExpense);
 
-        debugPrint('✅ Расход обновлен в Firestore: ${updatedExpense.id}');
         return syncedExpense;
       } else {
         // Сохраняем обновление для последующей синхронизации
         await _offlineStorage.saveNoteUpdate(updatedExpense.id, updatedExpense.toJson());
         await _updateExpenseInOfflineCache(updatedExpense);
 
-        debugPrint('📱 Обновление расхода сохранено офлайн: ${updatedExpense.id}');
         return updatedExpense;
       }
     } catch (e) {
-      debugPrint('❌ Ошибка обновления расхода: $e');
+      debugPrint('Ошибка обновления расхода: $e');
       rethrow;
     }
   }
@@ -241,7 +244,7 @@ class FishingExpenseRepository {
         await _cacheExpensesOffline(currentExpenses);
       }
     } catch (e) {
-      debugPrint('⚠️ Ошибка обновления в офлайн кеше: $e');
+      debugPrint('Ошибка обновления в офлайн кеше: $e');
     }
   }
 
@@ -259,17 +262,15 @@ class FishingExpenseRepository {
       if (isOnline) {
         // Удаляем из Firestore
         await _firestore.collection(_collectionName).doc(expenseId).delete();
-        debugPrint('✅ Расход удален из Firestore: $expenseId');
       } else {
         // Отмечаем для удаления при следующей синхронизации
         await _offlineStorage.markForDeletion(expenseId, false);
-        debugPrint('📱 Расход отмечен для удаления: $expenseId');
       }
 
       // Удаляем из офлайн кеша
       await _removeExpenseFromOfflineCache(expenseId);
     } catch (e) {
-      debugPrint('❌ Ошибка удаления расхода: $e');
+      debugPrint('Ошибка удаления расхода: $e');
       rethrow;
     }
   }
@@ -281,7 +282,7 @@ class FishingExpenseRepository {
       final updatedExpenses = currentExpenses.where((e) => e.id != expenseId).toList();
       await _cacheExpensesOffline(updatedExpenses);
     } catch (e) {
-      debugPrint('⚠️ Ошибка удаления из офлайн кеша: $e');
+      debugPrint('Ошибка удаления из офлайн кеша: $e');
     }
   }
 
@@ -297,8 +298,69 @@ class FishingExpenseRepository {
             expense.date.isBefore(endDate.add(const Duration(days: 1)));
       }).toList();
     } catch (e) {
-      debugPrint('❌ Ошибка получения расходов за период: $e');
+      debugPrint('Ошибка получения расходов за период: $e');
       return [];
+    }
+  }
+
+  /// Получить расходы по ID поездки
+  Future<List<FishingExpenseModel>> getExpensesByTrip(String tripId) async {
+    try {
+      final allExpenses = await getUserExpenses();
+      return allExpenses.where((expense) => expense.tripId == tripId).toList();
+    } catch (e) {
+      debugPrint('Ошибка получения расходов по поездке: $e');
+      return [];
+    }
+  }
+
+  /// Удалить все расходы поездки
+  Future<void> deleteExpensesByTrip(String tripId) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        // Удаляем из Firestore
+        final snapshot = await _firestore
+            .collection(_collectionName)
+            .where('tripId', isEqualTo: tripId)
+            .get();
+
+        final batch = _firestore.batch();
+        for (var doc in snapshot.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      } else {
+        // Отмечаем все расходы поездки для удаления
+        final tripExpenses = await getExpensesByTrip(tripId);
+        for (var expense in tripExpenses) {
+          await _offlineStorage.markForDeletion(expense.id, false);
+        }
+      }
+
+      // Удаляем из офлайн кеша
+      await _removeExpensesFromOfflineCacheByTrip(tripId);
+    } catch (e) {
+      debugPrint('Ошибка удаления расходов поездки: $e');
+      rethrow;
+    }
+  }
+
+  /// Удалить расходы поездки из офлайн кеша
+  Future<void> _removeExpensesFromOfflineCacheByTrip(String tripId) async {
+    try {
+      final currentExpenses = await _getExpensesFromOfflineCache();
+      final updatedExpenses = currentExpenses.where((e) => e.tripId != tripId).toList();
+      await _cacheExpensesOffline(updatedExpenses);
+    } catch (e) {
+      debugPrint('Ошибка удаления расходов поездки из кеша: $e');
     }
   }
 
@@ -310,7 +372,7 @@ class FishingExpenseRepository {
       final allExpenses = await getUserExpenses();
       return allExpenses.where((expense) => expense.category == category).toList();
     } catch (e) {
-      debugPrint('❌ Ошибка получения расходов по категории: $e');
+      debugPrint('Ошибка получения расходов по категории: $e');
       return [];
     }
   }
@@ -338,8 +400,300 @@ class FishingExpenseRepository {
         endDate: endDate,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка получения статистики: $e');
+      debugPrint('Ошибка получения статистики: $e');
       return FishingExpenseStatistics.fromExpenses([]);
+    }
+  }
+
+  /// Получить суммированные расходы по категориям (для экрана расходов)
+  Future<Map<FishingExpenseCategory, CategoryExpenseSummary>> getCategorySummaries({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      List<FishingExpenseModel> expenses;
+
+      if (startDate != null || endDate != null) {
+        expenses = await getExpensesByPeriod(
+          startDate: startDate ?? DateTime(2020),
+          endDate: endDate ?? DateTime.now(),
+        );
+      } else {
+        expenses = await getUserExpenses();
+      }
+
+      final Map<FishingExpenseCategory, CategoryExpenseSummary> summaries = {};
+
+      for (final category in FishingExpenseCategory.allCategories) {
+        final categoryExpenses = expenses.where((e) => e.category == category).toList();
+
+        if (categoryExpenses.isNotEmpty) {
+          final totalAmount = categoryExpenses.fold<double>(0, (sum, e) => sum + e.amount);
+          final uniqueTrips = categoryExpenses.map((e) => e.tripId).toSet().length;
+
+          summaries[category] = CategoryExpenseSummary(
+            category: category,
+            totalAmount: totalAmount,
+            expenseCount: categoryExpenses.length,
+            tripCount: uniqueTrips,
+            currency: categoryExpenses.first.currency,
+          );
+        }
+      }
+
+      return summaries;
+    } catch (e) {
+      debugPrint('Ошибка получения сводки по категориям: $e');
+      return {};
+    }
+  }
+
+  /// Создать новую поездку с расходами
+  Future<FishingTripModel> createTripWithExpenses({
+    required DateTime date,
+    String? locationName,
+    String? notes,
+    String currency = 'KZT',
+    required Map<FishingExpenseCategory, double> categoryAmounts,
+    required Map<FishingExpenseCategory, String> categoryDescriptions,
+    required Map<FishingExpenseCategory, String> categoryNotes,
+  }) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Создаем поездку
+      final trip = FishingTripModel.create(
+        userId: userId,
+        date: date,
+        locationName: locationName,
+        notes: notes,
+        currency: currency,
+      );
+
+      // Создаем расходы для категорий с указанными суммами
+      final List<FishingExpenseModel> expenses = [];
+      for (final category in FishingExpenseCategory.allCategories) {
+        final amount = categoryAmounts[category] ?? 0.0;
+        if (amount > 0) {
+          final description = categoryDescriptions[category]?.trim() ?? '';
+          final expenseNotes = categoryNotes[category]?.trim() ?? '';
+
+          final expense = FishingExpenseModel.create(
+            userId: userId,
+            tripId: trip.id,
+            amount: amount,
+            description: description.isNotEmpty ? description : 'Расходы',
+            category: category,
+            date: date,
+            currency: currency,
+            notes: expenseNotes.isEmpty ? null : expenseNotes,
+            locationName: locationName,
+          );
+
+          expenses.add(expense);
+        }
+      }
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        // Сохраняем поездку в Firestore
+        await _firestore
+            .collection('fishing_trips')
+            .doc(trip.id)
+            .set(trip.toMap());
+
+        // Сохраняем расходы
+        for (final expense in expenses) {
+          await _firestore
+              .collection(_collectionName)
+              .doc(expense.id)
+              .set(expense.toMap());
+        }
+
+        final syncedTrip = trip.markAsSynced().withExpenses(expenses.map((e) => e.markAsSynced()).toList());
+        return syncedTrip;
+      } else {
+        // Сохраняем офлайн для последующей синхронизации
+        final tripWithExpenses = trip.withExpenses(expenses);
+        return tripWithExpenses;
+      }
+    } catch (e) {
+      debugPrint('Ошибка создания поездки: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить все поездки пользователя с расходами
+  Future<List<FishingTripModel>> getUserTrips() async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        // Загружаем поездки из Firestore
+        final tripsSnapshot = await _firestore
+            .collection('fishing_trips')
+            .where('userId', isEqualTo: userId)
+            .get();
+
+        final trips = <FishingTripModel>[];
+
+        for (var doc in tripsSnapshot.docs) {
+          try {
+            final tripData = doc.data();
+            final trip = FishingTripModel.fromMap(tripData);
+
+            // Загружаем расходы для этой поездки
+            final expenses = await getExpensesByTrip(trip.id);
+            final tripWithExpenses = trip.withExpenses(expenses);
+
+            trips.add(tripWithExpenses);
+          } catch (e) {
+            debugPrint('Ошибка парсинга поездки ${doc.id}: $e');
+          }
+        }
+
+        // Сортируем по дате (новые сначала)
+        trips.sort((a, b) => b.date.compareTo(a.date));
+
+        return trips;
+      } else {
+        // Возвращаем группированные расходы как поездки
+        return await _getTripsFromExpenses();
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки поездок: $e');
+      return await _getTripsFromExpenses();
+    }
+  }
+
+  /// Создать поездки из расходов (группировка по tripId)
+  Future<List<FishingTripModel>> _getTripsFromExpenses() async {
+    try {
+      final expenses = await getUserExpenses();
+      final tripsMap = <String, List<FishingExpenseModel>>{};
+
+      // Группируем расходы по tripId
+      for (final expense in expenses) {
+        if (!tripsMap.containsKey(expense.tripId)) {
+          tripsMap[expense.tripId] = [];
+        }
+        tripsMap[expense.tripId]!.add(expense);
+      }
+
+      final trips = <FishingTripModel>[];
+
+      // Создаем поездки из групп расходов
+      for (final entry in tripsMap.entries) {
+        final tripExpenses = entry.value;
+        if (tripExpenses.isNotEmpty) {
+          final firstExpense = tripExpenses.first;
+
+          final trip = FishingTripModel(
+            id: entry.key,
+            userId: firstExpense.userId,
+            date: firstExpense.date,
+            locationName: firstExpense.locationName,
+            currency: firstExpense.currency,
+            createdAt: tripExpenses.map((e) => e.createdAt).reduce((a, b) => a.isBefore(b) ? a : b),
+            updatedAt: tripExpenses.map((e) => e.updatedAt).reduce((a, b) => a.isAfter(b) ? a : b),
+            isSynced: tripExpenses.every((e) => e.isSynced),
+            expenses: tripExpenses,
+          );
+
+          trips.add(trip);
+        }
+      }
+
+      // Сортируем по дате (новые сначала)
+      trips.sort((a, b) => b.date.compareTo(a.date));
+
+      return trips;
+    } catch (e) {
+      debugPrint('Ошибка создания поездок из расходов: $e');
+      return [];
+    }
+  }
+
+  /// Получить поездку по ID с расходами
+  Future<FishingTripModel?> getTripById(String tripId) async {
+    try {
+      final trips = await getUserTrips();
+      try {
+        return trips.firstWhere((trip) => trip.id == tripId);
+      } catch (e) {
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Ошибка получения поездки: $e');
+      return null;
+    }
+  }
+
+  /// Удалить поездку и все связанные расходы
+  Future<void> deleteTrip(String tripId) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        // Удаляем поездку из Firestore
+        await _firestore.collection('fishing_trips').doc(tripId).delete();
+
+        // Удаляем все связанные расходы
+        await deleteExpensesByTrip(tripId);
+      } else {
+        // Отмечаем для удаления при следующей синхронизации
+        await _offlineStorage.markForDeletion(tripId, true);
+        await deleteExpensesByTrip(tripId);
+      }
+    } catch (e) {
+      debugPrint('Ошибка удаления поездки: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить статистику поездок
+  Future<FishingTripStatistics> getTripStatistics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      List<FishingTripModel> trips;
+
+      if (startDate != null || endDate != null) {
+        final allTrips = await getUserTrips();
+        trips = allTrips.where((trip) {
+          return trip.date.isAfter((startDate ?? DateTime(2020)).subtract(const Duration(days: 1))) &&
+              trip.date.isBefore((endDate ?? DateTime.now()).add(const Duration(days: 1)));
+        }).toList();
+      } else {
+        trips = await getUserTrips();
+      }
+
+      return FishingTripStatistics.fromTrips(
+        trips,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      debugPrint('Ошибка получения статистики поездок: $e');
+      return FishingTripStatistics.fromTrips([]);
     }
   }
 
@@ -348,22 +702,19 @@ class FishingExpenseRepository {
     try {
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (!isOnline) {
-        debugPrint('📱 Нет подключения для синхронизации расходов');
         return;
       }
 
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
-        debugPrint('⚠️ Пользователь не авторизован для синхронизации');
         return;
       }
 
       // Здесь можно добавить логику синхронизации офлайн изменений
       // Пока просто обновляем кеш актуальными данными
       await getUserExpenses();
-      debugPrint('✅ Синхронизация расходов завершена');
     } catch (e) {
-      debugPrint('⚠️ Ошибка синхронизации расходов: $e');
+      debugPrint('Ошибка синхронизации расходов: $e');
     }
   }
 
@@ -390,30 +741,26 @@ class FishingExpenseRepository {
           batch.delete(doc.reference);
         }
         await batch.commit();
-
-        debugPrint('✅ Все расходы удалены из Firestore');
       } else {
         // Отмечаем все для удаления
         await _offlineStorage.markAllNotesForDeletion();
-        debugPrint('📱 Все расходы отмечены для удаления');
       }
 
       // Очищаем офлайн кеш
-      await _clearOfflineCache();
+      await clearOfflineCache();
     } catch (e) {
-      debugPrint('❌ Ошибка удаления всех расходов: $e');
+      debugPrint('Ошибка удаления всех расходов: $e');
       rethrow;
     }
   }
 
-  /// Очистить офлайн кеш
-  Future<void> _clearOfflineCache() async {
+  /// Очистить офлайн кеш (публичный метод)
+  Future<void> clearOfflineCache() async {
     try {
       final prefs = await _offlineStorage.preferences;
       await prefs.remove(_offlineKey);
-      debugPrint('🧹 Офлайн кеш расходов очищен');
     } catch (e) {
-      debugPrint('⚠️ Ошибка очистки офлайн кеша: $e');
+      debugPrint('Ошибка очистки офлайн кеша: $e');
     }
   }
 
@@ -423,7 +770,7 @@ class FishingExpenseRepository {
       final expenses = await _getExpensesFromOfflineCache();
       return expenses.where((expense) => !expense.isSynced).length;
     } catch (e) {
-      debugPrint('⚠️ Ошибка подсчета несинхронизированных расходов: $e');
+      debugPrint('Ошибка подсчета несинхронизированных расходов: $e');
       return 0;
     }
   }
@@ -442,7 +789,7 @@ class FishingExpenseRepository {
         'lastUpdate': DateTime.now().toIso8601String(),
       };
     } catch (e) {
-      debugPrint('⚠️ Ошибка получения статуса репозитория: $e');
+      debugPrint('Ошибка получения статуса репозитория: $e');
       return {
         'isOnline': false,
         'totalExpenses': 0,
@@ -466,7 +813,7 @@ class FishingExpenseRepository {
             expense.locationName?.toLowerCase().contains(lowercaseQuery) == true;
       }).toList();
     } catch (e) {
-      debugPrint('❌ Ошибка поиска расходов: $e');
+      debugPrint('Ошибка поиска расходов: $e');
       return [];
     }
   }
@@ -492,5 +839,63 @@ class FishingExpenseRepository {
 
       return expenses;
     });
+  }
+}
+
+/// Сводка расходов по категории
+class CategoryExpenseSummary {
+  /// Категория расходов
+  final FishingExpenseCategory category;
+
+  /// Общая сумма по категории
+  final double totalAmount;
+
+  /// Количество расходов
+  final int expenseCount;
+
+  /// Количество поездок с этой категорией
+  final int tripCount;
+
+  /// Валюта
+  final String currency;
+
+  const CategoryExpenseSummary({
+    required this.category,
+    required this.totalAmount,
+    required this.expenseCount,
+    required this.tripCount,
+    required this.currency,
+  });
+
+  /// Получить символ валюты
+  String get currencySymbol {
+    switch (currency) {
+      case 'KZT':
+        return '₸';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'RUB':
+        return '₽';
+      default:
+        return currency;
+    }
+  }
+
+  /// Отформатированная сумма
+  String get formattedAmount {
+    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
+  }
+
+  /// Описание количества поездок
+  String get tripCountDescription {
+    if (tripCount == 1) {
+      return 'из 1 поездки';
+    } else if (tripCount >= 2 && tripCount <= 4) {
+      return 'из $tripCount поездок';
+    } else {
+      return 'из $tripCount поездок';
+    }
   }
 }

@@ -1,9 +1,12 @@
 // Путь: lib/screens/budget/fishing_budget_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
+import '../../models/fishing_trip_model.dart';
 import '../../repositories/fishing_expense_repository.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
@@ -12,6 +15,7 @@ import '../../widgets/responsive/responsive_button.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 import 'expense_list_screen.dart';
 import 'budget_statistics_screen.dart';
+import 'trip_details_screen.dart';
 
 /// Главный экран управления бюджетом рыбалки
 class FishingBudgetScreen extends StatefulWidget {
@@ -27,8 +31,8 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   late TabController _tabController;
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
 
-  List<FishingExpenseModel> _expenses = [];
-  FishingExpenseStatistics? _statistics;
+  List<FishingTripModel> _trips = [];
+  FishingTripStatistics? _statistics;
   bool _isLoading = true;
   String _selectedPeriod = 'month'; // month, year, all
 
@@ -36,7 +40,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadExpenses();
+    _loadTrips();
   }
 
   @override
@@ -45,17 +49,17 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     super.dispose();
   }
 
-  Future<void> _loadExpenses() async {
+  Future<void> _loadTrips() async {
     try {
       setState(() => _isLoading = true);
 
-      final expenses = await _expenseRepository.getUserExpenses();
-      final filteredExpenses = _filterExpensesByPeriod(expenses, _selectedPeriod);
-      final statistics = FishingExpenseStatistics.fromExpenses(filteredExpenses);
+      final trips = await _expenseRepository.getUserTrips();
+      final filteredTrips = _filterTripsByPeriod(trips, _selectedPeriod);
+      final statistics = FishingTripStatistics.fromTrips(filteredTrips);
 
       if (mounted) {
         setState(() {
-          _expenses = expenses;
+          _trips = trips;
           _statistics = statistics;
           _isLoading = false;
         });
@@ -68,8 +72,45 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     }
   }
 
-  List<FishingExpenseModel> _filterExpensesByPeriod(
-      List<FishingExpenseModel> expenses,
+  Future<void> _checkFirestoreDirectly() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+
+      if (userId == null) {
+        _showErrorSnackBar('Пользователь не авторизован');
+        return;
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('fishing_trips')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      _showErrorSnackBar('Firestore: ${snapshot.docs.length} поездок | Локально: ${_trips.length} поездок');
+    } catch (e) {
+      _showErrorSnackBar('Ошибка Firestore: $e');
+    }
+  }
+
+  Future<void> _forceFirestoreSync() async {
+    try {
+      setState(() => _isLoading = true);
+
+      // ТОЛЬКО очищаем локальный кеш через публичный метод репозитория
+      await _expenseRepository.clearOfflineCache();
+
+      // Загружаем заново из Firestore
+      await _loadTrips();
+
+      _showErrorSnackBar('Данные синхронизированы с Firestore (кеш обновлен)');
+    } catch (e) {
+      _showErrorSnackBar('Ошибка синхронизации: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  List<FishingTripModel> _filterTripsByPeriod(
+      List<FishingTripModel> trips,
       String period
       ) {
     final now = DateTime.now();
@@ -84,11 +125,11 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         break;
       case 'all':
       default:
-        return expenses;
+        return trips;
     }
 
-    return expenses.where((expense) =>
-    expense.date.isAfter(startDate) || expense.date.isAtSameMomentAs(startDate)
+    return trips.where((trip) =>
+    trip.date.isAfter(startDate) || trip.date.isAtSameMomentAs(startDate)
     ).toList();
   }
 
@@ -96,7 +137,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     setState(() {
       _selectedPeriod = period;
     });
-    _loadExpenses();
+    _loadTrips();
   }
 
   void _showErrorSnackBar(String message) {
@@ -105,6 +146,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -118,7 +160,20 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
 
     if (result == true) {
-      _loadExpenses();
+      _loadTrips();
+    }
+  }
+
+  void _navigateToTripDetails(FishingTripModel trip) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TripDetailsScreen(trip: trip),
+      ),
+    );
+
+    if (result == true) {
+      _loadTrips();
     }
   }
 
@@ -146,13 +201,15 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // Кнопка обновления
           IconButton(
             icon: Icon(
               Icons.refresh,
               color: AppConstants.textColor,
               size: ResponsiveUtils.getIconSize(context),
             ),
-            onPressed: _loadExpenses,
+            onPressed: _loadTrips,
+            tooltip: 'Обновить',
           ),
         ],
         bottom: TabBar(
@@ -204,7 +261,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       addHorizontalPadding: true,
       addVerticalPadding: true,
       child: RefreshIndicator(
-        onRefresh: _loadExpenses,
+        onRefresh: _loadTrips,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
@@ -215,9 +272,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               const SizedBox(height: 24),
               _buildQuickActions(),
               const SizedBox(height: 24),
-              _buildCategoriesOverview(),
-              const SizedBox(height: 24),
-              _buildRecentExpenses(),
+              _buildRecentTrips(),
               const SizedBox(height: 100), // Отступ для FAB
             ],
           ),
@@ -227,17 +282,14 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   }
 
   Widget _buildExpensesTab() {
-    final filteredExpenses = _filterExpensesByPeriod(_expenses, _selectedPeriod);
     return ExpenseListScreen(
-      expenses: filteredExpenses,
-      onExpenseUpdated: _loadExpenses,
+      onExpenseUpdated: _loadTrips,
     );
   }
 
   Widget _buildAnalyticsTab() {
     return BudgetStatisticsScreen(
       statistics: _statistics,
-      expenses: _filterExpensesByPeriod(_expenses, _selectedPeriod),
     );
   }
 
@@ -329,13 +381,9 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
     if (statistics == null) return const SizedBox.shrink();
 
-    // Рассчитываем количество уникальных поездок
-    final uniqueDates = _filterExpensesByPeriod(_expenses, _selectedPeriod)
-        .map((e) => DateTime(e.date.year, e.date.month, e.date.day))
-        .toSet()
-        .length;
-
-    final avgPerTrip = uniqueDates > 0 ? statistics.totalAmount / uniqueDates : 0;
+    final filteredTrips = _filterTripsByPeriod(_trips, _selectedPeriod);
+    final tripCount = filteredTrips.length;
+    final avgPerTrip = tripCount > 0 ? statistics.totalAmount / tripCount : 0;
 
     return Row(
       children: [
@@ -348,7 +396,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         Expanded(
           child: _buildStatItem(
             localizations.translate('trips_count') ?? 'Поездок',
-            uniqueDates.toString(),
+            tripCount.toString(),
           ),
         ),
       ],
@@ -420,182 +468,13 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
-  Widget _buildCategoriesOverview() {
+  Widget _buildRecentTrips() {
     final localizations = AppLocalizations.of(context);
-    final statistics = _statistics;
-
-    if (statistics == null || statistics.categoryTotals.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppConstants.cardColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ResponsiveText(
-              localizations.translate('expense_categories') ?? 'Категории расходов',
-              type: ResponsiveTextType.titleMedium,
-              fontWeight: FontWeight.w600,
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: ResponsiveText(
-                localizations.translate('no_expenses_yet') ?? 'Пока нет расходов',
-                type: ResponsiveTextType.caption,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppConstants.cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ResponsiveText(
-            localizations.translate('expense_categories') ?? 'Категории расходов',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
-          ),
-          const SizedBox(height: 16),
-          ...FishingExpenseCategory.allCategories.map((category) {
-            final amount = statistics.categoryTotals[category] ?? 0;
-            return _buildCategoryItem(category, amount);
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(FishingExpenseCategory category, double amount) {
-    final localizations = AppLocalizations.of(context);
-
-    // Получаем локализованное название категории
-    String categoryName;
-    switch (category) {
-      case FishingExpenseCategory.tackle:
-        categoryName = localizations.translate('category_tackle') ?? 'Снасти и оборудование';
-        break;
-      case FishingExpenseCategory.bait:
-        categoryName = localizations.translate('category_bait') ?? 'Наживка и прикормка';
-        break;
-      case FishingExpenseCategory.transport:
-        categoryName = localizations.translate('category_transport') ?? 'Транспорт';
-        break;
-      case FishingExpenseCategory.accommodation:
-        categoryName = localizations.translate('category_accommodation') ?? 'Проживание';
-        break;
-      case FishingExpenseCategory.food:
-        categoryName = localizations.translate('category_food') ?? 'Питание';
-        break;
-      case FishingExpenseCategory.license:
-        categoryName = localizations.translate('category_license') ?? 'Лицензии';
-        break;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _getCategoryColor(category).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                category.icon,
-                style: const TextStyle(fontSize: 20),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ResponsiveText(
-                  categoryName,
-                  type: ResponsiveTextType.bodyLarge,
-                  fontWeight: FontWeight.w500,
-                ),
-                ResponsiveText(
-                  _getCategoryDescription(category, localizations),
-                  type: ResponsiveTextType.labelSmall,
-                  color: AppConstants.textColor.withOpacity(0.7),
-                ),
-              ],
-            ),
-          ),
-          ResponsiveText(
-            '₸ ${amount.toStringAsFixed(0)}',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.bold,
-            color: _getCategoryColor(category),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getCategoryColor(FishingExpenseCategory category) {
-    switch (category) {
-      case FishingExpenseCategory.tackle:
-        return const Color(0xFF2E7D32);
-      case FishingExpenseCategory.bait:
-        return const Color(0xFFFF8C00);
-      case FishingExpenseCategory.transport:
-        return const Color(0xFF1976D2);
-      case FishingExpenseCategory.accommodation:
-        return const Color(0xFF8E24AA);
-      case FishingExpenseCategory.food:
-        return const Color(0xFFD32F2F);
-      case FishingExpenseCategory.license:
-        return const Color(0xFF388E3C);
-    }
-  }
-
-  String _getCategoryDescription(FishingExpenseCategory category, AppLocalizations localizations) {
-    switch (category) {
-      case FishingExpenseCategory.tackle:
-        return localizations.translate('category_tackle_desc') ?? 'Удочки, катушки, приманки';
-      case FishingExpenseCategory.bait:
-        return localizations.translate('category_bait_desc') ?? 'Черви, опарыш, прикормка';
-      case FishingExpenseCategory.transport:
-        return localizations.translate('category_transport_desc') ?? 'Бензин, такси, аренда';
-      case FishingExpenseCategory.accommodation:
-        return localizations.translate('category_accommodation_desc') ?? 'Отель, база отдыха';
-      case FishingExpenseCategory.food:
-        return localizations.translate('category_food_desc') ?? 'Еда и напитки';
-      case FishingExpenseCategory.license:
-        return localizations.translate('category_license_desc') ?? 'Путевки, лицензии';
-    }
-  }
-
-  Widget _buildRecentExpenses() {
-    final localizations = AppLocalizations.of(context);
-    final recentExpenses = _filterExpensesByPeriod(_expenses, _selectedPeriod)
+    final recentTrips = _filterTripsByPeriod(_trips, _selectedPeriod)
         .take(5)
         .toList();
 
-    if (recentExpenses.isEmpty) {
+    if (recentTrips.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -607,7 +486,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ResponsiveText(
-              localizations.translate('recent_expenses') ?? 'Последние расходы',
+              localizations.translate('recent_trips') ?? 'Последние поездки',
               type: ResponsiveTextType.titleMedium,
               fontWeight: FontWeight.w600,
             ),
@@ -615,15 +494,15 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
             Center(
               child: Column(
                 children: [
-                  const Icon(Icons.receipt_long, size: 48, color: Colors.grey),
+                  const Icon(Icons.directions_boat, size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
                   ResponsiveText(
-                    localizations.translate('no_expenses_yet') ?? 'Пока нет расходов',
+                    localizations.translate('no_trips_yet') ?? 'Пока нет поездок',
                     type: ResponsiveTextType.caption,
                   ),
                   const SizedBox(height: 8),
                   ResponsiveText(
-                    localizations.translate('add_first_expense') ?? 'Нажмите "+" чтобы добавить первый расход',
+                    localizations.translate('add_first_trip') ?? 'Нажмите "+" чтобы добавить первую поездку',
                     type: ResponsiveTextType.caption,
                   ),
                 ],
@@ -645,69 +524,117 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ResponsiveText(
-            localizations.translate('recent_expenses') ?? 'Последние расходы',
+            localizations.translate('recent_trips') ?? 'Последние поездки',
             type: ResponsiveTextType.titleMedium,
             fontWeight: FontWeight.w600,
           ),
           const SizedBox(height: 16),
-          ...recentExpenses.map((expense) => _buildExpenseItem(expense)).toList(),
+          ...recentTrips.map((trip) => _buildTripItem(trip)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildExpenseItem(FishingExpenseModel expense) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _getCategoryColor(expense.category),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                expense.category.icon,
-                style: const TextStyle(fontSize: 16),
+  Widget _buildTripItem(FishingTripModel trip) {
+    final totalAmount = trip.totalAmount;
+    final expenseCount = trip.expenses?.length ?? 0;
+
+    return InkWell(
+      onTap: () => _navigateToTripDetails(trip),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppConstants.backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.directions_boat,
+                  size: 20,
+                  color: AppConstants.primaryColor,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ResponsiveText(
+                    trip.displayTitle,
+                    type: ResponsiveTextType.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      ResponsiveText(
+                        _formatDate(trip.date),
+                        type: ResponsiveTextType.labelSmall,
+                        color: AppConstants.textColor.withOpacity(0.7),
+                      ),
+                      if (expenseCount > 0) ...[
+                        Text(
+                          ' • ',
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                        ResponsiveText(
+                          '$expenseCount ${_getExpenseCountText(expenseCount)}',
+                          type: ResponsiveTextType.labelSmall,
+                          color: AppConstants.textColor.withOpacity(0.7),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 ResponsiveText(
-                  expense.shortDescription,
-                  type: ResponsiveTextType.bodyMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  '${trip.currencySymbol} ${totalAmount.toStringAsFixed(0)}',
+                  type: ResponsiveTextType.bodyLarge,
+                  fontWeight: FontWeight.bold,
+                  color: AppConstants.textColor,
                 ),
-                ResponsiveText(
-                  _formatDate(expense.date),
-                  type: ResponsiveTextType.labelSmall,
-                  color: AppConstants.textColor.withOpacity(0.7),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: AppConstants.textColor.withOpacity(0.5),
                 ),
               ],
             ),
-          ),
-          ResponsiveText(
-            '-${expense.formattedAmount}',
-            type: ResponsiveTextType.bodyLarge,
-            fontWeight: FontWeight.bold,
-            color: AppConstants.textColor,
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  String _getExpenseCountText(int count) {
+    if (count == 1) {
+      return 'расход';
+    } else if (count >= 2 && count <= 4) {
+      return 'расхода';
+    } else {
+      return 'расходов';
+    }
   }
 
   String _formatDate(DateTime date) {
