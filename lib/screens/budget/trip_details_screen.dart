@@ -371,6 +371,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+  String _formatFullAmount(double amount) {
+    // Форматируем полные суммы с разделителями тысяч
+    final formatter = amount.toStringAsFixed(0);
+    final chars = formatter.split('').reversed.toList();
+    final result = <String>[];
+
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        result.add(' ');
+      }
+      result.add(chars[i]);
+    }
+
+    return result.reversed.join();
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -455,8 +471,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 const SizedBox(height: 16),
                 _buildTripHeader(trip, localizations),
                 const SizedBox(height: 24),
-                _buildTripSummary(trip, localizations),
-                const SizedBox(height: 24),
                 _buildExpensesList(trip, localizations),
                 const SizedBox(height: 100),
               ],
@@ -484,152 +498,96 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Название и дата поездки
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+              Text(
+                trip.displayTitle,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-                child: const Center(
-                  child: Icon(Icons.directions_boat, color: Colors.white, size: 24),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _formatDate(trip.date, localizations),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
-              const SizedBox(width: 16),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Статистика поездки
+          Row(
+            children: [
+              // Общая сумма
               Expanded(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      trip.displayTitle,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      _formatDate(trip.date, localizations),
+                      localizations.translate('total_amount') ?? 'Общая сумма',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${trip.currencySymbol} ${_formatFullAmount(trip.totalAmount)}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              // Количество расходов
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      localizations.translate('expenses_count') ?? 'Расходов',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${trip.expenses?.length ?? 0}',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    localizations.translate('total_amount') ?? 'Общая сумма',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  Text(
-                    '${trip.currencySymbol} ${trip.totalAmount.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    localizations.translate('expenses_count') ?? 'Расходов',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  Text(
-                    '${trip.expenses?.length ?? 0}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTripSummary(FishingTripModel trip, AppLocalizations localizations) {
-    final expenses = trip.expenses ?? [];
-    if (expenses.isEmpty) return const SizedBox.shrink();
-
-    // Группируем расходы по категориям
-    final categoryTotals = <FishingExpenseCategory, double>{};
-    for (final expense in expenses) {
-      categoryTotals[expense.category] = (categoryTotals[expense.category] ?? 0) + expense.amount;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppConstants.cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ResponsiveText(
-            localizations.translate('expenses_by_category') ?? 'Расходы по категориям',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
-          ),
-          const SizedBox(height: 16),
-          ...categoryTotals.entries.map((entry) =>
-              _buildCategorySummaryItem(entry.key, entry.value, localizations)
-          ).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategorySummaryItem(FishingExpenseCategory category, double amount, AppLocalizations localizations) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Text(category.icon, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ResponsiveText(
-              _getCategoryName(category, localizations),
-              type: ResponsiveTextType.bodyMedium,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          ResponsiveText(
-            '${_currentTrip!.currencySymbol} ${amount.toStringAsFixed(0)}',
-            type: ResponsiveTextType.bodyLarge,
-            fontWeight: FontWeight.bold,
-            color: _getCategoryColor(category),
           ),
         ],
       ),

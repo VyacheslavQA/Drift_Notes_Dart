@@ -243,12 +243,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           _buildAnalyticsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddExpense,
-        backgroundColor: AppConstants.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
-        tooltip: 'Добавить расходы на рыбалку',
-      ),
+      // Убрали FloatingActionButton
     );
   }
 
@@ -273,7 +268,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               _buildQuickActions(),
               const SizedBox(height: 24),
               _buildRecentTrips(),
-              const SizedBox(height: 100), // Отступ для FAB
+              const SizedBox(height: 80), // Уменьшили отступ, так как убрали FAB
             ],
           ),
         ),
@@ -314,17 +309,28 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ResponsiveText(
+          Text(
             localizations.translate('total_expenses') ?? 'Общие расходы',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppConstants.textColor,
+            ),
           ),
-          const SizedBox(height: 8),
-          ResponsiveText(
-            statistics?.formattedTotal ?? '₸ 0',
-            type: ResponsiveTextType.displayMedium,
-            color: AppConstants.textColor,
-            fontWeight: FontWeight.bold,
+          const SizedBox(height: 12),
+          // Большая сумма с адаптивным размером
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _formatLargeAmount(statistics?.totalAmount ?? 0, '₸'),
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: AppConstants.textColor,
+              ),
+              maxLines: 1,
+            ),
           ),
           const SizedBox(height: 16),
           _buildPeriodSelector(),
@@ -383,19 +389,19 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
     final filteredTrips = _filterTripsByPeriod(_trips, _selectedPeriod);
     final tripCount = filteredTrips.length;
-    final avgPerTrip = tripCount > 0 ? statistics.totalAmount / tripCount : 0;
+    final avgPerTrip = tripCount > 0 ? (statistics.totalAmount / tripCount).toDouble() : 0.0;
 
     return Row(
       children: [
         Expanded(
           child: _buildStatItem(
-            localizations.translate('avg_per_trip') ?? 'Средние за поездку',
-            '₸ ${avgPerTrip.toStringAsFixed(0)}',
+            localizations.translate('avg_per_trip') ?? 'Средняя за поездку',
+            _formatLargeAmount(avgPerTrip, '₸'),
           ),
         ),
         Expanded(
           child: _buildStatItem(
-            localizations.translate('trips_count') ?? 'Поездок',
+            localizations.translate('trips_count') ?? 'Количество поездок',
             tripCount.toString(),
           ),
         ),
@@ -406,17 +412,31 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   Widget _buildStatItem(String label, String value) {
     return Column(
       children: [
-        ResponsiveText(
-          value,
-          type: ResponsiveTextType.titleLarge,
-          color: AppConstants.textColor,
-          fontWeight: FontWeight.bold,
+        // Значение с адаптивным размером
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppConstants.textColor,
+            ),
+            maxLines: 1,
+            textAlign: TextAlign.center,
+          ),
         ),
-        ResponsiveText(
+        const SizedBox(height: 4),
+        // Подпись
+        Text(
           label,
-          type: ResponsiveTextType.labelSmall,
-          color: AppConstants.textColor.withOpacity(0.7),
+          style: TextStyle(
+            fontSize: 12,
+            color: AppConstants.textColor.withOpacity(0.7),
+          ),
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -427,43 +447,28 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _navigateToAddExpense,
-              icon: const Icon(Icons.add_card),
-              label: Text(localizations.translate('add_expense') ?? 'Добавить расход'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _navigateToAddExpense,
+          icon: const Icon(Icons.add_card, size: 24),
+          label: Text(
+            localizations.translate('add_expense') ?? 'Добавить расход',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                // TODO: Implement budget planning
-                _showErrorSnackBar('Функция в разработке');
-              },
-              icon: const Icon(Icons.trending_up),
-              label: Text(localizations.translate('planning') ?? 'Планирование'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppConstants.primaryColor,
-                side: BorderSide(color: AppConstants.primaryColor),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
+            elevation: 2,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -541,90 +546,135 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
     return InkWell(
       onTap: () => _navigateToTripDetails(trip),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppConstants.backgroundColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppConstants.textColor.withOpacity(0.1),
+            width: 1,
+          ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.directions_boat,
-                  size: 20,
-                  color: AppConstants.primaryColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ResponsiveText(
-                    trip.displayTitle,
-                    type: ResponsiveTextType.bodyMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      ResponsiveText(
-                        _formatDate(trip.date),
-                        type: ResponsiveTextType.labelSmall,
-                        color: AppConstants.textColor.withOpacity(0.7),
-                      ),
-                      if (expenseCount > 0) ...[
-                        Text(
-                          ' • ',
-                          style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
-                        ResponsiveText(
-                          '$expenseCount ${_getExpenseCountText(expenseCount)}',
-                          type: ResponsiveTextType.labelSmall,
-                          color: AppConstants.textColor.withOpacity(0.7),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            // Первая строка: название + стрелка
+            Row(
               children: [
-                ResponsiveText(
-                  '${trip.currencySymbol} ${totalAmount.toStringAsFixed(0)}',
-                  type: ResponsiveTextType.bodyLarge,
-                  fontWeight: FontWeight.bold,
-                  color: AppConstants.textColor,
+                Expanded(
+                  child: Text(
+                    trip.displayTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppConstants.textColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Icon(
                   Icons.arrow_forward_ios,
-                  size: 12,
+                  size: 16,
                   color: AppConstants.textColor.withOpacity(0.5),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Вторая строка: дата + количество расходов
+            Row(
+              children: [
+                Text(
+                  _formatDate(trip.date),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (expenseCount > 0) ...[
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppConstants.textColor.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Text(
+                    '$expenseCount ${_getExpenseCountText(expenseCount)}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppConstants.textColor.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Третья строка: сумма на отдельной строке
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${trip.currencySymbol} ${_formatFullAmount(totalAmount)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppConstants.primaryColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatFullAmount(double amount) {
+    // Форматируем полные суммы с разделителями тысяч
+    final formatter = amount.toStringAsFixed(0);
+    final chars = formatter.split('').reversed.toList();
+    final result = <String>[];
+
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        result.add(' ');
+      }
+      result.add(chars[i]);
+    }
+
+    return result.reversed.join();
+  }
+
+  String _formatAmount(double amount, String currencySymbol) {
+    // Форматируем суммы для карточек поездок (краткий формат)
+    if (amount >= 1000000) {
+      return '$currencySymbol ${(amount / 1000000).toStringAsFixed(1)}М';
+    } else if (amount >= 1000) {
+      return '$currencySymbol ${(amount / 1000).toStringAsFixed(0)}К';
+    } else {
+      return '$currencySymbol ${amount.toStringAsFixed(0)}';
+    }
+  }
+
+  String _formatLargeAmount(double amount, String currencySymbol) {
+    // Форматируем большие суммы для статистики (показываем полностью с разделителями)
+    return '$currencySymbol ${_formatFullAmount(amount)}';
   }
 
   String _getExpenseCountText(int count) {

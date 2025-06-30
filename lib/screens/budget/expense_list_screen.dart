@@ -28,26 +28,18 @@ class ExpenseListScreen extends StatefulWidget {
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
-  final TextEditingController _searchController = TextEditingController();
 
   Map<FishingExpenseCategory, CategoryExpenseSummary> _categorySummaries = {};
   List<CategoryExpenseSummary> _filteredSummaries = [];
-  String _sortBy = 'amount'; // amount, trips, category
-  bool _sortAscending = false;
-  String _selectedPeriod = 'all'; // month, year, all
+  String _selectedPeriod = 'all'; // month, year, all, custom
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
   bool _isLoading = true;
-  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _loadCategorySummaries();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadCategorySummaries() async {
@@ -67,6 +59,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           startDate = DateTime(now.year, 1, 1);
           endDate = DateTime(now.year, 12, 31);
           break;
+        case 'custom':
+          startDate = _customStartDate;
+          endDate = _customEndDate;
+          break;
         case 'all':
         default:
           startDate = null;
@@ -82,9 +78,9 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       if (mounted) {
         setState(() {
           _categorySummaries = summaries;
+          _filteredSummaries = summaries.values.toList();
           _isLoading = false;
         });
-        _applyFilters();
       }
     } catch (e) {
       if (mounted) {
@@ -94,91 +90,220 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     }
   }
 
-  void _applyFilters() {
-    _filteredSummaries = _categorySummaries.values.toList();
-
-    // Поиск по названию категории
-    final searchQuery = _searchController.text.toLowerCase().trim();
-    if (searchQuery.isNotEmpty) {
-      final localizations = AppLocalizations.of(context);
-      _filteredSummaries = _filteredSummaries.where((summary) {
-        final categoryName = _getCategoryName(summary.category, localizations).toLowerCase();
-        return categoryName.contains(searchQuery);
-      }).toList();
-    }
-
-    _sortSummaries();
-  }
-
-  void _sortSummaries() {
-    switch (_sortBy) {
-      case 'amount':
-        _filteredSummaries.sort((a, b) =>
-        _sortAscending ? a.totalAmount.compareTo(b.totalAmount) : b.totalAmount.compareTo(a.totalAmount));
-        break;
-      case 'trips':
-        _filteredSummaries.sort((a, b) =>
-        _sortAscending ? a.tripCount.compareTo(b.tripCount) : b.tripCount.compareTo(a.tripCount));
-        break;
-      case 'category':
-        _filteredSummaries.sort((a, b) {
-          final categoryComparison = a.category.id.compareTo(b.category.id);
-          return _sortAscending ? categoryComparison : -categoryComparison;
-        });
-        break;
-    }
-    setState(() {});
-  }
-
-  void _onSearchChanged(String query) {
-    setState(() {
-      _isSearching = query.isNotEmpty;
-    });
-    _applyFilters();
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _isSearching = false;
-    });
-    _applyFilters();
-  }
-
   void _onPeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
+      if (period != 'custom') {
+        _customStartDate = null;
+        _customEndDate = null;
+      }
     });
-    _loadCategorySummaries();
+
+    if (period == 'custom') {
+      _showCustomDatePicker();
+    } else {
+      _loadCategorySummaries();
+    }
   }
 
-  void _showSortDialog() {
+  Future<void> _showCustomDatePicker() async {
     final localizations = AppLocalizations.of(context);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
-        title: ResponsiveText(
-          localizations.translate('sort_by') ?? 'Сортировать по',
-          type: ResponsiveTextType.titleLarge,
-          fontWeight: FontWeight.w600,
+        title: Text(
+          localizations.translate('select_date_range') ?? 'Выберите период',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppConstants.textColor,
+          ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSortOption('amount', localizations.translate('amount') ?? 'Сумма', Icons.attach_money),
-            _buildSortOption('trips', localizations.translate('trips_count') ?? 'Количество поездок', Icons.trip_origin),
-            _buildSortOption('category', localizations.translate('category') ?? 'Категория', Icons.category),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Дата начала
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _customStartDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.dark(
+                              primary: AppConstants.primaryColor,
+                              surface: AppConstants.cardColor,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        _customStartDate = date;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppConstants.textColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: AppConstants.textColor.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('start_date') ?? 'Дата начала',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                ),
+                              ),
+                              Text(
+                                _customStartDate != null
+                                    ? _formatDate(_customStartDate!)
+                                    : localizations.translate('select_date') ?? 'Выберите дату',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: AppConstants.textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Дата окончания
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _customEndDate ?? DateTime.now(),
+                      firstDate: _customStartDate ?? DateTime(2020),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.dark(
+                              primary: AppConstants.primaryColor,
+                              surface: AppConstants.cardColor,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        _customEndDate = date;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppConstants.textColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: AppConstants.textColor.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('end_date') ?? 'Дата окончания',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                ),
+                              ),
+                              Text(
+                                _customEndDate != null
+                                    ? _formatDate(_customEndDate!)
+                                    : localizations.translate('select_date') ?? 'Выберите дату',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: AppConstants.textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: ResponsiveText(
+            onPressed: () {
+              setState(() {
+                _selectedPeriod = 'all';
+                _customStartDate = null;
+                _customEndDate = null;
+              });
+              Navigator.pop(context);
+              _loadCategorySummaries();
+            },
+            child: Text(
               localizations.translate('cancel') ?? 'Отмена',
-              type: ResponsiveTextType.labelLarge,
-              color: AppConstants.textColor.withOpacity(0.7),
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _customStartDate != null && _customEndDate != null
+                ? () {
+              Navigator.pop(context);
+              _loadCategorySummaries();
+            }
+                : null,
+            child: Text(
+              localizations.translate('apply') ?? 'Применить',
+              style: TextStyle(
+                color: _customStartDate != null && _customEndDate != null
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withOpacity(0.3),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -186,36 +311,36 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     );
   }
 
-  Widget _buildSortOption(String sortKey, String label, IconData icon) {
-    final isSelected = _sortBy == sortKey;
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
 
-    return ListTile(
-      leading: Icon(icon, color: isSelected ? AppConstants.primaryColor : AppConstants.textColor),
-      title: ResponsiveText(
-        label,
-        type: ResponsiveTextType.bodyLarge,
-        color: isSelected ? AppConstants.primaryColor : AppConstants.textColor,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      ),
-      trailing: isSelected
-          ? Icon(
-        _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-        color: AppConstants.primaryColor,
-      )
-          : null,
-      onTap: () {
-        setState(() {
-          if (_sortBy == sortKey) {
-            _sortAscending = !_sortAscending;
-          } else {
-            _sortBy = sortKey;
-            _sortAscending = false;
-          }
-        });
-        _sortSummaries();
-        Navigator.pop(context);
-      },
-    );
+  String _getDateRangeDescription() {
+    final localizations = AppLocalizations.of(context);
+
+    switch (_selectedPeriod) {
+      case 'month':
+        final now = DateTime.now();
+        return '${_getMonthName(now.month)} ${now.year}';
+      case 'year':
+        return DateTime.now().year.toString();
+      case 'custom':
+        if (_customStartDate != null && _customEndDate != null) {
+          return '${_formatDate(_customStartDate!)} - ${_formatDate(_customEndDate!)}';
+        }
+        return localizations.translate('custom_period') ?? 'Произвольный период';
+      case 'all':
+      default:
+        return localizations.translate('all_time') ?? 'Всё время';
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    return months[month - 1];
   }
 
   String _getCategoryName(FishingExpenseCategory category, AppLocalizations localizations) {
@@ -380,23 +505,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Дополнительная информация
-              Text(
-                localizations.translate('category_info') ?? 'Информация о категории',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppConstants.textColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _getCategoryDescription(summary.category, localizations),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppConstants.textColor.withOpacity(0.8),
-                  height: 1.4,
-                ),
+              // Период
+              _buildStatRow(
+                localizations.translate('period') ?? 'Период',
+                _getDateRangeDescription(),
+                AppConstants.textColor,
               ),
               const SizedBox(height: 40),
             ],
@@ -444,13 +557,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         children: [
           _buildHeaderSection(localizations),
           const SizedBox(height: 16),
-          _buildSearchAndFilters(localizations),
+          _buildDateFilter(localizations),
           const SizedBox(height: 16),
           Expanded(
             child: _categorySummaries.isEmpty
                 ? _buildEmptyState(localizations)
-                : _filteredSummaries.isEmpty
-                ? _buildNoResultsState(localizations)
                 : _buildCategoriesList(),
           ),
         ],
@@ -468,115 +579,101 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ResponsiveText(
+          Text(
             localizations.translate('expense_categories') ?? 'Категории расходов',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppConstants.textColor,
+            ),
           ),
           const SizedBox(height: 8),
-          ResponsiveText(
+          Text(
             localizations.translate('categories_summary_desc') ?? 'Суммированные расходы по категориям со всех поездок',
-            type: ResponsiveTextType.bodyMedium,
-            color: AppConstants.textColor.withOpacity(0.7),
+            style: TextStyle(
+              fontSize: 14,
+              color: AppConstants.textColor.withOpacity(0.7),
+            ),
           ),
-          const SizedBox(height: 16),
-          _buildPeriodSelector(localizations),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodSelector(AppLocalizations localizations) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц'),
-        _buildPeriodButton('year', localizations.translate('year') ?? 'Год'),
-        _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время'),
-      ],
+  Widget _buildDateFilter(AppLocalizations localizations) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('filter_by_period') ?? 'Фильтр по периоду',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppConstants.textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _getDateRangeDescription(),
+            style: TextStyle(
+              fontSize: 14,
+              color: AppConstants.textColor.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Первая строка: основные периоды
+          Row(
+            children: [
+              Expanded(child: _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц')),
+              const SizedBox(width: 8),
+              Expanded(child: _buildPeriodButton('year', localizations.translate('year') ?? 'Год')),
+              const SizedBox(width: 8),
+              Expanded(child: _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Вторая строка: кастомный период
+          SizedBox(
+            width: double.infinity,
+            child: _buildPeriodButton('custom', localizations.translate('custom_period') ?? 'Произвольный период'),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPeriodButton(String period, String label) {
     final isSelected = _selectedPeriod == period;
 
-    return Expanded(
-      child: InkWell(
-        onTap: () => _onPeriodChanged(period),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: () => _onPeriodChanged(period),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppConstants.primaryColor : AppConstants.textColor.withOpacity(0.3),
+            width: 1,
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppConstants.textColor,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppConstants.textColor,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
-    );
-  }
-
-  Widget _buildSearchAndFilters(AppLocalizations localizations) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-            ),
-            decoration: InputDecoration(
-              hintText: localizations.translate('search_categories') ?? 'Поиск категорий',
-              hintStyle: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.5),
-              ),
-              prefixIcon: Icon(
-                Icons.search,
-                color: AppConstants.textColor.withOpacity(0.7),
-              ),
-              suffixIcon: _isSearching
-                  ? IconButton(
-                icon: Icon(
-                  Icons.clear,
-                  color: AppConstants.textColor.withOpacity(0.7),
-                ),
-                onPressed: _clearSearch,
-              )
-                  : null,
-              filled: true,
-              fillColor: AppConstants.surfaceColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            onChanged: _onSearchChanged,
-          ),
-        ),
-        const SizedBox(width: 12),
-        IconButton(
-          icon: Icon(
-            Icons.sort,
-            color: AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context),
-          ),
-          onPressed: _showSortDialog,
-          style: IconButton.styleFrom(
-            backgroundColor: AppConstants.surfaceColor,
-            padding: const EdgeInsets.all(12),
-          ),
-        ),
-      ],
     );
   }
 
@@ -600,34 +697,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           const SizedBox(height: 8),
           ResponsiveText(
             localizations.translate('add_first_expense') ?? 'Добавьте первую поездку с расходами',
-            type: ResponsiveTextType.bodyMedium,
-            color: AppConstants.textColor.withOpacity(0.7),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoResultsState(AppLocalizations localizations) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 60,
-            color: AppConstants.textColor.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          ResponsiveText(
-            localizations.translate('no_results') ?? 'Нет результатов',
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
-          ),
-          const SizedBox(height: 8),
-          ResponsiveText(
-            localizations.translate('try_different_search') ?? 'Попробуйте другой поиск',
             type: ResponsiveTextType.bodyMedium,
             color: AppConstants.textColor.withOpacity(0.7),
             textAlign: TextAlign.center,

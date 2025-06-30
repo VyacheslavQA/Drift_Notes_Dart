@@ -27,7 +27,9 @@ class BudgetStatisticsScreen extends StatefulWidget {
 class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
 
-  String _selectedPeriod = 'all'; // month, year, all
+  String _selectedPeriod = 'all'; // month, year, all, custom
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
   FishingTripStatistics? _currentStatistics;
   bool _isLoading = false;
 
@@ -56,6 +58,10 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
         case 'year':
           startDate = DateTime(now.year, 1, 1);
           endDate = DateTime(now.year, 12, 31);
+          break;
+        case 'custom':
+          startDate = _customStartDate;
+          endDate = _customEndDate;
           break;
         case 'all':
         default:
@@ -86,8 +92,254 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
   void _onPeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
+      if (period != 'custom') {
+        _customStartDate = null;
+        _customEndDate = null;
+      }
     });
-    _loadStatistics();
+
+    if (period == 'custom') {
+      _showCustomDatePicker();
+    } else {
+      _loadStatistics();
+    }
+  }
+
+  Future<void> _showCustomDatePicker() async {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.cardColor,
+        title: Text(
+          localizations.translate('select_date_range') ?? 'Выберите период',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppConstants.textColor,
+          ),
+        ),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Дата начала
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _customStartDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.dark(
+                              primary: AppConstants.primaryColor,
+                              surface: AppConstants.cardColor,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        _customStartDate = date;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppConstants.textColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: AppConstants.textColor.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('start_date') ?? 'Дата начала',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                ),
+                              ),
+                              Text(
+                                _customStartDate != null
+                                    ? _formatDate(_customStartDate!)
+                                    : localizations.translate('select_date') ?? 'Выберите дату',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: AppConstants.textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Дата окончания
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _customEndDate ?? DateTime.now(),
+                      firstDate: _customStartDate ?? DateTime(2020),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.dark(
+                              primary: AppConstants.primaryColor,
+                              surface: AppConstants.cardColor,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        _customEndDate = date;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppConstants.textColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: AppConstants.textColor.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('end_date') ?? 'Дата окончания',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                ),
+                              ),
+                              Text(
+                                _customEndDate != null
+                                    ? _formatDate(_customEndDate!)
+                                    : localizations.translate('select_date') ?? 'Выберите дату',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: AppConstants.textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedPeriod = 'all';
+                _customStartDate = null;
+                _customEndDate = null;
+              });
+              Navigator.pop(context);
+              _loadStatistics();
+            },
+            child: Text(
+              localizations.translate('cancel') ?? 'Отмена',
+              style: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.7),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _customStartDate != null && _customEndDate != null
+                ? () {
+              Navigator.pop(context);
+              _loadStatistics();
+            }
+                : null,
+            child: Text(
+              localizations.translate('apply') ?? 'Применить',
+              style: TextStyle(
+                color: _customStartDate != null && _customEndDate != null
+                    ? AppConstants.primaryColor
+                    : AppConstants.textColor.withOpacity(0.3),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
+
+  String _getDateRangeDescription() {
+    final localizations = AppLocalizations.of(context);
+
+    switch (_selectedPeriod) {
+      case 'month':
+        final now = DateTime.now();
+        return '${_getMonthName(now.month)} ${now.year}';
+      case 'year':
+        return DateTime.now().year.toString();
+      case 'custom':
+        if (_customStartDate != null && _customEndDate != null) {
+          return '${_formatDate(_customStartDate!)} - ${_formatDate(_customEndDate!)}';
+        }
+        return localizations.translate('custom_period') ?? 'Произвольный период';
+      case 'all':
+      default:
+        return localizations.translate('all_time') ?? 'Всё время';
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    return months[month - 1];
   }
 
   void _showErrorSnackBar(String message) {
@@ -117,7 +369,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           : Column(
         children: [
           const SizedBox(height: 16),
-          _buildPeriodSelector(localizations),
+          _buildDateFilter(localizations),
           const SizedBox(height: 24),
           Expanded(
             child: RefreshIndicator(
@@ -179,9 +431,57 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
       ),
       child: Row(
         children: [
-          _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц'),
-          _buildPeriodButton('year', localizations.translate('year') ?? 'Год'),
-          _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время'),
+          Expanded(child: _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц')),
+          Expanded(child: _buildPeriodButton('year', localizations.translate('year') ?? 'Год')),
+          Expanded(child: _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateFilter(AppLocalizations localizations) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('filter_by_period') ?? 'Фильтр по периоду',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppConstants.textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _getDateRangeDescription(),
+            style: TextStyle(
+              fontSize: 14,
+              color: AppConstants.textColor.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Первая строка: основные периоды
+          Row(
+            children: [
+              Expanded(child: _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц')),
+              const SizedBox(width: 8),
+              Expanded(child: _buildPeriodButton('year', localizations.translate('year') ?? 'Год')),
+              const SizedBox(width: 8),
+              Expanded(child: _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Вторая строка: кастомный период
+          SizedBox(
+            width: double.infinity,
+            child: _buildPeriodButton('custom', localizations.translate('custom_period') ?? 'Произвольный период'),
+          ),
         ],
       ),
     );
@@ -190,23 +490,56 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
   Widget _buildPeriodButton(String period, String label) {
     final isSelected = _selectedPeriod == period;
 
-    return Expanded(
-      child: InkWell(
-        onTap: () => _onPeriodChanged(period),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: () => _onPeriodChanged(period),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppConstants.primaryColor : AppConstants.textColor.withOpacity(0.3),
+            width: 1,
           ),
-          child: ResponsiveText(
-            label,
-            type: ResponsiveTextType.labelLarge,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
             color: isSelected ? Colors.white : AppConstants.textColor,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            textAlign: TextAlign.center,
+            fontSize: 14,
           ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomPeriodButton(String period, String label) {
+    final isSelected = _selectedPeriod == period;
+
+    return InkWell(
+      onTap: () => _onPeriodChanged(period),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppConstants.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppConstants.primaryColor : AppConstants.textColor.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppConstants.textColor,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -215,26 +548,22 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
   Widget _buildMainStatistics(AppLocalizations localizations) {
     final statistics = _currentStatistics!;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            localizations.translate('total_spent') ?? 'Потрачено',
-            statistics.formattedTotal,
-            Icons.payments,
-            AppConstants.primaryColor,
-            localizations.translate('total_spent_desc') ?? 'Общая сумма всех расходов',
-          ),
+        _buildStatCard(
+          localizations.translate('total_spent') ?? 'Потрачено',
+          statistics.formattedTotal,
+          Icons.payments,
+          AppConstants.primaryColor,
+          localizations.translate('total_spent_desc') ?? 'Общая сумма всех расходов',
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard(
-            localizations.translate('avg_per_trip') ?? 'Среднее за поездку',
-            statistics.formattedAveragePerTrip,
-            Icons.trending_up,
-            Colors.green,
-            localizations.translate('avg_per_trip_desc') ?? 'Средние расходы на одну поездку',
-          ),
+        const SizedBox(height: 16),
+        _buildStatCard(
+          localizations.translate('avg_per_trip') ?? 'Среднее за поездку',
+          statistics.formattedAveragePerTrip,
+          Icons.trending_up,
+          Colors.green,
+          localizations.translate('avg_per_trip_desc') ?? 'Средние расходы на одну поездку',
         ),
       ],
     );
@@ -242,6 +571,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color, String description) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppConstants.cardColor,
@@ -251,7 +581,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           width: 1,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
           Container(
             width: 60,
@@ -264,28 +594,45 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
               child: Icon(icon, color: color, size: 28),
             ),
           ),
-          const SizedBox(height: 16),
-          ResponsiveText(
-            value,
-            type: ResponsiveTextType.headlineMedium,
-            fontWeight: FontWeight.bold,
-            color: color,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          ResponsiveText(
-            title,
-            type: ResponsiveTextType.titleMedium,
-            fontWeight: FontWeight.w600,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          ResponsiveText(
-            description,
-            type: ResponsiveTextType.bodyMedium,
-            color: AppConstants.textColor.withOpacity(0.7),
-            textAlign: TextAlign.center,
-            maxLines: 2,
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppConstants.textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppConstants.textColor.withOpacity(0.7),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -325,7 +672,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           _buildDetailRow(
             Icons.date_range,
             localizations.translate('period') ?? 'Период',
-            _getPeriodText(localizations),
+            _getDateRangeDescription(),
             _getPeriodDescription(localizations),
           ),
 
@@ -456,29 +803,14 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     }
   }
 
-  String _getPeriodText(AppLocalizations localizations) {
-    switch (_selectedPeriod) {
-      case 'month':
-        final now = DateTime.now();
-        final months = [
-          'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-          'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-        ];
-        return '${months[now.month - 1]} ${now.year}';
-      case 'year':
-        return DateTime.now().year.toString();
-      case 'all':
-      default:
-        return localizations.translate('all_time') ?? 'Всё время';
-    }
-  }
-
   String _getPeriodDescription(AppLocalizations localizations) {
     switch (_selectedPeriod) {
       case 'month':
         return localizations.translate('current_month_data') ?? 'Данные за текущий месяц';
       case 'year':
         return localizations.translate('current_year_data') ?? 'Данные за текущий год';
+      case 'custom':
+        return localizations.translate('custom_period_data') ?? 'Данные за выбранный период';
       case 'all':
       default:
         return localizations.translate('all_time_data') ?? 'Данные за всё время';

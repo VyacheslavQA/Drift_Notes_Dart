@@ -121,10 +121,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   List<Map<String, String>> _getCurrencies(AppLocalizations localizations) {
     return [
-      {'code': 'KZT', 'symbol': '₸', 'name': localizations.translate('currency_kzt')},
-      {'code': 'USD', 'symbol': '\$', 'name': localizations.translate('currency_usd')},
-      {'code': 'EUR', 'symbol': '€', 'name': localizations.translate('currency_eur')},
-      {'code': 'RUB', 'symbol': '₽', 'name': localizations.translate('currency_rub')},
+      {'code': 'KZT', 'symbol': '₸', 'name': localizations.translate('currency_kzt') ?? 'Тенге'},
+      {'code': 'USD', 'symbol': '\$', 'name': localizations.translate('currency_usd') ?? 'Доллар США'},
+      {'code': 'EUR', 'symbol': '€', 'name': localizations.translate('currency_eur') ?? 'Евро'},
+      {'code': 'RUB', 'symbol': '₽', 'name': localizations.translate('currency_rub') ?? 'Рубль'},
     ];
   }
 
@@ -149,51 +149,51 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _getCategoryName(FishingExpenseCategory category, AppLocalizations localizations) {
     switch (category) {
       case FishingExpenseCategory.tackle:
-        return localizations.translate('category_tackle');
+        return localizations.translate('category_tackle') ?? 'Снасти';
       case FishingExpenseCategory.bait:
-        return localizations.translate('category_bait');
+        return localizations.translate('category_bait') ?? 'Наживка';
       case FishingExpenseCategory.transport:
-        return localizations.translate('category_transport');
+        return localizations.translate('category_transport') ?? 'Транспорт';
       case FishingExpenseCategory.accommodation:
-        return localizations.translate('category_accommodation');
+        return localizations.translate('category_accommodation') ?? 'Проживание';
       case FishingExpenseCategory.food:
-        return localizations.translate('category_food');
+        return localizations.translate('category_food') ?? 'Питание';
       case FishingExpenseCategory.license:
-        return localizations.translate('category_license');
+        return localizations.translate('category_license') ?? 'Лицензии';
     }
   }
 
   String _getCategoryDescriptionHint(FishingExpenseCategory category, AppLocalizations localizations) {
     switch (category) {
       case FishingExpenseCategory.tackle:
-        return localizations.translate('category_tackle_hint');
+        return localizations.translate('category_tackle_hint') ?? 'Например: Спиннинг, катушка';
       case FishingExpenseCategory.bait:
-        return localizations.translate('category_bait_hint');
+        return localizations.translate('category_bait_hint') ?? 'Например: Черви, прикормка';
       case FishingExpenseCategory.transport:
-        return localizations.translate('category_transport_hint');
+        return localizations.translate('category_transport_hint') ?? 'Например: Бензин, такси';
       case FishingExpenseCategory.accommodation:
-        return localizations.translate('category_accommodation_hint');
+        return localizations.translate('category_accommodation_hint') ?? 'Например: Отель, база отдыха';
       case FishingExpenseCategory.food:
-        return localizations.translate('category_food_hint');
+        return localizations.translate('category_food_hint') ?? 'Например: Обед, напитки';
       case FishingExpenseCategory.license:
-        return localizations.translate('category_license_hint');
+        return localizations.translate('category_license_hint') ?? 'Например: Путевка, лицензия';
     }
   }
 
   String _getCategoryNotesHint(FishingExpenseCategory category, AppLocalizations localizations) {
     switch (category) {
       case FishingExpenseCategory.tackle:
-        return localizations.translate('category_tackle_notes_hint');
+        return localizations.translate('category_tackle_notes_hint') ?? 'Дополнительные заметки о снастях';
       case FishingExpenseCategory.bait:
-        return localizations.translate('category_bait_notes_hint');
+        return localizations.translate('category_bait_notes_hint') ?? 'Дополнительные заметки о наживке';
       case FishingExpenseCategory.transport:
-        return localizations.translate('category_transport_notes_hint');
+        return localizations.translate('category_transport_notes_hint') ?? 'Дополнительные заметки о транспорте';
       case FishingExpenseCategory.accommodation:
-        return localizations.translate('category_accommodation_notes_hint');
+        return localizations.translate('category_accommodation_notes_hint') ?? 'Дополнительные заметки о проживании';
       case FishingExpenseCategory.food:
-        return localizations.translate('category_food_notes_hint');
+        return localizations.translate('category_food_notes_hint') ?? 'Дополнительные заметки о питании';
       case FishingExpenseCategory.license:
-        return localizations.translate('category_license_notes_hint');
+        return localizations.translate('category_license_notes_hint') ?? 'Дополнительные заметки о лицензиях';
     }
   }
 
@@ -205,7 +205,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2030), // Разрешаем выбирать будущие даты до 2030 года
       locale: isRussian ? const Locale('ru', 'RU') : const Locale('en', 'US'),
       builder: (context, child) {
         return Theme(
@@ -230,12 +230,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
+    final tomorrow = today.add(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
 
     if (dateOnly == today) {
-      return localizations.translate('today');
+      return localizations.translate('today') ?? 'Сегодня';
     } else if (dateOnly == yesterday) {
-      return localizations.translate('yesterday');
+      return localizations.translate('yesterday') ?? 'Вчера';
+    } else if (dateOnly == tomorrow) {
+      return localizations.translate('tomorrow') ?? 'Завтра';
     } else {
       return '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}';
     }
@@ -250,7 +253,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final userId = _firebaseService.currentUserId;
 
     if (userId == null) {
-      _showErrorSnackBar(localizations.translate('error_user_not_authorized'));
+      _showErrorSnackBar(localizations.translate('error_user_not_authorized') ?? 'Пользователь не авторизован');
       return;
     }
 
@@ -258,7 +261,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final hasExpenses = _categoryAmounts.values.any((amount) => amount > 0);
 
     if (!hasExpenses) {
-      _showErrorSnackBar(localizations.translate('error_no_expenses'));
+      _showErrorSnackBar(localizations.translate('error_no_expenses') ?? 'Добавьте хотя бы один расход');
       return;
     }
 
@@ -281,8 +284,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           SnackBar(
             content: Text(
                 widget.tripToEdit != null
-                    ? '${localizations.translate('trip_updated')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
-                    : '${localizations.translate('fishing_trip_expenses_saved')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                    ? '${localizations.translate('trip_updated') ?? 'Поездка обновлена'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                    : '${localizations.translate('fishing_trip_expenses_saved') ?? 'Расходы сохранены'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: $symbol ${_totalAmount.toStringAsFixed(2)}'
             ),
             backgroundColor: AppConstants.primaryColor,
             duration: const Duration(seconds: 3),
@@ -293,7 +296,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('${localizations.translate('error_saving')}: $e');
+        _showErrorSnackBar('${localizations.translate('error_saving') ?? 'Ошибка сохранения'}: $e');
       }
     } finally {
       if (mounted) {
@@ -397,12 +400,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: ResponsiveText(
+        title: Text(
           widget.tripToEdit != null
-              ? (localizations.translate('edit_fishing_trip') ?? 'Редактировать поездку')
-              : localizations.translate('add_fishing_trip_expenses'),
-          type: ResponsiveTextType.titleLarge,
-          fontWeight: FontWeight.w600,
+              ? (localizations.translate('edit_expenses') ?? 'Редактировать расходы')
+              : (localizations.translate('add_expenses') ?? 'Добавить расходы'),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppConstants.textColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -468,7 +474,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ResponsiveText(
-            localizations.translate('fishing_trip_info'),
+            localizations.translate('fishing_trip_info') ?? 'Информация о поездке',
             type: ResponsiveTextType.titleMedium,
             fontWeight: FontWeight.w600,
           ),
@@ -502,7 +508,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ResponsiveText(
-          localizations.translate('date'),
+          localizations.translate('date') ?? 'Дата',
           type: ResponsiveTextType.labelLarge,
           fontWeight: FontWeight.w600,
         ),
@@ -537,7 +543,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ResponsiveText(
-          localizations.translate('currency'),
+          localizations.translate('currency') ?? 'Валюта',
           type: ResponsiveTextType.labelLarge,
           fontWeight: FontWeight.w600,
         ),
@@ -597,7 +603,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ResponsiveText(
-          localizations.translate('fishing_location'),
+          localizations.translate('fishing_location') ?? 'Место рыбалки',
           type: ResponsiveTextType.labelLarge,
           fontWeight: FontWeight.w600,
         ),
@@ -609,7 +615,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             fontSize: 16,
           ),
           decoration: InputDecoration(
-            hintText: localizations.translate('fishing_location_hint'),
+            hintText: localizations.translate('fishing_location_hint') ?? 'Например: Озеро Балхаш',
             hintStyle: TextStyle(
               color: AppConstants.textColor.withOpacity(0.5),
             ),
@@ -633,7 +639,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ResponsiveText(
-          localizations.translate('trip_notes'),
+          localizations.translate('trip_notes') ?? 'Заметки о поездке',
           type: ResponsiveTextType.labelLarge,
           fontWeight: FontWeight.w600,
         ),
@@ -646,7 +652,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             fontSize: 16,
           ),
           decoration: InputDecoration(
-            hintText: localizations.translate('trip_notes_hint'),
+            hintText: localizations.translate('trip_notes_hint') ?? 'Дополнительные заметки о поездке',
             hintStyle: TextStyle(
               color: AppConstants.textColor.withOpacity(0.5),
             ),
@@ -670,7 +676,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ResponsiveText(
-          localizations.translate('expenses_by_category'),
+          localizations.translate('expenses_by_category') ?? 'Расходы по категориям',
           type: ResponsiveTextType.titleMedium,
           fontWeight: FontWeight.w600,
         ),
@@ -728,7 +734,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         Text(
                           hasAmount
                               ? '${_currencySymbols[_selectedCurrency]} ${amount.toStringAsFixed(2)}'
-                              : localizations.translate('not_specified'),
+                              : localizations.translate('not_specified') ?? 'Не указано',
                           style: TextStyle(
                             color: hasAmount
                                 ? AppConstants.primaryColor
@@ -895,7 +901,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         child: Column(
           children: [
             Text(
-              localizations.translate('total_fishing_trip_expenses'),
+              localizations.translate('total_fishing_trip_expenses') ?? 'Общая сумма расходов',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -940,7 +946,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
         )
             : Text(
-          localizations.translate('save_fishing_trip_expenses'),
+          localizations.translate('save_fishing_trip_expenses') ?? 'Сохранить расходы',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),

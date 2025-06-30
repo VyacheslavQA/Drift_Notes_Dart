@@ -2044,7 +2044,7 @@
   "category_tackle": "Tackle",
   "category_bait": "Bait",
 
-  "add_fishing_trip_expenses": "Add Fishing Trip Expenses",
+  "add_expenses": "Add Expenses",
   "fishing_trip_info": "Fishing Trip Information",
   "fishing_location": "Fishing Location",
   "fishing_location_hint": "For example: Lake Balkhash",
@@ -2155,6 +2155,16 @@
   "edit_fishing_trip": "Edit fishing trip",
   "update_fishing_trip": "Update trip",
   "trip_updated": "Trip updated",
-  "delete_expense_warning": "The expense will be removed from the trip."
+  "delete_expense_warning": "The expense will be removed from the trip.",
+
+  "filter_by_period": "Filter by period",
+  "custom_period": "Custom period",
+  "select_date_range": "Select date range",
+  "start_date": "Start date",
+  "end_date": "End date",
+  "select_date": "Select date",
+  "apply": "Apply",
+  "period": "Period",
+  "custom_period_data": "Data for selected period"
 
 }

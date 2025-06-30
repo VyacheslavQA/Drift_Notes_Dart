@@ -1987,7 +1987,7 @@
   "category_tackle": "Снасти",
   "category_bait": "Прикормка",
 
-  "add_fishing_trip_expenses": "Добавить расходы на рыбалку",
+  "add_expenses": "Добавить расходы",
   "fishing_trip_info": "Информация о рыбалке",
   "fishing_location": "Место рыбалки",
   "fishing_location_hint": "Например: Озеро Балхаш",
@@ -2098,5 +2098,15 @@
   "edit_fishing_trip": "Редактировать поездку",
   "update_fishing_trip": "Обновить поездку",
   "trip_updated": "Поездка обновлена",
-  "delete_expense_warning": "Расход будет удален из поездки."
+  "delete_expense_warning": "Расход будет удален из поездки.",
+
+  "filter_by_period": "Фильтр по периоду",
+  "custom_period": "Произвольный период",
+  "select_date_range": "Выберите период",
+  "start_date": "Дата начала",
+  "end_date": "Дата окончания",
+  "select_date": "Выберите дату",
+  "apply": "Применить",
+  "period": "Период",
+  "custom_period_data": "Данные за выбранный период"
 }
