@@ -2093,5 +2093,10 @@
   "expenses_count": "Количество расходов",
   "delete_error": "Ошибка удаления",
   "no_results": "Нет результатов",
-  "try_different_search": "Попробуйте другой поиск"
+  "try_different_search": "Попробуйте другой поиск",
+
+  "edit_fishing_trip": "Редактировать поездку",
+  "update_fishing_trip": "Обновить поездку",
+  "trip_updated": "Поездка обновлена",
+  "delete_expense_warning": "Расход будет удален из поездки."
 }

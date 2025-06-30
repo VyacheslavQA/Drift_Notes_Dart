@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
+import '../../models/fishing_trip_model.dart';
 import '../../repositories/fishing_expense_repository.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -12,11 +13,16 @@ import '../../services/firebase/firebase_service.dart';
 
 /// Экран добавления всех расходов на рыбалку за одну поездку
 class AddExpenseScreen extends StatefulWidget {
-  final FishingExpenseModel? expenseToEdit;
+  /// Поездка для редактирования (если редактируем существующую)
+  final FishingTripModel? tripToEdit;
+
+  /// Категория для фокуса при редактировании отдельного расхода
+  final FishingExpenseCategory? focusCategory;
 
   const AddExpenseScreen({
     super.key,
-    this.expenseToEdit,
+    this.tripToEdit,
+    this.focusCategory,
   });
 
   @override
@@ -66,29 +72,41 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _expandedCategories[category] = false;
     }
 
-    // Автоматически раскрываем первую категорию
-    if (FishingExpenseCategory.allCategories.isNotEmpty) {
-      _expandedCategories[FishingExpenseCategory.allCategories.first] = true;
-    }
+    // Если редактируем поездку, загружаем ее данные
+    if (widget.tripToEdit != null) {
+      _loadTripForEditing(widget.tripToEdit!);
+    } else {
+      // Автоматически раскрываем первую категорию или категорию фокуса
+      final categoryToExpand = widget.focusCategory ??
+          (FishingExpenseCategory.allCategories.isNotEmpty
+              ? FishingExpenseCategory.allCategories.first
+              : null);
 
-    // Если редактируем существующий расход, загружаем его данные
-    if (widget.expenseToEdit != null) {
-      _loadExpenseForEditing(widget.expenseToEdit!);
+      if (categoryToExpand != null) {
+        _expandedCategories[categoryToExpand] = true;
+      }
     }
   }
 
-  void _loadExpenseForEditing(FishingExpenseModel expense) {
+  void _loadTripForEditing(FishingTripModel trip) {
     setState(() {
-      _selectedDate = expense.date;
-      _selectedCurrency = expense.currency;
-      _locationController.text = expense.locationName ?? '';
-      _tripNotesController.text = expense.notes ?? '';
+      _selectedDate = trip.date;
+      _selectedCurrency = trip.currency;
+      _locationController.text = trip.locationName ?? '';
+      _tripNotesController.text = trip.notes ?? '';
 
-      // Загружаем данные конкретной категории
-      _categoryAmounts[expense.category] = expense.amount;
-      _categoryDescriptions[expense.category] = expense.description;
-      _categoryNotes[expense.category] = expense.notes ?? '';
-      _expandedCategories[expense.category] = true;
+      // Загружаем данные расходов по категориям
+      for (final expense in trip.expenses) {
+        _categoryAmounts[expense.category] = expense.amount;
+        _categoryDescriptions[expense.category] = expense.description;
+        _categoryNotes[expense.category] = expense.notes ?? '';
+        _expandedCategories[expense.category] = true;
+      }
+
+      // Если указана категория фокуса, раскрываем ее
+      if (widget.focusCategory != null) {
+        _expandedCategories[widget.focusCategory!] = true;
+      }
 
       _updateTotalAmount();
     });
@@ -247,29 +265,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Создаем поездку с расходами одним вызовом
-      final trip = await _expenseRepository.createTripWithExpenses(
-        date: _selectedDate,
-        locationName: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
-        notes: _tripNotesController.text.trim().isEmpty
-            ? null
-            : _tripNotesController.text.trim(),
-        currency: _selectedCurrency,
-        categoryAmounts: _categoryAmounts,
-        categoryDescriptions: _categoryDescriptions,
-        categoryNotes: _categoryNotes,
-      );
+      if (widget.tripToEdit != null) {
+        // Редактируем существующую поездку
+        await _updateExistingTrip();
+      } else {
+        // Создаем новую поездку
+        await _createNewTrip();
+      }
 
       if (mounted) {
-        final expenseCount = trip.expenses?.length ?? 0;
+        final expenseCount = _categoryAmounts.values.where((amount) => amount > 0).length;
         final symbol = _currencySymbols[_selectedCurrency] ?? '';
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${localizations.translate('fishing_trip_expenses_saved')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                widget.tripToEdit != null
+                    ? '${localizations.translate('trip_updated')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                    : '${localizations.translate('fishing_trip_expenses_saved')} $expenseCount ${localizations.translate('expenses_count')}. ${localizations.translate('total_amount')}: $symbol ${_totalAmount.toStringAsFixed(2)}'
             ),
             backgroundColor: AppConstants.primaryColor,
             duration: const Duration(seconds: 3),
@@ -289,6 +302,85 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  Future<void> _createNewTrip() async {
+    await _expenseRepository.createTripWithExpenses(
+      date: _selectedDate,
+      locationName: _locationController.text.trim().isEmpty
+          ? null
+          : _locationController.text.trim(),
+      notes: _tripNotesController.text.trim().isEmpty
+          ? null
+          : _tripNotesController.text.trim(),
+      currency: _selectedCurrency,
+      categoryAmounts: _categoryAmounts,
+      categoryDescriptions: _categoryDescriptions,
+      categoryNotes: _categoryNotes,
+    );
+  }
+
+  Future<void> _updateExistingTrip() async {
+    final existingTrip = widget.tripToEdit!;
+
+    // Создаем новые расходы на основе текущих данных формы
+    final List<FishingExpenseModel> newExpenses = [];
+    int expenseIndex = 0;
+
+    for (final category in FishingExpenseCategory.allCategories) {
+      final amount = _categoryAmounts[category] ?? 0.0;
+      if (amount > 0) {
+        final description = _categoryDescriptions[category]?.trim() ?? '';
+        final expenseNotes = _categoryNotes[category]?.trim() ?? '';
+
+        // Ищем существующий расход этой категории для сохранения ID
+        final existingExpense = existingTrip.expenses
+            .where((e) => e.category == category)
+            .isNotEmpty
+            ? existingTrip.expenses.firstWhere((e) => e.category == category)
+            : null;
+
+        final now = DateTime.now();
+        final expenseId = existingExpense?.id ?? 'expense_${now.millisecondsSinceEpoch}_$expenseIndex';
+
+        final expense = FishingExpenseModel(
+          id: expenseId,
+          userId: existingTrip.userId,
+          tripId: existingTrip.id,
+          amount: amount,
+          description: description.isNotEmpty ? description : 'Расходы',
+          category: category,
+          date: _selectedDate,
+          currency: _selectedCurrency,
+          notes: expenseNotes.isEmpty ? null : expenseNotes,
+          locationName: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          createdAt: existingExpense?.createdAt ?? now,
+          updatedAt: now,
+          isSynced: false,
+        );
+
+        newExpenses.add(expense);
+        expenseIndex++;
+      }
+    }
+
+    // Обновляем поездку с новыми данными
+    final updatedTrip = existingTrip.copyWith(
+      date: _selectedDate,
+      locationName: _locationController.text.trim().isEmpty
+          ? null
+          : _locationController.text.trim(),
+      notes: _tripNotesController.text.trim().isEmpty
+          ? null
+          : _tripNotesController.text.trim(),
+      currency: _selectedCurrency,
+      updatedAt: DateTime.now(),
+      expenses: newExpenses,
+    );
+
+    await _expenseRepository.updateTrip(updatedTrip);
+  }
+
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -306,7 +398,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: ResponsiveText(
-          localizations.translate('add_fishing_trip_expenses'),
+          widget.tripToEdit != null
+              ? (localizations.translate('edit_fishing_trip') ?? 'Редактировать поездку')
+              : localizations.translate('add_fishing_trip_expenses'),
           type: ResponsiveTextType.titleLarge,
           fontWeight: FontWeight.w600,
         ),

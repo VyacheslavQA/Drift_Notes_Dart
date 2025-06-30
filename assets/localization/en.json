@@ -2150,6 +2150,11 @@
   "expenses_count": "Expenses count",
   "delete_error": "Delete error",
   "no_results": "No results",
-  "try_different_search": "Try different search"
+  "try_different_search": "Try different search",
+
+  "edit_fishing_trip": "Edit fishing trip",
+  "update_fishing_trip": "Update trip",
+  "trip_updated": "Trip updated",
+  "delete_expense_warning": "The expense will be removed from the trip."
 
 }

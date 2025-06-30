@@ -1,6 +1,7 @@
 // Путь: lib/models/fishing_trip_model.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'fishing_expense_model.dart';
 
 /// Модель поездки на рыбалку
@@ -75,8 +76,46 @@ class FishingTripModel {
     );
   }
 
-  /// Создать модель из Map (например, из Firestore)
-  factory FishingTripModel.fromMap(Map<String, dynamic> map) {
+  /// Создать модель из Map с расходами (например, из Firestore)
+  factory FishingTripModel.fromMapWithExpenses(Map<String, dynamic> map) {
+    final expenses = <FishingExpenseModel>[];
+
+    // Парсим расходы из массива внутри документа
+    if (map['expenses'] is List) {
+      final expensesData = map['expenses'] as List;
+      for (final expenseData in expensesData) {
+        if (expenseData is Map<String, dynamic>) {
+          try {
+            // Создаем расход из данных Firestore
+            final expense = FishingExpenseModel(
+              id: expenseData['id'] as String,
+              userId: expenseData['userId'] as String,
+              tripId: expenseData['tripId'] as String? ?? '',
+              amount: (expenseData['amount'] as num).toDouble(),
+              description: expenseData['description'] as String,
+              category: FishingExpenseCategory.fromId(expenseData['category'] as String) ?? FishingExpenseCategory.tackle,
+              date: expenseData['date'] is Timestamp
+                  ? (expenseData['date'] as Timestamp).toDate()
+                  : DateTime.parse(expenseData['date'] as String),
+              currency: expenseData['currency'] as String? ?? 'KZT',
+              notes: expenseData['notes'] as String?,
+              locationName: expenseData['locationName'] as String?,
+              createdAt: expenseData['createdAt'] is Timestamp
+                  ? (expenseData['createdAt'] as Timestamp).toDate()
+                  : DateTime.parse(expenseData['createdAt'] as String),
+              updatedAt: expenseData['updatedAt'] is Timestamp
+                  ? (expenseData['updatedAt'] as Timestamp).toDate()
+                  : DateTime.parse(expenseData['updatedAt'] as String),
+              isSynced: expenseData['isSynced'] as bool? ?? false,
+            );
+            expenses.add(expense);
+          } catch (e) {
+            debugPrint('Ошибка парсинга расхода: $e');
+          }
+        }
+      }
+    }
+
     return FishingTripModel(
       id: map['id'] as String,
       userId: map['userId'] as String,
@@ -87,8 +126,38 @@ class FishingTripModel {
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
       isSynced: map['isSynced'] as bool? ?? false,
-      // expenses загружаются отдельно
+      expenses: expenses,
     );
+  }
+
+  /// Преобразовать модель в Map с расходами для сохранения в Firestore
+  Map<String, dynamic> toMapWithExpenses() {
+    return {
+      'id': id,
+      'userId': userId,
+      'date': Timestamp.fromDate(date),
+      'locationName': locationName,
+      'notes': notes,
+      'currency': currency,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'isSynced': isSynced,
+      'expenses': expenses.map((expense) => {
+        'id': expense.id,
+        'userId': expense.userId,
+        'tripId': expense.tripId,
+        'amount': expense.amount,
+        'description': expense.description,
+        'category': expense.category.id,
+        'date': Timestamp.fromDate(expense.date),
+        'currency': expense.currency,
+        'notes': expense.notes,
+        'locationName': expense.locationName,
+        'createdAt': Timestamp.fromDate(expense.createdAt),
+        'updatedAt': Timestamp.fromDate(expense.updatedAt),
+        'isSynced': expense.isSynced,
+      }).toList(),
+    };
   }
 
   /// Преобразовать модель в Map для сохранения в Firestore

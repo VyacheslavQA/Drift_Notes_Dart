@@ -138,10 +138,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Future<void> _editExpense(FishingExpenseModel expense) async {
+    // Теперь редактируем всю поездку, передавая конкретный расход для фокуса
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddExpenseScreen(expenseToEdit: expense),
+        builder: (context) => AddExpenseScreen(
+          tripToEdit: _currentTrip,
+          focusCategory: expense.category,
+        ),
       ),
     );
 
@@ -162,10 +166,23 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           type: ResponsiveTextType.titleLarge,
           fontWeight: FontWeight.w600,
         ),
-        content: ResponsiveText(
-          localizations.translate('delete_expense_confirm') ??
-              'Вы уверены, что хотите удалить этот расход?',
-          type: ResponsiveTextType.bodyLarge,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ResponsiveText(
+              localizations.translate('delete_expense_confirm') ??
+                  'Вы уверены, что хотите удалить этот расход?',
+              type: ResponsiveTextType.bodyLarge,
+            ),
+            const SizedBox(height: 8),
+            ResponsiveText(
+              localizations.translate('delete_expense_warning') ??
+                  'Расход будет удален из поездки.',
+              type: ResponsiveTextType.bodyMedium,
+              color: AppConstants.textColor.withOpacity(0.7),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -191,7 +208,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     if (confirmed == true) {
       try {
-        await _expenseRepository.deleteExpense(expense.id);
+        // Удаляем расход из текущей поездки
+        final updatedExpenses = _currentTrip!.expenses
+            .where((e) => e.id != expense.id)
+            .toList();
+
+        final updatedTrip = _currentTrip!.withExpenses(updatedExpenses);
+
+        // Обновляем поездку в репозитории
+        await _expenseRepository.updateTrip(updatedTrip);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
