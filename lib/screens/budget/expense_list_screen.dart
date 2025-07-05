@@ -85,7 +85,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar('Ошибка загрузки данных: $e');
+        final localizations = AppLocalizations.of(context);
+        _showErrorSnackBar('${localizations.translate('data_loading_error')}: $e');
       }
     }
   }
@@ -321,7 +322,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     switch (_selectedPeriod) {
       case 'month':
         final now = DateTime.now();
-        return '${_getMonthName(now.month)} ${now.year}';
+        return '${_getMonthName(now.month, localizations)} ${now.year}';
       case 'year':
         return DateTime.now().year.toString();
       case 'custom':
@@ -335,12 +336,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     }
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  String _getMonthName(int month, AppLocalizations localizations) {
+    final monthKeys = [
+      'january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'
     ];
-    return months[month - 1];
+    return localizations.translate(monthKeys[month - 1]) ?? 'Месяц';
+  }
+
+  String _getTripCountDescription(int tripCount, AppLocalizations localizations) {
+    if (tripCount == 1) {
+      return localizations.translate('from_one_trip') ?? 'из 1 поездки';
+    } else if (tripCount >= 2 && tripCount <= 4) {
+      return localizations.translate('from_few_trips')?.replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
+    } else {
+      return localizations.translate('from_many_trips')?.replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
+    }
   }
 
   String _getCategoryName(FishingExpenseCategory category, AppLocalizations localizations) {
@@ -489,7 +500,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     const SizedBox(height: 12),
                     _buildStatRow(
                       localizations.translate('trips_with_category') ?? 'Поездок с категорией',
-                      summary.tripCountDescription,
+                      _getTripCountDescription(summary.tripCount, localizations),
                       AppConstants.textColor,
                     ),
                     if (summary.tripCount > 0) ...[
@@ -773,7 +784,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      summary.tripCountDescription,
+                      _getTripCountDescription(summary.tripCount, localizations),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppConstants.textColor.withOpacity(0.7),

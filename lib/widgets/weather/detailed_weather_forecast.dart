@@ -1,6 +1,6 @@
 // Путь: lib/widgets/weather/detailed_weather_forecast.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: Заменены ResponsiveText и ResponsiveUtils на стандартный Flutter код
+// ИСПРАВЛЕНО: График светового дня, расчет длительности и локализация
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -62,7 +62,7 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // НОВАЯ временная линия светового дня
+          // ИСПРАВЛЕННАЯ временная линия светового дня
           _buildDaylightTimelineCard(context, forecastDay, localizations),
         ],
       ),
@@ -309,7 +309,7 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
-  // НОВЫЙ МЕТОД: Временная линия светового дня
+  // ИСПРАВЛЕННЫЙ МЕТОД: Временная линия светового дня
   Widget _buildDaylightTimelineCard(BuildContext context, ForecastDay forecastDay, AppLocalizations localizations) {
     final astro = forecastDay.astro;
 
@@ -328,41 +328,65 @@ class DetailedWeatherForecast extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Заголовок
-          Text(
-            '🌅 ${localizations.translate('daylight_hours') ?? 'Световой день'}',
-            style: TextStyle(
-              color: AppConstants.primaryColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Text(
+                '🌅',
+                style: TextStyle(fontSize: 20),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                localizations.translate('daylight_hours') ?? 'Daylight Hours',
+                style: TextStyle(
+                  color: AppConstants.primaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 24),
 
-          // Временная линия
+          // ИСПРАВЛЕННАЯ временная линия
           DaylightTimelineWidget(
             sunrise: _parseAstroTime(astro.sunrise),
             sunset: _parseAstroTime(astro.sunset),
             currentTime: selectedDayIndex == 0 ? DateTime.now() : null,
             enableAnimation: true,
             showDetailedInfo: MediaQuery.of(context).size.width > 600,
+            localizations: localizations, // Передаем локализацию
           ),
         ],
       ),
     );
   }
 
-  // Парсинг времени из API в DateTime
+  // ИСПРАВЛЕННЫЙ парсинг времени из API в DateTime
   DateTime _parseAstroTime(String timeString) {
     try {
-      final cleanTime = timeString.replaceAll(RegExp(r'\s*(AM|PM)\s*'), '');
-      final parts = cleanTime.split(':');
+      // Убираем лишние пробелы и очищаем строку
+      final cleanTimeString = timeString.trim();
+
+      // Проверяем формат времени (12-часовой с AM/PM)
+      final isAM = cleanTimeString.toUpperCase().contains('AM');
+      final isPM = cleanTimeString.toUpperCase().contains('PM');
+
+      // Извлекаем время без AM/PM
+      String timeOnly = cleanTimeString.replaceAll(RegExp(r'\s*(AM|PM)\s*', caseSensitive: false), '');
+
+      final parts = timeOnly.split(':');
+      if (parts.length != 2) {
+        throw FormatException('Invalid time format: $timeString');
+      }
+
       int hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
 
-      if (timeString.toUpperCase().contains('PM') && hour != 12) {
+      // Конвертация в 24-часовой формат
+      if (isPM && hour != 12) {
         hour += 12;
-      } else if (timeString.toUpperCase().contains('AM') && hour == 12) {
+      } else if (isAM && hour == 12) {
         hour = 0;
       }
 
@@ -376,15 +400,24 @@ class DetailedWeatherForecast extends StatelessWidget {
 
       return DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
     } catch (e) {
-      // Fallback времена
+      // Fallback времена при ошибке парсинга
       final now = DateTime.now();
-      return timeString.toLowerCase().contains('sunrise') || timeString.toLowerCase().contains('am')
-          ? DateTime(now.year, now.month, now.day, 6, 30)
-          : DateTime(now.year, now.month, now.day, 18, 30);
+      DateTime targetDate = now;
+
+      if (selectedDayIndex > 0) {
+        targetDate = now.add(Duration(days: selectedDayIndex));
+      }
+
+      // Возвращаем приблизительные времена
+      if (timeString.toLowerCase().contains('sunrise') || timeString.toLowerCase().contains('am')) {
+        return DateTime(targetDate.year, targetDate.month, targetDate.day, 6, 30);
+      } else {
+        return DateTime(targetDate.year, targetDate.month, targetDate.day, 18, 30);
+      }
     }
   }
 
-  // Вспомогательные методы (остаются без изменений)
+  // Вспомогательные методы (ВОССТАНОВЛЕНЫ все методы)
   Map<String, dynamic> _getTimeOfDayData(ForecastDay forecastDay, TimeOfDay timeOfDay) {
     final hours = forecastDay.hour;
     if (hours.isEmpty) {
@@ -454,7 +487,7 @@ class DetailedWeatherForecast extends StatelessWidget {
   }
 }
 
-// НОВЫЙ ВИДЖЕТ: Временная линия светового дня
+// ИСПРАВЛЕННЫЙ ВИДЖЕТ: Временная линия светового дня
 class DaylightTimelineWidget extends StatefulWidget {
   /// Время восхода солнца
   final DateTime sunrise;
@@ -474,10 +507,14 @@ class DaylightTimelineWidget extends StatefulWidget {
   /// Показывать ли подробную информацию
   final bool showDetailedInfo;
 
+  /// Локализация для правильного форматирования
+  final AppLocalizations localizations;
+
   const DaylightTimelineWidget({
     super.key,
     required this.sunrise,
     required this.sunset,
+    required this.localizations,
     this.currentTime,
     this.enableAnimation = true,
     this.height,
@@ -569,7 +606,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
   }
 
   /// Получение информации о текущей фазе дня
-  ({String phase, String timeLeft, String icon}) _getCurrentPhaseInfo(AppLocalizations localizations) {
+  ({String phase, String timeLeft, String icon}) _getCurrentPhaseInfo() {
     final currentTime = widget.currentTime ?? DateTime.now();
     final sunrise = widget.sunrise;
     final sunset = widget.sunset;
@@ -577,40 +614,56 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     if (currentTime.isBefore(sunrise)) {
       final timeUntilSunrise = sunrise.difference(currentTime);
       return (
-      phase: localizations.translate('night') ?? 'Ночь',
-      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: widget.localizations.translate('night') ?? 'Night',
+      timeLeft: '${widget.localizations.translate('until_sunrise') ?? 'Until sunrise'}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
     } else if (currentTime.isAfter(sunset)) {
       final timeUntilSunrise = sunrise.add(const Duration(days: 1)).difference(currentTime);
       return (
-      phase: localizations.translate('night') ?? 'Ночь',
-      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: widget.localizations.translate('night') ?? 'Night',
+      timeLeft: '${widget.localizations.translate('until_sunrise') ?? 'Until sunrise'}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
     } else {
       final timeUntilSunset = sunset.difference(currentTime);
       return (
-      phase: localizations.translate('day') ?? 'День',
-      timeLeft: '${localizations.translate('until_sunset') ?? 'До заката'}: ${_formatDuration(timeUntilSunset)}',
+      phase: widget.localizations.translate('day') ?? 'Day',
+      timeLeft: '${widget.localizations.translate('until_sunset') ?? 'Until sunset'}: ${_formatDuration(timeUntilSunset)}',
       icon: '☀️'
       );
     }
   }
 
-  /// Форматирование длительности в читаемый вид
+  /// ИСПРАВЛЕНО: Форматирование длительности в читаемый вид с локализацией
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
+    final locale = widget.localizations.locale.languageCode;
 
-    if (hours > 0) {
-      return '${hours}ч ${minutes}мин';
+    if (locale == 'ru') {
+      if (hours > 0) {
+        return '${hours}ч ${minutes}мин';
+      } else {
+        return '${minutes}мин';
+      }
+    } else if (locale == 'kk') {
+      if (hours > 0) {
+        return '${hours}с ${minutes}мин';
+      } else {
+        return '${minutes}мин';
+      }
     } else {
-      return '${minutes}мин';
+      // Английский и другие языки
+      if (hours > 0) {
+        return '${hours}h ${minutes}min';
+      } else {
+        return '${minutes}min';
+      }
     }
   }
 
-  /// Получение продолжительности светового дня
+  /// ИСПРАВЛЕНО: Получение продолжительности светового дня
   String _getDaylightDuration() {
     final duration = widget.sunset.difference(widget.sunrise);
     return _formatDuration(duration);
@@ -618,172 +671,180 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    final phaseInfo = _getCurrentPhaseInfo(localizations);
+    final phaseInfo = _getCurrentPhaseInfo();
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Временная линия
-          _buildTimeline(context, localizations),
+          // ИСПРАВЛЕННАЯ временная линия с правильным расчетом ширины
+          _buildTimeline(context),
 
           const SizedBox(height: 24),
 
           // Информация о времени
-          _buildTimeInfo(context, localizations, phaseInfo),
+          _buildTimeInfo(context, phaseInfo),
 
           if (widget.showDetailedInfo) ...[
             const SizedBox(height: 16),
-            _buildDetailedInfo(context, localizations),
+            _buildDetailedInfo(context),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildTimeline(BuildContext context, AppLocalizations localizations) {
+  Widget _buildTimeline(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final timelineHeight = screenWidth > 600 ? 120.0 : 100.0;
 
+    // ИСПРАВЛЕНО: Правильный расчет доступной ширины с учетом отступов
+    final containerPadding = 40.0; // 20 слева + 20 справа от контейнера
+    final availableWidth = screenWidth - containerPadding;
+
     return SizedBox(
       height: timelineHeight,
-      child: Stack(
-        children: [
-          // Фоновая линия с градиентом
-          Positioned(
-            left: 0,
-            right: 0,
-            top: timelineHeight / 2 - 5,
-            child: Container(
-              height: 10,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5),
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF1a1a2e), // Ночь
-                    Color(0xFFFF6B35), // Рассвет
-                    Color(0xFFFFD93D), // День
-                    Color(0xFFFFD93D), // День
-                    Color(0xFFFF6B35), // Закат
-                    Color(0xFF1a1a2e), // Ночь
-                  ],
-                  stops: [0.0, 0.2, 0.3, 0.7, 0.8, 1.0],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final timelineWidth = constraints.maxWidth;
 
-          // Анимированный маркер текущего времени - красивое солнышко
-          if (widget.currentTime != null)
-            AnimatedBuilder(
-              animation: _markerAnimation,
-              builder: (context, child) {
-                return Positioned(
-                  left: MediaQuery.of(context).size.width *
-                      (_getCurrentPosition() - 0.05), // Центрируем маркер
-                  top: timelineHeight / 2 - 15,
-                  child: Container(
-                    width: screenWidth > 600 ? 32.0 : 28.0,
-                    height: screenWidth > 600 ? 32.0 : 28.0,
-                    decoration: BoxDecoration(
-                      // Градиент солнца от оранжевого к желтому
-                      gradient: RadialGradient(
-                        colors: [
-                          const Color(0xFFFFD93D), // Желтый центр
-                          const Color(0xFFFF8C00), // Оранжевый край
-                        ],
-                      ),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFFFFFF), width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD93D).withValues(alpha: 0.8),
-                          blurRadius: 20,
-                          spreadRadius: 4,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFF8C00).withValues(alpha: 0.6),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
+          return Stack(
+            children: [
+              // Фоновая линия с градиентом - ИСПРАВЛЕНО: точная ширина
+              Positioned(
+                left: 0,
+                right: 0,
+                top: timelineHeight / 2 - 5,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF1a1a2e), // Ночь
+                        Color(0xFF4a4a6a), // Предрассветный
+                        Color(0xFFFF6B35), // Рассвет
+                        Color(0xFFFFD93D), // Утро
+                        Color(0xFFFFE55C), // День
+                        Color(0xFFFFD93D), // Полдень
+                        Color(0xFFFF6B35), // Закат
+                        Color(0xFF4a4a6a), // Сумерки
+                        Color(0xFF1a1a2e), // Ночь
                       ],
+                      stops: [0.0, 0.15, 0.2, 0.25, 0.5, 0.75, 0.8, 0.85, 1.0],
                     ),
-                    child: Center(
-                      child: Text(
-                        '☀️',
-                        style: TextStyle(
-                          fontSize: screenWidth > 600 ? 16.0 : 14.0,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Анимированный маркер текущего времени - красивое солнышко
+              if (widget.currentTime != null)
+                AnimatedBuilder(
+                  animation: _markerAnimation,
+                  builder: (context, child) {
+                    final position = _getCurrentPosition();
+                    return Positioned(
+                      left: (timelineWidth * position) - 16, // Центрируем маркер
+                      top: timelineHeight / 2 - 16,
+                      child: Container(
+                        width: 32.0,
+                        height: 32.0,
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFFFFD93D), // Желтый центр
+                              const Color(0xFFFF8C00), // Оранжевый край
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFFFFFFF), width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD93D).withValues(alpha: 0.8),
+                              blurRadius: 15,
+                              spreadRadius: 3,
+                            ),
+                            BoxShadow(
+                              color: const Color(0xFFFF8C00).withValues(alpha: 0.6),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '☀️',
+                            style: TextStyle(fontSize: 14.0),
+                          ),
                         ),
                       ),
-                    ),
+                    );
+                  },
+                ),
+
+              // Метки времени - ИСПРАВЛЕНО: правильное позиционирование
+              Positioned(
+                left: (timelineWidth * 0.2) - 30,
+                top: timelineHeight / 2 - 40,
+                child: Text(
+                  widget.localizations.translate('sunrise') ?? 'Sunrise',
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B35),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            ),
-
-          // Метки времени
-          Positioned(
-            left: MediaQuery.of(context).size.width * 0.2 - 30,
-            top: timelineHeight / 2 - 35,
-            child: Text(
-              localizations.translate('sunrise') ?? 'Восход',
-              style: const TextStyle(
-                color: Color(0xFFFF6B35),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ),
 
-          Positioned(
-            left: MediaQuery.of(context).size.width * 0.8 - 30,
-            top: timelineHeight / 2 - 35,
-            child: Text(
-              localizations.translate('sunset') ?? 'Закат',
-              style: const TextStyle(
-                color: Color(0xFFFF6B35),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-
-          // Метка "Сейчас" (только если показываем текущее время)
-          if (widget.currentTime != null)
-            AnimatedBuilder(
-              animation: _markerAnimation,
-              builder: (context, child) {
-                return Positioned(
-                  left: MediaQuery.of(context).size.width *
-                      (_getCurrentPosition() - 0.05),
-                  top: timelineHeight / 2 + 25,
-                  child: Text(
-                    localizations.translate('now') ?? 'Сейчас',
-                    style: TextStyle(
-                      color: AppConstants.primaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+              Positioned(
+                left: (timelineWidth * 0.8) - 30,
+                top: timelineHeight / 2 - 40,
+                child: Text(
+                  widget.localizations.translate('sunset') ?? 'Sunset',
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B35),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            ),
-        ],
+                ),
+              ),
+
+              // Метка "Сейчас" (только если показываем текущее время)
+              if (widget.currentTime != null)
+                AnimatedBuilder(
+                  animation: _markerAnimation,
+                  builder: (context, child) {
+                    final position = _getCurrentPosition();
+                    return Positioned(
+                      left: (timelineWidth * position) - 20,
+                      top: timelineHeight / 2 + 25,
+                      child: Text(
+                        widget.localizations.translate('now') ?? 'Now',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildTimeInfo(BuildContext context, AppLocalizations localizations,
-      ({String phase, String timeLeft, String icon}) phaseInfo) {
+  Widget _buildTimeInfo(BuildContext context, ({String phase, String timeLeft, String icon}) phaseInfo) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -792,7 +853,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
           context,
           icon: '🌅',
           time: DateFormat('HH:mm').format(widget.sunrise),
-          label: localizations.translate('sunrise') ?? 'Восход',
+          label: widget.localizations.translate('sunrise') ?? 'Sunrise',
         ),
 
         // Текущая фаза (только если показываем текущее время)
@@ -837,9 +898,9 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
         // Закат
         _buildTimeCard(
           context,
-          icon: '🌅',
+          icon: '🌇',
           time: DateFormat('HH:mm').format(widget.sunset),
-          label: localizations.translate('sunset') ?? 'Закат',
+          label: widget.localizations.translate('sunset') ?? 'Sunset',
         ),
       ],
     );
@@ -872,7 +933,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     );
   }
 
-  Widget _buildDetailedInfo(BuildContext context, AppLocalizations localizations) {
+  Widget _buildDetailedInfo(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -886,7 +947,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
             context,
             icon: '⏱️',
             value: _getDaylightDuration(),
-            label: localizations.translate('daylight_duration') ?? 'Продолжительность дня',
+            label: widget.localizations.translate('daylight_duration') ?? 'Daylight Duration',
           ),
           Container(
             width: 1,
@@ -897,7 +958,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
             context,
             icon: '🕐',
             value: DateFormat('HH:mm').format(widget.currentTime ?? DateTime.now()),
-            label: localizations.translate('current_time') ?? 'Текущее время',
+            label: widget.localizations.translate('current_time') ?? 'Current Time',
           ),
         ],
       ),

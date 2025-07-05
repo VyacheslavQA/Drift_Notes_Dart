@@ -84,7 +84,8 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar('Ошибка загрузки статистики: $e');
+        final localizations = AppLocalizations.of(context);
+        _showErrorSnackBar('${localizations.translate('statistics_loading_error')}: $e');
       }
     }
   }
@@ -320,7 +321,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     switch (_selectedPeriod) {
       case 'month':
         final now = DateTime.now();
-        return '${_getMonthName(now.month)} ${now.year}';
+        return '${_getMonthName(now.month, localizations)} ${now.year}';
       case 'year':
         return DateTime.now().year.toString();
       case 'custom':
@@ -334,12 +335,12 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     }
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  String _getMonthName(int month, AppLocalizations localizations) {
+    final monthKeys = [
+      'january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'
     ];
-    return months[month - 1];
+    return localizations.translate(monthKeys[month - 1]) ?? 'Месяц';
   }
 
   void _showErrorSnackBar(String message) {
@@ -663,7 +664,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
             Icons.trip_origin,
             localizations.translate('trips_count') ?? 'Количество поездок',
             '${statistics.tripCount}',
-            _getTripCountDescription(statistics.tripCount),
+            _getTripCountDescription(statistics.tripCount, localizations),
           ),
 
           const SizedBox(height: 16),
@@ -793,13 +794,13 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     );
   }
 
-  String _getTripCountDescription(int count) {
+  String _getTripCountDescription(int count, AppLocalizations localizations) {
     if (count == 1) {
-      return 'Одна поездка';
+      return localizations.translate('one_trip') ?? 'Одна поездка';
     } else if (count >= 2 && count <= 4) {
-      return '$count поездки';
+      return localizations.translate('few_trips')?.replaceFirst('%count%', count.toString()) ?? '$count поездки';
     } else {
-      return '$count поездок';
+      return localizations.translate('many_trips')?.replaceFirst('%count%', count.toString()) ?? '$count поездок';
     }
   }
 

@@ -306,6 +306,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   Future<void> _createNewTrip() async {
+    final localizations = AppLocalizations.of(context);
+
+    // Подготавливаем описания с локализацией
+    final Map<FishingExpenseCategory, String> localizedDescriptions = {};
+    for (final category in _categoryDescriptions.keys) {
+      final description = _categoryDescriptions[category]?.trim() ?? '';
+      localizedDescriptions[category] = description.isNotEmpty
+          ? description
+          : (localizations.translate('expenses_default') ?? 'Расходы');
+    }
+
     await _expenseRepository.createTripWithExpenses(
       date: _selectedDate,
       locationName: _locationController.text.trim().isEmpty
@@ -316,12 +327,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           : _tripNotesController.text.trim(),
       currency: _selectedCurrency,
       categoryAmounts: _categoryAmounts,
-      categoryDescriptions: _categoryDescriptions,
+      categoryDescriptions: localizedDescriptions,
       categoryNotes: _categoryNotes,
     );
   }
 
   Future<void> _updateExistingTrip() async {
+    final localizations = AppLocalizations.of(context);
     final existingTrip = widget.tripToEdit!;
 
     // Создаем новые расходы на основе текущих данных формы
@@ -349,7 +361,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           userId: existingTrip.userId,
           tripId: existingTrip.id,
           amount: amount,
-          description: description.isNotEmpty ? description : 'Расходы',
+          description: description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
           category: category,
           date: _selectedDate,
           currency: _selectedCurrency,

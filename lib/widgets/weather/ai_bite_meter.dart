@@ -771,7 +771,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
                     // Размещаем "Активность:" и скор в столбик для экономии места
                     Text(
-                      'Активность:',
+                      '${localizations.translate('activity')}:',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13, // УМЕНЬШЕНО с 14 до 13
@@ -789,7 +789,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         ),
                       ),
                       child: Text(
-                        '$score баллов',
+                        '$score ${localizations.translate('points')}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 15, // УМЕНЬШЕНО с 16 до 15

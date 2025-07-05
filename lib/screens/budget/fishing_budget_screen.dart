@@ -67,7 +67,8 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorSnackBar('Ошибка загрузки данных: $e');
+        final localizations = AppLocalizations.of(context);
+        _showErrorSnackBar('${localizations.translate('data_loading_error')}: $e');
       }
     }
   }
@@ -75,9 +76,10 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   Future<void> _checkFirestoreDirectly() async {
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
+      final localizations = AppLocalizations.of(context);
 
       if (userId == null) {
-        _showErrorSnackBar('Пользователь не авторизован');
+        _showErrorSnackBar(localizations.translate('user_not_authorized'));
         return;
       }
 
@@ -86,9 +88,10 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           .where('userId', isEqualTo: userId)
           .get();
 
-      _showErrorSnackBar('Firestore: ${snapshot.docs.length} поездок | Локально: ${_trips.length} поездок');
+      _showErrorSnackBar('Firestore: ${snapshot.docs.length} ${localizations.translate('trips')} | ${localizations.translate('locally')}: ${_trips.length} ${localizations.translate('trips')}');
     } catch (e) {
-      _showErrorSnackBar('Ошибка Firestore: $e');
+      final localizations = AppLocalizations.of(context);
+      _showErrorSnackBar('${localizations.translate('firestore_error')}: $e');
     }
   }
 
@@ -102,9 +105,11 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       // Загружаем заново из Firestore
       await _loadTrips();
 
-      _showErrorSnackBar('Данные синхронизированы с Firestore (кеш обновлен)');
+      final localizations = AppLocalizations.of(context);
+      _showErrorSnackBar(localizations.translate('data_synced_with_firestore'));
     } catch (e) {
-      _showErrorSnackBar('Ошибка синхронизации: $e');
+      final localizations = AppLocalizations.of(context);
+      _showErrorSnackBar('${localizations.translate('sync_error')}: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -209,7 +214,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               size: ResponsiveUtils.getIconSize(context),
             ),
             onPressed: _loadTrips,
-            tooltip: 'Обновить',
+            tooltip: localizations.translate('refresh'),
           ),
         ],
         bottom: TabBar(
@@ -678,25 +683,28 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   }
 
   String _getExpenseCountText(int count) {
+    final localizations = AppLocalizations.of(context);
+
     if (count == 1) {
-      return 'расход';
+      return localizations.translate('expense_single');
     } else if (count >= 2 && count <= 4) {
-      return 'расхода';
+      return localizations.translate('expense_few');
     } else {
-      return 'расходов';
+      return localizations.translate('expense_many');
     }
   }
 
   String _formatDate(DateTime date) {
+    final localizations = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
 
     if (dateOnly == today) {
-      return 'Сегодня';
+      return localizations.translate('today');
     } else if (dateOnly == yesterday) {
-      return 'Вчера';
+      return localizations.translate('yesterday');
     } else {
       return '${date.day}.${date.month.toString().padLeft(2, '0')}';
     }

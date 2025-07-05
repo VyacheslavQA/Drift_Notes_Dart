@@ -163,7 +163,7 @@ class _WeatherNotificationsSettingsScreenState
                 localizations.translate('pressure_threshold'),
                 localizations.translate('pressure_threshold_desc'),
                 _settings.pressureThreshold,
-                'мм рт.ст.',
+                localizations.translate('pressure_unit_mmhg'),
                 1.0,
                 20.0,
                 (value) => setState(() {
