@@ -15,6 +15,10 @@ import '../../widgets/responsive/responsive_button.dart';
 // ДОБАВЛЕНО: Импорт для UsageBadge
 import '../../widgets/subscription/usage_badge.dart';
 import '../../constants/subscription_constants.dart';
+// ДОБАВЛЕНО: Импорт для проверки лимитов
+import '../../services/subscription/subscription_service.dart';
+// ДОБАВЛЕНО: Импорт PaywallScreen
+import '../subscription/paywall_screen.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 import 'expense_list_screen.dart';
 import 'budget_statistics_screen.dart';
@@ -33,6 +37,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
   late TabController _tabController;
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   List<FishingTripModel> _trips = [];
   FishingTripStatistics? _statistics;
@@ -159,7 +164,17 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
+  // ИСПРАВЛЕНО: Добавлена проверка лимитов перед навигацией
   void _navigateToAddExpense() async {
+    // Проверяем лимиты перед созданием
+    final canCreate = await _subscriptionService.canCreateContent(ContentType.expenses);
+
+    if (!canCreate) {
+      // ИСПРАВЛЕНО: Используем PaywallScreen вместо самодельного диалога
+      _showPremiumRequired(ContentType.expenses);
+      return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -170,6 +185,18 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     if (result == true) {
       _loadTrips();
     }
+  }
+
+  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  void _showPremiumRequired(ContentType contentType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaywallScreen(
+          contentType: contentType.name,
+        ),
+      ),
+    );
   }
 
   void _navigateToTripDetails(FishingTripModel trip) async {
@@ -469,6 +496,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
+  // ИСПРАВЛЕНО: Кнопка теперь всегда видна, но проверяет лимиты внутри
   Widget _buildQuickActions() {
     final localizations = AppLocalizations.of(context);
 
@@ -477,6 +505,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
+          // ИСПРАВЛЕНО: Кнопка всегда активна, проверка лимитов внутри _navigateToAddExpense
           onPressed: _navigateToAddExpense,
           icon: const Icon(Icons.add_card, size: 24),
           label: Text(

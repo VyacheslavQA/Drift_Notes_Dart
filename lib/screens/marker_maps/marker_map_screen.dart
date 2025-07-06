@@ -18,6 +18,8 @@ import 'depth_chart_screen.dart';
 // ДОБАВЛЕНО: Импорты для проверки лимитов
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
+// ДОБАВЛЕНО: Импорт PaywallScreen
+import '../subscription/paywall_screen.dart';
 
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
@@ -1320,8 +1322,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       final canAccessDepthChart = await subscriptionService.canCreateContent(ContentType.depthChart);
 
       if (!canAccessDepthChart) {
-        // Показываем диалог с предложением премиума
-        _showDepthChartPremiumDialog();
+        // ИСПРАВЛЕНО: Используем PaywallScreen вместо самодельного диалога
+        _showPremiumRequired(ContentType.depthChart);
         return;
       }
 
@@ -1335,167 +1337,19 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     } catch (e) {
       debugPrint('Ошибка при проверке доступа к графику глубины: $e');
       // В случае ошибки показываем диалог премиума (безопасный подход)
-      _showDepthChartPremiumDialog();
+      _showPremiumRequired(ContentType.depthChart);
     }
   }
 
-  // ДОБАВЛЕНО: Диалог с предложением премиума для графика глубины
-  void _showDepthChartPremiumDialog() {
-    final localizations = AppLocalizations.of(context);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppConstants.cardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.stars,
-                  color: Colors.amber,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  localizations.translate('premium_feature') ?? 'Премиум функция',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    color: AppConstants.primaryColor,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      localizations.translate('depth_chart_premium_title') ?? 'График глубин',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                localizations.translate('depth_chart_premium_description') ??
-                    'График глубин доступен только для пользователей с премиум подпиской. Обновитесь до премиума, чтобы получить доступ к расширенной аналитике ваших маркерных карт.',
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.8),
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppConstants.primaryColor.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: AppConstants.primaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        localizations.translate('premium_benefits_hint') ??
-                            'С премиумом вы получите безлимитный доступ ко всем функциям',
-                        style: TextStyle(
-                          color: AppConstants.primaryColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                localizations.translate('cancel') ?? 'Отмена',
-                style: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.7),
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // TODO: Навигация к экрану подписки
-                debugPrint('Переход к экрану покупки премиума');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      localizations.translate('premium_screen_coming_soon') ??
-                          'Экран покупки премиума скоро будет добавлен',
-                    ),
-                    backgroundColor: AppConstants.primaryColor,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              icon: const Icon(Icons.upgrade, size: 18),
-              label: Text(
-                localizations.translate('upgrade_to_premium') ?? 'Обновить до Премиум',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  void _showPremiumRequired(ContentType contentType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaywallScreen(
+          contentType: contentType.name,
+        ),
+      ),
     );
   }
 

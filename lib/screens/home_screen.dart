@@ -19,6 +19,8 @@ import '../constants/subscription_constants.dart';
 import '../widgets/user_agreements_dialog.dart';
 import '../widgets/subscription/usage_badge.dart';
 import '../widgets/subscription/premium_create_button.dart';
+// ДОБАВЛЕНО: Импорт PaywallScreen
+import 'subscription/paywall_screen.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
@@ -265,6 +267,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return policyAllows && limitsAllow;
   }
 
+  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  void _showPremiumRequired(ContentType contentType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaywallScreen(
+          contentType: contentType.name,
+        ),
+      ),
+    );
+  }
+
   // ОБНОВЛЕНО: Показ сообщений о блокировке
   Future<void> _showContentCreationBlocked() async {
     final localizations = AppLocalizations.of(context);
@@ -288,25 +302,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Затем проверяем лимиты
+    // ИСПРАВЛЕНО: Затем проверяем лимиты и показываем PaywallScreen
     if (!await _subscriptionService.canCreateContent(ContentType.fishingNotes)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate('fishing_notes_limit_reached') ??
-                'Достигнут лимит создания заметок о рыбалке.',
-          ),
-          backgroundColor: Colors.orange,
-          action: SnackBarAction(
-            label: localizations.translate('upgrade') ?? 'Обновить',
-            textColor: Colors.white,
-            onPressed: () {
-              // Навигация к PaywallScreen будет добавлена позже
-              print('Navigate to paywall for fishing notes');
-            },
-          ),
-        ),
-      );
+      _showPremiumRequired(ContentType.fishingNotes);
     }
   }
 
@@ -583,12 +581,16 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       childAspectRatio: isTablet ? 1.1 : 1.0,
       children: [
-        // ОБНОВЛЕНО: Маркерная карта с проверкой лимитов
-        _buildQuickActionItemWithLimits(
+        // ИСПРАВЛЕНО: Маркерные карты БЕЗ проверки лимитов - всегда доступны для просмотра
+        _buildQuickActionItem(
           icon: Icons.map_outlined,
           label: localizations.translate('marker_map'),
-          contentType: ContentType.markerMaps,
-          destination: const MarkerMapsListScreen(),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
+            );
+          },
         ),
         // ИСПРАВЛЕНО: Бюджет БЕЗ проверки лимитов - всегда доступен для просмотра
         _buildQuickActionItem(
@@ -690,36 +692,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: Показ сообщения о достижении лимита
+  // ИСПРАВЛЕНО: Показ сообщения о достижении лимита через PaywallScreen
   void _showLimitReachedMessage(ContentType contentType) {
-    final localizations = AppLocalizations.of(context);
-
-    String message;
-    switch (contentType) {
-      case ContentType.markerMaps:
-        message = localizations.translate('marker_maps_limit_reached') ?? 'Достигнут лимит создания маркерных карт.';
-        break;
-      case ContentType.expenses:
-        message = localizations.translate('expenses_limit_reached') ?? 'Достигнут лимит добавления расходов.';
-        break;
-      default:
-        message = localizations.translate('content_limit_reached') ?? 'Достигнут лимит создания контента.';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange,
-        action: SnackBarAction(
-          label: localizations.translate('upgrade') ?? 'Обновить',
-          textColor: Colors.white,
-          onPressed: () {
-            // Навигация к PaywallScreen будет добавлена позже
-            print('Navigate to paywall for $contentType');
-          },
-        ),
-      ),
-    );
+    _showPremiumRequired(contentType);
   }
 
   // ИСПРАВЛЕНО: Элемент быстрого действия с адаптивным текстом
@@ -884,7 +859,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ПЕРЕМЕЩЕН: Карточка статуса подписки НАД статистикой с условием скрытия для премиум
+  // ИСПРАВЛЕНО: Карточка статуса подписки с кнопкой PaywallScreen
   Widget _buildSubscriptionStatusCard() {
     return StreamBuilder<SubscriptionStatus>(
       stream: _subscriptionService.subscriptionStatusStream,
@@ -976,8 +951,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: buttonHeight + 4, // УВЕЛИЧЕНО: +4 к высоте кнопки
                 child: ElevatedButton(
                   onPressed: () {
-                    // Навигация к PaywallScreen будет добавлена позже
-                    print('Navigate to paywall from status card');
+                    // ИСПРАВЛЕНО: Навигация к PaywallScreen
+                    _showPremiumRequired(ContentType.fishingNotes);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppConstants.primaryColor,
