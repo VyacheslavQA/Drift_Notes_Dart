@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/responsive_constants.dart';
+import '../../utils/responsive_utils.dart';
+import '../../constants/subscription_constants.dart'; // ContentType находится здесь
 import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/marker_map_repository.dart';
 import '../../repositories/fishing_note_repository.dart';
+import '../../services/subscription/subscription_service.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../widgets/subscription/premium_create_button.dart';
+import '../../widgets/subscription/usage_badge.dart'; // ДОБАВЛЕНО
 import '../../localization/app_localizations.dart';
 import 'marker_map_screen.dart';
 
@@ -22,6 +28,7 @@ class MarkerMapsListScreen extends StatefulWidget {
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   final _markerMapRepository = MarkerMapRepository();
   final _fishingNoteRepository = FishingNoteRepository();
+  final _subscriptionService = SubscriptionService();
 
   List<MarkerMapModel> _maps = [];
   List<FishingNoteModel> _notes = [];
@@ -62,6 +69,43 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         });
       }
     }
+  }
+
+  // ДОБАВЛЕНО: Проверка лимитов перед созданием карты
+  Future<void> _handleCreateMapPress() async {
+    final canCreate = await _subscriptionService.canCreateContent(ContentType.markerMaps);
+
+    if (!canCreate) {
+      final localizations = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            localizations.translate('marker_maps_limit_reached') ??
+                'Достигнут лимит создания маркерных карт.',
+          ),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: localizations.translate('upgrade') ?? 'Обновить',
+            textColor: Colors.white,
+            onPressed: () {
+              // Навигация к PaywallScreen будет добавлена позже
+              print('Navigate to paywall for marker maps');
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Увеличиваем счетчик использования
+    if (!_subscriptionService.hasPremiumAccess()) {
+      final success = await _subscriptionService.incrementUsage(ContentType.markerMaps);
+      if (!success) {
+        return; // Лимит превышен
+      }
+    }
+
+    _showCreateMapDialog();
   }
 
   // Показ меню настроек карты
@@ -166,16 +210,16 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     // Предварительно выбираем привязанные заметки
     for (String noteId in map.noteIds) {
       final note = _notes.firstWhere(
-        (n) => n.id == noteId,
+            (n) => n.id == noteId,
         orElse:
             () => FishingNoteModel(
-              id: '',
-              userId: '',
-              location: '',
-              fishingType: '',
-              date: DateTime.now(),
-              // ИСПРАВЛЕНО: убрали все неправильные поля, оставили только обязательные
-            ),
+          id: '',
+          userId: '',
+          location: '',
+          fishingType: '',
+          date: DateTime.now(),
+          // ИСПРАВЛЕНО: убрали все неправильные поля, оставили только обязательные
+        ),
       );
       if (note.id.isNotEmpty) {
         selectedNotes.add(note);
@@ -246,7 +290,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
                                 labelText:
-                                    '${localizations.translate('map_name')}*',
+                                '${localizations.translate('map_name')}*',
                                 labelStyle: TextStyle(
                                   color: AppConstants.textColor.withValues(
                                     alpha: 0.7,
@@ -290,7 +334,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                         ),
                                         dialogTheme: DialogThemeData(
                                           backgroundColor:
-                                              AppConstants.backgroundColor,
+                                          AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -351,7 +395,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
                                 labelText:
-                                    '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
                                 labelStyle: TextStyle(
                                   color: AppConstants.textColor.withValues(
                                     alpha: 0.7,
@@ -405,65 +449,65 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                   ),
                                 ),
                                 child:
-                                    _notes.isEmpty
-                                        ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: Text(
-                                              localizations.translate(
-                                                'no_notes',
-                                              ),
-                                              style: TextStyle(
-                                                color: AppConstants.textColor
-                                                    .withValues(alpha: 0.7),
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        : ListView.builder(
-                                          shrinkWrap: true,
-                                          itemCount: _notes.length,
-                                          itemBuilder: (context, index) {
-                                            final note = _notes[index];
-                                            final title =
-                                                note.title.isNotEmpty
-                                                    ? note.title
-                                                    : note.location;
-                                            final isSelected = selectedNotes
-                                                .contains(note);
+                                _notes.isEmpty
+                                    ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Text(
+                                      localizations.translate(
+                                        'no_notes',
+                                      ),
+                                      style: TextStyle(
+                                        color: AppConstants.textColor
+                                            .withValues(alpha: 0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                    : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _notes.length,
+                                  itemBuilder: (context, index) {
+                                    final note = _notes[index];
+                                    final title =
+                                    note.title.isNotEmpty
+                                        ? note.title
+                                        : note.location;
+                                    final isSelected = selectedNotes
+                                        .contains(note);
 
-                                            return CheckboxListTile(
-                                              title: Text(
-                                                title,
-                                                style: TextStyle(
-                                                  color: AppConstants.textColor,
-                                                  fontSize: 14,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              value: isSelected,
-                                              onChanged: (bool? value) {
-                                                dialogSetState(() {
-                                                  if (value == true) {
-                                                    selectedNotes.add(note);
-                                                  } else {
-                                                    selectedNotes.remove(note);
-                                                  }
-                                                });
-                                              },
-                                              activeColor:
-                                                  AppConstants.primaryColor,
-                                              checkColor:
-                                                  AppConstants.textColor,
-                                              dense: true,
-                                              controlAffinity:
-                                                  ListTileControlAffinity
-                                                      .leading,
-                                            );
-                                          },
+                                    return CheckboxListTile(
+                                      title: Text(
+                                        title,
+                                        style: TextStyle(
+                                          color: AppConstants.textColor,
+                                          fontSize: 14,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      value: isSelected,
+                                      onChanged: (bool? value) {
+                                        dialogSetState(() {
+                                          if (value == true) {
+                                            selectedNotes.add(note);
+                                          } else {
+                                            selectedNotes.remove(note);
+                                          }
+                                        });
+                                      },
+                                      activeColor:
+                                      AppConstants.primaryColor,
+                                      checkColor:
+                                      AppConstants.textColor,
+                                      dense: true,
+                                      controlAffinity:
+                                      ListTileControlAffinity
+                                          .leading,
+                                    );
+                                  },
+                                ),
                               ),
 
                               if (selectedNotes.isNotEmpty) ...[
@@ -529,22 +573,22 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 name: nameController.text.trim(),
                                 date: selectedDate,
                                 sector:
-                                    sectorController.text.trim().isEmpty
-                                        ? null
-                                        : sectorController.text.trim(),
+                                sectorController.text.trim().isEmpty
+                                    ? null
+                                    : sectorController.text.trim(),
                                 noteIds:
-                                    selectedNotes
-                                        .map((note) => note.id)
-                                        .toList(),
+                                selectedNotes
+                                    .map((note) => note.id)
+                                    .toList(),
                                 noteNames:
-                                    selectedNotes
-                                        .map(
-                                          (note) =>
-                                              note.title.isNotEmpty
-                                                  ? note.title
-                                                  : note.location,
-                                        )
-                                        .toList(),
+                                selectedNotes
+                                    .map(
+                                      (note) =>
+                                  note.title.isNotEmpty
+                                      ? note.title
+                                      : note.location,
+                                )
+                                    .toList(),
                               );
 
                               Navigator.pop(context, updatedMap);
@@ -609,33 +653,33 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: AppConstants.cardColor,
-            title: Text(
-              localizations.translate('delete_map'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              localizations.translate('delete_map_confirmation'),
+        backgroundColor: AppConstants.cardColor,
+        title: Text(
+          localizations.translate('delete_map'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          localizations.translate('delete_map_confirmation'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              localizations.translate('cancel'),
               style: TextStyle(color: AppConstants.textColor),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: Text(localizations.translate('delete')),
-              ),
-            ],
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(localizations.translate('delete')),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
@@ -643,6 +687,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         setState(() => _isLoading = true);
 
         await _markerMapRepository.deleteMarkerMap(map.id);
+
+        // ДОБАВЛЕНО: Уменьшаем счетчик при удалении
+        if (!_subscriptionService.hasPremiumAccess()) {
+          await _subscriptionService.decrementUsage(ContentType.markerMaps);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -745,7 +794,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
                                 labelText:
-                                    '${localizations.translate('map_name')}*',
+                                '${localizations.translate('map_name')}*',
                                 labelStyle: TextStyle(
                                   color: AppConstants.textColor.withValues(
                                     alpha: 0.7,
@@ -789,7 +838,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                         ),
                                         dialogTheme: DialogThemeData(
                                           backgroundColor:
-                                              AppConstants.backgroundColor,
+                                          AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -850,7 +899,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
                                 labelText:
-                                    '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
                                 labelStyle: TextStyle(
                                   color: AppConstants.textColor.withValues(
                                     alpha: 0.7,
@@ -904,65 +953,65 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                   ),
                                 ),
                                 child:
-                                    _notes.isEmpty
-                                        ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: Text(
-                                              localizations.translate(
-                                                'no_notes',
-                                              ),
-                                              style: TextStyle(
-                                                color: AppConstants.textColor
-                                                    .withValues(alpha: 0.7),
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        : ListView.builder(
-                                          shrinkWrap: true,
-                                          itemCount: _notes.length,
-                                          itemBuilder: (context, index) {
-                                            final note = _notes[index];
-                                            final title =
-                                                note.title.isNotEmpty
-                                                    ? note.title
-                                                    : note.location;
-                                            final isSelected = selectedNotes
-                                                .contains(note);
+                                _notes.isEmpty
+                                    ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Text(
+                                      localizations.translate(
+                                        'no_notes',
+                                      ),
+                                      style: TextStyle(
+                                        color: AppConstants.textColor
+                                            .withValues(alpha: 0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                    : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _notes.length,
+                                  itemBuilder: (context, index) {
+                                    final note = _notes[index];
+                                    final title =
+                                    note.title.isNotEmpty
+                                        ? note.title
+                                        : note.location;
+                                    final isSelected = selectedNotes
+                                        .contains(note);
 
-                                            return CheckboxListTile(
-                                              title: Text(
-                                                title,
-                                                style: TextStyle(
-                                                  color: AppConstants.textColor,
-                                                  fontSize: 14,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              value: isSelected,
-                                              onChanged: (bool? value) {
-                                                dialogSetState(() {
-                                                  if (value == true) {
-                                                    selectedNotes.add(note);
-                                                  } else {
-                                                    selectedNotes.remove(note);
-                                                  }
-                                                });
-                                              },
-                                              activeColor:
-                                                  AppConstants.primaryColor,
-                                              checkColor:
-                                                  AppConstants.textColor,
-                                              dense: true,
-                                              controlAffinity:
-                                                  ListTileControlAffinity
-                                                      .leading,
-                                            );
-                                          },
+                                    return CheckboxListTile(
+                                      title: Text(
+                                        title,
+                                        style: TextStyle(
+                                          color: AppConstants.textColor,
+                                          fontSize: 14,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      value: isSelected,
+                                      onChanged: (bool? value) {
+                                        dialogSetState(() {
+                                          if (value == true) {
+                                            selectedNotes.add(note);
+                                          } else {
+                                            selectedNotes.remove(note);
+                                          }
+                                        });
+                                      },
+                                      activeColor:
+                                      AppConstants.primaryColor,
+                                      checkColor:
+                                      AppConstants.textColor,
+                                      dense: true,
+                                      controlAffinity:
+                                      ListTileControlAffinity
+                                          .leading,
+                                    );
+                                  },
+                                ),
                               ),
 
                               if (selectedNotes.isNotEmpty) ...[
@@ -1028,22 +1077,22 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 name: nameController.text.trim(),
                                 date: selectedDate,
                                 sector:
-                                    sectorController.text.trim().isEmpty
-                                        ? null
-                                        : sectorController.text.trim(),
+                                sectorController.text.trim().isEmpty
+                                    ? null
+                                    : sectorController.text.trim(),
                                 noteIds:
-                                    selectedNotes
-                                        .map((note) => note.id)
-                                        .toList(),
+                                selectedNotes
+                                    .map((note) => note.id)
+                                    .toList(),
                                 noteNames:
-                                    selectedNotes
-                                        .map(
-                                          (note) =>
-                                              note.title.isNotEmpty
-                                                  ? note.title
-                                                  : note.location,
-                                        )
-                                        .toList(),
+                                selectedNotes
+                                    .map(
+                                      (note) =>
+                                  note.title.isNotEmpty
+                                      ? note.title
+                                      : note.location,
+                                )
+                                    .toList(),
                                 markers: [],
                               );
 
@@ -1104,108 +1153,184 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          localizations.translate('marker_maps'),
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        // ИСПРАВЛЕНО: Добавлен UsageBadge в заголовок как на экране заметок
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                localizations.translate('marker_maps'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: isSmallScreen ? 20 : (isTablet ? 26 : 24),
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            // ДОБАВЛЕН: Бейдж использования в заголовке
+            UsageBadge(
+              contentType: ContentType.markerMaps,
+              fontSize: isSmallScreen ? 10 : 12,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 6 : 8,
+                vertical: isSmallScreen ? 2 : 4,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        toolbarHeight: isTablet ? kToolbarHeight + 8 : kToolbarHeight,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: AppConstants.textColor,
+            size: isSmallScreen ? 24 : 28,
+          ),
+          onPressed: () => Navigator.pop(context),
+          constraints: BoxConstraints(
+            minWidth: ResponsiveConstants.minTouchTarget,
+            minHeight: ResponsiveConstants.minTouchTarget,
+          ),
+        ),
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: localizations.translate('loading'),
         child:
-            _errorMessage != null
-                ? _buildErrorState()
-                : _maps.isEmpty
-                ? _buildEmptyState()
-                : _buildMapsList(),
+        _errorMessage != null
+            ? _buildErrorState()
+            : _maps.isEmpty
+            ? _buildEmptyState()
+            : _buildMapsList(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateMapDialog,
+      // ИСПРАВЛЕНО: Заменена обычная FloatingActionButton на PremiumFloatingActionButton
+      floatingActionButton: PremiumFloatingActionButton(
+        contentType: ContentType.markerMaps,
+        onPressed: _handleCreateMapPress,
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
-        child: const Icon(Icons.add),
+        heroTag: "add_marker_map",
       ),
     );
   }
 
   Widget _buildErrorState() {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, color: Colors.red, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            _errorMessage!,
-            style: TextStyle(color: AppConstants.textColor, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadData,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: isSmallScreen ? 40 : 48,
             ),
-            child: Text(localizations.translate('try_again')),
-          ),
-        ],
+            SizedBox(height: ResponsiveConstants.spacingM),
+            Text(
+              _errorMessage!,
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingL),
+            SizedBox(
+              height: ResponsiveConstants.minTouchTarget,
+              child: ElevatedButton(
+                onPressed: _loadData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppConstants.primaryColor,
+                  foregroundColor: AppConstants.textColor,
+                ),
+                child: Text(
+                  localizations.translate('try_again'),
+                  style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.map_outlined,
-            color: AppConstants.textColor.withValues(alpha: 0.5),
-            size: 80,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            localizations.translate('no_notes'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 24 : 32,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.map_outlined,
+              color: AppConstants.textColor.withValues(alpha: 0.5),
+              size: isSmallScreen ? 60 : (isTablet ? 100 : 80),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            localizations.translate('start_journal'),
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 16,
+            SizedBox(height: ResponsiveConstants.spacingL),
+            Text(
+              localizations.translate('no_notes'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: isSmallScreen ? 18 : (isTablet ? 26 : 22),
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 40),
-          ElevatedButton.icon(
-            onPressed: _showCreateMapDialog,
-            icon: const Icon(Icons.add),
-            label: Text(localizations.translate('create_marker_map')),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
-              foregroundColor: AppConstants.textColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            SizedBox(height: ResponsiveConstants.spacingM),
+            Text(
+              localizations.translate('start_journal'),
+              style: TextStyle(
+                color: AppConstants.textColor.withValues(alpha: 0.7),
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingXL),
+            // ИСПРАВЛЕНО: Заменена обычная кнопка на PremiumCreateButton
+            SizedBox(
+              width: double.infinity,
+              child: PremiumCreateButton(
+                contentType: ContentType.markerMaps,
+                onCreatePressed: _handleCreateMapPress,
+                customText: localizations.translate('create_marker_map'),
+                customIcon: Icons.add,
+                showUsageBadge: false,
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+                borderRadius: 24,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20 : 24,
+                  vertical: 16,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

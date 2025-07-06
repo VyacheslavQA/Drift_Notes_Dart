@@ -6,6 +6,9 @@ import '../models/fishing_expense_model.dart';
 import '../models/fishing_trip_model.dart';
 import '../services/firebase/firebase_service.dart';
 import '../utils/network_utils.dart';
+// ДОБАВЛЕНО: Импорты для работы с лимитами
+import '../services/subscription/subscription_service.dart';
+import '../constants/subscription_constants.dart';
 
 /// Repository для управления поездками на рыбалку (расходы хранятся внутри поездок)
 class FishingExpenseRepository {
@@ -97,9 +100,27 @@ class FishingExpenseRepository {
         final syncedTrip = trip.markAsSynced().withExpenses(
             expenses.map((e) => e.markAsSynced()).toList()
         );
+
+        // ДОБАВЛЕНО: Увеличиваем счетчик использования после успешного сохранения
+        try {
+          await SubscriptionService().incrementUsage(ContentType.expenses);
+          debugPrint('✅ Счетчик расходов/поездок увеличен');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения счетчика расходов/поездок: $e');
+        }
+
         return syncedTrip;
       } else {
         // TODO: Добавить офлайн хранение
+
+        // ДОБАВЛЕНО: Увеличиваем счетчик использования и в офлайн режиме
+        try {
+          await SubscriptionService().incrementUsage(ContentType.expenses);
+          debugPrint('✅ Счетчик расходов/поездок увеличен (офлайн)');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения счетчика расходов/поездок (офлайн): $e');
+        }
+
         return trip;
       }
     } catch (e) {
@@ -140,6 +161,13 @@ class FishingExpenseRepository {
 
         // Сортируем в коде (новые сначала)
         trips.sort((a, b) => b.date.compareTo(a.date));
+
+        // ДОБАВЛЕНО: Обновляем лимиты после загрузки поездок
+        try {
+          await SubscriptionService().refreshUsageLimits();
+        } catch (e) {
+          debugPrint('Ошибка обновления лимитов после загрузки поездок: $e');
+        }
 
         return trips;
       } else {
@@ -206,6 +234,14 @@ class FishingExpenseRepository {
       }
 
       await _firestore.collection(_tripsCollection).doc(tripId).delete();
+
+      // ДОБАВЛЕНО: Уменьшаем счетчик использования после успешного удаления
+      try {
+        await SubscriptionService().decrementUsage(ContentType.expenses);
+        debugPrint('✅ Счетчик расходов/поездок уменьшен');
+      } catch (e) {
+        debugPrint('❌ Ошибка уменьшения счетчика расходов/поездок: $e');
+      }
     } catch (e) {
       debugPrint('Ошибка удаления поездки: $e');
       rethrow;

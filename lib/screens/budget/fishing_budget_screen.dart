@@ -12,6 +12,9 @@ import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../widgets/responsive/responsive_button.dart';
+// ДОБАВЛЕНО: Импорт для UsageBadge
+import '../../widgets/subscription/usage_badge.dart';
+import '../../constants/subscription_constants.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 import 'expense_list_screen.dart';
 import 'budget_statistics_screen.dart';
@@ -189,10 +192,29 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: ResponsiveText(
-          localizations.translate('fishing_budget') ?? 'Бюджет рыбалки',
-          type: ResponsiveTextType.titleLarge,
-          fontWeight: FontWeight.w600,
+        // ИСПРАВЛЕНО: Заголовок с UsageBadge
+        title: Row(
+          children: [
+            Expanded(
+              child: ResponsiveText(
+                localizations.translate('fishing_budget') ?? 'Бюджет рыбалки',
+                type: ResponsiveTextType.titleLarge,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            // ДОБАВЛЕНО: UsageBadge для расходов/поездок
+            const SizedBox(width: 8),
+            UsageBadge(
+              contentType: ContentType.expenses,
+              fontSize: ResponsiveUtils.isTablet(context) ? 14 : 12,
+              padding: EdgeInsets.symmetric(
+                horizontal: ResponsiveUtils.isTablet(context) ? 10 : 8,
+                vertical: ResponsiveUtils.isTablet(context) ? 6 : 4,
+              ),
+              showIcon: true,
+              showPercentage: false,
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,

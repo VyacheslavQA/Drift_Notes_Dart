@@ -26,6 +26,9 @@ dependencies:
   firebase_storage: ^11.7.7
   firebase_app_check: ^0.2.2+7  # Совместимая с старыми версиями
 
+  # ДОБАВЛЕНО: In-App Purchase для подписок
+  in_app_purchase: ^3.1.13
+
   # Google Sign-In
   google_sign_in: ^6.2.1
 

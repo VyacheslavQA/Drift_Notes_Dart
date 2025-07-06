@@ -8,6 +8,9 @@ import '../services/firebase/firebase_service.dart';
 import '../utils/network_utils.dart';
 import '../services/offline/offline_storage_service.dart';
 import '../services/offline/sync_service.dart';
+// ДОБАВЛЕНО: Импорты для работы с лимитами
+import '../services/subscription/subscription_service.dart';
+import '../constants/subscription_constants.dart';
 
 class MarkerMapRepository {
   final FirebaseService _firebaseService = FirebaseService();
@@ -31,18 +34,18 @@ class MarkerMapRepository {
 
         // Если есть подключение, получаем карты из Firestore
         final snapshot =
-            await _firestore
-                .collection('marker_maps')
-                .where('userId', isEqualTo: userId)
-                .get();
+        await _firestore
+            .collection('marker_maps')
+            .where('userId', isEqualTo: userId)
+            .get();
 
         debugPrint('Получено документов: ${snapshot.docs.length}');
 
         // Преобразуем документы в модели
         final onlineMaps =
-            snapshot.docs
-                .map((doc) => MarkerMapModel.fromJson(doc.data(), id: doc.id))
-                .toList();
+        snapshot.docs
+            .map((doc) => MarkerMapModel.fromJson(doc.data(), id: doc.id))
+            .toList();
 
         // Получаем офлайн карты, которые еще не были синхронизированы
         final offlineMaps = await _getOfflineMarkerMaps(userId);
@@ -65,11 +68,18 @@ class MarkerMapRepository {
 
         // Сортируем локально по дате (от новых к старым)
         final result =
-            uniqueMaps.values.toList()
-              ..sort((a, b) => b.date.compareTo(a.date));
+        uniqueMaps.values.toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
         // Запускаем синхронизацию в фоне
         _syncService.syncAll();
+
+        // ДОБАВЛЕНО: Обновляем лимиты после загрузки карт
+        try {
+          await SubscriptionService().refreshUsageLimits();
+        } catch (e) {
+          debugPrint('Ошибка обновления лимитов после загрузки карт: $e');
+        }
 
         return result;
       } else {
@@ -99,12 +109,12 @@ class MarkerMapRepository {
 
       // Фильтруем и преобразуем данные в модели
       final offlineMapModels =
-          offlineMaps
-              .where((map) => map['userId'] == userId) // Фильтруем по userId
-              .map(
-                (map) => MarkerMapModel.fromJson(map, id: map['id'] as String),
-              )
-              .toList();
+      offlineMaps
+          .where((map) => map['userId'] == userId) // Фильтруем по userId
+          .map(
+            (map) => MarkerMapModel.fromJson(map, id: map['id'] as String),
+      )
+          .toList();
 
       // Сортируем по дате (от новых к старым)
       offlineMapModels.sort((a, b) => b.date.compareTo(a.date));
@@ -148,10 +158,27 @@ class MarkerMapRepository {
         // Синхронизируем офлайн карты, если они есть
         await _syncService.syncAll();
 
+        // ДОБАВЛЕНО: Увеличиваем счетчик использования после успешного сохранения
+        try {
+          await SubscriptionService().incrementUsage(ContentType.markerMaps);
+          debugPrint('✅ Счетчик маркерных карт увеличен');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения счетчика маркерных карт: $e');
+        }
+
         return mapId;
       } else {
         // Если нет интернета, сохраняем карту локально
         await _saveMapOffline(mapToAdd);
+
+        // ДОБАВЛЕНО: Увеличиваем счетчик использования и в офлайн режиме
+        try {
+          await SubscriptionService().incrementUsage(ContentType.markerMaps);
+          debugPrint('✅ Счетчик маркерных карт увеличен (офлайн)');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения счетчика маркерных карт (офлайн): $e');
+        }
+
         return mapId;
       }
     } catch (e) {
@@ -231,6 +258,14 @@ class MarkerMapRepository {
         } catch (e) {
           debugPrint('Ошибка при удалении локальной копии карты: $e');
         }
+
+        // ДОБАВЛЕНО: Уменьшаем счетчик использования после успешного удаления
+        try {
+          await SubscriptionService().decrementUsage(ContentType.markerMaps);
+          debugPrint('✅ Счетчик маркерных карт уменьшен');
+        } catch (e) {
+          debugPrint('❌ Ошибка уменьшения счетчика маркерных карт: $e');
+        }
       } else {
         // Если нет интернета, отмечаем карту для удаления
         await _offlineStorage.markForDeletion(mapId, true);
@@ -240,6 +275,14 @@ class MarkerMapRepository {
           await _offlineStorage.removeOfflineMarkerMap(mapId);
         } catch (e) {
           debugPrint('Ошибка при удалении локальной копии карты: $e');
+        }
+
+        // ДОБАВЛЕНО: Уменьшаем счетчик использования и в офлайн режиме
+        try {
+          await SubscriptionService().decrementUsage(ContentType.markerMaps);
+          debugPrint('✅ Счетчик маркерных карт уменьшен (офлайн)');
+        } catch (e) {
+          debugPrint('❌ Ошибка уменьшения счетчика маркерных карт (офлайн): $e');
         }
       }
     } catch (e) {
@@ -268,10 +311,10 @@ class MarkerMapRepository {
       if (isOnline) {
         // Если есть интернет, получаем все карты пользователя и удаляем их
         final snapshot =
-            await _firestore
-                .collection('marker_maps')
-                .where('userId', isEqualTo: userId)
-                .get();
+        await _firestore
+            .collection('marker_maps')
+            .where('userId', isEqualTo: userId)
+            .get();
 
         // Создаем пакетную операцию для удаления
         final batch = _firestore.batch();
@@ -357,12 +400,12 @@ class MarkerMapRepository {
 
       // Ищем карту по ID
       final mapData = allOfflineMaps.firstWhere(
-        (map) => map['id'] == mapId,
+            (map) => map['id'] == mapId,
         orElse:
             () =>
-                throw Exception(
-                  'Маркерная карта не найдена в офлайн хранилище',
-                ),
+        throw Exception(
+          'Маркерная карта не найдена в офлайн хранилище',
+        ),
       );
 
       return MarkerMapModel.fromJson(mapData, id: mapId);

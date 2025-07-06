@@ -30,6 +30,7 @@ import 'screens/settings/accepted_agreements_screen.dart';
 import 'screens/timer/timers_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/subscription_provider.dart'; // ДОБАВЛЕНО: SubscriptionProvider
 import 'localization/app_localizations.dart';
 import 'firebase_options.dart';
 import 'package:firebase_app_check/firebase_app_check.dart'; // ОСТАВЛЯЕМ для будущего использования
@@ -223,6 +224,8 @@ void main() async {
         ChangeNotifierProvider(create: (context) => TimerProvider()),
         ChangeNotifierProvider(create: (context) => StatisticsProvider()),
         ChangeNotifierProvider.value(value: languageProvider), // ИСПРАВЛЕНО: используем .value
+        // ДОБАВЛЕНО: SubscriptionProvider для управления подписками
+        ChangeNotifierProvider(create: (context) => SubscriptionProvider()),
       ],
       child: DriftNotesApp(consentService: consentService),
     ),
@@ -438,7 +441,23 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScheduledReminderContext();
+      // ДОБАВЛЕНО: Инициализация SubscriptionProvider
+      _initializeSubscriptionProvider();
     });
+  }
+
+  // ДОБАВЛЕНО: Инициализация SubscriptionProvider
+  void _initializeSubscriptionProvider() {
+    try {
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      subscriptionProvider.initialize().then((_) {
+        debugPrint('✅ SubscriptionProvider инициализирован в приложении');
+      }).catchError((error) {
+        debugPrint('❌ Ошибка инициализации SubscriptionProvider: $error');
+      });
+    } catch (e) {
+      debugPrint('⚠️ Не удалось инициализировать SubscriptionProvider: $e');
+    }
   }
 
   @override

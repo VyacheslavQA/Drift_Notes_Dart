@@ -1,3 +1,5 @@
+<!-- Путь: ios/Runner/Info.plist -->
+
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -164,5 +166,22 @@
         <string>com.driftnotes.timer-refresh</string>
         <string>com.driftnotes.notification-processing</string>
     </array>
+
+    <!-- ДОБАВЛЕНО: Ключи для IN-APP покупок -->
+    <key>SKAdNetworkItems</key>
+    <array>
+        <dict>
+            <key>SKAdNetworkIdentifier</key>
+            <string>cstr6suwn9.skadnetwork</string>
+        </dict>
+    </array>
+
+    <!-- ДОБАВЛЕНО: Для тестирования песочницы (можно убрать в продакшене) -->
+    <key>com.apple.developer.in-app-purchase</key>
+    <array>
+        <string>monthly_premium</string>
+        <string>yearly_premium</string>
+    </array>
+
 </dict>
 </plist>

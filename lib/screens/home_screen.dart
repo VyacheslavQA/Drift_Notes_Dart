@@ -1,5 +1,5 @@
 // Путь: lib/screens/home_screen.dart
-// ИСПРАВЛЕНИЯ: YouTube карточка и навигация + НОВЫЕ КНОПКИ
+// ОБНОВЛЕННАЯ ВЕРСИЯ с перемещенной карточкой подписки
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,12 +8,17 @@ import '../repositories/fishing_note_repository.dart';
 import '../repositories/user_repository.dart';
 import '../models/fishing_note_model.dart';
 import '../models/user_model.dart';
+import '../models/subscription_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
 import '../localization/app_localizations.dart';
 import '../widgets/center_button_tooltip.dart';
 import '../services/user_consent_service.dart';
+import '../services/subscription/subscription_service.dart';
+import '../constants/subscription_constants.dart';
 import '../widgets/user_agreements_dialog.dart';
+import '../widgets/subscription/usage_badge.dart';
+import '../widgets/subscription/premium_create_button.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
@@ -27,7 +32,7 @@ import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 import 'tournaments/tournaments_screen.dart';
 import 'shops/shops_screen.dart';
-import 'budget/fishing_budget_screen.dart'; // ДОБАВЛЕНО: импорт экрана бюджета
+import 'budget/fishing_budget_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _firebaseService = FirebaseService();
   final _fishingNoteRepository = FishingNoteRepository();
   final _userRepository = UserRepository();
+  final _subscriptionService = SubscriptionService();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   List<FishingNoteModel> _fishingNotes = [];
@@ -252,24 +258,56 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  bool get _canCreateContent => _policyRestrictions?.canCreateContent ?? true;
+  // ИСПРАВЛЕНО: Асинхронная проверка возможности создания контента
+  Future<bool> _canCreateContent() async {
+    final policyAllows = _policyRestrictions?.canCreateContent ?? true;
+    final limitsAllow = await _subscriptionService.canCreateContent(ContentType.fishingNotes);
+    return policyAllows && limitsAllow;
+  }
 
-  void _showContentCreationBlocked() {
+  // ОБНОВЛЕНО: Показ сообщений о блокировке
+  Future<void> _showContentCreationBlocked() async {
     final localizations = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          localizations.translate('create_note_blocked') ??
-              'Создание заметок заблокировано. Примите политику конфиденциальности.',
+
+    // Сначала проверяем политику
+    if (_policyRestrictions?.canCreateContent != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            localizations.translate('create_note_blocked') ??
+                'Создание заметок заблокировано. Примите политику конфиденциальности.',
+          ),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: localizations.translate('accept_policy') ?? 'Принять политику',
+            textColor: Colors.white,
+            onPressed: () => _showPolicyUpdateDialog(),
+          ),
         ),
-        backgroundColor: Colors.red,
-        action: SnackBarAction(
-          label: localizations.translate('accept_policy') ?? 'Принять политику',
-          textColor: Colors.white,
-          onPressed: () => _showPolicyUpdateDialog(),
+      );
+      return;
+    }
+
+    // Затем проверяем лимиты
+    if (!await _subscriptionService.canCreateContent(ContentType.fishingNotes)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            localizations.translate('fishing_notes_limit_reached') ??
+                'Достигнут лимит создания заметок о рыбалке.',
+          ),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: localizations.translate('upgrade') ?? 'Обновить',
+            textColor: Colors.white,
+            onPressed: () {
+              // Навигация к PaywallScreen будет добавлена позже
+              print('Navigate to paywall for fishing notes');
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Future<void> _loadFishingNotes() async {
@@ -359,9 +397,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _navigateToAddNote() {
-    if (!_canCreateContent) {
-      _showContentCreationBlocked();
+  // ИСПРАВЛЕНО: Навигация с асинхронной проверкой
+  Future<void> _navigateToAddNote() async {
+    if (!await _canCreateContent()) {
+      await _showContentCreationBlocked();
       return;
     }
 
@@ -542,20 +581,16 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      childAspectRatio: isTablet ? 1.1 : 1.0, // ИСПРАВЛЕНО: больше высоты для текста
+      childAspectRatio: isTablet ? 1.1 : 1.0,
       children: [
-        // ИЗМЕНЕНО: Новости → Маркерная карта
-        _buildQuickActionItem(
+        // ОБНОВЛЕНО: Маркерная карта с проверкой лимитов
+        _buildQuickActionItemWithLimits(
           icon: Icons.map_outlined,
           label: localizations.translate('marker_map'),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
-            );
-          },
+          contentType: ContentType.markerMaps,
+          destination: const MarkerMapsListScreen(),
         ),
-        // Замените на:
+        // ИСПРАВЛЕНО: Бюджет БЕЗ проверки лимитов - всегда доступен для просмотра
         _buildQuickActionItem(
           icon: Icons.account_balance_wallet_outlined,
           label: localizations.translate('fishing_budget'),
@@ -590,6 +625,103 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ИСПРАВЛЕНО: Элемент быстрого действия с проверкой лимитов
+  Widget _buildQuickActionItemWithLimits({
+    required IconData icon,
+    required String label,
+    required ContentType contentType,
+    required Widget destination,
+  }) {
+    return StreamBuilder<SubscriptionStatus>(
+      stream: _subscriptionService.subscriptionStatusStream,
+      builder: (context, snapshot) {
+        return FutureBuilder<bool>(
+          future: _subscriptionService.canCreateContent(contentType),
+          builder: (context, futureSnapshot) {
+            final canCreate = futureSnapshot.data ?? false;
+
+            return Stack(
+              children: [
+                _buildQuickActionItem(
+                  icon: icon,
+                  label: label,
+                  onTap: canCreate ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => destination),
+                    );
+                  } : () {
+                    _showLimitReachedMessage(contentType);
+                  },
+                ),
+                // Показываем индикатор лимитов
+                if (!canCreate)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.lock,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                // Показываем мини-бейдж использования
+                if (canCreate && !_subscriptionService.hasPremiumAccess())
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: CompactUsageBadge(
+                      contentType: contentType,
+                      showOnlyWhenNearLimit: true,
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // НОВЫЙ МЕТОД: Показ сообщения о достижении лимита
+  void _showLimitReachedMessage(ContentType contentType) {
+    final localizations = AppLocalizations.of(context);
+
+    String message;
+    switch (contentType) {
+      case ContentType.markerMaps:
+        message = localizations.translate('marker_maps_limit_reached') ?? 'Достигнут лимит создания маркерных карт.';
+        break;
+      case ContentType.expenses:
+        message = localizations.translate('expenses_limit_reached') ?? 'Достигнут лимит добавления расходов.';
+        break;
+      default:
+        message = localizations.translate('content_limit_reached') ?? 'Достигнут лимит создания контента.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange,
+        action: SnackBarAction(
+          label: localizations.translate('upgrade') ?? 'Обновить',
+          textColor: Colors.white,
+          onPressed: () {
+            // Навигация к PaywallScreen будет добавлена позже
+            print('Navigate to paywall for $contentType');
+          },
+        ),
+      ),
+    );
+  }
+
   // ИСПРАВЛЕНО: Элемент быстрого действия с адаптивным текстом
   Widget _buildQuickActionItem({
     required IconData icon,
@@ -610,11 +742,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // ИСПРАВЛЕНО: УВЕЛИЧЕНЫ иконки
             Container(
-              height: isTablet ? 70 : 60, // ИСПРАВЛЕНО: больше места для иконки
+              height: isTablet ? 70 : 60,
               child: Icon(
                 icon,
                 color: AppConstants.textColor,
-                size: isTablet ? 60 : 50, // ИСПРАВЛЕНО: УВЕЛИЧЕНЫ иконки значительно
+                size: isTablet ? 60 : 50,
               ),
             ),
             const SizedBox(height: 8),
@@ -640,6 +772,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ИСПРАВЛЕНО: Метод статистики БЕЗ карточки подписки (она перемещена выше)
   Widget _buildStatsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -652,9 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        if (_policyRestrictions?.hasRestrictions == true)
-          _buildPolicyRestrictionCard(),
-
+        // УДАЛЕНО: Карточки политики и подписки перемещены выше
         if (stats['biggestFish'] != null) ...[
           _buildStatCard(
             icon: Icons.emoji_events,
@@ -750,6 +881,124 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  // ПЕРЕМЕЩЕН: Карточка статуса подписки НАД статистикой с условием скрытия для премиум
+  Widget _buildSubscriptionStatusCard() {
+    return StreamBuilder<SubscriptionStatus>(
+      stream: _subscriptionService.subscriptionStatusStream,
+      builder: (context, snapshot) {
+        final localizations = AppLocalizations.of(context);
+
+        // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
+        if (_subscriptionService.hasPremiumAccess()) {
+          return const SizedBox.shrink();
+        }
+
+        // Показываем лимиты только для бесплатных пользователей
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.all(cardPadding),
+          decoration: BoxDecoration(
+            color: AppConstants.surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppConstants.primaryColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.info_outline,
+                      color: AppConstants.primaryColor,
+                      size: iconSize,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localizations.translate('free_plan'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          localizations.translate('limited_access'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: fontSize - 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Прогресс-бары для каждого типа контента
+              UsageProgressBar(
+                contentType: ContentType.fishingNotes,
+                height: 8,
+                showText: true,
+              ),
+              const SizedBox(height: 12),
+              UsageProgressBar(
+                contentType: ContentType.markerMaps,
+                height: 8,
+                showText: true,
+              ),
+              const SizedBox(height: 12),
+              UsageProgressBar(
+                contentType: ContentType.expenses,
+                height: 8,
+                showText: true,
+              ),
+              const SizedBox(height: 24), // УВЕЛИЧЕНО: было 20, стало 24
+              SizedBox(
+                width: double.infinity,
+                height: buttonHeight + 4, // УВЕЛИЧЕНО: +4 к высоте кнопки
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Навигация к PaywallScreen будет добавлена позже
+                    print('Navigate to paywall from status card');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    localizations.translate('upgrade_to_premium'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12), // УВЕЛИЧЕНО: было 4, стало 12
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -877,23 +1126,63 @@ class _HomeScreenState extends State<HomeScreen> {
         key: _scaffoldKey,
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          title: Text(
-            'Drift Notes',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: _appBarTitleSize, // ХАРДКОР: Фиксированный размер
-              fontWeight: FontWeight.bold,
-            ),
+          // ОБНОВЛЕН: Заголовок с бейджем подписки
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Drift Notes',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: _appBarTitleSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // ДОБАВЛЕН: Компактный бейдж статуса подписки
+              StreamBuilder<SubscriptionStatus>(
+                stream: _subscriptionService.subscriptionStatusStream,
+                builder: (context, snapshot) {
+                  if (_subscriptionService.hasPremiumAccess()) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.stars, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'PRO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ],
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          toolbarHeight: _appBarHeight, // ХАРДКОР: Фиксированная высота
+          toolbarHeight: _appBarHeight,
           leading: IconButton(
             icon: Icon(
               Icons.menu_rounded,
               color: AppConstants.textColor,
-              size: _appBarIconSize, // ХАРДКОР: Фиксированный размер
+              size: _appBarIconSize,
             ),
             onPressed: () {
               _scaffoldKey.currentState?.openDrawer();
@@ -907,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icon(
                     Icons.notifications_rounded,
                     color: AppConstants.textColor,
-                    size: _appBarIconSize, // ХАРДКОР: Фиксированный размер
+                    size: _appBarIconSize,
                   ),
                   onPressed: _navigateToNotifications,
                 ),
@@ -947,6 +1236,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildQuickActionsGrid(),
                   const SizedBox(height: 24),
+
+                  // ДОБАВЛЕНО: Карточки ограничений и подписки НАД статистикой
+                  if (_policyRestrictions?.hasRestrictions == true)
+                    _buildPolicyRestrictionCard(),
+                  _buildSubscriptionStatusCard(),
+
                   Text(
                     localizations.translate('my_statistics'),
                     style: TextStyle(
@@ -958,8 +1253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildStatsGrid(),
                   const SizedBox(height: 40),
-                  // ХАРДКОР ИСПРАВЛЕНО: Учитываем правильную высоту навигации
-                  SizedBox(height: _navBarHeight + (_centerButtonSize / 2) + 40),
+                  SizedBox(height: _navBarHeight + (_centerButtonSize / 2) + 80),
                 ],
               ),
             ),
@@ -996,7 +1290,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // УБРАНО: весь текст удален
         ),
       ),
     );
@@ -1079,7 +1372,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        padding: EdgeInsets.only(bottom: _navBarHeight + (_centerButtonSize / 2) + 20), // ХАРДКОР ИСПРАВЛЕНО
+        padding: EdgeInsets.only(bottom: _navBarHeight + (_centerButtonSize / 2) + 20),
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {
@@ -1097,7 +1390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Image.asset(
                             'assets/images/drawer_logo.png',
-                            width: 110.0, // ХАРДКОР: Фиксированный размер
+                            width: 110.0,
                             height: 110.0,
                             fit: BoxFit.contain,
                           ),
@@ -1106,7 +1399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             userName,
                             style: TextStyle(
                               color: AppConstants.textColor,
-                              fontSize: 20.0, // ХАРДКОР: Фиксированный размер
+                              fontSize: 20.0,
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
@@ -1117,7 +1410,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             userEmail,
                             style: const TextStyle(
                               color: Colors.white60,
-                              fontSize: 14.0, // ХАРДКОР: Фиксированный размер
+                              fontSize: 14.0,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1234,8 +1527,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     localizations.translate('other'),
                     style: const TextStyle(
-                      color: Color(0xFFB3B3B3), // ХАРДКОР: Фиксированный цвет
-                      fontSize: 14.0, // ХАРДКОР: Фиксированный размер
+                      color: Color(0xFFB3B3B3),
+                      fontSize: 14.0,
                     ),
                   ),
                 ),
@@ -1286,23 +1579,23 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: AppConstants.textColor, size: 22.0), // ХАРДКОР: Фиксированный размер
+      leading: Icon(icon, color: AppConstants.textColor, size: 22.0),
       title: Text(
         title,
-        style: TextStyle(color: AppConstants.textColor, fontSize: 16.0), // ХАРДКОР: Фиксированный размер
+        style: TextStyle(color: AppConstants.textColor, fontSize: 16.0),
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 
-  // ХАРДКОР ИСПРАВЛЕНО: Фиксированная навигационная панель с правильным расположением
+  // ИСПРАВЛЕНО: Нижняя навигация с асинхронной проверкой лимитов
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return SizedBox(
-      height: _navBarHeight + (_centerButtonSize / 2) + bottomPadding, // ИСПРАВЛЕНО: учитываем высоту центральной кнопки
+      height: _navBarHeight + (_centerButtonSize / 2) + bottomPadding,
       child: Stack(
         children: [
           // Нижняя панель
@@ -1331,10 +1624,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: EdgeInsets.only(bottom: bottomPadding),
                 child: Row(
                   children: [
-                    // ИСПРАВЛЕНО: Используем Expanded для равномерного распределения
                     _buildNavItem(0, Icons.timelapse_rounded, localizations.translate('timer')),
                     _buildNavItem(1, Icons.cloud_queue_rounded, localizations.translate('weather')),
-                    Expanded(child: Container()), // ИСПРАВЛЕНО: Пустое место для центральной кнопки
+                    Expanded(child: Container()),
                     _buildNavItem(3, Icons.event_note_rounded, localizations.translate('calendar')),
                     _buildNavItem(4, Icons.explore_rounded, localizations.translate('map')),
                   ],
@@ -1343,54 +1635,96 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ИСПРАВЛЕНО: Центральная кнопка ВЫШЕ панели
+          // ИСПРАВЛЕНА: Центральная кнопка с асинхронными индикаторами лимитов
           Positioned(
-            top: 0, // ИСПРАВЛЕНО: Начинается с самого верха
+            top: 0,
             left: 0,
             right: 0,
             child: GestureDetector(
               onTap: () => _onItemTapped(2),
               child: Center(
-                child: Container(
-                  width: _centerButtonSize,
-                  height: _centerButtonSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 5,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Image.asset(
-                        'assets/images/app_logo.png',
-                        width: _centerButtonSize,
-                        height: _centerButtonSize,
-                      ),
-                      if (!_canCreateContent)
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 22.0,
-                            height: 22.0,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
+                child: StreamBuilder<SubscriptionStatus>(
+                  stream: _subscriptionService.subscriptionStatusStream,
+                  builder: (context, snapshot) {
+                    return FutureBuilder<bool>(
+                      future: _canCreateContent(),
+                      builder: (context, futureSnapshot) {
+                        final canCreate = futureSnapshot.data ?? false;
+
+                        return Stack(
+                          children: [
+                            Container(
+                              width: _centerButtonSize,
+                              height: _centerButtonSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 5,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Image.asset(
+                                'assets/images/app_logo.png',
+                                width: _centerButtonSize,
+                                height: _centerButtonSize,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.lock,
-                              color: Colors.white,
-                              size: 14.0,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                            // Индикатор политики (красный замок)
+                            if (!(_policyRestrictions?.canCreateContent ?? true))
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 22.0,
+                                  height: 22.0,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock,
+                                    color: Colors.white,
+                                    size: 14.0,
+                                  ),
+                                ),
+                              ),
+                            // Индикатор лимитов (оранжевый замок) - только если политика разрешает
+                            if ((_policyRestrictions?.canCreateContent ?? true) && !canCreate)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 22.0,
+                                  height: 22.0,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock,
+                                    color: Colors.white,
+                                    size: 14.0,
+                                  ),
+                                ),
+                              ),
+                            // Мини-бейдж использования - только если можно создавать и не премиум
+                            if (canCreate && !_subscriptionService.hasPremiumAccess())
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: CompactUsageBadge(
+                                  contentType: ContentType.fishingNotes,
+                                  showOnlyWhenNearLimit: true,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -1400,30 +1734,29 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ХАРДКОР ИСПРАВЛЕНО: Фиксированные элементы навигации без overflow
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
 
     return Expanded(
       child: Container(
-        height: _navItemMinTouchTarget, // 48px
+        height: _navItemMinTouchTarget,
         child: InkWell(
           onTap: () => _onItemTapped(index),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min, // ИСПРАВЛЕНО: минимальный размер
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
                 color: isSelected ? AppConstants.textColor : Colors.white54,
-                size: _navIconSize, // 22px
+                size: _navIconSize,
               ),
-              const SizedBox(height: 2), // ИСПРАВЛЕНО: уменьшен отступ с 4 до 2
-              Flexible( // ИСПРАВЛЕНО: добавлен Flexible для текста
+              const SizedBox(height: 2),
+              Flexible(
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontSize: _navTextSize, // 10px
+                    fontSize: _navTextSize,
                     color: isSelected ? AppConstants.textColor : Colors.white54,
                     fontWeight: FontWeight.w500,
                   ),

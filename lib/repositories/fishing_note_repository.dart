@@ -10,6 +10,8 @@ import '../utils/network_utils.dart';
 import '../services/offline/offline_storage_service.dart';
 import '../services/offline/sync_service.dart';
 import '../services/local/local_file_service.dart'; // Новый импорт
+import '../services/subscription/subscription_service.dart'; // ДОБАВЛЕНО
+import '../constants/subscription_constants.dart'; // ДОБАВЛЕНО
 
 class FishingNoteRepository {
   final FirebaseService _firebaseService = FirebaseService();
@@ -17,6 +19,7 @@ class FishingNoteRepository {
   final SyncService _syncService = SyncService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LocalFileService _localFileService = LocalFileService(); // Новый сервис
+  final SubscriptionService _subscriptionService = SubscriptionService(); // ДОБАВЛЕНО
 
   // Получение всех заметок пользователя
   Future<List<FishingNoteModel>> getUserFishingNotes() async {
@@ -42,10 +45,10 @@ class FishingNoteRepository {
         // Если есть подключение, получаем заметки из Firestore
         try {
           final snapshot =
-              await _firestore
-                  .collection('fishing_notes')
-                  .where('userId', isEqualTo: userId)
-                  .get();
+          await _firestore
+              .collection('fishing_notes')
+              .where('userId', isEqualTo: userId)
+              .get();
 
           // Преобразуем результаты в модели
           final onlineNotes = <FishingNoteModel>[];
@@ -81,10 +84,18 @@ class FishingNoteRepository {
 
           // Преобразуем обратно в список и сортируем по дате
           final allNotes =
-              uniqueNotes.values.toList()
-                ..sort((a, b) => b.date.compareTo(a.date));
+          uniqueNotes.values.toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
 
           debugPrint('📊 Всего уникальных заметок: ${allNotes.length}');
+
+          // ДОБАВЛЕНО: Принудительное обновление лимитов после загрузки заметок
+          try {
+            await _subscriptionService.refreshUsageLimits();
+            debugPrint('✅ Лимиты обновлены после загрузки заметок');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обновления лимитов: $e');
+          }
 
           // Запускаем синхронизацию в фоне
           _syncService.syncAll();
@@ -131,16 +142,16 @@ class FishingNoteRepository {
       }
 
       final offlineNoteModels =
-          offlineNotes
-              .where((note) => note['userId'] == userId) // Фильтруем по userId
-              .map((note) {
-                final id = note['id']?.toString() ?? '';
-                if (id.isEmpty) {
-                  debugPrint('⚠️ Обнаружена заметка без ID!');
-                }
-                return FishingNoteModel.fromJson(note, id: id);
-              })
-              .toList();
+      offlineNotes
+          .where((note) => note['userId'] == userId) // Фильтруем по userId
+          .map((note) {
+        final id = note['id']?.toString() ?? '';
+        if (id.isEmpty) {
+          debugPrint('⚠️ Обнаружена заметка без ID!');
+        }
+        return FishingNoteModel.fromJson(note, id: id);
+      })
+          .toList();
 
       debugPrint(
         '📱 Заметок для пользователя $userId: ${offlineNoteModels.length}',
@@ -156,11 +167,11 @@ class FishingNoteRepository {
     }
   }
 
-  // Добавление новой заметки
+  // ИСПРАВЛЕНО: Добавление новой заметки с обновлением лимитов
   Future<String> addFishingNote(
-    FishingNoteModel note,
-    List<File>? photos,
-  ) async {
+      FishingNoteModel note,
+      List<File>? photos,
+      ) async {
     try {
       final userId = _firebaseService.currentUserId;
       if (userId == null || userId.isEmpty) {
@@ -215,6 +226,21 @@ class FishingNoteRepository {
 
           debugPrint('✅ Заметка $noteId добавлена в Firestore');
 
+          // ДОБАВЛЕНО: Обновляем счетчики лимитов после успешного сохранения
+          try {
+            if (!_subscriptionService.hasPremiumAccess()) {
+              await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+              debugPrint('✅ Счетчик лимитов увеличен для заметок');
+            }
+
+            // Принудительно обновляем лимиты
+            await _subscriptionService.refreshUsageLimits();
+            debugPrint('✅ Лимиты принудительно обновлены');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обновления лимитов: $e');
+            // Не прерываем выполнение, так как заметка уже сохранена
+          }
+
           // Проверяем, есть ли офлайн заметки для отправки
           _syncService.syncAll();
 
@@ -224,6 +250,17 @@ class FishingNoteRepository {
 
           // Если ошибка при добавлении в Firestore, сохраняем заметку локально
           await _saveOfflineNote(noteWithPhotos, photos);
+
+          // ДОБАВЛЕНО: Обновляем лимиты даже для офлайн заметок
+          try {
+            if (!_subscriptionService.hasPremiumAccess()) {
+              await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+              debugPrint('✅ Счетчик лимитов увеличен для офлайн заметки');
+            }
+          } catch (limitError) {
+            debugPrint('⚠️ Ошибка обновления лимитов для офлайн заметки: $limitError');
+          }
+
           return noteId;
         }
       } else {
@@ -245,6 +282,17 @@ class FishingNoteRepository {
         // Сохраняем заметку локально
         debugPrint('📱 Сохранение заметки в офлайн режиме');
         await _saveOfflineNote(noteWithLocalPhotos, photos);
+
+        // ДОБАВЛЕНО: Обновляем лимиты для офлайн заметок
+        try {
+          if (!_subscriptionService.hasPremiumAccess()) {
+            await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+            debugPrint('✅ Счетчик лимитов увеличен для офлайн заметки');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка обновления лимитов для офлайн заметки: $e');
+        }
+
         return noteId;
       }
     } catch (e) {
@@ -255,9 +303,9 @@ class FishingNoteRepository {
 
   // Сохранение заметки в офлайн режиме
   Future<void> _saveOfflineNote(
-    FishingNoteModel note,
-    List<File>? photos,
-  ) async {
+      FishingNoteModel note,
+      List<File>? photos,
+      ) async {
     try {
       // Проверяем, что у заметки есть ID
       if (note.id.isEmpty) {
@@ -347,9 +395,9 @@ class FishingNoteRepository {
 
   // Метод updateFishingNoteWithPhotos - обновлён для поддержки локальных файлов
   Future<FishingNoteModel> updateFishingNoteWithPhotos(
-    FishingNoteModel note,
-    List<File> newPhotos,
-  ) async {
+      FishingNoteModel note,
+      List<File> newPhotos,
+      ) async {
     try {
       final userId = _firebaseService.currentUserId;
       if (userId == null || userId.isEmpty) {
@@ -394,13 +442,13 @@ class FishingNoteRepository {
 
         // Проверяем, есть ли локальные URI в списке и загружаем их
         final offlineUris =
-            allPhotoUrls
-                .where(
-                  (url) =>
-                      _localFileService.isLocalFileUri(url) ||
-                      url == 'offline_photo',
-                )
-                .toList();
+        allPhotoUrls
+            .where(
+              (url) =>
+          _localFileService.isLocalFileUri(url) ||
+              url == 'offline_photo',
+        )
+            .toList();
 
         if (offlineUris.isNotEmpty) {
           debugPrint(
@@ -550,7 +598,7 @@ class FishingNoteRepository {
         // Если есть интернет, получаем заметку из Firestore
         try {
           final doc =
-              await _firestore.collection('fishing_notes').doc(noteId).get();
+          await _firestore.collection('fishing_notes').doc(noteId).get();
 
           if (!doc.exists) {
             debugPrint(
@@ -602,9 +650,9 @@ class FishingNoteRepository {
 
   // Сохранение обновления заметки в офлайн режиме
   Future<void> _saveOfflineNoteUpdate(
-    FishingNoteModel note,
-    List<File> newPhotos,
-  ) async {
+      FishingNoteModel note,
+      List<File> newPhotos,
+      ) async {
     try {
       if (note.id.isEmpty) {
         throw Exception('ID заметки не может быть пустым');
@@ -642,9 +690,9 @@ class FishingNoteRepository {
 
   // Публичный метод для сохранения обновления заметки в офлайн режиме
   Future<void> saveOfflineNoteUpdate(
-    FishingNoteModel note,
-    List<File> newPhotos,
-  ) async {
+      FishingNoteModel note,
+      List<File> newPhotos,
+      ) async {
     try {
       // Проверка на наличие локальных копий для фото в офлайн режиме
       final isOnline = await NetworkUtils.isNetworkAvailable();
@@ -669,7 +717,7 @@ class FishingNoteRepository {
     }
   }
 
-  // Удаление заметки
+  // ИСПРАВЛЕНО: Удаление заметки с обновлением лимитов
   Future<void> deleteFishingNote(String noteId) async {
     try {
       if (noteId.isEmpty) {
@@ -707,6 +755,20 @@ class FishingNoteRepository {
 
           debugPrint('✅ Заметка $noteId удалена из Firestore');
 
+          // ДОБАВЛЕНО: Обновляем счетчики лимитов после успешного удаления
+          try {
+            if (!_subscriptionService.hasPremiumAccess()) {
+              await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+              debugPrint('✅ Счетчик лимитов уменьшен для заметок');
+            }
+
+            // Принудительно обновляем лимиты
+            await _subscriptionService.refreshUsageLimits();
+            debugPrint('✅ Лимиты принудительно обновлены после удаления');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обновления лимитов при удалении: $e');
+          }
+
           // Удаляем локальную копию, если она есть
           try {
             await _offlineStorage.removeOfflineNote(noteId);
@@ -721,6 +783,16 @@ class FishingNoteRepository {
           await _offlineStorage.markForDeletion(noteId, false);
           debugPrint('📱 Заметка $noteId отмечена для удаления');
 
+          // ДОБАВЛЕНО: Обновляем лимиты даже если удаление из Firestore не удалось
+          try {
+            if (!_subscriptionService.hasPremiumAccess()) {
+              await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+              debugPrint('✅ Счетчик лимитов уменьшен (офлайн удаление)');
+            }
+          } catch (limitError) {
+            debugPrint('⚠️ Ошибка обновления лимитов при офлайн удалении: $limitError');
+          }
+
           // Удаляем локальную копию
           try {
             await _offlineStorage.removeOfflineNote(noteId);
@@ -733,6 +805,16 @@ class FishingNoteRepository {
         // Если нет интернета, отмечаем заметку для удаления при появлении соединения
         await _offlineStorage.markForDeletion(noteId, false);
         debugPrint('📱 Заметка $noteId отмечена для удаления (офлайн)');
+
+        // ДОБАВЛЕНО: Обновляем лимиты при офлайн удалении
+        try {
+          if (!_subscriptionService.hasPremiumAccess()) {
+            await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+            debugPrint('✅ Счетчик лимитов уменьшен (полный офлайн)');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка обновления лимитов при полном офлайн удалении: $e');
+        }
 
         // Удаляем локальную копию
         try {
@@ -764,7 +846,7 @@ class FishingNoteRepository {
 
       // Ищем заметку по ID
       final noteDataList =
-          allOfflineNotes.where((note) => note['id'] == noteId).toList();
+      allOfflineNotes.where((note) => note['id'] == noteId).toList();
 
       if (noteDataList.isEmpty) {
         debugPrint('⚠️ Заметка $noteId не найдена в офлайн хранилище');

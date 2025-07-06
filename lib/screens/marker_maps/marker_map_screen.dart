@@ -15,6 +15,9 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
 import 'depth_chart_screen.dart';
+// ДОБАВЛЕНО: Импорты для проверки лимитов
+import '../../services/subscription/subscription_service.dart';
+import '../../constants/subscription_constants.dart';
 
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
@@ -151,7 +154,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         return localizations.translate('hill');
       case 'точка_кормления':
         return localizations.translate('feeding_spot');
-      // Для обратной совместимости со старыми типами
+    // Для обратной совместимости со старыми типами
       case 'dropoff':
         return localizations.translate('hill');
       case 'weed':
@@ -279,7 +282,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color:
-                                        _bottomTypeColors[type] ?? Colors.blue,
+                                    _bottomTypeColors[type] ?? Colors.blue,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -741,35 +744,35 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children:
-                          _bottomTypes.map((type) {
-                            return ChoiceChip(
-                              label: Text(_getBottomTypeName(type)),
-                              selected: selectedBottomType == type,
-                              backgroundColor:
-                                  _bottomTypeColors[type] ?? Colors.grey,
-                              selectedColor:
-                                  _bottomTypeColors[type] ?? Colors.grey,
-                              labelStyle: TextStyle(
-                                color: Colors.black,
-                                fontWeight:
-                                    selectedBottomType == type
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                              ),
-                              avatar: Icon(
-                                _bottomTypeIcons[type],
-                                color: Colors.black,
-                                size: 18,
-                              ),
-                              onSelected: (bool selected) {
-                                if (selected) {
-                                  setState(() {
-                                    selectedBottomType = type;
-                                  });
-                                }
-                              },
-                            );
-                          }).toList(),
+                      _bottomTypes.map((type) {
+                        return ChoiceChip(
+                          label: Text(_getBottomTypeName(type)),
+                          selected: selectedBottomType == type,
+                          backgroundColor:
+                          _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor:
+                          _bottomTypeColors[type] ?? Colors.grey,
+                          labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontWeight:
+                            selectedBottomType == type
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          avatar: Icon(
+                            _bottomTypeIcons[type],
+                            color: Colors.black,
+                            size: 18,
+                          ),
+                          onSelected: (bool selected) {
+                            if (selected) {
+                              setState(() {
+                                selectedBottomType = type;
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
 
@@ -861,9 +864,9 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         'marker',
                       ), // Установка дефолтного названия
                       'depth':
-                          _depthController.text.isEmpty
-                              ? null
-                              : double.tryParse(_depthController.text),
+                      _depthController.text.isEmpty
+                          ? null
+                          : double.tryParse(_depthController.text),
                       'notes': _notesController.text.trim(),
                       'bottomType': selectedBottomType,
                       // Сохраняем также угол и соотношение для отображения
@@ -918,7 +921,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
     _depthController.text =
-        marker['depth'] != null ? marker['depth'].toString() : '';
+    marker['depth'] != null ? marker['depth'].toString() : '';
     _notesController.text = marker['notes'] ?? marker['description'] ?? '';
     _distanceController.text = marker['distance'].toString();
 
@@ -1058,37 +1061,37 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children:
-                          _bottomTypes.map((type) {
-                            return ChoiceChip(
-                              label: Text(_getBottomTypeName(type)),
-                              selected: selectedBottomType == type,
-                              backgroundColor:
-                                  _bottomTypeColors[type] ?? Colors.grey,
-                              selectedColor:
-                                  _bottomTypeColors[type] ?? Colors.grey,
-                              labelStyle: TextStyle(
-                                color: Colors.black,
-                                fontWeight:
-                                    selectedBottomType == type
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                              ),
-                              avatar: Icon(
-                                _bottomTypeIcons[type],
-                                color: Colors.black,
-                                size: 18,
-                              ),
-                              onSelected: (bool selected) {
-                                if (selected) {
-                                  setState(() {
-                                    selectedBottomType = type;
-                                  });
-                                  // Сохраняем выбранный тип дна
-                                  _currentBottomType = type;
-                                }
-                              },
-                            );
-                          }).toList(),
+                      _bottomTypes.map((type) {
+                        return ChoiceChip(
+                          label: Text(_getBottomTypeName(type)),
+                          selected: selectedBottomType == type,
+                          backgroundColor:
+                          _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor:
+                          _bottomTypeColors[type] ?? Colors.grey,
+                          labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontWeight:
+                            selectedBottomType == type
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          avatar: Icon(
+                            _bottomTypeIcons[type],
+                            color: Colors.black,
+                            size: 18,
+                          ),
+                          onSelected: (bool selected) {
+                            if (selected) {
+                              setState(() {
+                                selectedBottomType = type;
+                              });
+                              // Сохраняем выбранный тип дна
+                              _currentBottomType = type;
+                            }
+                          },
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
 
@@ -1177,9 +1180,9 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       'rayIndex': currentRayIndex.toDouble(),
                       'distance': distance,
                       'depth':
-                          _depthController.text.isEmpty
-                              ? null
-                              : double.tryParse(_depthController.text),
+                      _depthController.text.isEmpty
+                          ? null
+                          : double.tryParse(_depthController.text),
                       'notes': _notesController.text.trim(),
                       'bottomType': selectedBottomType,
                       // Обновляем угол и соотношение
@@ -1307,13 +1310,192 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     Future.microtask(() => setState(() {}));
   }
 
-  // Переход к экрану графиков глубин
-  void _showDepthCharts() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DepthChartScreen(markerMap: _markerMap),
-      ),
+  // ИСПРАВЛЕНО: Переход к экрану графиков глубин с проверкой премиума
+  Future<void> _showDepthCharts() async {
+    try {
+      final localizations = AppLocalizations.of(context);
+
+      // ДОБАВЛЕНО: Проверка доступа к графику глубины
+      final subscriptionService = SubscriptionService();
+      final canAccessDepthChart = await subscriptionService.canCreateContent(ContentType.depthChart);
+
+      if (!canAccessDepthChart) {
+        // Показываем диалог с предложением премиума
+        _showDepthChartPremiumDialog();
+        return;
+      }
+
+      // Если доступ разрешен - переходим к графику
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DepthChartScreen(markerMap: _markerMap),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Ошибка при проверке доступа к графику глубины: $e');
+      // В случае ошибки показываем диалог премиума (безопасный подход)
+      _showDepthChartPremiumDialog();
+    }
+  }
+
+  // ДОБАВЛЕНО: Диалог с предложением премиума для графика глубины
+  void _showDepthChartPremiumDialog() {
+    final localizations = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.stars,
+                  color: Colors.amber,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  localizations.translate('premium_feature') ?? 'Премиум функция',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bar_chart,
+                    color: AppConstants.primaryColor,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      localizations.translate('depth_chart_premium_title') ?? 'График глубин',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                localizations.translate('depth_chart_premium_description') ??
+                    'График глубин доступен только для пользователей с премиум подпиской. Обновитесь до премиума, чтобы получить доступ к расширенной аналитике ваших маркерных карт.',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.8),
+                  fontSize: 16,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppConstants.primaryColor.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: AppConstants.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        localizations.translate('premium_benefits_hint') ??
+                            'С премиумом вы получите безлимитный доступ ко всем функциям',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                localizations.translate('cancel') ?? 'Отмена',
+                style: TextStyle(
+                  color: AppConstants.textColor.withOpacity(0.7),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // TODO: Навигация к экрану подписки
+                debugPrint('Переход к экрану покупки премиума');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      localizations.translate('premium_screen_coming_soon') ??
+                          'Экран покупки премиума скоро будет добавлен',
+                    ),
+                    backgroundColor: AppConstants.primaryColor,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              icon: const Icon(Icons.upgrade, size: 18),
+              label: Text(
+                localizations.translate('upgrade_to_premium') ?? 'Обновить до Премиум',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1331,14 +1513,14 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       final markerMapToSave = _markerMap.copyWith(
         // Очищаем временные поля с объектами Offset из маркеров
         markers:
-            _markerMap.markers.map((marker) {
-              // Создаем копию маркера без полей для UI
-              final cleanMarker = Map<String, dynamic>.from(marker);
-              // Удаляем поля хитбоксов, которые не должны сохраняться
-              cleanMarker.remove('_hitboxCenter');
-              cleanMarker.remove('_hitboxRadius');
-              return cleanMarker;
-            }).toList(),
+        _markerMap.markers.map((marker) {
+          // Создаем копию маркера без полей для UI
+          final cleanMarker = Map<String, dynamic>.from(marker);
+          // Удаляем поля хитбоксов, которые не должны сохраняться
+          cleanMarker.remove('_hitboxCenter');
+          cleanMarker.remove('_hitboxRadius');
+          return cleanMarker;
+        }).toList(),
       );
 
       // Сохраняем очищенную модель
@@ -1431,7 +1613,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             Positioned(
               left: 16,
               bottom:
-                  55 +
+              55 +
                   MediaQuery.of(
                     context,
                   ).padding.bottom, // Добавляем отступ для системных кнопок
@@ -1450,7 +1632,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             Positioned(
               right: 16,
               bottom:
-                  180 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка
+              180 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка
               child: FloatingActionButton(
                 heroTag: "exit_button",
                 onPressed: _exitWithSave,
@@ -1465,7 +1647,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             Positioned(
               right: 16,
               bottom:
-                  105 + MediaQuery.of(context).padding.bottom, // Средняя кнопка
+              105 + MediaQuery.of(context).padding.bottom, // Средняя кнопка
               child: FloatingActionButton(
                 heroTag: "charts_button",
                 onPressed: _showDepthCharts,
@@ -1480,7 +1662,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             Positioned(
               right: 16,
               bottom:
-                  30 + MediaQuery.of(context).padding.bottom, // Нижняя кнопка
+              30 + MediaQuery.of(context).padding.bottom, // Нижняя кнопка
               child: FloatingActionButton(
                 heroTag: "add_marker_button",
                 onPressed: _showAddMarkerDialog,
@@ -1619,12 +1801,12 @@ class FullscreenMarkerMapPainter extends CustomPainter {
   }
 
   void _drawDistanceLabels(
-    Canvas canvas,
-    Size size,
-    double centerX,
-    double originY,
-    double pixelsPerMeter,
-  ) {
+      Canvas canvas,
+      Size size,
+      double centerX,
+      double originY,
+      double pixelsPerMeter,
+      ) {
     final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
 
     // Подписи 10-50м (поперек внизу с поворотом) - СДВИНУТО ПРАВЕЕ
@@ -1709,13 +1891,13 @@ class FullscreenMarkerMapPainter extends CustomPainter {
   }
 
   void _drawRayLabels(
-    Canvas canvas,
-    Size size,
-    double centerX,
-    double originY,
-    double pixelsPerMeter,
-    List<double> rayAngles,
-  ) {
+      Canvas canvas,
+      Size size,
+      double centerX,
+      double originY,
+      double pixelsPerMeter,
+      List<double> rayAngles,
+      ) {
     final localizations = AppLocalizations.of(context);
     final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
 
@@ -1757,7 +1939,7 @@ class FullscreenMarkerMapPainter extends CustomPainter {
 
       textPainter.text = TextSpan(
         text:
-            '${localizations.translate('ray')} ${i + 1}', // ИСПРАВЛЕНО: теперь через локализацию
+        '${localizations.translate('ray')} ${i + 1}', // ИСПРАВЛЕНО: теперь через локализацию
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.8),
           fontSize: 12,
@@ -1790,13 +1972,13 @@ class FullscreenMarkerMapPainter extends CustomPainter {
   }
 
   void _drawMarkersWithLabels(
-    Canvas canvas,
-    Size size,
-    double centerX,
-    double originY,
-    double pixelsPerMeter,
-    List<double> rayAngles,
-  ) {
+      Canvas canvas,
+      Size size,
+      double centerX,
+      double originY,
+      double pixelsPerMeter,
+      List<double> rayAngles,
+      ) {
     for (final marker in markers) {
       // Получаем координаты из сохраненных в маркере данных
       final rayIndex = (marker['rayIndex'] as double? ?? 0).toInt();
@@ -1838,18 +2020,18 @@ class FullscreenMarkerMapPainter extends CustomPainter {
 
       // Рисуем маркер
       final markerPaint =
-          Paint()
-            ..color = markerColor
-            ..style = PaintingStyle.fill;
+      Paint()
+        ..color = markerColor
+        ..style = PaintingStyle.fill;
 
       // Рисуем кружок без обводки
       canvas.drawCircle(Offset(dx, dy), 8, markerPaint);
 
       // Добавляем внутреннюю точку
       final centerDotPaint =
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.fill;
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
 
       canvas.drawCircle(Offset(dx, dy), 2, centerDotPaint);
 

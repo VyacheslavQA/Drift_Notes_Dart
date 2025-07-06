@@ -1,14 +1,20 @@
 // Путь: lib/screens/fishing_note/fishing_notes_list_screen.dart
+// ОБНОВЛЕННАЯ ВЕРСИЯ с интеграцией системы лимитов
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
+import '../../models/subscription_model.dart'; // ДОБАВЛЕНО
 import '../../repositories/fishing_note_repository.dart';
+import '../../services/subscription/subscription_service.dart';
+import '../../constants/subscription_constants.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/universal_image.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../widgets/subscription/premium_create_button.dart'; // ДОБАВЛЕНО
+import '../../widgets/subscription/usage_badge.dart'; // ДОБАВЛЕНО
 import '../../localization/app_localizations.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
@@ -23,6 +29,7 @@ class FishingNotesListScreen extends StatefulWidget {
 class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     with SingleTickerProviderStateMixin {
   final _fishingNoteRepository = FishingNoteRepository();
+  final _subscriptionService = SubscriptionService(); // ДОБАВЛЕНО
 
   List<FishingNoteModel> _notes = [];
   bool _isLoading = true;
@@ -87,6 +94,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
+  // ОБНОВЛЕННАЯ ФУНКЦИЯ: теперь без проверки лимитов (проверка будет в кнопке)
   Future<void> _addNewNote() async {
     final result = await Navigator.push(
       context,
@@ -160,15 +168,31 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          localizations.translate('my_notes'),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: isSmallScreen ? 20 : (isTablet ? 26 : 24), // Адаптивный размер
-            fontWeight: FontWeight.bold,
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
+        // ОБНОВЛЕН: заголовок с бейджем использования
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                localizations.translate('my_notes'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: isSmallScreen ? 20 : (isTablet ? 26 : 24),
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            // ДОБАВЛЕН: Бейдж использования в заголовке
+            UsageBadge(
+              contentType: ContentType.fishingNotes,
+              fontSize: isSmallScreen ? 10 : 12,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 6 : 8,
+                vertical: isSmallScreen ? 2 : 4,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -204,7 +228,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
             opacity: _fadeAnimation,
             child: ListView.builder(
               padding: EdgeInsets.all(
-                isSmallScreen ? 12 : 16, // Адаптивные отступы
+                isSmallScreen ? 12 : 16,
               ),
               itemCount: _notes.length,
               itemBuilder: (context, index) {
@@ -217,35 +241,13 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
           ),
         ),
       ),
-      floatingActionButton: SizedBox(
-        width: isTablet ? 64 : 56, // Адаптивный размер FAB
-        height: isTablet ? 64 : 56,
-        child: FloatingActionButton(
-          backgroundColor: AppConstants.primaryColor,
-          foregroundColor: AppConstants.textColor,
-          onPressed: _addNewNote,
-          elevation: 4,
-          splashColor: Colors.white.withValues(alpha: 0.3),
-          child: Container(
-            width: isTablet ? 56 : 50,
-            height: isTablet ? 56 : 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppConstants.textColor.withValues(alpha: 0.6),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Image.asset(
-              'assets/images/app_logo.png',
-              width: isTablet ? 56 : 50,
-              height: isTablet ? 56 : 50,
-            ),
-          ),
-        ),
+      // ОБНОВЛЕН: FloatingActionButton с проверкой лимитов
+      floatingActionButton: PremiumFloatingActionButton(
+        contentType: ContentType.fishingNotes,
+        onPressed: _addNewNote,
+        backgroundColor: AppConstants.primaryColor,
+        foregroundColor: AppConstants.textColor,
+        heroTag: "add_fishing_note",
       ),
     );
   }
@@ -344,37 +346,130 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: ResponsiveConstants.spacingXL),
+
+              // ОБНОВЛЕНА: Кнопка создания первой заметки с проверкой лимитов
               SizedBox(
-                height: ResponsiveConstants.minTouchTarget,
-                child: ElevatedButton.icon(
-                  icon: Icon(
-                    Icons.add,
-                    size: isSmallScreen ? 20 : 24,
+                width: double.infinity,
+                child: PremiumCreateButton(
+                  contentType: ContentType.fishingNotes,
+                  onCreatePressed: _addNewNote,
+                  customText: localizations.translate('create_first_note'),
+                  customIcon: Icons.add,
+                  showUsageBadge: false, // В пустом состоянии не показываем бейдж
+                  backgroundColor: AppConstants.primaryColor,
+                  foregroundColor: AppConstants.textColor,
+                  borderRadius: 24,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 20 : 24,
+                    vertical: 16,
                   ),
-                  label: Text(
-                    localizations.translate('create_first_note'),
-                    style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 20 : 24,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    elevation: 4,
-                  ),
-                  onPressed: _addNewNote,
                 ),
               ),
+
+              // ДОБАВЛЕНО: Индикатор лимитов под кнопкой
+              SizedBox(height: ResponsiveConstants.spacingM),
+              _buildLimitIndicator(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // ИСПРАВЛЕН: Индикатор лимитов для пустого состояния
+  Widget _buildLimitIndicator() {
+    return StreamBuilder<SubscriptionStatus>(
+      stream: _subscriptionService.subscriptionStatusStream,
+      builder: (context, snapshot) {
+        final localizations = AppLocalizations.of(context);
+        final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
+        if (_subscriptionService.hasPremiumAccess()) {
+          return Container(
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.stars,
+                  color: Colors.white,
+                  size: isSmallScreen ? 16 : 20,
+                ),
+                SizedBox(width: ResponsiveConstants.spacingS),
+                Text(
+                  localizations.translate('premium_unlimited_notes'),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // ИСПРАВЛЕНО: Используем синхронную версию
+        final currentUsage = _subscriptionService.getCurrentUsageSync(ContentType.fishingNotes);
+        final limit = _subscriptionService.getLimit(ContentType.fishingNotes);
+        final remaining = limit - currentUsage;
+
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+          decoration: BoxDecoration(
+            color: AppConstants.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppConstants.primaryColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: AppConstants.primaryColor,
+                    size: isSmallScreen ? 16 : 20,
+                  ),
+                  SizedBox(width: ResponsiveConstants.spacingS),
+                  Text(
+                    '${localizations.translate('you_can_create')} $remaining ${localizations.translate('more_notes')}',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: ResponsiveConstants.spacingS),
+              // ИСПРАВЛЕН: Прогресс-бар
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: limit > 0 ? (currentUsage / limit).clamp(0.0, 1.0) : 0.0,
+                  minHeight: 6,
+                  backgroundColor: Colors.grey.withOpacity(0.3),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    limit > 0 && (currentUsage / limit) >= 0.8
+                        ? Colors.orange
+                        : AppConstants.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -396,7 +491,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
     return Card(
       margin: EdgeInsets.only(
-        bottom: isSmallScreen ? 12 : 16, // Адаптивные отступы между карточками
+        bottom: isSmallScreen ? 12 : 16,
       ),
       color: const Color(0xFF12332E),
       shape: RoundedRectangleBorder(
@@ -426,7 +521,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 children: [
                   // Тип рыбалки и дата - адаптивная обертка
                   isSmallScreen
-                      ? Column( // На маленьких экранах - вертикально
+                      ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildFishingTypeChip(note, localizations),
@@ -434,7 +529,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                       _buildDateChip(note, localizations),
                     ],
                   )
-                      : Row( // На больших экранах - горизонтально
+                      : Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
@@ -463,7 +558,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
                   // Количество поклевок и фото - адаптивная обертка
                   isSmallScreen
-                      ? Column( // На маленьких экранах - вертикально
+                      ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildBiteRecordsInfo(note),
@@ -473,7 +568,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                       ],
                     ],
                   )
-                      : Wrap( // На больших экранах - горизонтально с переносом
+                      : Wrap(
                     spacing: ResponsiveConstants.spacingM,
                     runSpacing: ResponsiveConstants.spacingS,
                     children: [
@@ -497,7 +592,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
   }
 
-  // Вспомогательные виджеты для компонентов карточки
+  // Все остальные helper методы остаются без изменений
   Widget _buildFishingTypeChip(FishingNoteModel note, AppLocalizations localizations) {
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
@@ -676,9 +771,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               maxLines: 1,
             ),
           SizedBox(height: ResponsiveConstants.spacingXS),
-          // Адаптивное расположение веса и длины
           isSmallScreen
-              ? Column( // На маленьких экранах - вертикально
+              ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildFishMeasurement(
@@ -694,7 +788,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               ],
             ],
           )
-              : Row( // На больших экранах - горизонтально
+              : Row(
             children: [
               _buildFishMeasurement(
                 Icons.scale,
