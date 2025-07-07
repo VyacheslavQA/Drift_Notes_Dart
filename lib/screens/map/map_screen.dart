@@ -1134,170 +1134,185 @@ class _MapScreenState extends State<MapScreen> {
             ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Основное содержимое
-          _isLoading
-              ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppConstants.primaryColor),
-                const SizedBox(height: 16),
-                Text(
-                  localizations.translate('loading_map'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          )
-              : _errorLoadingMap
-              ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
+        // ИСПРАВЛЕНИЕ: Используем SafeArea для учета системных зон
+        child: Stack(
+          children: [
+            // Основное содержимое
+            _isLoading
+                ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    !ApiKeys.hasGoogleMapsKey
-                        ? Icons.warning_amber_rounded
-                        : Icons.location_off,
-                    color:
-                    !ApiKeys.hasGoogleMapsKey
-                        ? Colors.orange
-                        : AppConstants.textColor,
-                    size: 64,
-                  ),
+                  CircularProgressIndicator(color: AppConstants.primaryColor),
                   const SizedBox(height: 16),
                   Text(
-                    !ApiKeys.hasGoogleMapsKey
-                        ? localizations.translate(
-                      'google_maps_not_configured',
-                    )
-                        : _errorMessage,
+                    localizations.translate('loading_map'),
                     style: TextStyle(
                       color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    !ApiKeys.hasGoogleMapsKey
-                        ? localizations.translate('api_key_needed_for_map')
-                        : localizations.translate(
-                      'check_internet_and_location_permissions',
-                    ),
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _retryLoading,
-                    icon: Icon(
-                      !ApiKeys.hasGoogleMapsKey
-                          ? Icons.info
-                          : Icons.refresh,
-                    ),
-                    label: Text(
-                      !ApiKeys.hasGoogleMapsKey
-                          ? localizations.translate('more_details')
-                          : localizations.translate('try_again'),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      foregroundColor: AppConstants.textColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      fontSize: 16,
                     ),
                   ),
                 ],
               ),
-            ),
-          )
-              : GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: _initialPosition,
-            markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false, // Отключаем стандартную кнопку
-            mapType: _currentMapType, // Используем выбранный тип карты
-            zoomControlsEnabled: true, // Включаем стандартные кнопки зума
-            compassEnabled: true,
-          ),
-
-          // Кнопка выбора типа карты (поверх карты, справа вверху)
-          if (!_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
-            Positioned(
-              top: 20,
-              right: 16,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppConstants.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+            )
+                : _errorLoadingMap
+                ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      !ApiKeys.hasGoogleMapsKey
+                          ? Icons.warning_amber_rounded
+                          : Icons.location_off,
+                      color:
+                      !ApiKeys.hasGoogleMapsKey
+                          ? Colors.orange
+                          : AppConstants.textColor,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      !ApiKeys.hasGoogleMapsKey
+                          ? localizations.translate(
+                        'google_maps_not_configured',
+                      )
+                          : _errorMessage,
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      !ApiKeys.hasGoogleMapsKey
+                          ? localizations.translate('api_key_needed_for_map')
+                          : localizations.translate(
+                        'check_internet_and_location_permissions',
+                      ),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: _retryLoading,
+                      icon: Icon(
+                        !ApiKeys.hasGoogleMapsKey
+                            ? Icons.info
+                            : Icons.refresh,
+                      ),
+                      label: Text(
+                        !ApiKeys.hasGoogleMapsKey
+                            ? localizations.translate('more_details')
+                            : localizations.translate('try_again'),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: AppConstants.textColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
+              ),
+            )
+                : GoogleMap(
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: _initialPosition,
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false, // Отключаем стандартную кнопку
+              mapType: _currentMapType, // Используем выбранный тип карты
+              zoomControlsEnabled: true, // Включаем стандартные кнопки зума
+              compassEnabled: true,
+              // ИСПРАВЛЕНИЕ: Добавляем отступы для кнопок зума
+              padding: EdgeInsets.only(
+                top: 80, // Отступ сверху для кнопки "Слои"
+                bottom: MediaQuery.of(context).padding.bottom + 80, // Отступ снизу для навигации + FAB
+                right: 16, // Небольшой отступ справа
+              ),
+            ),
+
+            // Кнопка выбора типа карты (поверх карты, справа вверху)
+            if (!_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
+              Positioned(
+                top: 20,
+                right: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppConstants.surfaceColor,
                     borderRadius: BorderRadius.circular(12),
-                    onTap: _showMapTypeSelector,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.layers,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            localizations.translate('layers'),
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _showMapTypeSelector,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.layers,
+                              color: Colors.white,
+                              size: 20,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Text(
+                              localizations.translate('layers'),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
 
-      // FAB для местоположения (слева внизу, чтобы не мешать кнопкам зума)
+      // FAB для местоположения (слева внизу, но с учетом навигации)
       floatingActionButton:
       !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
-          ? FloatingActionButton(
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        onPressed: _loadUserLocation,
-        tooltip: localizations.translate('my_location'),
-        child: const Icon(Icons.my_location),
+          ? Padding(
+        // ИСПРАВЛЕНИЕ: Добавляем отступ снизу для FAB
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 10, // Отступ от навигации
+        ),
+        child: FloatingActionButton(
+          backgroundColor: AppConstants.primaryColor,
+          foregroundColor: AppConstants.textColor,
+          onPressed: _loadUserLocation,
+          tooltip: localizations.translate('my_location'),
+          child: const Icon(Icons.my_location),
+        ),
       )
           : null,
       floatingActionButtonLocation:

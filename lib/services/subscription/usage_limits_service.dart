@@ -1,6 +1,7 @@
 // Путь: lib/services/subscription/usage_limits_service.dart
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,7 +20,7 @@ class UsageLimitsService {
   final FirebaseService _firebaseService = FirebaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ДОБАВЛЕНО: Ссылка на SubscriptionService для проверки премиум статуса
+  // Ссылка на SubscriptionService для проверки премиум статуса
   SubscriptionService? _subscriptionService;
 
   // Кэш текущих лимитов
@@ -29,23 +30,24 @@ class UsageLimitsService {
   bool _isInitialized = false;
 
   // Стрим для прослушивания изменений лимитов
-  final StreamController<UsageLimitsModel> _limitsController =
-  StreamController<UsageLimitsModel>.broadcast();
+  final StreamController<UsageLimitsModel> _limitsController = StreamController<UsageLimitsModel>.broadcast();
 
   // Стрим для UI
   Stream<UsageLimitsModel> get limitsStream => _limitsController.stream;
 
-  /// ДОБАВЛЕНО: Установка ссылки на SubscriptionService
+  /// Установка ссылки на SubscriptionService
   void setSubscriptionService(SubscriptionService subscriptionService) {
     _subscriptionService = subscriptionService;
   }
 
-  /// ДОБАВЛЕНО: Проверка премиум статуса
+  /// Проверка премиум статуса
   bool _hasPremiumAccess() {
     try {
       return _subscriptionService?.hasPremiumAccess() ?? false;
     } catch (e) {
-      debugPrint('❌ Ошибка проверки премиум статуса: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки премиум статуса: $e');
+      }
       return false;
     }
   }
@@ -53,12 +55,16 @@ class UsageLimitsService {
   /// Инициализация сервиса
   Future<void> initialize() async {
     if (_isInitialized) {
-      debugPrint('🔄 UsageLimitsService уже инициализирован');
+      if (kDebugMode) {
+        debugPrint('🔄 UsageLimitsService уже инициализирован');
+      }
       return;
     }
 
     try {
-      debugPrint('🔄 Инициализация UsageLimitsService...');
+      if (kDebugMode) {
+        debugPrint('🔄 Инициализация UsageLimitsService...');
+      }
 
       // Загружаем текущие лимиты
       await loadCurrentLimits();
@@ -67,9 +73,13 @@ class UsageLimitsService {
       await recalculateLimits();
 
       _isInitialized = true;
-      debugPrint('✅ UsageLimitsService инициализирован с реальными данными');
+      if (kDebugMode) {
+        debugPrint('✅ UsageLimitsService инициализирован с реальными данными');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации UsageLimitsService: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка инициализации UsageLimitsService: $e');
+      }
     }
   }
 
@@ -113,7 +123,9 @@ class UsageLimitsService {
 
       return _cachedLimits!;
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки лимитов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки лимитов: $e');
+      }
       final userId = _firebaseService.currentUserId ?? '';
       _cachedLimits = UsageLimitsModel.defaultLimits(userId);
       return _cachedLimits!;
@@ -138,42 +150,50 @@ class UsageLimitsService {
 
       return _cachedLimits ?? UsageLimitsModel.defaultLimits(_firebaseService.currentUserId ?? '');
     } catch (e) {
-      debugPrint('❌ Ошибка получения текущего использования: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения текущего использования: $e');
+      }
       return UsageLimitsModel.defaultLimits(_firebaseService.currentUserId ?? '');
     }
   }
 
-  /// ИСПРАВЛЕНО: Проверка возможности создания нового контента с учетом премиум статуса
+  /// Проверка возможности создания нового контента с учетом премиум статуса
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
-      // ИСПРАВЛЕНО: Проверяем премиум статус ПЕРВЫМ
+      // Проверяем премиум статус ПЕРВЫМ
       if (_hasPremiumAccess()) {
-        debugPrint('🧪 Премиум пользователь - разрешен доступ к $contentType');
+        if (kDebugMode) {
+          debugPrint('🧪 Премиум пользователь - разрешен доступ к $contentType');
+        }
         return true;
       }
 
       // Для графика глубин проверяем только премиум статус
       if (contentType == ContentType.depthChart) {
-        debugPrint('⚠️ График глубин требует премиум подписку');
+        if (kDebugMode) {
+          debugPrint('⚠️ График глубин требует премиум подписку');
+        }
         return false;
       }
 
       final limits = await getCurrentUsage();
       return limits.canCreateNew(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка проверки возможности создания контента: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки возможности создания контента: $e');
+      }
       return false;
     }
   }
 
-  /// ИСПРАВЛЕНО: Проверка возможности создания с детализацией
-  Future<ContentCreationResult> checkContentCreation(
-      ContentType contentType,
-      ) async {
+  /// Проверка возможности создания с детализацией
+  Future<ContentCreationResult> checkContentCreation(ContentType contentType) async {
     try {
-      // ИСПРАВЛЕНО: Проверяем премиум статус ПЕРВЫМ
+      // Проверяем премиум статус ПЕРВЫМ
       if (_hasPremiumAccess()) {
-        debugPrint('🧪 Премиум пользователь - полный доступ к $contentType');
+        if (kDebugMode) {
+          debugPrint('🧪 Премиум пользователь - полный доступ к $contentType');
+        }
         return ContentCreationResult(
           canCreate: true,
           reason: null,
@@ -213,7 +233,9 @@ class UsageLimitsService {
         remaining: remaining,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка проверки создания контента: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки создания контента: $e');
+      }
       return ContentCreationResult(
         canCreate: false,
         reason: ContentCreationBlockReason.error,
@@ -227,9 +249,11 @@ class UsageLimitsService {
   /// Увеличение счетчика использования
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
-      // ИСПРАВЛЕНО: Если премиум - не увеличиваем счетчик
+      // Если премиум - не увеличиваем счетчик
       if (_hasPremiumAccess()) {
-        debugPrint('🧪 Премиум пользователь - счетчик не увеличивается для $contentType');
+        if (kDebugMode) {
+          debugPrint('🧪 Премиум пользователь - счетчик не увеличивается для $contentType');
+        }
         return true;
       }
 
@@ -237,7 +261,9 @@ class UsageLimitsService {
 
       // Проверяем можно ли увеличить счетчик
       if (!limits.canCreateNew(contentType)) {
-        debugPrint('⚠️ Достигнут лимит для типа: $contentType');
+        if (kDebugMode) {
+          debugPrint('⚠️ Достигнут лимит для типа: $contentType');
+        }
         return false;
       }
 
@@ -247,10 +273,14 @@ class UsageLimitsService {
       // Сохраняем обновленные лимиты
       await _saveLimits(updatedLimits);
 
-      debugPrint('✅ Счетчик увеличен для $contentType: ${updatedLimits.getCountForType(contentType)}');
+      if (kDebugMode) {
+        debugPrint('✅ Счетчик увеличен для $contentType: ${updatedLimits.getCountForType(contentType)}');
+      }
       return true;
     } catch (e) {
-      debugPrint('❌ Ошибка увеличения счетчика: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка увеличения счетчика: $e');
+      }
       return false;
     }
   }
@@ -266,10 +296,14 @@ class UsageLimitsService {
       // Сохраняем обновленные лимиты
       await _saveLimits(updatedLimits);
 
-      debugPrint('✅ Счетчик уменьшен для $contentType: ${updatedLimits.getCountForType(contentType)}');
+      if (kDebugMode) {
+        debugPrint('✅ Счетчик уменьшен для $contentType: ${updatedLimits.getCountForType(contentType)}');
+      }
       return true;
     } catch (e) {
-      debugPrint('❌ Ошибка уменьшения счетчика: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка уменьшения счетчика: $e');
+      }
       return false;
     }
   }
@@ -277,15 +311,21 @@ class UsageLimitsService {
   /// Пересчет лимитов на основе фактических данных
   Future<void> recalculateLimits() async {
     try {
-      debugPrint('🔄 Пересчет лимитов использования...');
+      if (kDebugMode) {
+        debugPrint('🔄 Пересчет лимитов использования...');
+      }
 
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
-        debugPrint('⚠️ Пользователь не авторизован, пропускаем пересчет');
+        if (kDebugMode) {
+          debugPrint('⚠️ Пользователь не авторизован, пропускаем пересчет');
+        }
         return;
       }
 
-      debugPrint('👤 Пересчитываем лимиты для пользователя: $userId');
+      if (kDebugMode) {
+        debugPrint('👤 Пересчитываем лимиты для пользователя: $userId');
+      }
 
       // Подсчитываем фактическое количество контента из каждой коллекции
       int actualNotesCount = 0;
@@ -295,55 +335,78 @@ class UsageLimitsService {
       if (await NetworkUtils.isNetworkAvailable()) {
         try {
           // Считаем заметки
-          debugPrint('📝 Подсчет заметок из коллекции: fishing_notes...');
+          if (kDebugMode) {
+            debugPrint('📝 Подсчет заметок из коллекции: fishing_notes...');
+          }
           final notesQuery = _firestore
               .collection('fishing_notes')
               .where('userId', isEqualTo: userId);
 
-          debugPrint('📝 Выполняем запрос заметок...');
+          if (kDebugMode) {
+            debugPrint('📝 Выполняем запрос заметок...');
+          }
           final notesSnapshot = await notesQuery.get();
           actualNotesCount = notesSnapshot.docs.length;
-          debugPrint('📝 Найдено заметок: $actualNotesCount');
+          if (kDebugMode) {
+            debugPrint('📝 Найдено заметок: $actualNotesCount');
+          }
 
           // Считаем маркерные карты
-          debugPrint('🗺️ Подсчет карт из коллекции: marker_maps...');
+          if (kDebugMode) {
+            debugPrint('🗺️ Подсчет карт из коллекции: marker_maps...');
+          }
           final mapsQuery = _firestore
               .collection('marker_maps')
               .where('userId', isEqualTo: userId);
 
-          debugPrint('🗺️ Выполняем запрос карт...');
+          if (kDebugMode) {
+            debugPrint('🗺️ Выполняем запрос карт...');
+          }
           final mapsSnapshot = await mapsQuery.get();
           actualMapsCount = mapsSnapshot.docs.length;
-          debugPrint('🗺️ Найдено карт: $actualMapsCount');
+          if (kDebugMode) {
+            debugPrint('🗺️ Найдено карт: $actualMapsCount');
+          }
 
           // Считаем расходы (по уникальным tripId)
-          debugPrint('💰 Подсчет расходов из коллекции: fishing_trips...');
+          if (kDebugMode) {
+            debugPrint('💰 Подсчет расходов из коллекции: fishing_trips...');
+          }
           final expensesQuery = _firestore
               .collection('fishing_trips')
               .where('userId', isEqualTo: userId);
 
-          debugPrint('💰 Выполняем запрос расходов...');
+          if (kDebugMode) {
+            debugPrint('💰 Выполняем запрос расходов...');
+          }
           final expensesSnapshot = await expensesQuery.get();
 
           // Считаем количество поездок (каждая поездка = один элемент расходов)
           actualExpensesCount = expensesSnapshot.docs.length;
-          debugPrint('💰 Найдено поездок: $actualExpensesCount');
-
-          // Показываем ID всех поездок для диагностики
-          final tripIds = expensesSnapshot.docs.map((doc) => doc.id).toList();
-          debugPrint('💰 ID поездок: $tripIds');
+          if (kDebugMode) {
+            debugPrint('💰 Найдено поездок: $actualExpensesCount');
+            // Показываем ID всех поездок для диагностики
+            final tripIds = expensesSnapshot.docs.map((doc) => doc.id).toList();
+            debugPrint('💰 ID поездок: $tripIds');
+          }
 
         } catch (e) {
-          debugPrint('❌ Ошибка подсчета данных из Firebase: $e');
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка подсчета данных из Firebase: $e');
+          }
           // В случае ошибки используем данные из кэша
           final currentLimits = _cachedLimits ?? UsageLimitsModel.defaultLimits(userId);
           actualNotesCount = currentLimits.notesCount;
           actualMapsCount = currentLimits.markerMapsCount;
           actualExpensesCount = currentLimits.expensesCount;
-          debugPrint('💾 Используем кэшированные данные: $actualNotesCount/$actualMapsCount/$actualExpensesCount');
+          if (kDebugMode) {
+            debugPrint('💾 Используем кэшированные данные: $actualNotesCount/$actualMapsCount/$actualExpensesCount');
+          }
         }
       } else {
-        debugPrint('🔌 Нет интернета, используем кэшированные данные');
+        if (kDebugMode) {
+          debugPrint('🔌 Нет интернета, используем кэшированные данные');
+        }
         final currentLimits = _cachedLimits ?? UsageLimitsModel.defaultLimits(userId);
         actualNotesCount = currentLimits.notesCount;
         actualMapsCount = currentLimits.markerMapsCount;
@@ -362,25 +425,35 @@ class UsageLimitsService {
       // Сохраняем обновленные лимиты
       await _saveLimits(updatedLimits);
 
-      debugPrint('✅ Лимиты пересчитаны и сохранены:');
-      debugPrint('   📝 Заметки: $actualNotesCount/${SubscriptionConstants.freeNotesLimit}');
-      debugPrint('   🗺️ Карты: $actualMapsCount/${SubscriptionConstants.freeMarkerMapsLimit}');
-      debugPrint('   💰 Расходы: $actualExpensesCount/${SubscriptionConstants.freeExpensesLimit}');
+      if (kDebugMode) {
+        debugPrint('✅ Лимиты пересчитаны и сохранены:');
+        debugPrint('   📝 Заметки: $actualNotesCount/${SubscriptionConstants.freeNotesLimit}');
+        debugPrint('   🗺️ Карты: $actualMapsCount/${SubscriptionConstants.freeMarkerMapsLimit}');
+        debugPrint('   💰 Расходы: $actualExpensesCount/${SubscriptionConstants.freeExpensesLimit}');
+      }
     } catch (e) {
-      debugPrint('❌ Критическая ошибка пересчета лимитов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Критическая ошибка пересчета лимитов: $e');
+      }
     }
   }
 
   /// Принудительное обновление данных (для использования в UI)
   Future<void> forceRefresh() async {
     try {
-      debugPrint('🔄 Принудительное обновление лимитов...');
+      if (kDebugMode) {
+        debugPrint('🔄 Принудительное обновление лимитов...');
+      }
       _cachedLimits = null; // Очищаем кэш
       await loadCurrentLimits();
       await recalculateLimits();
-      debugPrint('✅ Принудительное обновление завершено');
+      if (kDebugMode) {
+        debugPrint('✅ Принудительное обновление завершено');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка принудительного обновления: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка принудительного обновления: $e');
+      }
     }
   }
 
@@ -406,9 +479,13 @@ class UsageLimitsService {
       }
 
       await _saveLimits(updatedLimits);
-      debugPrint('✅ Сброшен счетчик для типа: $contentType');
+      if (kDebugMode) {
+        debugPrint('✅ Сброшен счетчик для типа: $contentType');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка сброса счетчика для типа $contentType: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сброса счетчика для типа $contentType: $e');
+      }
     }
   }
 
@@ -418,7 +495,9 @@ class UsageLimitsService {
       final limits = await getCurrentUsage();
       return limits.getUsageStats();
     } catch (e) {
-      debugPrint('❌ Ошибка получения статистики: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения статистики: $e');
+      }
       return {};
     }
   }
@@ -447,7 +526,9 @@ class UsageLimitsService {
 
       return warnings;
     } catch (e) {
-      debugPrint('❌ Ошибка проверки предупреждений: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки предупреждений: $e');
+      }
       return [];
     }
   }
@@ -458,9 +539,13 @@ class UsageLimitsService {
       final limits = await getCurrentUsage();
       final resetLimits = limits.resetAllCounters();
       await _saveLimits(resetLimits);
-      debugPrint('✅ Все лимиты сброшены');
+      if (kDebugMode) {
+        debugPrint('✅ Все лимиты сброшены');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка сброса лимитов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сброса лимитов: $e');
+      }
     }
   }
 
@@ -479,7 +564,9 @@ class UsageLimitsService {
       // Отправляем в стрим
       _limitsController.add(limits);
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения лимитов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сохранения лимитов: $e');
+      }
       rethrow;
     }
   }
@@ -492,12 +579,18 @@ class UsageLimitsService {
             .collection(SubscriptionConstants.usageLimitsCollection)
             .doc(limits.userId)
             .set(limits.toMap(), SetOptions(merge: true));
-        debugPrint('💾 Лимиты сохранены в Firebase');
+        if (kDebugMode) {
+          debugPrint('💾 Лимиты сохранены в Firebase');
+        }
       } else {
-        debugPrint('🔌 Нет интернета, сохранение в Firebase пропущено');
+        if (kDebugMode) {
+          debugPrint('🔌 Нет интернета, сохранение в Firebase пропущено');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения в Firebase: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сохранения в Firebase: $e');
+      }
     }
   }
 
@@ -510,9 +603,13 @@ class UsageLimitsService {
       await prefs.setInt('cached_expenses_count', limits.expensesCount);
       await prefs.setString('cached_limits_updated', limits.updatedAt.toIso8601String());
       await prefs.setString('cached_user_id', limits.userId);
-      debugPrint('💾 Лимиты сохранены в локальный кэш');
+      if (kDebugMode) {
+        debugPrint('💾 Лимиты сохранены в локальный кэш');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения лимитов в кэш: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сохранения лимитов в кэш: $e');
+      }
     }
   }
 
@@ -524,7 +621,9 @@ class UsageLimitsService {
       // Проверяем соответствие пользователя
       final cachedUserId = prefs.getString('cached_user_id');
       if (cachedUserId != userId) {
-        debugPrint('👤 Смена пользователя, создаем новые лимиты');
+        if (kDebugMode) {
+          debugPrint('👤 Смена пользователя, создаем новые лимиты');
+        }
         return UsageLimitsModel.defaultLimits(userId);
       }
 
@@ -537,7 +636,9 @@ class UsageLimitsService {
           ? DateTime.tryParse(updatedString) ?? DateTime.now()
           : DateTime.now();
 
-      debugPrint('💾 Лимиты загружены из кэша: $notesCount/$mapsCount/$expensesCount');
+      if (kDebugMode) {
+        debugPrint('💾 Лимиты загружены из кэша: $notesCount/$mapsCount/$expensesCount');
+      }
 
       return UsageLimitsModel(
         userId: userId,
@@ -548,7 +649,9 @@ class UsageLimitsService {
         updatedAt: updatedAt,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки лимитов из кэша: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки лимитов из кэша: $e');
+      }
       return UsageLimitsModel.defaultLimits(userId);
     }
   }

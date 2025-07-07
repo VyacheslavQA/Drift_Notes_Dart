@@ -38,11 +38,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hasUppercase = false;
   bool _hasNumber = false;
   bool _passwordFieldFocused = false;
-  bool _confirmPasswordFieldFocused = false;
-
-  // Состояние совпадения паролей
-  bool _passwordsMatch = true;
-  bool _showPasswordMatchError = false;
 
   final FocusNode _passwordFocusNode = FocusNode();
   final FocusNode _confirmPasswordFocusNode = FocusNode();
@@ -51,21 +46,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _passwordController.addListener(_checkPasswordRequirements);
-    _confirmPasswordController.addListener(_checkPasswordsMatch);
 
     _passwordFocusNode.addListener(() {
       setState(() {
         _passwordFieldFocused = _passwordFocusNode.hasFocus;
-      });
-    });
-
-    _confirmPasswordFocusNode.addListener(() {
-      setState(() {
-        _confirmPasswordFieldFocused = _confirmPasswordFocusNode.hasFocus;
-        if (!_confirmPasswordFieldFocused &&
-            _confirmPasswordController.text.isNotEmpty) {
-          _showPasswordMatchError = true;
-        }
       });
     });
   }
@@ -87,24 +71,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _hasMinLength = password.length >= 8;
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasNumber = password.contains(RegExp(r'[0-9]'));
-    });
-
-    // Также проверяем совпадение паролей
-    _checkPasswordsMatch();
-  }
-
-  void _checkPasswordsMatch() {
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
-
-    setState(() {
-      _passwordsMatch = password == confirmPassword;
-      // Показываем ошибку только если поле подтверждения не пустое
-      if (confirmPassword.isNotEmpty) {
-        _showPasswordMatchError = !_passwordsMatch;
-      } else {
-        _showPasswordMatchError = false;
-      }
     });
   }
 
@@ -362,6 +328,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: TextFormField(
                                     controller: _nameController,
+                                    enableInteractiveSelection: true,
+                                    onTap: () {
+                                      // Устанавливаем курсор в позицию клика
+                                      if (_nameController.selection == TextSelection.fromPosition(TextPosition(offset: _nameController.text.length))) {
+                                        _nameController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: _nameController.text.length),
+                                        );
+                                      }
+                                    },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: isTablet ? 18 : 16,
@@ -422,7 +397,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для email - компактная версия
+                                // Поле для email - ИСПРАВЛЕНО
                                 Container(
                                   constraints: BoxConstraints(
                                     minHeight: isTablet ? 56 : 48,
@@ -430,6 +405,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: TextFormField(
                                     controller: _emailController,
+                                    enableInteractiveSelection: true,
+                                    onTap: () {
+                                      // Убираем автоматическое выделение всего текста
+                                      if (_emailController.selection == TextSelection.fromPosition(TextPosition(offset: _emailController.text.length))) {
+                                        _emailController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: _emailController.text.length),
+                                        );
+                                      }
+                                    },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: isTablet ? 18 : 16,
@@ -501,6 +485,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       child: TextFormField(
                                         controller: _passwordController,
                                         focusNode: _passwordFocusNode,
+                                        enableInteractiveSelection: true,
+                                        onTap: () {
+                                          // Убираем автоматическое выделение всего текста
+                                          if (_passwordController.selection == TextSelection.fromPosition(TextPosition(offset: _passwordController.text.length))) {
+                                            _passwordController.selection = TextSelection.fromPosition(
+                                              TextPosition(offset: _passwordController.text.length),
+                                            );
+                                          }
+                                        },
                                         style: TextStyle(
                                           color: AppConstants.textColor,
                                           fontSize: isTablet ? 18 : 16,
@@ -695,128 +688,102 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для подтверждения пароля - нормальной ширины
-                                Column(
-                                  children: [
-                                    Container(
-                                      constraints: BoxConstraints(
-                                        minHeight: isTablet ? 56 : 48,
-                                        maxHeight: isTablet ? 72 : 64,
+                                // Поле для подтверждения пароля - ИСПРАВЛЕНО (убрали визуальный индикатор ошибки)
+                                Container(
+                                  constraints: BoxConstraints(
+                                    minHeight: isTablet ? 56 : 48,
+                                    maxHeight: isTablet ? 72 : 64,
+                                  ),
+                                  child: TextFormField(
+                                    controller: _confirmPasswordController,
+                                    focusNode: _confirmPasswordFocusNode,
+                                    enableInteractiveSelection: true,
+                                    onTap: () {
+                                      // Убираем автоматическое выделение всего текста
+                                      if (_confirmPasswordController.selection == TextSelection.fromPosition(TextPosition(offset: _confirmPasswordController.text.length))) {
+                                        _confirmPasswordController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: _confirmPasswordController.text.length),
+                                        );
+                                      }
+                                    },
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: isTablet ? 18 : 16,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate(
+                                        'confirm_password',
                                       ),
-                                      child: TextFormField(
-                                        controller: _confirmPasswordController,
-                                        focusNode: _confirmPasswordFocusNode,
-                                        style: TextStyle(
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
+                                      filled: true,
+                                      fillColor: const Color(0xFF12332E),
+                                      prefixIcon: Icon(
+                                        Icons.lock_outline,
+                                        color: AppConstants.textColor,
+                                        size: isTablet ? 28 : 24,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscureConfirmPassword
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
                                           color: AppConstants.textColor,
-                                          fontSize: isTablet ? 18 : 16,
+                                          size: isTablet ? 28 : 24,
                                         ),
-                                        decoration: InputDecoration(
-                                          hintText: localizations.translate(
-                                            'confirm_password',
-                                          ),
-                                          hintStyle: TextStyle(
-                                            color: AppConstants.textColor.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                          ),
-                                          filled: true,
-                                          fillColor: const Color(0xFF12332E),
-                                          prefixIcon: Icon(
-                                            Icons.lock_outline,
-                                            color: AppConstants.textColor,
-                                            size: isTablet ? 28 : 24,
-                                          ),
-                                          suffixIcon: IconButton(
-                                            icon: Icon(
-                                              _obscureConfirmPassword
-                                                  ? Icons.visibility
-                                                  : Icons.visibility_off,
-                                              color: AppConstants.textColor,
-                                              size: isTablet ? 28 : 24,
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                _obscureConfirmPassword =
-                                                !_obscureConfirmPassword;
-                                              });
-                                            },
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(
-                                              color: AppConstants.textColor,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          errorBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: const BorderSide(
-                                              color: Colors.redAccent,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          focusedErrorBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: const BorderSide(
-                                              color: Colors.redAccent,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          errorStyle: const TextStyle(
-                                            color: Colors.redAccent,
-                                          ),
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: isTablet ? 24 : 20,
-                                            vertical: isTablet ? 20 : 16,
-                                          ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _obscureConfirmPassword =
+                                            !_obscureConfirmPassword;
+                                          });
+                                        },
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.textColor,
+                                          width: 1.5,
                                         ),
-                                        obscureText: _obscureConfirmPassword,
-                                        validator:
-                                            (value) => Validators.validateConfirmPassword(
-                                          value,
-                                          _passwordController.text,
-                                          context,
+                                      ),
+                                      errorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.redAccent,
+                                          width: 1.5,
                                         ),
-                                        textInputAction: TextInputAction.done,
-                                        onFieldSubmitted: (_) => _register(),
+                                      ),
+                                      focusedErrorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.redAccent,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      errorStyle: const TextStyle(
+                                        color: Colors.redAccent,
+                                      ),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 24 : 20,
+                                        vertical: isTablet ? 20 : 16,
                                       ),
                                     ),
-
-                                    // Индикатор совпадения паролей - только при ошибке
-                                    if (_showPasswordMatchError)
-                                      Container(
-                                        margin: EdgeInsets.only(top: isTablet ? 12 : 8),
-                                        padding: EdgeInsets.all(isTablet ? 12 : 10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.cancel,
-                                              color: Colors.redAccent,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              localizations.translate(
-                                                'passwords_dont_match',
-                                              ),
-                                              style: const TextStyle(
-                                                color: Colors.redAccent,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
+                                    obscureText: _obscureConfirmPassword,
+                                    validator:
+                                        (value) => Validators.validateConfirmPassword(
+                                      value,
+                                      _passwordController.text,
+                                      context,
+                                    ),
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) => _register(),
+                                  ),
                                 ),
                               ],
                             ),
@@ -932,7 +899,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 ),
 
-                              // Кнопка регистрации - увеличенная версия с защитой
+                              // Кнопка регистрации - ИСПРАВЛЕНО (убрали проверку _passwordsMatch)
                               Semantics(
                                 button: true,
                                 label: 'Зарегистрироваться',
@@ -944,9 +911,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: ElevatedButton(
                                     onPressed:
-                                    (_isLoading ||
-                                        !_acceptedTermsAndPrivacy ||
-                                        !_passwordsMatch)
+                                    (_isLoading || !_acceptedTermsAndPrivacy)
                                         ? null
                                         : _register,
                                     style: ElevatedButton.styleFrom(

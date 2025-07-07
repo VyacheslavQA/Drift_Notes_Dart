@@ -359,13 +359,17 @@ class _PaywallScreenState extends State<PaywallScreen>
         ),
         child: Stack(
           children: [
+            // ИСПРАВЛЕНО: Улучшенное позиционирование бейджа "Рекомендуем"
             if (isRecommended)
               Positioned(
-                top: -1,
-                right: 16,
+                top: 8,
+                right: 8,
                 child: Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: 120, // Ограничиваем максимальную ширину
+                  ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
+                    horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
@@ -379,11 +383,19 @@ class _PaywallScreenState extends State<PaywallScreen>
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis, // Добавляем обрезку текста
                   ),
                 ),
               ),
+            // ИСПРАВЛЕНО: Добавляем отступ сверху для контента, если есть бейдж
             Padding(
-              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              padding: EdgeInsets.only(
+                left: AppConstants.paddingMedium,
+                right: AppConstants.paddingMedium,
+                bottom: AppConstants.paddingMedium,
+                top: isRecommended ? AppConstants.paddingLarge : AppConstants.paddingMedium,
+              ),
               child: Row(
                 children: [
                   Radio<String>(
@@ -403,10 +415,13 @@ class _PaywallScreenState extends State<PaywallScreen>
                       children: [
                         Row(
                           children: [
-                            Text(
-                              _getPlanTitle(context, planId),
-                              style: AppConstants.subtitleStyle.copyWith(
-                                fontWeight: FontWeight.w600,
+                            Flexible( // ИСПРАВЛЕНО: Добавляем Flexible для текста
+                              child: Text(
+                                _getPlanTitle(context, planId),
+                                style: AppConstants.subtitleStyle.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (isRecommended && provider.getYearlyDiscount() > 0) ...[
@@ -438,31 +453,41 @@ class _PaywallScreenState extends State<PaywallScreen>
                           style: AppConstants.bodyStyle.copyWith(
                             color: AppConstants.secondaryTextColor,
                           ),
+                          overflow: TextOverflow.ellipsis, // ИСПРАВЛЕНО: Добавляем обрезку
+                          maxLines: 2, // ИСПРАВЛЕНО: Ограничиваем количество строк
                         ),
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        price,
-                        style: AppConstants.titleStyle.copyWith(
-                          fontSize: 18,
-                          color: isSelected ? AppConstants.primaryColor : AppConstants.textColor,
+                  // ИСПРАВЛЕНО: Улучшаем layout цены
+                  Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 70, // Минимальная ширина для цены
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        FittedBox( // ИСПРАВЛЕНО: Добавляем FittedBox для автоматического масштабирования
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            price,
+                            style: AppConstants.titleStyle.copyWith(
+                              fontSize: 18,
+                              color: isSelected ? AppConstants.primaryColor : AppConstants.textColor,
+                            ),
+                          ),
                         ),
-                      ),
-                      if (planId == SubscriptionConstants.monthlyPremiumId)
-                        Text(
-                          _getLocalizedText(context, 'per_month'),
-                          style: AppConstants.captionStyle,
-                        )
-                      else
-                        Text(
-                          _getLocalizedText(context, 'per_year'),
-                          style: AppConstants.captionStyle,
+                        FittedBox( // ИСПРАВЛЕНО: Добавляем FittedBox для периода
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            planId == SubscriptionConstants.monthlyPremiumId
+                                ? _getLocalizedText(context, 'per_month')
+                                : _getLocalizedText(context, 'per_year'),
+                            style: AppConstants.captionStyle,
+                          ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

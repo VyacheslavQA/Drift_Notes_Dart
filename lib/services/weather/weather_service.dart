@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../models/fishing_note_model.dart';
 import 'package:intl/intl.dart';
@@ -19,10 +20,10 @@ class WeatherService {
 
   // Получает данные о погоде для указанных координат используя WeatherAPI
   Future<FishingWeather?> getWeatherForLocation(
-    double latitude,
-    double longitude, [
-    BuildContext? context,
-  ]) async {
+      double latitude,
+      double longitude, [
+        BuildContext? context,
+      ]) async {
     if (context != null) _context = context;
 
     try {
@@ -36,9 +37,9 @@ class WeatherService {
       // Конвертируем в FishingWeather для совместимости
       return WeatherApiService.convertToFishingWeather(weatherData);
     } catch (e) {
-      debugPrint(
-        '⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e',
-      );
+      if (kDebugMode) {
+        debugPrint('⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e');
+      }
 
       try {
         // Если прогноз не работает, используем текущую погоду
@@ -50,9 +51,9 @@ class WeatherService {
         return WeatherApiService.convertToFishingWeather(weatherData);
       } catch (e2) {
         // Если новый API не работает совсем, используем старый Open-Meteo как fallback
-        debugPrint(
-          '⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2',
-        );
+        if (kDebugMode) {
+          debugPrint('⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2');
+        }
         return _getWeatherFromOpenMeteo(latitude, longitude);
       }
     }
@@ -60,17 +61,17 @@ class WeatherService {
 
   // Fallback метод для Open-Meteo API (оригинальный код)
   Future<FishingWeather?> _getWeatherFromOpenMeteo(
-    double latitude,
-    double longitude,
-  ) async {
+      double latitude,
+      double longitude,
+      ) async {
     try {
       final response = await http.get(
         Uri.parse(
           '$_baseUrl?latitude=$latitude&longitude=$longitude'
-          '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
-          'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
-          '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
-          '&timezone=auto',
+              '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,'
+              'precipitation,rain,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m'
+              '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max'
+              '&timezone=auto',
         ),
       );
 
@@ -111,7 +112,9 @@ class WeatherService {
         isDay: current['is_day'] == 1,
       );
     } catch (e) {
-      print('Ошибка при обработке данных погоды: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при обработке данных погоды: $e');
+      }
       return null;
     }
   }
@@ -129,9 +132,9 @@ class WeatherService {
       final windSpeed = current['wind_speed_10m'] ?? 0.0;
       final humidity = current['relative_humidity_2m'] ?? 0;
       final pressure =
-          current['pressure_msl'] != null
-              ? (current['pressure_msl'] / 1.333).toInt()
-              : 0;
+      current['pressure_msl'] != null
+          ? (current['pressure_msl'] / 1.333).toInt()
+          : 0;
       final cloudCover = current['cloud_cover'] ?? 0;
 
       // Формируем описание в зависимости от языка
@@ -149,7 +152,7 @@ class WeatherService {
           'Облачность: $cloudCover%';
     } catch (e) {
       return _context != null &&
-              AppLocalizations.of(_context!).locale.languageCode == 'en'
+          AppLocalizations.of(_context!).locale.languageCode == 'en'
           ? 'Error generating weather description'
           : 'Ошибка при формировании описания погоды';
     }

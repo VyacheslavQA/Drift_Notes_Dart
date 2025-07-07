@@ -1,8 +1,8 @@
 // Путь: lib/services/notification_service.dart
-// ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -17,21 +17,18 @@ class NotificationService {
   final Uuid _uuid = const Uuid();
   final List<NotificationModel> _notifications = [];
 
-  // НОВЫЙ: Интеграция с push-сервисом
-  final LocalPushNotificationService _pushService =
-  LocalPushNotificationService();
+  // Интеграция с push-сервисом
+  final LocalPushNotificationService _pushService = LocalPushNotificationService();
 
   // Stream для уведомления UI об изменениях
-  final StreamController<List<NotificationModel>> _notificationsController =
-  StreamController<List<NotificationModel>>.broadcast();
+  final StreamController<List<NotificationModel>> _notificationsController = StreamController<List<NotificationModel>>.broadcast();
 
-  Stream<List<NotificationModel>> get notificationsStream =>
-      _notificationsController.stream;
+  Stream<List<NotificationModel>> get notificationsStream => _notificationsController.stream;
 
   // Ключ для SharedPreferences
   static const String _notificationsKey = 'local_notifications';
 
-  /// НОВЫЙ: Фильтр для очистки технических ошибок
+  /// Фильтр для очистки технических ошибок
   String _cleanErrorMessage(String message, String title) {
     final lowercaseMessage = message.toLowerCase();
     final lowercaseTitle = title.toLowerCase();
@@ -163,7 +160,7 @@ class NotificationService {
     return technicalKeywords.any((keyword) => message.toLowerCase().contains(keyword));
   }
 
-  /// НОВЫЙ: Очистка заголовка от технических терминов
+  /// Очистка заголовка от технических терминов
   String _cleanErrorTitle(String title) {
     if (title.toLowerCase().contains('ошибка загрузки') &&
         title.toLowerCase().contains('exception')) {
@@ -190,26 +187,30 @@ class NotificationService {
 
   /// Инициализация сервиса
   Future<void> initialize() async {
-    debugPrint('📱 Инициализация сервиса уведомлений...');
+    if (kDebugMode) {
+      debugPrint('📱 Инициализация сервиса уведомлений...');
+    }
 
     try {
-      // НОВЫЙ: Инициализируем push-сервис
+      // Инициализируем push-сервис
       await _pushService.initialize();
 
       await _loadNotificationsFromStorage();
 
-      // НОВЫЙ: Обновляем бейдж на основе непрочитанных уведомлений
+      // Обновляем бейдж на основе непрочитанных уведомлений
       await _updateBadgeCount();
 
-      debugPrint(
-        '✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений',
-      );
+      if (kDebugMode) {
+        debugPrint('✅ Сервис уведомлений инициализирован. Загружено: ${_notifications.length} уведомлений');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка инициализации сервиса уведомлений: $e');
+      }
     }
   }
 
-  /// НОВЫЙ: Обработчик нажатий на уведомления
+  /// Обработчик нажатий на уведомления
   void _handleNotificationTap(String payload) {
     try {
       final payloadData = json.decode(payload);
@@ -218,10 +219,14 @@ class NotificationService {
       if (notificationId != null) {
         // Отмечаем уведомление как прочитанное при нажатии
         markAsRead(notificationId);
-        debugPrint('📱 Уведомление отмечено как прочитанное: $notificationId');
+        if (kDebugMode) {
+          debugPrint('📱 Уведомление отмечено как прочитанное: $notificationId');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
+      }
     }
   }
 
@@ -239,7 +244,9 @@ class NotificationService {
           final notification = NotificationModel.fromJson(notificationMap);
           _notifications.add(notification);
         } catch (e) {
-          debugPrint('❌ Ошибка парсинга уведомления: $e');
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка парсинга уведомления: $e');
+          }
         }
       }
 
@@ -252,7 +259,9 @@ class NotificationService {
         await _saveNotificationsToStorage();
       }
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки уведомлений: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки уведомлений: $e');
+      }
     }
   }
 
@@ -260,31 +269,37 @@ class NotificationService {
   Future<void> _saveNotificationsToStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final notificationsJson =
-      _notifications
+      final notificationsJson = _notifications
           .map((notification) => json.encode(notification.toJson()))
           .toList();
 
       await prefs.setStringList(_notificationsKey, notificationsJson);
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения уведомлений: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сохранения уведомлений: $e');
+      }
     }
   }
 
-  /// НОВЫЙ: Обновление счетчика бейджа
+  /// Обновление счетчика бейджа
   Future<void> _updateBadgeCount() async {
     try {
       final unreadCount = getUnreadCount();
       await _pushService.setBadgeCount(unreadCount);
+      if (kDebugMode) {
+        debugPrint('✅ Бейдж обновлен: $unreadCount');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка обновления бейджа: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обновления бейджа: $e');
+      }
     }
   }
 
-  /// ИСПРАВЛЕНО: Добавление нового уведомления с фильтрацией ошибок
+  /// Добавление нового уведомления с фильтрацией ошибок
   Future<void> addNotification(NotificationModel notification) async {
     try {
-      // НОВЫЙ: Очищаем сообщение и заголовок от технических ошибок
+      // Очищаем сообщение и заголовок от технических ошибок
       final cleanedTitle = _cleanErrorTitle(notification.title);
       final cleanedMessage = _cleanErrorMessage(notification.message, notification.title);
 
@@ -295,16 +310,14 @@ class NotificationService {
       );
 
       // Логируем очистку для отладки
-      if (cleanedTitle != notification.title || cleanedMessage != notification.message) {
+      if (kDebugMode && (cleanedTitle != notification.title || cleanedMessage != notification.message)) {
         debugPrint('🧹 Уведомление очищено:');
         debugPrint('   Было: ${notification.title} - ${notification.message}');
         debugPrint('   Стало: $cleanedTitle - $cleanedMessage');
       }
 
       // Проверяем, нет ли уже такого уведомления (по ID)
-      final existingIndex = _notifications.indexWhere(
-            (n) => n.id == cleanedNotification.id,
-      );
+      final existingIndex = _notifications.indexWhere((n) => n.id == cleanedNotification.id);
 
       if (existingIndex != -1) {
         // Обновляем существующее
@@ -321,18 +334,22 @@ class NotificationService {
 
       await _saveNotificationsToStorage();
 
-      // НОВЫЙ: Отправляем очищенное push-уведомление
+      // Отправляем очищенное push-уведомление
       await _pushService.showNotification(cleanedNotification);
 
-      // НОВЫЙ: Обновляем бейдж
+      // Обновляем бейдж
       await _updateBadgeCount();
 
       // Уведомляем слушателей об изменениях
       _notificationsController.add(List.from(_notifications));
 
-      debugPrint('✅ Уведомление добавлено: ${cleanedNotification.title}');
+      if (kDebugMode) {
+        debugPrint('✅ Уведомление добавлено: ${cleanedNotification.title}');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка добавления уведомления: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка добавления уведомления: $e');
+      }
     }
   }
 
@@ -355,7 +372,7 @@ class NotificationService {
     await addNotification(notification);
   }
 
-  /// НОВЫЙ: Специальный метод для добавления уведомлений о турнирах
+  /// Специальный метод для добавления уведомлений о турнирах
   Future<void> addTournamentReminderNotification({
     required String id,
     required String title,
@@ -368,8 +385,7 @@ class NotificationService {
 
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
-      final filteredLines =
-      lines.where((line) {
+      final filteredLines = lines.where((line) {
         return !line.startsWith('eventId:') &&
             !line.startsWith('eventType:') &&
             !line.startsWith('location:') &&
@@ -391,14 +407,18 @@ class NotificationService {
 
       await addNotification(notification);
 
-      debugPrint('✅ Уведомление о турнире добавлено: $title');
-      debugPrint('✅ Очищенное сообщение: $cleanMessage');
+      if (kDebugMode) {
+        debugPrint('✅ Уведомление о турнире добавлено: $title');
+        debugPrint('✅ Очищенное сообщение: $cleanMessage');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка добавления уведомления о турнире: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка добавления уведомления о турнире: $e');
+      }
     }
   }
 
-  /// НОВЫЙ: Специальный метод для добавления уведомлений о рыбалке
+  /// Специальный метод для добавления уведомлений о рыбалке
   Future<void> addFishingReminderNotification({
     required String id,
     required String title,
@@ -411,8 +431,7 @@ class NotificationService {
 
       // Удаляем техническую информацию из сообщения
       final lines = cleanMessage.split('\n');
-      final filteredLines =
-      lines.where((line) {
+      final filteredLines = lines.where((line) {
         return !line.startsWith('eventId:') &&
             !line.startsWith('eventType:') &&
             !line.startsWith('location:') &&
@@ -434,9 +453,13 @@ class NotificationService {
 
       await addNotification(notification);
 
-      debugPrint('✅ Уведомление о рыбалке добавлено: $title');
+      if (kDebugMode) {
+        debugPrint('✅ Уведомление о рыбалке добавлено: $title');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка добавления уведомления о рыбалке: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка добавления уведомления о рыбалке: $e');
+      }
     }
   }
 
@@ -447,9 +470,7 @@ class NotificationService {
 
   /// Получение непрочитанных уведомлений
   List<NotificationModel> getUnreadNotifications() {
-    return _notifications
-        .where((notification) => !notification.isRead)
-        .toList();
+    return _notifications.where((notification) => !notification.isRead).toList();
   }
 
   /// Количество непрочитанных уведомлений
@@ -466,15 +487,19 @@ class NotificationService {
         _notifications[index] = _notifications[index].copyWith(isRead: true);
         await _saveNotificationsToStorage();
 
-        // НОВЫЙ: Обновляем бейдж
+        // Обновляем бейдж
         await _updateBadgeCount();
 
         _notificationsController.add(List.from(_notifications));
 
-        debugPrint('✅ Уведомление отмечено как прочитанное: $notificationId');
+        if (kDebugMode) {
+          debugPrint('✅ Уведомление отмечено как прочитанное: $notificationId');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка отметки уведомления как прочитанного: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка отметки уведомления как прочитанного: $e');
+      }
     }
   }
 
@@ -493,15 +518,19 @@ class NotificationService {
       if (hasChanges) {
         await _saveNotificationsToStorage();
 
-        // НОВЫЙ: Очищаем бейдж при прочтении всех уведомлений
+        // Очищаем бейдж при прочтении всех уведомлений
         await _pushService.clearBadge();
 
         _notificationsController.add(List.from(_notifications));
 
-        debugPrint('✅ Все уведомления отмечены как прочитанные');
+        if (kDebugMode) {
+          debugPrint('✅ Все уведомления отмечены как прочитанные');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка отметки всех уведомлений как прочитанных: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка отметки всех уведомлений как прочитанных: $e');
+      }
     }
   }
 
@@ -509,25 +538,27 @@ class NotificationService {
   Future<void> removeNotification(String notificationId) async {
     try {
       final initialLength = _notifications.length;
-      _notifications.removeWhere(
-            (notification) => notification.id == notificationId,
-      );
+      _notifications.removeWhere((notification) => notification.id == notificationId);
 
       if (_notifications.length != initialLength) {
         await _saveNotificationsToStorage();
 
-        // НОВЫЙ: Обновляем бейдж
+        // Обновляем бейдж
         await _updateBadgeCount();
 
-        // НОВЫЙ: Отменяем push-уведомление
+        // Отменяем push-уведомление
         await _pushService.cancelNotification(notificationId);
 
         _notificationsController.add(List.from(_notifications));
 
-        debugPrint('✅ Уведомление удалено: $notificationId');
+        if (kDebugMode) {
+          debugPrint('✅ Уведомление удалено: $notificationId');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка удаления уведомления: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка удаления уведомления: $e');
+      }
     }
   }
 
@@ -537,23 +568,25 @@ class NotificationService {
       _notifications.clear();
       await _saveNotificationsToStorage();
 
-      // НОВЫЙ: Очищаем все push-уведомления и бейдж
+      // Очищаем все push-уведомления и бейдж
       await _pushService.cancelAllNotifications();
       await _pushService.clearBadge();
 
       _notificationsController.add(List.from(_notifications));
 
-      debugPrint('✅ Все уведомления очищены');
+      if (kDebugMode) {
+        debugPrint('✅ Все уведомления очищены');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка очистки уведомлений: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка очистки уведомлений: $e');
+      }
     }
   }
 
   /// Получение уведомлений по типу
   List<NotificationModel> getNotificationsByType(NotificationType type) {
-    return _notifications
-        .where((notification) => notification.type == type)
-        .toList();
+    return _notifications.where((notification) => notification.type == type).toList();
   }
 
   /// Добавление тестового уведомления с локализацией
@@ -623,10 +656,10 @@ class NotificationService {
     );
   }
 
-  /// НОВЫЙ: Получение настроек звука
+  /// Получение настроек звука
   get soundSettings => _pushService.soundSettings;
 
-  /// НОВЫЙ: Обновление настроек звука
+  /// Обновление настроек звука
   Future<void> updateSoundSettings(settings) async {
     await _pushService.updateSoundSettings(settings);
   }

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../offline/offline_storage_service.dart';
@@ -60,9 +61,13 @@ class FirebaseService {
     try {
       final prefs = await SharedPreferences.getInstance();
       _cachedUserId = prefs.getString(_authUserIdKey);
-      debugPrint('Загружен кэшированный ID пользователя: $_cachedUserId');
+      if (kDebugMode) {
+        debugPrint('Загружен кэшированный ID пользователя: $_cachedUserId');
+      }
     } catch (e) {
-      debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
+      }
     }
   }
 
@@ -79,10 +84,10 @@ class FirebaseService {
 
   // Регистрация нового пользователя с email и паролем
   Future<UserCredential> registerWithEmailAndPassword(
-    String email,
-    String password, [
-    BuildContext? context,
-  ]) async {
+      String email,
+      String password, [
+        BuildContext? context,
+      ]) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -101,10 +106,10 @@ class FirebaseService {
 
   // Вход пользователя с email и паролем
   Future<UserCredential> signInWithEmailAndPassword(
-    String email,
-    String password, [
-    BuildContext? context,
-  ]) async {
+      String email,
+      String password, [
+        BuildContext? context,
+      ]) async {
     try {
       // Проверяем формат email перед отправкой
       if (!_isValidEmail(email)) {
@@ -150,18 +155,21 @@ class FirebaseService {
         'displayName': user.displayName ?? '',
       });
 
-      debugPrint('Данные пользователя сохранены в кэш');
+      if (kDebugMode) {
+        debugPrint('Данные пользователя сохранены в кэш');
+      }
     } catch (e) {
-      debugPrint('Ошибка при сохранении данных пользователя в кэш: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при сохранении данных пользователя в кэш: $e');
+      }
     }
   }
 
   // Обработка ошибок аутентификации Firebase
   String _handleAuthException(dynamic e, [BuildContext? context]) {
-    String errorMessage =
-        context != null
-            ? AppLocalizations.of(context).translate('unknown_error')
-            : 'Произошла неизвестная ошибка';
+    String errorMessage = context != null
+        ? AppLocalizations.of(context).translate('unknown_error')
+        : 'Произошла неизвестная ошибка';
 
     if (e is FirebaseAuthException) {
       if (context != null) {
@@ -195,7 +203,7 @@ class FirebaseService {
             errorMessage = localizations.translate('too_many_requests');
             break;
           case 'invalid-credential':
-            // Для invalid-credential показываем универсальное сообщение
+          // Для invalid-credential показываем универсальное сообщение
             errorMessage = localizations.translate('invalid_credentials');
             break;
           case 'user-token-expired':
@@ -252,14 +260,14 @@ class FirebaseService {
       }
     }
 
-    debugPrint('Firebase Auth Error: $e');
+    if (kDebugMode) {
+      debugPrint('Firebase Auth Error: $e');
+    }
     return errorMessage;
   }
 
   /// Кэширование данных пользователя из UserCredential (для Google Sign-In)
-  Future<void> cacheUserDataFromCredential(
-    UserCredential userCredential,
-  ) async {
+  Future<void> cacheUserDataFromCredential(UserCredential userCredential) async {
     await _cacheUserData(userCredential.user);
   }
 
@@ -275,17 +283,16 @@ class FirebaseService {
       // Очищаем статический кэш
       _cachedUserId = null;
     } catch (e) {
-      debugPrint('Ошибка при удалении кэшированных данных пользователя: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении кэшированных данных пользователя: $e');
+      }
     }
 
     await _auth.signOut();
   }
 
   // Отправка письма для сброса пароля
-  Future<void> sendPasswordResetEmail(
-    String email, [
-    BuildContext? context,
-  ]) async {
+  Future<void> sendPasswordResetEmail(String email, [BuildContext? context]) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
@@ -295,10 +302,10 @@ class FirebaseService {
 
   // Смена пароля пользователя
   Future<void> changePassword(
-    String currentPassword,
-    String newPassword, [
-    BuildContext? context,
-  ]) async {
+      String currentPassword,
+      String newPassword, [
+        BuildContext? context,
+      ]) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
@@ -321,9 +328,13 @@ class FirebaseService {
       // Меняем пароль
       await user.updatePassword(newPassword);
 
-      debugPrint('Пароль успешно изменен');
+      if (kDebugMode) {
+        debugPrint('Пароль успешно изменен');
+      }
     } catch (e) {
-      debugPrint('Ошибка при смене пароля: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при смене пароля: $e');
+      }
       throw _handleAuthException(e, context);
     }
   }
@@ -336,16 +347,15 @@ class FirebaseService {
 
       if (isOnline) {
         // Если есть интернет, обновляем данные в Firestore
-        await _firestore
-            .collection('users')
-            .doc(userId)
-            .set(data, SetOptions(merge: true));
+        await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
       }
 
       // В любом случае, сохраняем данные локально
       await _offlineStorage.saveUserData(data);
     } catch (e) {
-      debugPrint('Ошибка при обновлении данных пользователя: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении данных пользователя: $e');
+      }
 
       // В случае ошибки, сохраняем данные локально
       try {
@@ -370,32 +380,33 @@ class FirebaseService {
         throw Exception('Нет подключения к интернету');
       }
     } catch (e) {
-      debugPrint('Ошибка при получении данных пользователя: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении данных пользователя: $e');
+      }
       rethrow;
     }
   }
 
   // Добавление заметки о рыбалке
-  Future<DocumentReference> addFishingNote(
-    Map<String, dynamic> noteData,
-  ) async {
+  Future<DocumentReference> addFishingNote(Map<String, dynamic> noteData) async {
     try {
       return await _firestore.collection('fishing_notes').add(noteData);
     } catch (e) {
-      debugPrint('Ошибка при добавлении заметки: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении заметки: $e');
+      }
       rethrow;
     }
   }
 
   // Обновление заметки о рыбалке
-  Future<void> updateFishingNote(
-    String noteId,
-    Map<String, dynamic> noteData,
-  ) async {
+  Future<void> updateFishingNote(String noteId, Map<String, dynamic> noteData) async {
     try {
       await _firestore.collection('fishing_notes').doc(noteId).update(noteData);
     } catch (e) {
-      debugPrint('Ошибка при обновлении заметки: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении заметки: $e');
+      }
       rethrow;
     }
   }
@@ -411,15 +422,17 @@ class FirebaseService {
     } catch (e) {
       // Если ошибка связана с индексом, пытаемся выполнить запрос без сортировки
       if (e.toString().contains('index')) {
-        debugPrint(
-          'Ошибка индекса в Firestore, выполняем запрос без сортировки',
-        );
+        if (kDebugMode) {
+          debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
+        }
         return await _firestore
             .collection('fishing_notes')
             .where('userId', isEqualTo: userId)
             .get();
       }
-      debugPrint('Ошибка при получении заметок пользователя: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении заметок пользователя: $e');
+      }
       rethrow;
     }
   }
@@ -434,7 +447,9 @@ class FirebaseService {
       final snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
-      debugPrint('Ошибка при загрузке изображения: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при загрузке изображения: $e');
+      }
       rethrow;
     }
   }
@@ -462,7 +477,9 @@ class FirebaseService {
         await _deleteUserDataFromFirestore(userId);
         await _clearUserCache();
 
-        debugPrint('Аккаунт успешно удален: $userId');
+        if (kDebugMode) {
+          debugPrint('Аккаунт успешно удален: $userId');
+        }
       } catch (e) {
         if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
           // Требуется повторная аутентификация
@@ -472,17 +489,15 @@ class FirebaseService {
         }
       }
     } catch (e) {
-      debugPrint('Ошибка при удалении аккаунта: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении аккаунта: $e');
+      }
       throw _handleAuthException(e, context);
     }
   }
 
   // Повторная аутентификация и удаление аккаунта
-  Future<void> _reauthenticateAndDelete(
-    User user,
-    String userId, [
-    BuildContext? context,
-  ]) async {
+  Future<void> _reauthenticateAndDelete(User user, String userId, [BuildContext? context]) async {
     try {
       // Получаем методы аутентификации пользователя
       final providerData = user.providerData;
@@ -513,18 +528,19 @@ class FirebaseService {
       await _deleteUserDataFromFirestore(userId);
       await _clearUserCache();
 
-      debugPrint('Аккаунт успешно удален после реаутентификации: $userId');
+      if (kDebugMode) {
+        debugPrint('Аккаунт успешно удален после реаутентификации: $userId');
+      }
     } catch (e) {
-      debugPrint('Ошибка при реаутентификации и удалении: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при реаутентификации и удалении: $e');
+      }
       rethrow;
     }
   }
 
   // Повторная аутентификация с паролем
-  Future<void> _reauthenticateWithPassword(
-    User user, [
-    BuildContext? context,
-  ]) async {
+  Future<void> _reauthenticateWithPassword(User user, [BuildContext? context]) async {
     if (context == null) {
       throw Exception('Требуется повторная аутентификация');
     }
@@ -549,10 +565,7 @@ class FirebaseService {
   }
 
   // Повторная аутентификация через Google
-  Future<void> _reauthenticateWithGoogle(
-    User user, [
-    BuildContext? context,
-  ]) async {
+  Future<void> _reauthenticateWithGoogle(User user, [BuildContext? context]) async {
     try {
       // Импортируем Google Sign-In Service
       final GoogleSignInService googleService = GoogleSignInService();
@@ -563,23 +576,20 @@ class FirebaseService {
       if (userCredential == null) {
         throw Exception(
           context != null
-              ? AppLocalizations.of(
-                context,
-              ).translate('account_deletion_canceled')
+              ? AppLocalizations.of(context).translate('account_deletion_canceled')
               : 'Отменено пользователем',
         );
       }
     } catch (e) {
-      debugPrint('Ошибка при повторной аутентификации через Google: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при повторной аутентификации через Google: $e');
+      }
       rethrow;
     }
   }
 
   // Диалог для ввода пароля
-  Future<String?> _showPasswordDialog(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) async {
+  Future<String?> _showPasswordDialog(BuildContext context, AppLocalizations localizations) async {
     final passwordController = TextEditingController();
 
     return await showDialog<String>(
@@ -657,22 +667,20 @@ class FirebaseService {
       batch.delete(userDoc);
 
       // Удаляем все заметки пользователя
-      final notesQuery =
-          await _firestore
-              .collection('fishing_notes')
-              .where('userId', isEqualTo: userId)
-              .get();
+      final notesQuery = await _firestore
+          .collection('fishing_notes')
+          .where('userId', isEqualTo: userId)
+          .get();
 
       for (var doc in notesQuery.docs) {
         batch.delete(doc.reference);
       }
 
       // Удаляем все маркерные карты пользователя
-      final mapsQuery =
-          await _firestore
-              .collection('marker_maps')
-              .where('userId', isEqualTo: userId)
-              .get();
+      final mapsQuery = await _firestore
+          .collection('marker_maps')
+          .where('userId', isEqualTo: userId)
+          .get();
 
       for (var doc in mapsQuery.docs) {
         batch.delete(doc.reference);
@@ -681,9 +689,13 @@ class FirebaseService {
       // Выполняем пакетное удаление
       await batch.commit();
 
-      debugPrint('Данные пользователя удалены из Firestore: $userId');
+      if (kDebugMode) {
+        debugPrint('Данные пользователя удалены из Firestore: $userId');
+      }
     } catch (e) {
-      debugPrint('Ошибка при удалении данных пользователя из Firestore: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении данных пользователя из Firestore: $e');
+      }
       throw e;
     }
   }
@@ -699,9 +711,13 @@ class FirebaseService {
       // Очищаем статический кэш
       _cachedUserId = null;
 
-      debugPrint('Кэшированные данные пользователя очищены');
+      if (kDebugMode) {
+        debugPrint('Кэшированные данные пользователя очищены');
+      }
     } catch (e) {
-      debugPrint('Ошибка при очистке кэша пользователя: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при очистке кэша пользователя: $e');
+      }
     }
   }
 }

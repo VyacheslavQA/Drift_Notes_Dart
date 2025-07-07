@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -24,7 +25,7 @@ class SubscriptionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final UsageLimitsService _usageLimitsService = UsageLimitsService();
 
-  // ДОБАВЛЕНО: Тестовые аккаунты для Google Play Review
+  // Тестовые аккаунты для Google Play Review
   static const List<String> _testAccounts = [
     'googleplay.reviewer@gmail.com',
     'googleplayreviewer@gmail.com',
@@ -38,20 +39,18 @@ class SubscriptionService {
 
   // Стрим для прослушивания изменений подписки
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
-  final StreamController<SubscriptionModel> _subscriptionController =
-  StreamController<SubscriptionModel>.broadcast();
+  final StreamController<SubscriptionModel> _subscriptionController = StreamController<SubscriptionModel>.broadcast();
 
-  // ДОБАВЛЕНО: Стрим для статуса подписки (для совместимости)
-  final StreamController<SubscriptionStatus> _subscriptionStatusController =
-  StreamController<SubscriptionStatus>.broadcast();
+  // Стрим для статуса подписки (для совместимости)
+  final StreamController<SubscriptionStatus> _subscriptionStatusController = StreamController<SubscriptionStatus>.broadcast();
 
   // Стрим для UI
   Stream<SubscriptionModel> get subscriptionStream => _subscriptionController.stream;
 
-  // ДОБАВЛЕНО: Стрим статуса подписки для совместимости с виджетами
+  // Стрим статуса подписки для совместимости с виджетами
   Stream<SubscriptionStatus> get subscriptionStatusStream => _subscriptionStatusController.stream;
 
-  /// ДОБАВЛЕНО: Проверка тестового аккаунта
+  /// Проверка тестового аккаунта
   bool _isTestAccount() {
     try {
       final currentUser = _firebaseService.currentUser;
@@ -60,28 +59,32 @@ class SubscriptionService {
       final email = currentUser!.email!.toLowerCase().trim();
       final isTest = _testAccounts.contains(email);
 
-      if (isTest) {
+      if (kDebugMode && isTest) {
         debugPrint('🧪 Обнаружен тестовый аккаунт: $email');
       }
 
       return isTest;
     } catch (e) {
-      debugPrint('❌ Ошибка проверки тестового аккаунта: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки тестового аккаунта: $e');
+      }
       return false;
     }
   }
 
-  // ДОБАВЛЕНО: Публичная проверка тестового аккаунта для отладки
+  // Публичная проверка тестового аккаунта для отладки
   Future<bool> isTestReviewerAccount() async {
     return _isTestAccount();
   }
 
-  /// ДОБАВЛЕНО: Получение email текущего пользователя
+  /// Получение email текущего пользователя
   String? getCurrentUserEmail() {
     try {
       return _firebaseService.currentUser?.email?.toLowerCase().trim();
     } catch (e) {
-      debugPrint('❌ Ошибка получения email: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения email: $e');
+      }
       return null;
     }
   }
@@ -89,26 +92,38 @@ class SubscriptionService {
   /// Инициализация сервиса
   Future<void> initialize() async {
     try {
-      debugPrint('🔄 Инициализация SubscriptionService...');
+      if (kDebugMode) {
+        debugPrint('🔄 Инициализация SubscriptionService...');
+      }
 
       // Инициализируем UsageLimitsService
       await _usageLimitsService.initialize();
 
-      // ДОБАВЛЕНО: Устанавливаем связь между сервисами
+      // Устанавливаем связь между сервисами
       _usageLimitsService.setSubscriptionService(this);
 
       // Проверяем доступность покупок
       final isAvailable = await _inAppPurchase.isAvailable();
       if (!isAvailable) {
-        debugPrint('❌ In-App Purchase недоступен на этом устройстве');
+        if (kDebugMode) {
+          debugPrint('❌ In-App Purchase недоступен на этом устройстве');
+        }
         return;
       }
 
       // Подписываемся на изменения покупок
       _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
         _handlePurchaseUpdates,
-        onDone: () => debugPrint('🔄 Purchase stream закрыт'),
-        onError: (error) => debugPrint('❌ Ошибка в purchase stream: $error'),
+        onDone: () {
+          if (kDebugMode) {
+            debugPrint('🔄 Purchase stream закрыт');
+          }
+        },
+        onError: (error) {
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка в purchase stream: $error');
+          }
+        },
       );
 
       // Загружаем текущую подписку
@@ -117,13 +132,17 @@ class SubscriptionService {
       // Восстанавливаем покупки при инициализации
       await restorePurchases();
 
-      debugPrint('✅ SubscriptionService инициализирован');
+      if (kDebugMode) {
+        debugPrint('✅ SubscriptionService инициализирован');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации SubscriptionService: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка инициализации SubscriptionService: $e');
+      }
     }
   }
 
-  /// ДОБАВЛЕНО: Проверка возможности создания контента
+  /// Проверка возможности создания контента
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
       // Если пользователь имеет премиум - разрешаем всё
@@ -139,16 +158,20 @@ class SubscriptionService {
       // Используем UsageLimitsService для проверки лимитов
       return await _usageLimitsService.canCreateContent(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка проверки возможности создания контента: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки возможности создания контента: $e');
+      }
       return false;
     }
   }
 
-  /// ИСПРАВЛЕНО: Проверка премиум доступа с учетом тестовых аккаунтов
+  /// Проверка премиум доступа с учетом тестовых аккаунтов
   bool hasPremiumAccess() {
     // Проверяем тестовый аккаунт ПЕРВЫМ
     if (_isTestAccount()) {
-      debugPrint('🧪 Тестовый аккаунт имеет полный премиум доступ');
+      if (kDebugMode) {
+        debugPrint('🧪 Тестовый аккаунт имеет полный премиум доступ');
+      }
       return true;
     }
 
@@ -156,18 +179,20 @@ class SubscriptionService {
     return _cachedSubscription?.isPremium ?? false;
   }
 
-  /// ИСПРАВЛЕНО: Получение текущего использования по типу контента (асинхронно)
+  /// Получение текущего использования по типу контента (асинхронно)
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
       final limits = await _usageLimitsService.getCurrentUsage();
       return limits.getCountForType(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка получения текущего использования: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения текущего использования: $e');
+      }
       return 0;
     }
   }
 
-  /// ДОБАВЛЕНО: Синхронная версия для совместимости с существующим кодом
+  /// Синхронная версия для совместимости с существующим кодом
   int getCurrentUsageSync(ContentType contentType) {
     try {
       final limits = _usageLimitsService.currentLimits;
@@ -175,12 +200,14 @@ class SubscriptionService {
 
       return limits.getCountForType(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка получения текущего использования (sync): $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения текущего использования (sync): $e');
+      }
       return 0;
     }
   }
 
-  /// ИСПРАВЛЕНО: Получение лимита по типу контента с учетом тестовых аккаунтов
+  /// Получение лимита по типу контента с учетом тестовых аккаунтов
   int getLimit(ContentType contentType) {
     try {
       // Если премиум (включая тестовые аккаунты) - возвращаем безлимитный доступ
@@ -191,12 +218,14 @@ class SubscriptionService {
       // Для бесплатных пользователей возвращаем лимиты из констант
       return SubscriptionConstants.getContentLimit(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка получения лимита: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения лимита: $e');
+      }
       return SubscriptionConstants.getContentLimit(contentType);
     }
   }
 
-  /// ДОБАВЛЕНО: Увеличение счетчика использования
+  /// Увеличение счетчика использования
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
@@ -212,33 +241,39 @@ class SubscriptionService {
       // Используем UsageLimitsService для увеличения счетчика
       return await _usageLimitsService.incrementUsage(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка увеличения счетчика использования: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка увеличения счетчика использования: $e');
+      }
       return false;
     }
   }
 
-  /// ДОБАВЛЕНО: Уменьшение счетчика (при удалении контента)
+  /// Уменьшение счетчика (при удалении контента)
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
       // Используем UsageLimitsService для уменьшения счетчика
       return await _usageLimitsService.decrementUsage(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка уменьшения счетчика использования: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка уменьшения счетчика использования: $e');
+      }
       return false;
     }
   }
 
-  /// ДОБАВЛЕНО: Сброс использования по типу (для админских целей)
+  /// Сброс использования по типу (для админских целей)
   Future<void> resetUsage(ContentType contentType) async {
     try {
       // Используем новый метод из UsageLimitsService
       await _usageLimitsService.resetUsageForType(contentType);
     } catch (e) {
-      debugPrint('❌ Ошибка сброса использования: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сброса использования: $e');
+      }
     }
   }
 
-  /// ИСПРАВЛЕНО: Получение информации об использовании для UI (асинхронно)
+  /// Получение информации об использовании для UI (асинхронно)
   Future<Map<ContentType, Map<String, int>>> getUsageInfo() async {
     try {
       final result = <ContentType, Map<String, int>>{};
@@ -252,12 +287,14 @@ class SubscriptionService {
 
       return result;
     } catch (e) {
-      debugPrint('❌ Ошибка получения информации об использовании: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения информации об использовании: $e');
+      }
       return {};
     }
   }
 
-  /// ДОБАВЛЕНО: Синхронная версия getUsageInfo для совместимости
+  /// Синхронная версия getUsageInfo для совместимости
   Map<ContentType, Map<String, int>> getUsageInfoSync() {
     try {
       final result = <ContentType, Map<String, int>>{};
@@ -271,27 +308,33 @@ class SubscriptionService {
 
       return result;
     } catch (e) {
-      debugPrint('❌ Ошибка получения информации об использовании (sync): $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения информации об использовании (sync): $e');
+      }
       return {};
     }
   }
 
-  /// ДОБАВЛЕНО: Получение статистики использования
+  /// Получение статистики использования
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
       return await _usageLimitsService.getUsageStatistics();
     } catch (e) {
-      debugPrint('❌ Ошибка получения статистики: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения статистики: $e');
+      }
       return {};
     }
   }
 
-  /// ДОБАВЛЕНО: Принудительное обновление данных лимитов
+  /// Принудительное обновление данных лимитов
   Future<void> refreshUsageLimits() async {
     try {
       await _usageLimitsService.forceRefresh();
     } catch (e) {
-      debugPrint('❌ Ошибка обновления лимитов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обновления лимитов: $e');
+      }
     }
   }
 
@@ -305,9 +348,11 @@ class SubscriptionService {
         return _cachedSubscription!;
       }
 
-      // ДОБАВЛЕНО: Если тестовый аккаунт - создаем премиум подписку
+      // Если тестовый аккаунт - создаем премиум подписку
       if (_isTestAccount()) {
-        debugPrint('🧪 Создаем премиум подписку для тестового аккаунта');
+        if (kDebugMode) {
+          debugPrint('🧪 Создаем премиум подписку для тестового аккаунта');
+        }
         _cachedSubscription = SubscriptionModel(
           userId: userId,
           status: SubscriptionStatus.active,
@@ -353,7 +398,9 @@ class SubscriptionService {
 
       return _cachedSubscription!;
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки подписки: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки подписки: $e');
+      }
       final userId = _firebaseService.currentUserId ?? '';
       _cachedSubscription = SubscriptionModel.defaultSubscription(userId);
       _subscriptionStatusController.add(_cachedSubscription!.status);
@@ -364,25 +411,33 @@ class SubscriptionService {
   /// Получение доступных продуктов подписки
   Future<List<ProductDetails>> getAvailableProducts() async {
     try {
-      debugPrint('🔄 Загрузка доступных продуктов...');
+      if (kDebugMode) {
+        debugPrint('🔄 Загрузка доступных продуктов...');
+      }
 
       final ProductDetailsResponse response = await _inAppPurchase.queryProductDetails(
         SubscriptionConstants.subscriptionProductIds.toSet(),
       );
 
       if (response.error != null) {
-        debugPrint('❌ Ошибка загрузки продуктов: ${response.error}');
+        if (kDebugMode) {
+          debugPrint('❌ Ошибка загрузки продуктов: ${response.error}');
+        }
         return [];
       }
 
-      debugPrint('✅ Загружено продуктов: ${response.productDetails.length}');
-      for (final product in response.productDetails) {
-        debugPrint('📦 Продукт: ${product.id} - ${product.price} ${product.currencyCode}');
+      if (kDebugMode) {
+        debugPrint('✅ Загружено продуктов: ${response.productDetails.length}');
+        for (final product in response.productDetails) {
+          debugPrint('📦 Продукт: ${product.id} - ${product.price} ${product.currencyCode}');
+        }
       }
 
       return response.productDetails;
     } catch (e) {
-      debugPrint('❌ Ошибка получения продуктов: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения продуктов: $e');
+      }
       return [];
     }
   }
@@ -390,14 +445,18 @@ class SubscriptionService {
   /// Покупка подписки
   Future<bool> purchaseSubscription(String productId) async {
     try {
-      debugPrint('🛒 Начинаем покупку: $productId');
+      if (kDebugMode) {
+        debugPrint('🛒 Начинаем покупку: $productId');
+      }
 
       // Получаем детали продукта
       final products = await getAvailableProducts();
       final product = products.where((p) => p.id == productId).firstOrNull;
 
       if (product == null) {
-        debugPrint('❌ Продукт не найден: $productId');
+        if (kDebugMode) {
+          debugPrint('❌ Продукт не найден: $productId');
+        }
         return false;
       }
 
@@ -411,10 +470,14 @@ class SubscriptionService {
         purchaseParam: purchaseParam,
       );
 
-      debugPrint('🛒 Покупка запущена: $success');
+      if (kDebugMode) {
+        debugPrint('🛒 Покупка запущена: $success');
+      }
       return success;
     } catch (e) {
-      debugPrint('❌ Ошибка покупки: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка покупки: $e');
+      }
       return false;
     }
   }
@@ -422,20 +485,30 @@ class SubscriptionService {
   /// Восстановление покупок
   Future<void> restorePurchases() async {
     try {
-      debugPrint('🔄 Восстановление покупок...');
+      if (kDebugMode) {
+        debugPrint('🔄 Восстановление покупок...');
+      }
       await _inAppPurchase.restorePurchases();
-      debugPrint('✅ Восстановление покупок запущено');
+      if (kDebugMode) {
+        debugPrint('✅ Восстановление покупок запущено');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка восстановления покупок: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка восстановления покупок: $e');
+      }
     }
   }
 
   /// Обработка обновлений покупок
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchaseDetailsList) async {
-    debugPrint('🔄 Обработка обновлений покупок: ${purchaseDetailsList.length}');
+    if (kDebugMode) {
+      debugPrint('🔄 Обработка обновлений покупок: ${purchaseDetailsList.length}');
+    }
 
     for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
-      debugPrint('💳 Обработка покупки: ${purchaseDetails.productID} - ${purchaseDetails.status}');
+      if (kDebugMode) {
+        debugPrint('💳 Обработка покупки: ${purchaseDetails.productID} - ${purchaseDetails.status}');
+      }
 
       switch (purchaseDetails.status) {
         case PurchaseStatus.pending:
@@ -458,14 +531,18 @@ class SubscriptionService {
       // Завершаем покупку на платформе
       if (purchaseDetails.pendingCompletePurchase) {
         await _inAppPurchase.completePurchase(purchaseDetails);
-        debugPrint('✅ Покупка завершена: ${purchaseDetails.productID}');
+        if (kDebugMode) {
+          debugPrint('✅ Покупка завершена: ${purchaseDetails.productID}');
+        }
       }
     }
   }
 
   /// Обработка ожидающей покупки
   Future<void> _handlePendingPurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('⏳ Покупка в ожидании: ${purchaseDetails.productID}');
+    if (kDebugMode) {
+      debugPrint('⏳ Покупка в ожидании: ${purchaseDetails.productID}');
+    }
 
     // Обновляем статус в Firebase
     await _updateSubscriptionStatus(
@@ -476,7 +553,9 @@ class SubscriptionService {
 
   /// Обработка успешной покупки
   Future<void> _handleSuccessfulPurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('✅ Успешная покупка: ${purchaseDetails.productID}');
+    if (kDebugMode) {
+      debugPrint('✅ Успешная покупка: ${purchaseDetails.productID}');
+    }
 
     try {
       // Проверяем валидность покупки (опционально)
@@ -486,18 +565,26 @@ class SubscriptionService {
           SubscriptionStatus.active,
         );
 
-        debugPrint('🎉 Подписка активирована: ${purchaseDetails.productID}');
+        if (kDebugMode) {
+          debugPrint('🎉 Подписка активирована: ${purchaseDetails.productID}');
+        }
       } else {
-        debugPrint('❌ Покупка не прошла валидацию: ${purchaseDetails.productID}');
+        if (kDebugMode) {
+          debugPrint('❌ Покупка не прошла валидацию: ${purchaseDetails.productID}');
+        }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка обработки успешной покупки: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обработки успешной покупки: $e');
+      }
     }
   }
 
   /// Обработка восстановленной покупки
   Future<void> _handleRestoredPurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('🔄 Восстановлена покупка: ${purchaseDetails.productID}');
+    if (kDebugMode) {
+      debugPrint('🔄 Восстановлена покупка: ${purchaseDetails.productID}');
+    }
 
     // Проверяем, не истекла ли подписка
     if (await _isSubscriptionStillValid(purchaseDetails)) {
@@ -515,15 +602,19 @@ class SubscriptionService {
 
   /// Обработка неудачной покупки
   Future<void> _handleFailedPurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('❌ Неудачная покупка: ${purchaseDetails.productID}');
-    debugPrint('❌ Ошибка: ${purchaseDetails.error}');
+    if (kDebugMode) {
+      debugPrint('❌ Неудачная покупка: ${purchaseDetails.productID}');
+      debugPrint('❌ Ошибка: ${purchaseDetails.error}');
+    }
 
     // Можно показать пользователю сообщение об ошибке
   }
 
   /// Обработка отмененной покупки
   Future<void> _handleCanceledPurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('🚫 Покупка отменена: ${purchaseDetails.productID}');
+    if (kDebugMode) {
+      debugPrint('🚫 Покупка отменена: ${purchaseDetails.productID}');
+    }
 
     // Пользователь отменил покупку - ничего не делаем
   }
@@ -579,9 +670,13 @@ class SubscriptionService {
       _subscriptionController.add(subscription);
       _subscriptionStatusController.add(subscription.status);
 
-      debugPrint('✅ Статус подписки обновлен: $status');
+      if (kDebugMode) {
+        debugPrint('✅ Статус подписки обновлен: $status');
+      }
     } catch (e) {
-      debugPrint('❌ Ошибка обновления статуса подписки: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обновления статуса подписки: $e');
+      }
     }
   }
 
@@ -630,7 +725,9 @@ class SubscriptionService {
         );
       }
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения в кэш: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка сохранения в кэш: $e');
+      }
     }
   }
 
@@ -680,7 +777,9 @@ class SubscriptionService {
         isActive: isActive,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки из кэша: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки из кэша: $e');
+      }
       return SubscriptionModel.defaultSubscription(userId);
     }
   }
@@ -688,7 +787,7 @@ class SubscriptionService {
   /// Получение текущей подписки (синхронно из кэша)
   SubscriptionModel? get currentSubscription => _cachedSubscription;
 
-  /// ИСПРАВЛЕНО: Проверка премиум статуса с учетом тестовых аккаунтов
+  /// Проверка премиум статуса с учетом тестовых аккаунтов
   bool get isPremium {
     // Проверяем тестовый аккаунт ПЕРВЫМ
     if (_isTestAccount()) {
