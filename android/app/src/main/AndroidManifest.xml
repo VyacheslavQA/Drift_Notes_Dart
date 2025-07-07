@@ -55,6 +55,11 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
 
+        <!-- ВСТАВЬТЕ СЮДА ВАШ GOOGLE MAPS API КЛЮЧ -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDKrPl092xon71w6u6PUo8EfQ5DMvOv5ro" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -106,10 +111,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="@string/google_maps_key"/>
 
         <!-- ИСПРАВЛЕНО: Правильный receiver для flutter_local_notifications -->
         <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
