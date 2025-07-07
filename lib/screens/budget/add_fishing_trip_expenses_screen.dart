@@ -464,7 +464,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 _buildTotalSection(),
                 const SizedBox(height: 24),
                 _buildSaveButton(),
-                const SizedBox(height: 40),
+                // Добавляем отступ снизу с учетом системной навигации
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
               ],
             ),
           ),

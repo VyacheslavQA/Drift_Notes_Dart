@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/usage_limits_model.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../services/subscription/subscription_service.dart';
 import '../../utils/network_utils.dart';
 
 /// Сервис для отслеживания и управления лимитами использования
@@ -17,6 +18,9 @@ class UsageLimitsService {
 
   final FirebaseService _firebaseService = FirebaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ДОБАВЛЕНО: Ссылка на SubscriptionService для проверки премиум статуса
+  SubscriptionService? _subscriptionService;
 
   // Кэш текущих лимитов
   UsageLimitsModel? _cachedLimits;
@@ -30,6 +34,21 @@ class UsageLimitsService {
 
   // Стрим для UI
   Stream<UsageLimitsModel> get limitsStream => _limitsController.stream;
+
+  /// ДОБАВЛЕНО: Установка ссылки на SubscriptionService
+  void setSubscriptionService(SubscriptionService subscriptionService) {
+    _subscriptionService = subscriptionService;
+  }
+
+  /// ДОБАВЛЕНО: Проверка премиум статуса
+  bool _hasPremiumAccess() {
+    try {
+      return _subscriptionService?.hasPremiumAccess() ?? false;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки премиум статуса: $e');
+      return false;
+    }
+  }
 
   /// Инициализация сервиса
   Future<void> initialize() async {
@@ -124,19 +143,22 @@ class UsageLimitsService {
     }
   }
 
-  /// Проверка возможности создания нового контента
+  /// ИСПРАВЛЕНО: Проверка возможности создания нового контента с учетом премиум статуса
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
-      final limits = await getCurrentUsage();
+      // ИСПРАВЛЕНО: Проверяем премиум статус ПЕРВЫМ
+      if (_hasPremiumAccess()) {
+        debugPrint('🧪 Премиум пользователь - разрешен доступ к $contentType');
+        return true;
+      }
 
       // Для графика глубин проверяем только премиум статус
       if (contentType == ContentType.depthChart) {
-        // График глубин доступен только с премиум подпиской
-        // Здесь нужно будет добавить проверку премиум статуса
-        // Пока возвращаем false
+        debugPrint('⚠️ График глубин требует премиум подписку');
         return false;
       }
 
+      final limits = await getCurrentUsage();
       return limits.canCreateNew(contentType);
     } catch (e) {
       debugPrint('❌ Ошибка проверки возможности создания контента: $e');
@@ -144,12 +166,22 @@ class UsageLimitsService {
     }
   }
 
-  /// Проверка возможности создания с детализацией
+  /// ИСПРАВЛЕНО: Проверка возможности создания с детализацией
   Future<ContentCreationResult> checkContentCreation(
       ContentType contentType,
       ) async {
     try {
-      final limits = await getCurrentUsage();
+      // ИСПРАВЛЕНО: Проверяем премиум статус ПЕРВЫМ
+      if (_hasPremiumAccess()) {
+        debugPrint('🧪 Премиум пользователь - полный доступ к $contentType');
+        return ContentCreationResult(
+          canCreate: true,
+          reason: null,
+          currentCount: 0,
+          limit: SubscriptionConstants.unlimitedValue,
+          remaining: SubscriptionConstants.unlimitedValue,
+        );
+      }
 
       // Для графика глубин
       if (contentType == ContentType.depthChart) {
@@ -162,6 +194,7 @@ class UsageLimitsService {
         );
       }
 
+      final limits = await getCurrentUsage();
       final canCreate = limits.canCreateNew(contentType);
       final currentCount = limits.getCountForType(contentType);
       final limit = SubscriptionConstants.getContentLimit(contentType);
@@ -194,6 +227,12 @@ class UsageLimitsService {
   /// Увеличение счетчика использования
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
+      // ИСПРАВЛЕНО: Если премиум - не увеличиваем счетчик
+      if (_hasPremiumAccess()) {
+        debugPrint('🧪 Премиум пользователь - счетчик не увеличивается для $contentType');
+        return true;
+      }
+
       final limits = await getCurrentUsage();
 
       // Проверяем можно ли увеличить счетчик

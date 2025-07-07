@@ -15,7 +15,7 @@
 
     <!-- ДОБАВЛЕНО: Разрешение на foreground service для точных уведомлений -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- УДАЛЕНО: FOREGROUND_SERVICE_SPECIAL_USE - не используется в приложении -->
 
     <!-- Разрешения для интернета -->
     <uses-permission android:name="android.permission.INTERNET" />

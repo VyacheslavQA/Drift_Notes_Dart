@@ -336,7 +336,9 @@ class _PaywallScreenState extends State<PaywallScreen>
       ) {
     final isSelected = _selectedPlan == planId;
     final product = provider.getProductById(planId);
-    final price = product?.price ?? SubscriptionConstants.defaultPrices[planId] ?? '';
+
+    // ИСПРАВЛЕНО: используем фоллбэк цены
+    final price = product?.price ?? _getFallbackPrice(planId);
 
     return GestureDetector(
       onTap: () {
@@ -528,6 +530,16 @@ class _PaywallScreenState extends State<PaywallScreen>
       ),
       textAlign: TextAlign.center,
     );
+  }
+
+  // ДОБАВЛЕНО: Метод для получения фоллбэк цены
+  String _getFallbackPrice(String planId) {
+    if (planId == SubscriptionConstants.monthlyPremiumId) {
+      return '\$4.99';
+    } else if (planId == SubscriptionConstants.yearlyPremiumId) {
+      return '\$39.99';
+    }
+    return '\$4.99';
   }
 
   Future<void> _purchaseSubscription(SubscriptionProvider provider) async {

@@ -24,6 +24,15 @@ class SubscriptionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final UsageLimitsService _usageLimitsService = UsageLimitsService();
 
+  // ДОБАВЛЕНО: Тестовые аккаунты для Google Play Review
+  static const List<String> _testAccounts = [
+    'googleplay.reviewer@gmail.com',
+    'googleplayreviewer@gmail.com',
+    'test.reviewer@gmail.com',
+    'reviewer@googleplay.com',
+    'driftnotes.test@gmail.com'
+  ];
+
   // Кэш текущей подписки
   SubscriptionModel? _cachedSubscription;
 
@@ -42,6 +51,41 @@ class SubscriptionService {
   // ДОБАВЛЕНО: Стрим статуса подписки для совместимости с виджетами
   Stream<SubscriptionStatus> get subscriptionStatusStream => _subscriptionStatusController.stream;
 
+  /// ДОБАВЛЕНО: Проверка тестового аккаунта
+  bool _isTestAccount() {
+    try {
+      final currentUser = _firebaseService.currentUser;
+      if (currentUser?.email == null) return false;
+
+      final email = currentUser!.email!.toLowerCase().trim();
+      final isTest = _testAccounts.contains(email);
+
+      if (isTest) {
+        debugPrint('🧪 Обнаружен тестовый аккаунт: $email');
+      }
+
+      return isTest;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки тестового аккаунта: $e');
+      return false;
+    }
+  }
+
+  // ДОБАВЛЕНО: Публичная проверка тестового аккаунта для отладки
+  Future<bool> isTestReviewerAccount() async {
+    return _isTestAccount();
+  }
+
+  /// ДОБАВЛЕНО: Получение email текущего пользователя
+  String? getCurrentUserEmail() {
+    try {
+      return _firebaseService.currentUser?.email?.toLowerCase().trim();
+    } catch (e) {
+      debugPrint('❌ Ошибка получения email: $e');
+      return null;
+    }
+  }
+
   /// Инициализация сервиса
   Future<void> initialize() async {
     try {
@@ -49,6 +93,9 @@ class SubscriptionService {
 
       // Инициализируем UsageLimitsService
       await _usageLimitsService.initialize();
+
+      // ДОБАВЛЕНО: Устанавливаем связь между сервисами
+      _usageLimitsService.setSubscriptionService(this);
 
       // Проверяем доступность покупок
       final isAvailable = await _inAppPurchase.isAvailable();
@@ -97,9 +144,16 @@ class SubscriptionService {
     }
   }
 
-  /// ДОБАВЛЕНО: Проверка премиум доступа (метод для совместимости)
+  /// ИСПРАВЛЕНО: Проверка премиум доступа с учетом тестовых аккаунтов
   bool hasPremiumAccess() {
-    return isPremium;
+    // Проверяем тестовый аккаунт ПЕРВЫМ
+    if (_isTestAccount()) {
+      debugPrint('🧪 Тестовый аккаунт имеет полный премиум доступ');
+      return true;
+    }
+
+    // Обычная проверка премиум статуса
+    return _cachedSubscription?.isPremium ?? false;
   }
 
   /// ИСПРАВЛЕНО: Получение текущего использования по типу контента (асинхронно)
@@ -126,10 +180,10 @@ class SubscriptionService {
     }
   }
 
-  /// ДОБАВЛЕНО: Получение лимита по типу контента
+  /// ИСПРАВЛЕНО: Получение лимита по типу контента с учетом тестовых аккаунтов
   int getLimit(ContentType contentType) {
     try {
-      // Если премиум - возвращаем безлимитный доступ
+      // Если премиум (включая тестовые аккаунты) - возвращаем безлимитный доступ
       if (hasPremiumAccess()) {
         return SubscriptionConstants.unlimitedValue;
       }
@@ -145,7 +199,7 @@ class SubscriptionService {
   /// ДОБАВЛЕНО: Увеличение счетчика использования
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
-      // Если премиум - не увеличиваем счетчик
+      // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
       if (hasPremiumAccess()) {
         return true;
       }
@@ -247,6 +301,26 @@ class SubscriptionService {
       final userId = _firebaseService.currentUserId;
       if (userId == null) {
         _cachedSubscription = SubscriptionModel.defaultSubscription('');
+        _subscriptionStatusController.add(_cachedSubscription!.status);
+        return _cachedSubscription!;
+      }
+
+      // ДОБАВЛЕНО: Если тестовый аккаунт - создаем премиум подписку
+      if (_isTestAccount()) {
+        debugPrint('🧪 Создаем премиум подписку для тестового аккаунта');
+        _cachedSubscription = SubscriptionModel(
+          userId: userId,
+          status: SubscriptionStatus.active,
+          type: SubscriptionType.yearly,
+          expirationDate: DateTime.now().add(const Duration(days: 365)),
+          purchaseToken: 'test_account_token',
+          platform: Platform.isAndroid ? 'android' : 'ios',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          isActive: true,
+        );
+
+        _subscriptionController.add(_cachedSubscription!);
         _subscriptionStatusController.add(_cachedSubscription!.status);
         return _cachedSubscription!;
       }
@@ -614,8 +688,16 @@ class SubscriptionService {
   /// Получение текущей подписки (синхронно из кэша)
   SubscriptionModel? get currentSubscription => _cachedSubscription;
 
-  /// Проверка премиум статуса
-  bool get isPremium => _cachedSubscription?.isPremium ?? false;
+  /// ИСПРАВЛЕНО: Проверка премиум статуса с учетом тестовых аккаунтов
+  bool get isPremium {
+    // Проверяем тестовый аккаунт ПЕРВЫМ
+    if (_isTestAccount()) {
+      return true;
+    }
+
+    // Обычная проверка премиум статуса
+    return _cachedSubscription?.isPremium ?? false;
+  }
 
   /// Очистка ресурсов
   void dispose() {

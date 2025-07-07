@@ -65,15 +65,16 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Настройка системного UI (статус бар и навигационная панель)
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0B1F1D),
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
+  // ВРЕМЕННО УБИРАЕМ настройки SystemUI для диагностики проблемы с навигацией
+  // SystemChrome.setSystemUIOverlayStyle(
+  //   const SystemUiOverlayStyle(
+  //     statusBarColor: Colors.transparent,
+  //     statusBarIconBrightness: Brightness.light,
+  //   ),
+  // );
+
+  // ДОБАВЛЯЕМ: Явно показываем системную навигацию
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // КРИТИЧЕСКИ ВАЖНО: Запрос разрешений на уведомления ПЕРЕД инициализацией Firebase
   await _requestNotificationPermissions();

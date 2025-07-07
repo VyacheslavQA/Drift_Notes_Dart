@@ -1,5 +1,5 @@
 // Путь: lib/screens/home_screen.dart
-// ОБНОВЛЕННАЯ ВЕРСИЯ с перемещенной карточкой подписки
+// ОБНОВЛЕННАЯ ВЕРСИЯ с ИСПРАВЛЕННЫМ адаптивным отступом в Drawer
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -80,6 +80,13 @@ class _HomeScreenState extends State<HomeScreen> {
   double get fontSize => isTablet ? 18.0 : 16.0;
   double get buttonHeight => isTablet ? 56.0 : 48.0;
   int get gridColumns => isTablet ? 4 : 2;
+
+  // ДОБАВЛЕНО: Вычисление адаптивного отступа для Drawer
+  double get _drawerBottomPadding {
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    // Используем только высоту навигации + безопасная зона + минимальный буфер
+    return _navBarHeight + bottomSafeArea + 8.0;
+  }
 
   @override
   void initState() {
@@ -1338,6 +1345,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу
   Widget _buildDrawer() {
     final localizations = AppLocalizations.of(context);
     final user = _firebaseService.currentUser;
@@ -1347,7 +1355,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        padding: EdgeInsets.only(bottom: _navBarHeight + (_centerButtonSize / 2) + 20),
+        // ИСПРАВЛЕНО: Используем адаптивный отступ вместо фиксированного
+        padding: EdgeInsets.only(bottom: _drawerBottomPadding),
         child: StreamBuilder<UserModel?>(
           stream: _userRepository.getUserStream(),
           builder: (context, snapshot) {

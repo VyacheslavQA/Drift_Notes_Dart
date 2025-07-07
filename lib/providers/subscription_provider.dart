@@ -30,6 +30,9 @@ class SubscriptionProvider extends ChangeNotifier {
   bool _isLoading = true;
   String? _lastError;
 
+  // Кэш локализованных цен
+  Map<String, String>? _localizedPrices;
+
   // Стримы для прослушивания изменений
   StreamSubscription<SubscriptionModel>? _subscriptionSubscription;
   StreamSubscription<UsageLimitsModel>? _limitsSubscription;
@@ -102,11 +105,29 @@ class SubscriptionProvider extends ChangeNotifier {
       _subscription = results[0] as SubscriptionModel;
       _usageLimits = results[1] as UsageLimitsModel;
 
+      // Загружаем локализованные цены
+      await _loadLocalizedPrices();
+
       // Загружаем доступные продукты
       await loadAvailableProducts();
     } catch (e) {
       debugPrint('❌ Ошибка загрузки начальных данных: $e');
       rethrow;
+    }
+  }
+
+  /// Загрузка локализованных цен
+  Future<void> _loadLocalizedPrices() async {
+    try {
+      _localizedPrices = await SubscriptionConstants.getLocalizedPrices();
+      debugPrint('💰 Загружены локализованные цены: $_localizedPrices');
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки локализованных цен: $e');
+      // Используем фоллбэк
+      _localizedPrices = const {
+        SubscriptionConstants.monthlyPremiumId: '\$4.99',
+        SubscriptionConstants.yearlyPremiumId: '\$39.99',
+      };
     }
   }
 
@@ -326,22 +347,55 @@ class SubscriptionProvider extends ChangeNotifier {
     return _availableProducts.where((p) => p.id == productId).firstOrNull;
   }
 
-  /// Получение цены продукта
+  /// Получение цены продукта (ИСПРАВЛЕНО)
   String getProductPrice(String productId) {
     final product = getProductById(productId);
-    return product?.price ?? SubscriptionConstants.defaultPrices[productId] ?? '';
-  }
 
-  /// Получение годовой экономии (в процентах)
-  double getYearlyDiscount() {
-    final monthlyProduct = getProductById(SubscriptionConstants.monthlyPremiumId);
-    final yearlyProduct = getProductById(SubscriptionConstants.yearlyPremiumId);
-
-    if (monthlyProduct == null || yearlyProduct == null) {
-      return 0.0;
+    // Если есть реальная цена из магазина
+    if (product != null && product.price.isNotEmpty) {
+      return product.price;
     }
 
+    // Используем локализованную цену
+    if (_localizedPrices != null && _localizedPrices!.containsKey(productId)) {
+      return _localizedPrices![productId]!;
+    }
+
+    // Фоллбэк на дефолтные цены
+    const fallbackPrices = {
+      SubscriptionConstants.monthlyPremiumId: '\$4.99',
+      SubscriptionConstants.yearlyPremiumId: '\$39.99',
+    };
+
+    return fallbackPrices[productId] ?? '\$4.99';
+  }
+
+  /// Получение локализованной цены асинхронно
+  Future<String> getLocalizedPrice(String productId) async {
     try {
+      return await SubscriptionConstants.getLocalizedPrice(productId);
+    } catch (e) {
+      return getProductPrice(productId);
+    }
+  }
+
+  /// Получение годовой экономии (в процентах) - УЛУЧШЕНО
+  double getYearlyDiscount() {
+    try {
+      // Сначала пытаемся получить скидку из констант
+      if (_localizedPrices != null) {
+        // Получаем текущую валюту и рассчитываем скидку
+        return SubscriptionConstants.getUserYearlyDiscount() as double? ?? 0.0;
+      }
+
+      // Если нет локализованных цен, считаем по продуктам из магазина
+      final monthlyProduct = getProductById(SubscriptionConstants.monthlyPremiumId);
+      final yearlyProduct = getProductById(SubscriptionConstants.yearlyPremiumId);
+
+      if (monthlyProduct == null || yearlyProduct == null) {
+        return 33.0; // Дефолтная скидка
+      }
+
       // Извлекаем числовые значения из цен
       final monthlyPrice = _extractPrice(monthlyProduct.price);
       final yearlyPrice = _extractPrice(yearlyProduct.price);
@@ -355,7 +409,16 @@ class SubscriptionProvider extends ChangeNotifier {
       debugPrint('❌ Ошибка расчета скидки: $e');
     }
 
-    return 0.0;
+    return 33.0; // Дефолтная скидка
+  }
+
+  /// Получение годовой скидки асинхронно
+  Future<double> getYearlyDiscountAsync() async {
+    try {
+      return await SubscriptionConstants.getUserYearlyDiscount();
+    } catch (e) {
+      return getYearlyDiscount();
+    }
   }
 
   /// Получение количества использования для типа контента
@@ -378,6 +441,17 @@ class SubscriptionProvider extends ChangeNotifier {
   double getUsagePercentage(ContentType contentType) {
     if (isPremium) return 0.0; // Нет лимитов
     return _usageLimits?.getUsagePercentage(contentType) ?? 0.0;
+  }
+
+  /// Получение информации о валюте пользователя
+  Future<SupportedCurrency> getUserCurrency() async {
+    return await SubscriptionConstants.getUserCurrency();
+  }
+
+  /// Получение символа валюты
+  Future<String> getCurrencySymbol() async {
+    final currency = await getUserCurrency();
+    return SubscriptionConstants.getCurrencySymbol(currency);
   }
 
   /// Обработчик изменений подписки
