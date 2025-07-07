@@ -58,7 +58,7 @@
         <!-- ВСТАВЬТЕ СЮДА ВАШ GOOGLE MAPS API КЛЮЧ -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDKrPl092xon71w6u6PUo8EfQ5DMvOv5ro" />
+            android:value="AIzaSyB5Htkt3Vi5oepV3T8dGjg615MR1nXwA5M" />
 
         <activity
             android:name=".MainActivity"
