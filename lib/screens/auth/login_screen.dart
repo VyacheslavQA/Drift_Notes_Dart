@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
@@ -112,6 +113,49 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // НОВАЯ СТРУКТУРА: Проверка и создание профиля пользователя
+  Future<void> _ensureUserProfileExists(String email, String? displayName) async {
+    try {
+      // Проверяем, существует ли профиль пользователя
+      final existingProfile = await _firebaseService.getUserProfile();
+
+      if (!existingProfile.exists) {
+        // === СОЗДАЕМ ПРОФИЛЬ ДЛЯ СУЩЕСТВУЮЩЕГО ПОЛЬЗОВАТЕЛЯ ===
+        await _firebaseService.createUserProfile({
+          'email': email,
+          'displayName': displayName ?? '',
+          'photoUrl': '',
+          'authProvider': 'email',
+          // Дефолтные значения для профиля
+          'country': '',
+          'city': '',
+          'experience': 'beginner',
+          'fishingTypes': ['Обычная рыбалка'],
+        });
+
+        // === СОХРАНЯЕМ БАЗОВЫЕ СОГЛАСИЯ ===
+        await _firebaseService.updateUserConsents({
+          'privacyPolicyAccepted': true, // Предполагаем, что существующие пользователи согласились
+          'termsOfServiceAccepted': true,
+          'consentDate': FieldValue.serverTimestamp(),
+          'appVersion': '1.0.0',
+          'authProvider': 'email',
+          'migrationNote': 'Профиль создан автоматически при входе после миграции',
+          'deviceInfo': {
+            'platform': Theme.of(context).platform.name,
+          },
+        });
+
+        debugPrint('✅ Создан профиль для существующего пользователя: $email');
+      } else {
+        debugPrint('✅ Профиль пользователя уже существует: $email');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке/создании профиля пользователя: $e');
+      // Не прерываем вход, если не удалось создать профиль
+    }
+  }
+
   Future<void> _login() async {
     FocusScope.of(context).unfocus();
 
@@ -126,11 +170,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      await _firebaseService.signInWithEmailAndPassword(
+      // Выполняем вход
+      final userCredential = await _firebaseService.signInWithEmailAndPassword(
         email,
         password,
         context,
       );
+
+      // === НОВАЯ СТРУКТУРА: Проверяем и создаем профиль ===
+      if (userCredential.user != null) {
+        await _ensureUserProfileExists(
+          email,
+          userCredential.user!.displayName,
+        );
+      }
 
       await _saveCredentials(email, password);
 
@@ -346,6 +399,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             'assets/images/app_logo.png',
                             width: isTablet ? 100 : 80,
                             height: isTablet ? 100 : 80,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: isTablet ? 100 : 80,
+                                height: isTablet ? 100 : 80,
+                                decoration: BoxDecoration(
+                                  color: AppConstants.primaryColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  Icons.phishing,
+                                  size: isTablet ? 50 : 40,
+                                  color: AppConstants.textColor,
+                                ),
+                              );
+                            },
                           ),
 
                           SizedBox(height: isTablet ? 24 : 16),

@@ -37,6 +37,11 @@ class SubscriptionService {
   // Кэш текущей подписки
   SubscriptionModel? _cachedSubscription;
 
+  // Кэш для подсчета использования (чтобы не обращаться к Firebase каждый раз)
+  Map<ContentType, int> _usageCache = {};
+  DateTime? _lastUsageCacheUpdate;
+  static const Duration _cacheValidDuration = Duration(minutes: 5);
+
   // Стрим для прослушивания изменений подписки
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   final StreamController<SubscriptionModel> _subscriptionController = StreamController<SubscriptionModel>.broadcast();
@@ -96,7 +101,7 @@ class SubscriptionService {
         debugPrint('🔄 Инициализация SubscriptionService...');
       }
 
-      // Инициализируем UsageLimitsService
+      // Инициализируем UsageLimitsService (для совместимости, но не используем для подсчета)
       await _usageLimitsService.initialize();
 
       // Устанавливаем связь между сервисами
@@ -132,6 +137,9 @@ class SubscriptionService {
       // Восстанавливаем покупки при инициализации
       await restorePurchases();
 
+      // Загружаем данные использования
+      await _refreshUsageCache();
+
       if (kDebugMode) {
         debugPrint('✅ SubscriptionService инициализирован');
       }
@@ -142,7 +150,139 @@ class SubscriptionService {
     }
   }
 
-  /// Проверка возможности создания контента
+  /// НОВЫЙ МЕТОД: Обновление кэша использования из новой структуры Firebase
+  Future<void> _refreshUsageCache() async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        _usageCache.clear();
+        return;
+      }
+
+      if (kDebugMode) {
+        debugPrint('🔄 Обновление кэша использования для userId: $userId');
+      }
+
+      final Map<ContentType, int> newCache = {};
+
+      // Подсчитываем fishing_notes из новой структуры
+      try {
+        final fishingNotesSnapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('fishing_notes')
+            .get();
+        newCache[ContentType.fishingNotes] = fishingNotesSnapshot.docs.length;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('❌ Ошибка подсчета fishing_notes: $e');
+        }
+        newCache[ContentType.fishingNotes] = 0;
+      }
+
+      // Подсчитываем marker_maps из новой структуры
+      try {
+        final markerMapsSnapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('marker_maps')
+            .get();
+        newCache[ContentType.markerMaps] = markerMapsSnapshot.docs.length;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('❌ Ошибка подсчета marker_maps: $e');
+        }
+        newCache[ContentType.markerMaps] = 0;
+      }
+
+      // Подсчитываем budget_notes из новой структуры
+      try {
+        final budgetNotesSnapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('budget_notes')
+            .get();
+        newCache[ContentType.expenses] = budgetNotesSnapshot.docs.length;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('❌ Ошибка подсчета budget_notes: $e');
+        }
+        newCache[ContentType.expenses] = 0;
+      }
+
+      // depth_chart - пока только премиум, считаем 0 для бесплатных
+      newCache[ContentType.depthChart] = 0;
+
+      _usageCache = newCache;
+      _lastUsageCacheUpdate = DateTime.now();
+
+      if (kDebugMode) {
+        debugPrint('✅ Кэш использования обновлен:');
+        for (final entry in _usageCache.entries) {
+          debugPrint('   ${entry.key.name}: ${entry.value}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обновления кэша использования: $e');
+      }
+    }
+  }
+
+  /// НОВЫЙ МЕТОД: Проверка актуальности кэша
+  bool _isUsageCacheValid() {
+    if (_lastUsageCacheUpdate == null) return false;
+    return DateTime.now().difference(_lastUsageCacheUpdate!) < _cacheValidDuration;
+  }
+
+  /// НОВЫЙ МЕТОД: Прямой подсчет использования из новой структуры Firebase
+  Future<int> _getDirectUsageCount(ContentType contentType) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) return 0;
+
+      QuerySnapshot snapshot;
+
+      switch (contentType) {
+        case ContentType.fishingNotes:
+          snapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('fishing_notes')
+              .get();
+          break;
+
+        case ContentType.markerMaps:
+          snapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('marker_maps')
+              .get();
+          break;
+
+        case ContentType.expenses:
+          snapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('budget_notes')
+              .get();
+          break;
+
+        case ContentType.depthChart:
+        // Пока depth_chart только премиум, возвращаем 0
+          return 0;
+      }
+
+      return snapshot.docs.length;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка прямого подсчета $contentType: $e');
+      }
+      return 0;
+    }
+  }
+
+  /// ОБНОВЛЕН: Проверка возможности создания контента с новой структурой
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
       // Если пользователь имеет премиум - разрешаем всё
@@ -155,8 +295,12 @@ class SubscriptionService {
         return false;
       }
 
-      // Используем UsageLimitsService для проверки лимитов
-      return await _usageLimitsService.canCreateContent(contentType);
+      // Получаем текущее использование
+      final currentUsage = await getCurrentUsage(contentType);
+      final limit = getLimit(contentType);
+
+      // Проверяем лимит
+      return currentUsage < limit;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки возможности создания контента: $e');
@@ -179,11 +323,17 @@ class SubscriptionService {
     return _cachedSubscription?.isPremium ?? false;
   }
 
-  /// Получение текущего использования по типу контента (асинхронно)
+  /// ОБНОВЛЕН: Получение текущего использования по типу контента (асинхронно)
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
-      final limits = await _usageLimitsService.getCurrentUsage();
-      return limits.getCountForType(contentType);
+      // Если кэш актуален - используем его
+      if (_isUsageCacheValid() && _usageCache.containsKey(contentType)) {
+        return _usageCache[contentType] ?? 0;
+      }
+
+      // Иначе обновляем кэш
+      await _refreshUsageCache();
+      return _usageCache[contentType] ?? 0;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения текущего использования: $e');
@@ -192,13 +342,27 @@ class SubscriptionService {
     }
   }
 
-  /// Синхронная версия для совместимости с существующим кодом
+  /// ОБНОВЛЕН: Синхронная версия для совместимости с существующим кодом
   int getCurrentUsageSync(ContentType contentType) {
     try {
-      final limits = _usageLimitsService.currentLimits;
-      if (limits == null) return 0;
+      // Если кэш актуален - используем его
+      if (_isUsageCacheValid() && _usageCache.containsKey(contentType)) {
+        return _usageCache[contentType] ?? 0;
+      }
 
-      return limits.getCountForType(contentType);
+      // Если кэш не актуален, возвращаем последнее известное значение
+      // и запускаем обновление в фоне
+      if (_usageCache.containsKey(contentType)) {
+        // Обновляем кэш асинхронно
+        _refreshUsageCache().catchError((e) {
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка фонового обновления кэша: $e');
+          }
+        });
+        return _usageCache[contentType] ?? 0;
+      }
+
+      return 0;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения текущего использования (sync): $e');
@@ -225,7 +389,7 @@ class SubscriptionService {
     }
   }
 
-  /// Увеличение счетчика использования
+  /// ОБНОВЛЕН: Увеличение счетчика использования с обновлением кэша
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
@@ -238,8 +402,15 @@ class SubscriptionService {
         return false;
       }
 
-      // Используем UsageLimitsService для увеличения счетчика
-      return await _usageLimitsService.incrementUsage(contentType);
+      // Увеличиваем счетчик в кэше
+      final currentCount = _usageCache[contentType] ?? 0;
+      _usageCache[contentType] = currentCount + 1;
+
+      if (kDebugMode) {
+        debugPrint('✅ Увеличен счетчик $contentType: ${currentCount + 1}');
+      }
+
+      return true;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка увеличения счетчика использования: $e');
@@ -248,11 +419,20 @@ class SubscriptionService {
     }
   }
 
-  /// Уменьшение счетчика (при удалении контента)
+  /// ОБНОВЛЕН: Уменьшение счетчика (при удалении контента) с обновлением кэша
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
-      // Используем UsageLimitsService для уменьшения счетчика
-      return await _usageLimitsService.decrementUsage(contentType);
+      // Уменьшаем счетчик в кэше
+      final currentCount = _usageCache[contentType] ?? 0;
+      if (currentCount > 0) {
+        _usageCache[contentType] = currentCount - 1;
+
+        if (kDebugMode) {
+          debugPrint('✅ Уменьшен счетчик $contentType: ${currentCount - 1}');
+        }
+      }
+
+      return true;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка уменьшения счетчика использования: $e');
@@ -261,11 +441,13 @@ class SubscriptionService {
     }
   }
 
-  /// Сброс использования по типу (для админских целей)
+  /// ОБНОВЛЕН: Сброс использования по типу (для админских целей)
   Future<void> resetUsage(ContentType contentType) async {
     try {
-      // Используем новый метод из UsageLimitsService
-      await _usageLimitsService.resetUsageForType(contentType);
+      _usageCache[contentType] = 0;
+      if (kDebugMode) {
+        debugPrint('✅ Сброшен счетчик $contentType');
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка сброса использования: $e');
@@ -273,7 +455,7 @@ class SubscriptionService {
     }
   }
 
-  /// Получение информации об использовании для UI (асинхронно)
+  /// ОБНОВЛЕН: Получение информации об использовании для UI (асинхронно)
   Future<Map<ContentType, Map<String, int>>> getUsageInfo() async {
     try {
       final result = <ContentType, Map<String, int>>{};
@@ -294,7 +476,7 @@ class SubscriptionService {
     }
   }
 
-  /// Синхронная версия getUsageInfo для совместимости
+  /// ОБНОВЛЕН: Синхронная версия getUsageInfo для совместимости
   Map<ContentType, Map<String, int>> getUsageInfoSync() {
     try {
       final result = <ContentType, Map<String, int>>{};
@@ -315,10 +497,19 @@ class SubscriptionService {
     }
   }
 
-  /// Получение статистики использования
+  /// ОБНОВЛЕН: Получение статистики использования
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
-      return await _usageLimitsService.getUsageStatistics();
+      await _refreshUsageCache();
+
+      return {
+        'fishingNotes': _usageCache[ContentType.fishingNotes] ?? 0,
+        'markerMaps': _usageCache[ContentType.markerMaps] ?? 0,
+        'expenses': _usageCache[ContentType.expenses] ?? 0,
+        'depthChart': _usageCache[ContentType.depthChart] ?? 0,
+        'lastUpdated': _lastUsageCacheUpdate?.toIso8601String(),
+        'cacheValid': _isUsageCacheValid(),
+      };
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения статистики: $e');
@@ -327,10 +518,10 @@ class SubscriptionService {
     }
   }
 
-  /// Принудительное обновление данных лимитов
+  /// ОБНОВЛЕН: Принудительное обновление данных лимитов
   Future<void> refreshUsageLimits() async {
     try {
-      await _usageLimitsService.forceRefresh();
+      await _refreshUsageCache();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка обновления лимитов: $e');
@@ -803,5 +994,6 @@ class SubscriptionService {
     _purchaseSubscription?.cancel();
     _subscriptionController.close();
     _subscriptionStatusController.close();
+    _usageCache.clear();
   }
 }

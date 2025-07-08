@@ -6,7 +6,6 @@ import '../../localization/app_localizations.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
-import '../../services/auth/google_auth_with_agreements.dart';
 
 class AuthSelectionScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -18,8 +17,7 @@ class AuthSelectionScreen extends StatefulWidget {
 }
 
 class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
-  final GoogleAuthWithAgreements _googleAuthWithAgreements =
-  GoogleAuthWithAgreements();
+  final GoogleSignInService _googleSignInService = GoogleSignInService();
   bool _isGoogleLoading = false;
 
   @override
@@ -361,24 +359,52 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
     );
   }
 
-  /// Метод для входа через Google с проверкой соглашений
+  /// Упрощенный метод для входа через Google
   Future<void> _signInWithGoogle() async {
     setState(() {
       _isGoogleLoading = true;
     });
 
     try {
-      final userCredential = await _googleAuthWithAgreements
-          .signInWithGoogleAndCheckAgreements(
-        context,
-        onAuthSuccess: widget.onAuthSuccess,
-      );
+      final userCredential = await _googleSignInService.signInWithGoogle(context);
 
-      if (userCredential == null && mounted) {
+      if (userCredential != null && mounted) {
+        final localizations = AppLocalizations.of(context);
+
+        // Показываем сообщение об успешном входе
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('google_login_successful')),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Выполняем переход и коллбэк
+        if (widget.onAuthSuccess != null) {
+          debugPrint('🎯 Вызываем коллбэк после успешной Google авторизации');
+          Navigator.of(context).pushReplacementNamed('/home');
+          Future.delayed(const Duration(milliseconds: 500), () {
+            widget.onAuthSuccess!();
+          });
+        } else {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } else if (mounted) {
         debugPrint('❌ Google авторизация не завершена');
       }
     } catch (e) {
       debugPrint('❌ Ошибка входа через Google: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка входа через Google: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {

@@ -9,8 +9,7 @@ import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/marker_map_model.dart';
-import '../../repositories/fishing_note_repository.dart';
-import '../../repositories/marker_map_repository.dart';
+import '../../services/firebase/firebase_service.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
@@ -36,8 +35,7 @@ class FishingNoteDetailScreen extends StatefulWidget {
 }
 
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
-  final _fishingNoteRepository = FishingNoteRepository();
-  final _markerMapRepository = MarkerMapRepository();
+  final _firebaseService = FirebaseService();
   final _weatherSettings = WeatherSettingsService();
 
   FishingNoteModel? _note;
@@ -65,8 +63,95 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     });
 
     try {
-      final note = await _fishingNoteRepository.getFishingNoteById(
-        widget.noteId,
+      // Получаем все заметки пользователя
+      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
+
+      // Ищем нужную заметку по ID
+      final noteDoc = querySnapshot.docs.firstWhere(
+            (doc) => doc.id == widget.noteId,
+        orElse: () => throw Exception('Заметка не найдена'),
+      );
+
+      // Преобразуем данные в модель
+      final data = noteDoc.data() as Map<String, dynamic>;
+
+      // Обрабатываем timestamp поля
+      if (data['date'] is int) {
+        data['date'] = DateTime.fromMillisecondsSinceEpoch(data['date']);
+      }
+      if (data['endDate'] is int) {
+        data['endDate'] = DateTime.fromMillisecondsSinceEpoch(data['endDate']);
+      }
+
+      // Обрабатываем bite records
+      if (data['biteRecords'] is List) {
+        final biteRecordsList = data['biteRecords'] as List;
+        data['biteRecords'] = biteRecordsList.map((record) {
+          if (record is Map<String, dynamic>) {
+            if (record['time'] is int) {
+              record['time'] = DateTime.fromMillisecondsSinceEpoch(record['time']);
+            }
+          }
+          return record;
+        }).toList();
+      }
+
+      // Обрабатываем weather
+      if (data['weather'] is Map<String, dynamic>) {
+        final weatherData = data['weather'] as Map<String, dynamic>;
+        if (weatherData['observationTime'] is int) {
+          weatherData['observationTime'] = DateTime.fromMillisecondsSinceEpoch(weatherData['observationTime']);
+        }
+      }
+
+      // Создаем модель заметки через конструктор
+      final note = FishingNoteModel(
+        id: noteDoc.id,
+        userId: _firebaseService.currentUserId!, // Добавляем userId
+        title: data['title'] ?? '',
+        location: data['location'] ?? '',
+        date: data['date'] ?? DateTime.now(),
+        endDate: data['endDate'],
+        isMultiDay: data['isMultiDay'] ?? false,
+        fishingType: data['fishingType'] ?? 'river',
+        tackle: data['tackle'] ?? '',
+        notes: data['notes'] ?? '',
+        photoUrls: List<String>.from(data['photoUrls'] ?? []),
+        coverPhotoUrl: data['coverPhotoUrl'] ?? '',
+        coverCropSettings: data['coverCropSettings'] != null
+            ? Map<String, dynamic>.from(data['coverCropSettings'])
+            : null,
+        biteRecords: (data['biteRecords'] as List?)?.map((record) {
+          return BiteRecord(
+            id: record['id'] ?? '',
+            time: record['time'] ?? DateTime.now(),
+            fishType: record['fishType'] ?? '',
+            weight: (record['weight'] ?? 0).toDouble(),
+            length: (record['length'] ?? 0).toDouble(),
+            notes: record['notes'] ?? '',
+            photoUrls: List<String>.from(record['photoUrls'] ?? []),
+          );
+        }).toList() ?? [],
+        weather: data['weather'] != null
+            ? FishingWeather(
+          temperature: (data['weather']['temperature'] ?? 0).toDouble(),
+          feelsLike: (data['weather']['feelsLike'] ?? 0).toDouble(),
+          humidity: data['weather']['humidity'] ?? 0,
+          pressure: (data['weather']['pressure'] ?? 0).toDouble(),
+          windSpeed: (data['weather']['windSpeed'] ?? 0).toDouble(),
+          windDirection: data['weather']['windDirection'] ?? '',
+          cloudCover: data['weather']['cloudCover'] ?? 0,
+          sunrise: data['weather']['sunrise'] ?? '',
+          sunset: data['weather']['sunset'] ?? '',
+          isDay: data['weather']['isDay'] ?? true,
+          observationTime: data['weather']['observationTime'] ?? DateTime.now(),
+        )
+            : null,
+        latitude: (data['latitude'] ?? 0).toDouble(),
+        longitude: (data['longitude'] ?? 0).toDouble(),
+        aiPrediction: data['aiPrediction'] != null
+            ? Map<String, dynamic>.from(data['aiPrediction'])
+            : null,
       );
 
       if (mounted) {
@@ -147,11 +232,48 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
     try {
       // Получаем все маркерные карты пользователя
-      final allMaps = await _markerMapRepository.getUserMarkerMaps();
+      final querySnapshot = await _firebaseService.getUserMarkerMaps();
+
+      // Преобразуем QuerySnapshot в List<MarkerMapModel>
+      final allMaps = <MarkerMapModel>[];
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Обрабатываем timestamp поля
+        if (data['date'] is int) {
+          data['date'] = DateTime.fromMillisecondsSinceEpoch(data['date']);
+        }
+
+        // Создаем модель через конструктор
+        final map = MarkerMapModel(
+          id: doc.id,
+          userId: _firebaseService.currentUserId!, // Добавляем userId
+          name: data['name'] ?? '',
+          date: data['date'] ?? DateTime.now(),
+          markers: (data['markers'] as List?)?.map((marker) {
+            return {
+              'id': marker['id'] ?? '',
+              'latitude': (marker['latitude'] ?? 0).toDouble(),
+              'longitude': (marker['longitude'] ?? 0).toDouble(),
+              'title': marker['title'] ?? '',
+              'description': marker['description'] ?? '',
+              'type': marker['type'] ?? '',
+              'color': marker['color'] ?? 'blue',
+              'timestamp': marker['timestamp'] is int
+                  ? DateTime.fromMillisecondsSinceEpoch(marker['timestamp'])
+                  : DateTime.now(),
+            };
+          }).toList().cast<Map<String, dynamic>>() ?? [],
+          noteIds: List<String>.from(data['noteIds'] ?? []),
+          sector: data['sector'],
+        );
+
+        allMaps.add(map);
+      }
 
       // Фильтруем только те, которые привязаны к текущей заметке
-      final linkedMaps =
-      allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
+      final linkedMaps = allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
 
       if (mounted) {
         setState(() {
@@ -487,8 +609,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       // Создаем обновленную модель заметки
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // Сохраняем в репозитории
-      await _fishingNoteRepository.updateFishingNote(updatedNote);
+      // Преобразуем модель в Map для сохранения
+      final noteData = _convertNoteToMap(updatedNote);
+
+      // Сохраняем в Firebase
+      await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
 
       // Обновляем локальное состояние
       if (mounted) {
@@ -537,8 +662,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         // Создаем обновленную модель заметки
         final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-        // Сохраняем в репозитории
-        await _fishingNoteRepository.updateFishingNote(updatedNote);
+        // Преобразуем модель в Map для сохранения
+        final noteData = _convertNoteToMap(updatedNote);
+
+        // Сохраняем в Firebase
+        await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
 
         // Обновляем локальное состояние
         if (mounted) {
@@ -596,8 +724,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       // Создаем обновленную модель заметки
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // Сохраняем в репозитории
-      await _fishingNoteRepository.updateFishingNote(updatedNote);
+      // Преобразуем модель в Map для сохранения
+      final noteData = _convertNoteToMap(updatedNote);
+
+      // Сохраняем в Firebase
+      await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
 
       // Обновляем локальное состояние
       if (mounted) {
@@ -628,6 +759,49 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         );
       }
     }
+  }
+
+  // Вспомогательный метод для преобразования модели в Map
+  Map<String, dynamic> _convertNoteToMap(FishingNoteModel note) {
+    return {
+      'title': note.title,
+      'location': note.location,
+      'date': note.date.millisecondsSinceEpoch,
+      'endDate': note.endDate?.millisecondsSinceEpoch,
+      'isMultiDay': note.isMultiDay,
+      'fishingType': note.fishingType,
+      'tackle': note.tackle,
+      'notes': note.notes,
+      'photoUrls': note.photoUrls,
+      'coverPhotoUrl': note.coverPhotoUrl,
+      'coverCropSettings': note.coverCropSettings,
+      'biteRecords': note.biteRecords.map((record) => {
+        'id': record.id,
+        'time': record.time.millisecondsSinceEpoch,
+        'fishType': record.fishType,
+        'weight': record.weight,
+        'length': record.length,
+        'notes': record.notes,
+        'photoUrls': record.photoUrls,
+      }).toList(),
+      'weather': note.weather != null ? {
+        'temperature': note.weather!.temperature,
+        'feelsLike': note.weather!.feelsLike,
+        'humidity': note.weather!.humidity,
+        'pressure': note.weather!.pressure,
+        'windSpeed': note.weather!.windSpeed,
+        'windDirection': note.weather!.windDirection,
+        'cloudCover': note.weather!.cloudCover,
+        'sunrise': note.weather!.sunrise,
+        'sunset': note.weather!.sunset,
+        'isDay': note.weather!.isDay,
+        'observationTime': note.weather!.observationTime.millisecondsSinceEpoch,
+      } : null,
+      'latitude': note.latitude,
+      'longitude': note.longitude,
+      'aiPrediction': note.aiPrediction,
+      // userId НЕ включаем в данные для сохранения, так как он определяется по структуре subcollection
+    };
   }
 
   // Метод для перехода к просмотру маркерной карты
@@ -676,11 +850,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => CoverPhotoSelectionScreen(
+        builder: (context) => CoverPhotoSelectionScreen(
           photoUrls: _note!.photoUrls,
-          currentCoverPhotoUrl:
-          _note!.coverPhotoUrl.isNotEmpty ? _note!.coverPhotoUrl : null,
+          currentCoverPhotoUrl: _note!.coverPhotoUrl.isNotEmpty ? _note!.coverPhotoUrl : null,
           currentCropSettings: _note!.coverCropSettings,
         ),
       ),
@@ -696,8 +868,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           coverCropSettings: result['cropSettings'],
         );
 
-        // Сохраняем в репозитории
-        await _fishingNoteRepository.updateFishingNote(updatedNote);
+        // Преобразуем модель в Map для сохранения
+        final noteData = _convertNoteToMap(updatedNote);
+
+        // Сохраняем в Firebase
+        await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
 
         // Обновляем локальное состояние
         if (mounted) {
@@ -739,8 +914,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => PhotoGalleryScreen(
+        builder: (context) => PhotoGalleryScreen(
           photos: _note!.photoUrls,
           initialIndex: initialIndex,
         ),
@@ -754,8 +928,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final localizations = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      builder: (context) => AlertDialog(
         backgroundColor: AppConstants.surfaceColor,
         title: Text(
           localizations.translate('delete_note'),
@@ -789,7 +962,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       try {
         setState(() => _isLoading = true);
 
-        await _fishingNoteRepository.deleteFishingNote(widget.noteId);
+        await _firebaseService.deleteFishingNoteNew(widget.noteId);
 
         if (mounted) {
           final localizations = AppLocalizations.of(context);
@@ -945,12 +1118,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
       body: LoadingOverlay(
         isLoading: _isLoading || _isSaving,
-        message:
-        _isLoading
+        message: _isLoading
             ? localizations.translate('loading')
             : localizations.translate('saving'),
-        child:
-        _errorMessage != null
+        child: _errorMessage != null
             ? Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -994,10 +1165,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final localizations = AppLocalizations.of(context);
 
     // Подсчет пойманных рыб и нереализованных поклевок
-    final caughtFishCount =
-        _note!.biteRecords
-            .where((record) => record.fishType.isNotEmpty && record.weight > 0)
-            .length;
+    final caughtFishCount = _note!.biteRecords
+        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
+        .length;
     final missedBitesCount = _note!.biteRecords.length - caughtFishCount;
 
     return SingleChildScrollView(
@@ -1115,9 +1285,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _getScoreColor(
-                        _aiPrediction!.overallScore,
-                      ).withValues(alpha: 0.2),
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -1140,10 +1308,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                           ),
                         ),
                         Text(
-                          _getActivityLevelText(
-                            _aiPrediction!.activityLevel,
-                            localizations,
-                          ),
+                          _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
                           style: TextStyle(
                             color: _getScoreColor(_aiPrediction!.overallScore),
                             fontSize: 14,
@@ -1154,14 +1319,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getScoreColor(
-                        _aiPrediction!.overallScore,
-                      ).withValues(alpha: 0.2),
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -1195,37 +1355,31 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                ...(_aiPrediction!.tips
-                    .take(3)
-                    .map(
-                      (tip) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '• ',
+                ...(_aiPrediction!.tips.take(3).map((tip) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          tip,
                           style: TextStyle(
-                            color: AppConstants.primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            color: AppConstants.textColor.withValues(alpha: 0.9),
+                            fontSize: 13,
                           ),
                         ),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.9,
-                              ),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                )),
+                ))),
               ],
             ],
           ),
@@ -1248,18 +1402,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppConstants.textColor,
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
               ),
             ),
           )
         else
           Column(
-            children:
-            _linkedMarkerMaps
-                .map((map) => _buildMarkerMapCard(map))
-                .toList(),
+            children: _linkedMarkerMaps.map((map) => _buildMarkerMapCard(map)).toList(),
           ),
       ],
     );
@@ -1319,17 +1468,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Text(
                     DateFormat('dd.MM.yyyy').format(map.date),
                     style: TextStyle(
-                      color: AppConstants.textColor.withValues(
-                        alpha: 0.7,
-                      ),
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppConstants.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -1410,9 +1554,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     Text(
                       DateFormat('dd.MM.yyyy').format(map.date),
                       style: TextStyle(
-                        color: AppConstants.textColor.withValues(
-                          alpha: 0.7,
-                        ),
+                        color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -1444,10 +1586,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
               // Количество маркеров
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: AppConstants.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -1540,9 +1679,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    localizations.translate(
-                      _note!.fishingType,
-                    ), // ИСПРАВЛЕНО: добавлен перевод
+                    localizations.translate(_note!.fishingType),
                     style: TextStyle(
                       color: AppConstants.textColor,
                       fontSize: 14,
@@ -1558,11 +1695,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             // Место
             Row(
               children: [
-                Icon(
-                  Icons.location_on,
-                  color: AppConstants.textColor,
-                  size: 16,
-                ),
+                Icon(Icons.location_on, color: AppConstants.textColor, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('location')}:',
@@ -1590,11 +1723,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             // Даты
             Row(
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  color: AppConstants.textColor,
-                  size: 16,
-                ),
+                Icon(Icons.calendar_today, color: AppConstants.textColor, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${localizations.translate('dates')}:',
@@ -1607,11 +1736,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 Expanded(
                   child: Text(
                     _note!.isMultiDay && _note!.endDate != null
-                        ? DateFormatter.formatDateRange(
-                      _note!.date,
-                      _note!.endDate!,
-                      context,
-                    )
+                        ? DateFormatter.formatDateRange(_note!.date, _note!.endDate!, context)
                         : DateFormatter.formatDate(_note!.date, context),
                     style: TextStyle(
                       color: AppConstants.textColor,
@@ -1783,11 +1908,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _showLocationOnMap,
-                      icon: Icon(
-                        Icons.map,
-                        color: AppConstants.textColor,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.map, color: AppConstants.textColor, size: 20),
                       label: Text(
                         localizations.translate('show_on_map'),
                         style: TextStyle(
@@ -1814,11 +1935,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _navigateToLocation,
-                      icon: Icon(
-                        Icons.navigation,
-                        color: AppConstants.textColor,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.navigation, color: AppConstants.textColor, size: 20),
                       label: Text(
                         localizations.translate('build_route'),
                         style: TextStyle(
@@ -1845,11 +1962,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _showLocationOnMap,
-                      icon: Icon(
-                        Icons.map,
-                        color: AppConstants.textColor,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.map, color: AppConstants.textColor, size: 20),
                       label: Text(
                         localizations.translate('show_on_map'),
                         style: TextStyle(
@@ -1875,11 +1988,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _navigateToLocation,
-                      icon: Icon(
-                        Icons.navigation,
-                        color: AppConstants.textColor,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.navigation, color: AppConstants.textColor, size: 20),
                       label: Text(
                         localizations.translate('build_route'),
                         style: TextStyle(
@@ -1977,9 +2086,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                         Text(
                           '${localizations.translate('feels_like_short')}: ${_formatTemperature(weather.feelsLike)}',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.7,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -2001,10 +2108,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   }
 
   // Новый метод для построения сетки погоды
-  Widget _buildWeatherGrid(
-      AppLocalizations localizations,
-      FishingWeather weather,
-      ) {
+  Widget _buildWeatherGrid(AppLocalizations localizations, FishingWeather weather) {
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
     // На маленьких экранах делаем 2 колонки, на больших - 3

@@ -7,8 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
-import '../../repositories/marker_map_repository.dart';
-import '../../repositories/fishing_note_repository.dart';
+// ИСПРАВЛЕНО: Заменяем репозитории на FirebaseService
+import '../../services/firebase/firebase_service.dart';
 import '../../widgets/loading_overlay.dart';
 // Необходимые импорты для функций
 import 'dart:math' as math;
@@ -31,8 +31,8 @@ class MarkerMapScreen extends StatefulWidget {
 }
 
 class MarkerMapScreenState extends State<MarkerMapScreen> {
-  final _markerMapRepository = MarkerMapRepository();
-  final _fishingNoteRepository = FishingNoteRepository();
+  // ИСПРАВЛЕНО: Используем FirebaseService вместо репозиториев
+  final _firebaseService = FirebaseService();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
   final _distanceController = TextEditingController();
@@ -105,6 +105,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
     // Скрываем системные панели для полноэкранного режима
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+
+    debugPrint('🗺️ MarkerMapScreen: Открываем карту маркеров ID: ${_markerMap.id}');
   }
 
   @override
@@ -118,17 +120,108 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     super.dispose();
   }
 
-  // Загрузка доступных заметок для привязки
+  // ИСПРАВЛЕНО: Загрузка доступных заметок через новую структуру Firebase
   Future<void> _loadAvailableNotes() async {
     try {
-      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      debugPrint('📝 Загружаем доступные заметки для привязки...');
+
+      // Используем новый метод для получения заметок из subcollections
+      final notesSnapshot = await _firebaseService.getUserFishingNotesNew();
+
+      // Конвертируем QuerySnapshot в список моделей FishingNoteModel
+      final notes = <FishingNoteModel>[];
+      for (final doc in notesSnapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+
+          // Создаем список BiteRecord вручную
+          final biteRecords = <BiteRecord>[];
+          final biteRecordsData = data['biteRecords'] as List<dynamic>? ?? [];
+          for (final recordData in biteRecordsData) {
+            try {
+              final record = recordData as Map<String, dynamic>;
+              biteRecords.add(BiteRecord(
+                id: record['id'] ?? '',
+                time: DateTime.fromMillisecondsSinceEpoch(record['time'] ?? 0),
+                fishType: record['fishType'] ?? '',
+                weight: record['weight']?.toDouble() ?? 0.0,
+                length: record['length']?.toDouble() ?? 0.0,
+                notes: record['notes'] ?? '',
+                photoUrls: List<String>.from(record['photoUrls'] ?? []),
+              ));
+            } catch (e) {
+              debugPrint('❌ Ошибка при обработке записи о поклевке: $e');
+            }
+          }
+
+          // Создаем FishingWeather вручную, если есть данные
+          FishingWeather? weather;
+          if (data['weather'] != null) {
+            try {
+              final weatherData = data['weather'] as Map<String, dynamic>;
+              weather = FishingWeather(
+                temperature: weatherData['temperature']?.toDouble() ?? 0.0,
+                feelsLike: weatherData['feelsLike']?.toDouble() ?? 0.0,
+                humidity: weatherData['humidity']?.toInt() ?? 0,
+                pressure: weatherData['pressure']?.toDouble() ?? 0.0,
+                windSpeed: weatherData['windSpeed']?.toDouble() ?? 0.0,
+                windDirection: weatherData['windDirection'] ?? '',
+                cloudCover: weatherData['cloudCover']?.toInt() ?? 0,
+                sunrise: weatherData['sunrise'] ?? '',
+                sunset: weatherData['sunset'] ?? '',
+                isDay: weatherData['isDay'] ?? true,
+                observationTime: DateTime.fromMillisecondsSinceEpoch(
+                    weatherData['observationTime'] ?? 0
+                ),
+              );
+            } catch (e) {
+              debugPrint('❌ Ошибка при обработке погодных данных: $e');
+            }
+          }
+
+          // Создаем модель заметки с userId (пустой, так как теперь в пути)
+          final note = FishingNoteModel(
+            id: doc.id,
+            userId: '', // Пустой, так как теперь userId часть пути коллекции
+            title: data['title'] ?? '',
+            location: data['location'] ?? '',
+            date: DateTime.fromMillisecondsSinceEpoch(data['date'] ?? 0),
+            endDate: data['endDate'] != null
+                ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
+                : null,
+            isMultiDay: data['isMultiDay'] ?? false,
+            fishingType: data['fishingType'] ?? 'shore_fishing',
+            tackle: data['tackle'] ?? '',
+            notes: data['notes'] ?? '',
+            photoUrls: List<String>.from(data['photoUrls'] ?? []),
+            coverPhotoUrl: data['coverPhotoUrl'],
+            coverCropSettings: data['coverCropSettings'] != null
+                ? Map<String, dynamic>.from(data['coverCropSettings'])
+                : null,
+            biteRecords: biteRecords,
+            weather: weather,
+            latitude: data['latitude']?.toDouble() ?? 0.0,
+            longitude: data['longitude']?.toDouble() ?? 0.0,
+            aiPrediction: data['aiPrediction'] != null
+                ? Map<String, dynamic>.from(data['aiPrediction'])
+                : null,
+          );
+
+          notes.add(note);
+        } catch (e) {
+          debugPrint('❌ Ошибка при обработке заметки ${doc.id}: $e');
+          // Продолжаем обработку остальных заметок
+        }
+      }
+
       if (mounted) {
         setState(() {
           _availableNotes = notes;
         });
+        debugPrint('✅ Загружено ${notes.length} доступных заметок');
       }
     } catch (e) {
-      debugPrint('Ошибка при загрузке заметок: $e');
+      debugPrint('❌ Ошибка при загрузке заметок: $e');
     }
   }
 
@@ -903,6 +996,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       ),
                     );
 
+                    debugPrint('✅ Добавлен новый маркер: ${newMarker['id']}');
+
                     // Обновляем UI чтобы кнопка сохранения стала активной
                     Future.microtask(() => this.setState(() {}));
                   },
@@ -1212,6 +1307,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       ),
                     );
 
+                    debugPrint('✅ Маркер обновлен: ${marker['id']}');
+
                     // Обновляем UI чтобы кнопка сохранения стала активной
                     Future.microtask(() => this.setState(() {}));
                   },
@@ -1308,6 +1405,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       _hasChanges = true;
     });
 
+    debugPrint('🗑️ Маркер удален: ${marker['id']}');
+
     // Обновляем UI чтобы кнопка сохранения стала активная
     Future.microtask(() => setState(() {}));
   }
@@ -1335,7 +1434,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Ошибка при проверке доступа к графику глубины: $e');
+      debugPrint('❌ Ошибка при проверке доступа к графику глубины: $e');
       // В случае ошибки показываем диалог премиума (безопасный подход)
       _showPremiumRequired(ContentType.depthChart);
     }
@@ -1353,7 +1452,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  /// Сохранение изменений карты
+  /// ✅ ИСПРАВЛЕНО: Сохранение изменений карты через новую структуру Firebase
   Future<void> _saveChanges() async {
     final localizations = AppLocalizations.of(context);
     if (!mounted) return;
@@ -1363,11 +1462,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         _isLoading = true;
       });
 
+      debugPrint('💾 Сохраняем изменения в маркерной карте...');
+
       // Создаем копию модели карты для сохранения
       final markerMapToSave = _markerMap.copyWith(
         // Очищаем временные поля с объектами Offset из маркеров
-        markers:
-        _markerMap.markers.map((marker) {
+        markers: _markerMap.markers.map((marker) {
           // Создаем копию маркера без полей для UI
           final cleanMarker = Map<String, dynamic>.from(marker);
           // Удаляем поля хитбоксов, которые не должны сохраняться
@@ -1377,8 +1477,22 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         }).toList(),
       );
 
-      // Сохраняем очищенную модель
-      await _markerMapRepository.updateMarkerMap(markerMapToSave);
+      // ✅ ИСПРАВЛЕНО: Сохраняем ВСЕ поля карты, а не только markers
+      final mapData = {
+        'name': markerMapToSave.name,                    // ✅ ДОБАВЛЕНО
+        'date': markerMapToSave.date.millisecondsSinceEpoch, // ✅ ДОБАВЛЕНО
+        'sector': markerMapToSave.sector,                // ✅ ДОБАВЛЕНО
+        'noteIds': markerMapToSave.noteIds,              // ✅ ДОБАВЛЕНО
+        'noteNames': markerMapToSave.noteNames,          // ✅ ДОБАВЛЕНО
+        'markers': markerMapToSave.markers,              // ✅ БЫЛО
+        'updatedAt': DateTime.now().millisecondsSinceEpoch, // ✅ БЫЛО
+      };
+
+      // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ SUBCOLLECTIONS СТРУКТУРЫ
+      debugPrint('🔥 Обновляем маркерную карту через updateMarkerMap()');
+      debugPrint('📍 Путь: /users/{currentUserId}/marker_maps/${markerMapToSave.id}');
+
+      await _firebaseService.updateMarkerMap(markerMapToSave.id, mapData);
 
       if (mounted) {
         setState(() {
@@ -1393,8 +1507,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
             duration: const Duration(seconds: 1),
           ),
         );
+
+        debugPrint('✅ Маркерная карта успешно сохранена в Firebase');
       }
     } catch (e) {
+      debugPrint('❌ Ошибка при сохранении маркерной карты: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -1414,6 +1531,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Кнопка выхода с сохранением
   Future<void> _exitWithSave() async {
+    debugPrint('🚪 Выходим из экрана маркерной карты...');
     if (_hasChanges || _markerMap.markers.isNotEmpty) {
       await _saveChanges();
     }

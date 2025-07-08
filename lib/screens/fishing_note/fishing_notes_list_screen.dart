@@ -1,23 +1,23 @@
 // Путь: lib/screens/fishing_note/fishing_notes_list_screen.dart
-// ОБНОВЛЕННАЯ ВЕРСИЯ с интеграцией системы лимитов
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
-import '../../models/subscription_model.dart'; // ДОБАВЛЕНО
-import '../../repositories/fishing_note_repository.dart';
+import '../../models/subscription_model.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: заменил repository на service
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/universal_image.dart';
 import '../../widgets/loading_overlay.dart';
-import '../../widgets/subscription/premium_create_button.dart'; // ДОБАВЛЕНО
-import '../../widgets/subscription/usage_badge.dart'; // ДОБАВЛЕНО
+import '../../widgets/subscription/premium_create_button.dart';
+import '../../widgets/subscription/usage_badge.dart';
 import '../../localization/app_localizations.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
+
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({super.key});
@@ -28,8 +28,8 @@ class FishingNotesListScreen extends StatefulWidget {
 
 class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     with SingleTickerProviderStateMixin {
-  final _fishingNoteRepository = FishingNoteRepository();
-  final _subscriptionService = SubscriptionService(); // ДОБАВЛЕНО
+  final _firebaseService = FirebaseService();
+  final _subscriptionService = SubscriptionService();
 
   List<FishingNoteModel> _notes = [];
   bool _isLoading = true;
@@ -69,10 +69,81 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     });
 
     try {
-      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      if (_firebaseService.currentUserId == null) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Пользователь не авторизован. Войдите в аккаунт.';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
+
+      // Преобразуем QuerySnapshot в List<FishingNoteModel>
+      final List<FishingNoteModel> notes = querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Преобразуем данные поклевок
+        List<BiteRecord> biteRecords = [];
+        if (data['biteRecords'] is List) {
+          biteRecords = (data['biteRecords'] as List).map((record) {
+            if (record is Map<String, dynamic>) {
+              return BiteRecord(
+                id: record['id'] ?? '',
+                time: record['time'] is int
+                    ? DateTime.fromMillisecondsSinceEpoch(record['time'])
+                    : DateTime.now(),
+                fishType: record['fishType'] ?? '',
+                weight: (record['weight'] ?? 0).toDouble(),
+                length: (record['length'] ?? 0).toDouble(),
+                notes: record['notes'] ?? '',
+                photoUrls: List<String>.from(record['photoUrls'] ?? []),
+              );
+            }
+            return BiteRecord(
+              id: '',
+              time: DateTime.now(),
+              fishType: '',
+              weight: 0.0,
+              length: 0.0,
+              notes: '',
+              photoUrls: [],
+            );
+          }).toList();
+        }
+
+        // Создаем модель FishingNoteModel используя конструктор
+        return FishingNoteModel(
+          id: doc.id,
+          userId: _firebaseService.currentUserId!,
+          location: data['location'] ?? '',
+          latitude: (data['latitude'] ?? 0.0).toDouble(),
+          longitude: (data['longitude'] ?? 0.0).toDouble(),
+          date: data['date'] is int
+              ? DateTime.fromMillisecondsSinceEpoch(data['date'])
+              : DateTime.now(),
+          endDate: data['endDate'] is int
+              ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
+              : null,
+          isMultiDay: data['isMultiDay'] ?? false,
+          tackle: data['tackle'] ?? '',
+          notes: data['notes'] ?? '',
+          photoUrls: List<String>.from(data['photoUrls'] ?? []),
+          fishingType: data['fishingType'] ?? '',
+          weather: data['weather'] != null
+              ? _createFishingWeather(data['weather'])
+              : null,
+          biteRecords: biteRecords,
+          mapMarkers: List<Map<String, dynamic>>.from(data['mapMarkers'] ?? []),
+          aiPrediction: data['aiPrediction'],
+        );
+      }).toList();
 
       if (!mounted) return;
 
+      // Сортируем по дате создания (самые новые сверху)
       notes.sort((a, b) => b.date.compareTo(a.date));
 
       setState(() {
@@ -84,17 +155,32 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
         _animationController.forward();
       }
     } catch (e) {
+
       if (!mounted) return;
 
       setState(() {
-        _errorMessage =
-        '${AppLocalizations.of(context).translate('error_loading')}: $e';
+        _errorMessage = _getErrorMessage(e);
         _isLoading = false;
       });
     }
   }
 
-  // ОБНОВЛЕННАЯ ФУНКЦИЯ: теперь без проверки лимитов (проверка будет в кнопке)
+  // Обработка ошибок с более понятными сообщениями
+  String _getErrorMessage(dynamic error) {
+    final localizations = AppLocalizations.of(context);
+
+    if (error.toString().contains('Пользователь не авторизован')) {
+      return localizations.translate('user_not_authorized');
+    } else if (error.toString().contains('permission-denied')) {
+      return localizations.translate('access_denied');
+    } else if (error.toString().contains('network') ||
+        error.toString().contains('No internet')) {
+      return localizations.translate('no_internet_connection');
+    } else {
+      return '${localizations.translate('error_loading')}: ${error.toString()}';
+    }
+  }
+
   Future<void> _addNewNote() async {
     final result = await Navigator.push(
       context,
@@ -118,14 +204,77 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
+  // Обновлен метод для новой структуры Firebase
   Future<void> _refreshNotesList() async {
     if (!mounted) return;
 
     try {
-      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      // Используем getUserFishingNotesNew() без параметра userId
+      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
+
+      // Преобразуем QuerySnapshot в List<FishingNoteModel>
+      final List<FishingNoteModel> notes = querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Преобразуем данные поклевок
+        List<BiteRecord> biteRecords = [];
+        if (data['biteRecords'] is List) {
+          biteRecords = (data['biteRecords'] as List).map((record) {
+            if (record is Map<String, dynamic>) {
+              return BiteRecord(
+                id: record['id'] ?? '',
+                time: record['time'] is int
+                    ? DateTime.fromMillisecondsSinceEpoch(record['time'])
+                    : DateTime.now(),
+                fishType: record['fishType'] ?? '',
+                weight: (record['weight'] ?? 0).toDouble(),
+                length: (record['length'] ?? 0).toDouble(),
+                notes: record['notes'] ?? '',
+                photoUrls: List<String>.from(record['photoUrls'] ?? []),
+              );
+            }
+            return BiteRecord(
+              id: '',
+              time: DateTime.now(),
+              fishType: '',
+              weight: 0.0,
+              length: 0.0,
+              notes: '',
+              photoUrls: [],
+            );
+          }).toList();
+        }
+
+        // Создаем модель FishingNoteModel используя конструктор
+        return FishingNoteModel(
+          id: doc.id,
+          userId: _firebaseService.currentUserId!,
+          location: data['location'] ?? '',
+          latitude: (data['latitude'] ?? 0.0).toDouble(),
+          longitude: (data['longitude'] ?? 0.0).toDouble(),
+          date: data['date'] is int
+              ? DateTime.fromMillisecondsSinceEpoch(data['date'])
+              : DateTime.now(),
+          endDate: data['endDate'] is int
+              ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
+              : null,
+          isMultiDay: data['isMultiDay'] ?? false,
+          tackle: data['tackle'] ?? '',
+          notes: data['notes'] ?? '',
+          photoUrls: List<String>.from(data['photoUrls'] ?? []),
+          fishingType: data['fishingType'] ?? '',
+          weather: data['weather'] != null
+              ? _createFishingWeather(data['weather'])
+              : null,
+          biteRecords: biteRecords,
+          mapMarkers: List<Map<String, dynamic>>.from(data['mapMarkers'] ?? []),
+          aiPrediction: data['aiPrediction'],
+        );
+      }).toList();
 
       if (!mounted) return;
 
+      // Сортируем по дате создания (самые новые сверху)
       notes.sort((a, b) => b.date.compareTo(a.date));
 
       setState(() {
@@ -136,9 +285,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${AppLocalizations.of(context).translate('error_loading')}: $e',
-          ),
+          content: Text(_getErrorMessage(e)),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -168,7 +315,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        // ОБНОВЛЕН: заголовок с бейджем использования
+        // Заголовок с бейджем использования
         title: Row(
           children: [
             Expanded(
@@ -183,7 +330,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 maxLines: 1,
               ),
             ),
-            // ДОБАВЛЕН: Бейдж использования в заголовке
+            // Бейдж использования в заголовке
             UsageBadge(
               contentType: ContentType.fishingNotes,
               fontSize: isSmallScreen ? 10 : 12,
@@ -241,7 +388,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
           ),
         ),
       ),
-      // ОБНОВЛЕН: FloatingActionButton с проверкой лимитов
+      // FloatingActionButton с проверкой лимитов
       floatingActionButton: PremiumFloatingActionButton(
         contentType: ContentType.fishingNotes,
         onPressed: _addNewNote,
@@ -347,7 +494,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               ),
               SizedBox(height: ResponsiveConstants.spacingXL),
 
-              // ОБНОВЛЕНА: Кнопка создания первой заметки с проверкой лимитов
+              // Кнопка создания первой заметки с проверкой лимитов
               SizedBox(
                 width: double.infinity,
                 child: PremiumCreateButton(
@@ -366,7 +513,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 ),
               ),
 
-              // ДОБАВЛЕНО: Индикатор лимитов под кнопкой
+              // Индикатор лимитов под кнопкой
               SizedBox(height: ResponsiveConstants.spacingM),
               _buildLimitIndicator(),
             ],
@@ -376,7 +523,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
   }
 
-  // ИСПРАВЛЕН: Индикатор лимитов для пустого состояния
+  // Индикатор лимитов для пустого состояния
   Widget _buildLimitIndicator() {
     return StreamBuilder<SubscriptionStatus>(
       stream: _subscriptionService.subscriptionStatusStream,
@@ -415,7 +562,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
           );
         }
 
-        // ИСПРАВЛЕНО: Используем синхронную версию
+        // Используем синхронную версию
         final currentUsage = _subscriptionService.getCurrentUsageSync(ContentType.fishingNotes);
         final limit = _subscriptionService.getLimit(ContentType.fishingNotes);
         final remaining = limit - currentUsage;
@@ -452,7 +599,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 ],
               ),
               SizedBox(height: ResponsiveConstants.spacingS),
-              // ИСПРАВЛЕН: Прогресс-бар
+              // Прогресс-бар
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
@@ -932,6 +1079,42 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
           ),
         ),
       ),
+    );
+  }
+
+  // Вспомогательный метод для создания FishingWeather из Map данных
+  FishingWeather _createFishingWeather(Map<String, dynamic> weatherData) {
+    // Обрабатываем observationTime правильно
+    DateTime observationTime;
+
+    final observationTimeData = weatherData['observationTime'];
+    if (observationTimeData is int) {
+      // Если это timestamp (миллисекунды)
+      observationTime = DateTime.fromMillisecondsSinceEpoch(observationTimeData);
+    } else if (observationTimeData is String) {
+      // Если это строка ISO 8601
+      try {
+        observationTime = DateTime.parse(observationTimeData);
+      } catch (e) {
+        observationTime = DateTime.now();
+      }
+    } else {
+      // Fallback значение
+      observationTime = DateTime.now();
+    }
+
+    return FishingWeather(
+      temperature: (weatherData['temperature'] ?? 0.0).toDouble(),
+      feelsLike: (weatherData['feelsLike'] ?? 0.0).toDouble(),
+      humidity: (weatherData['humidity'] ?? 0).toInt(),
+      pressure: (weatherData['pressure'] ?? 0.0).toDouble(),
+      windSpeed: (weatherData['windSpeed'] ?? 0.0).toDouble(),
+      windDirection: weatherData['windDirection'] ?? '',
+      cloudCover: (weatherData['cloudCover'] ?? 0).toInt(),
+      sunrise: weatherData['sunrise'] ?? '',
+      sunset: weatherData['sunset'] ?? '',
+      isDay: weatherData['isDay'] ?? true,
+      observationTime: observationTime, // Передаем DateTime вместо строки
     );
   }
 }

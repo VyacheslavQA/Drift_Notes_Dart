@@ -188,33 +188,33 @@ class SettingsScreenState extends State<SettingsScreen>
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: AppConstants.cardColor,
-            title: Text(
-              localizations.translate('clear_all_data_title'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              localizations.translate('clear_all_data_message'),
+        backgroundColor: AppConstants.cardColor,
+        title: Text(
+          localizations.translate('clear_all_data_title'),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          localizations.translate('clear_all_data_message'),
+          style: TextStyle(color: AppConstants.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              localizations.translate('cancel'),
               style: TextStyle(color: AppConstants.textColor),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  localizations.translate('cancel'),
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(localizations.translate('clear')),
-              ),
-            ],
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(localizations.translate('clear')),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
@@ -316,9 +316,9 @@ class SettingsScreenState extends State<SettingsScreen>
                                     child: Icon(
                                       Icons.sync,
                                       color:
-                                          _isSyncing
-                                              ? AppConstants.primaryColor
-                                              : AppConstants.textColor,
+                                      _isSyncing
+                                          ? AppConstants.primaryColor
+                                          : AppConstants.textColor,
                                       size: 24,
                                     ),
                                   );
@@ -342,11 +342,11 @@ class SettingsScreenState extends State<SettingsScreen>
                                     Text(
                                       _isSyncing
                                           ? localizations.translate(
-                                            'syncing_in_progress',
-                                          )
+                                        'syncing_in_progress',
+                                      )
                                           : localizations.translate(
-                                            'sync_all_data_now',
-                                          ),
+                                        'sync_all_data_now',
+                                      ),
                                       style: TextStyle(
                                         color: AppConstants.textColor
                                             .withValues(alpha: 0.7),
@@ -438,9 +438,9 @@ class SettingsScreenState extends State<SettingsScreen>
                                       height: 8,
                                       decoration: BoxDecoration(
                                         color:
-                                            _syncStatus['isOnline'] == true
-                                                ? Colors.green
-                                                : Colors.red,
+                                        _syncStatus['isOnline'] == true
+                                            ? Colors.green
+                                            : Colors.red,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -523,7 +523,7 @@ class SettingsScreenState extends State<SettingsScreen>
                           MaterialPageRoute(
                             builder:
                                 (context) =>
-                                    const NotificationSoundSettingsScreen(),
+                            const NotificationSoundSettingsScreen(),
                           ),
                         );
                       },
@@ -550,7 +550,7 @@ class SettingsScreenState extends State<SettingsScreen>
                           MaterialPageRoute(
                             builder:
                                 (context) =>
-                                    const WeatherNotificationsSettingsScreen(),
+                            const WeatherNotificationsSettingsScreen(),
                           ),
                         );
                       },
@@ -656,6 +656,26 @@ class SettingsScreenState extends State<SettingsScreen>
                         builder: (context) => const ChangePasswordScreen(),
                       ),
                     );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // === НОВАЯ СЕКЦИЯ: АДМИНИСТРИРОВАНИЕ ===
+              _buildSectionHeader('Администрирование'),
+              Card(
+                color: AppConstants.cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.storage, color: Colors.purple),
+                  title: const Text('Миграция данных'),
+                  subtitle: const Text('Переход на новую структуру "по полочкам"'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/simple_migration');
                   },
                 ),
               ),

@@ -2250,6 +2250,10 @@
   "expenses_limit_reached": "Expenses limit reached",
   "content_limit_reached": "Content limit reached",
   "unlimited": "Unlimited",
-  "upgrade": "Upgrade"
+  "upgrade": "Upgrade",
+
+  "no_marker_maps": "No marker maps",
+  "start_mapping": "Create your first marker map to mark fishing spots",
+  "no_notes_available": "No notes available"
 
 }

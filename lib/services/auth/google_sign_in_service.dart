@@ -4,10 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../firebase/firebase_service.dart';
-import '../../repositories/user_repository.dart';
 import '../../localization/app_localizations.dart';
-import '../user_consent_service.dart'; // НОВЫЙ ИМПОРТ!
 
 /// Сервис для работы с Google Sign-In
 class GoogleSignInService {
@@ -19,7 +18,6 @@ class GoogleSignInService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseService _firebaseService = FirebaseService();
-  final UserConsentService _consentService = UserConsentService(); // НОВОЕ!
 
   /// Вход через Google аккаунт
   Future<UserCredential?> signInWithGoogle([BuildContext? context]) async {
@@ -53,7 +51,7 @@ class GoogleSignInService {
 
       // Получаем аутентификационные данные
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      await googleUser.authentication;
 
       // Создаем credential для Firebase
       final credential = GoogleAuthProvider.credential(
@@ -69,8 +67,8 @@ class GoogleSignInService {
       // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
 
-      // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
-      await _createOrUpdateUserDocument(userCredential);
+      // НОВАЯ СТРУКТУРА: Создаем/обновляем профиль пользователя
+      await _createOrUpdateUserProfile(userCredential);
 
       debugPrint('Успешный вход через Google: ${userCredential.user?.email}');
       return userCredential;
@@ -97,8 +95,8 @@ class GoogleSignInService {
       // Кэшируем данные пользователя через Firebase сервис
       await _firebaseService.cacheUserDataFromCredential(userCredential);
 
-      // ИСПРАВЛЕНИЕ: Создаем/обновляем документ пользователя в Firestore
-      await _createOrUpdateUserDocument(userCredential);
+      // НОВАЯ СТРУКТУРА: Создаем/обновляем профиль пользователя
+      await _createOrUpdateUserProfile(userCredential);
 
       debugPrint(
         'Успешный вход через Google (веб): ${userCredential.user?.email}',
@@ -110,78 +108,82 @@ class GoogleSignInService {
     }
   }
 
-  /// Создает или обновляет документ пользователя в Firestore
-  Future<void> _createOrUpdateUserDocument(
-    UserCredential userCredential,
-  ) async {
+  /// Создает или обновляет профиль пользователя в новой структуре
+  Future<void> _createOrUpdateUserProfile(
+      UserCredential userCredential,
+      ) async {
     try {
       final user = userCredential.user;
       if (user == null) return;
 
-      final userRepository = UserRepository();
+      // Проверяем, существует ли уже профиль пользователя
+      final existingProfile = await _firebaseService.getUserProfile();
 
-      // Проверяем, существует ли уже документ пользователя
-      final existingUser = await userRepository.getUserData(user.uid);
-
-      if (existingUser == null) {
-        // Создаем новый документ пользователя
-        final userData = {
-          'uid': user.uid,
+      if (!existingProfile.exists) {
+        // === СОЗДАЕМ НОВЫЙ ПРОФИЛЬ ===
+        await _firebaseService.createUserProfile({
           'email': user.email ?? '',
           'displayName': user.displayName ?? '',
           'photoUrl': user.photoURL ?? '',
           'authProvider': 'google',
-          'createdAt': DateTime.now().toIso8601String(),
           // Дефолтные значения для профиля
           'country': '',
           'city': '',
-          'experience': null,
-          'fishingTypes': [],
-        };
+          'experience': 'beginner',
+          'fishingTypes': ['Обычная рыбалка'],
+        });
 
-        await userRepository.updateUserData(userData);
+        // === СОХРАНЯЕМ БАЗОВЫЕ СОГЛАСИЯ ДЛЯ GOOGLE ===
+        await _firebaseService.updateUserConsents({
+          'privacyPolicyAccepted': true, // Google пользователи автоматически соглашаются
+          'termsOfServiceAccepted': true,
+          'consentDate': FieldValue.serverTimestamp(),
+          'appVersion': '1.0.0',
+          'authProvider': 'google',
+          'deviceInfo': {
+            'platform': kIsWeb ? 'web' : 'mobile',
+          },
+        });
+
         debugPrint(
-          '✅ Создан новый документ пользователя в Firestore для Google аккаунта: ${user.email}',
+          '✅ Создан новый профиль пользователя для Google аккаунта: ${user.email}',
         );
       } else {
-        // Обновляем существующий документ только с Google данными
-        final userData = {
-          'email':
-              user.email ?? existingUser.email, // Обновляем email из Google
-          'displayName': user.displayName ?? existingUser.displayName,
-          'photoUrl': user.photoURL ?? existingUser.photoUrl,
-          // Сохраняем существующие пользовательские данные
-          'country': existingUser.country ?? '',
-          'city': existingUser.city ?? '',
-          'experience': existingUser.experience,
-          'fishingTypes': existingUser.fishingTypes,
-        };
+        // === ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЙ ПРОФИЛЬ ===
+        final existingData = existingProfile.data() as Map<String, dynamic>?;
 
-        await userRepository.updateUserData(userData);
+        await _firebaseService.updateUserProfile({
+          'email': user.email ?? existingData?['email'] ?? '',
+          'displayName': user.displayName ?? existingData?['displayName'] ?? '',
+          'photoUrl': user.photoURL ?? existingData?['photoUrl'] ?? '',
+          'authProvider': 'google',
+          // Сохраняем существующие пользовательские данные
+          'country': existingData?['country'] ?? '',
+          'city': existingData?['city'] ?? '',
+          'experience': existingData?['experience'] ?? 'beginner',
+          'fishingTypes': existingData?['fishingTypes'] ?? ['Обычная рыбалка'],
+        });
+
         debugPrint(
-          '✅ Обновлен документ пользователя в Firestore для Google аккаунта: ${user.email}',
+          '✅ Обновлен профиль пользователя для Google аккаунта: ${user.email}',
         );
       }
     } catch (e) {
-      debugPrint('❌ Ошибка при создании/обновлении документа пользователя: $e');
+      debugPrint('❌ Ошибка при создании/обновлении профиля пользователя: $e');
       // Не пробрасываем ошибку дальше, чтобы не нарушить процесс входа
     }
   }
 
-  /// Выход из Google аккаунта (ИСПРАВЛЕНО!)
+  /// Выход из Google аккаунта
   Future<void> signOutGoogle() async {
     try {
-      // ВАЖНО: Очищаем согласия ПЕРЕД выходом
-      debugPrint('🧹 Очищаем согласия пользователя перед выходом');
-      await _consentService.clearAllConsents();
-
       // Выходим из Google
       await _googleSignIn.signOut();
 
-      // Выходим из Firebase
+      // Выходим из Firebase (очищает кэш)
       await _firebaseService.signOut();
 
-      debugPrint('✅ Успешный выход из Google аккаунта (с очисткой согласий)');
+      debugPrint('✅ Успешный выход из Google аккаунта');
     } catch (e) {
       debugPrint('❌ Ошибка при выходе из Google аккаунта: $e');
     }
@@ -210,7 +212,7 @@ class GoogleSignInService {
       if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -220,8 +222,8 @@ class GoogleSignInService {
       final UserCredential userCredential = await currentUser
           .linkWithCredential(credential);
 
-      // ИСПРАВЛЕНИЕ: Обновляем документ пользователя после связывания
-      await _createOrUpdateUserDocument(userCredential);
+      // НОВАЯ СТРУКТУРА: Обновляем профиль после связывания
+      await _updateProfileAfterLinking(userCredential);
 
       debugPrint('Аккаунт успешно связан с Google');
       return userCredential;
@@ -229,6 +231,25 @@ class GoogleSignInService {
       debugPrint('Ошибка при связывании с Google: $e');
       _handleGoogleSignInError(e, context);
       return null;
+    }
+  }
+
+  /// Обновление профиля после связывания с Google
+  Future<void> _updateProfileAfterLinking(UserCredential userCredential) async {
+    try {
+      final user = userCredential.user;
+      if (user == null) return;
+
+      // Обновляем профиль с данными из Google
+      await _firebaseService.updateUserProfile({
+        'displayName': user.displayName,
+        'photoUrl': user.photoURL,
+        'authProvider': 'email+google', // Показываем, что связаны оба метода
+      });
+
+      debugPrint('✅ Профиль обновлен после связывания с Google');
+    } catch (e) {
+      debugPrint('❌ Ошибка при обновлении профиля после связывания: $e');
     }
   }
 
@@ -250,6 +271,11 @@ class GoogleSignInService {
       // Выходим из Google
       await _googleSignIn.signOut();
 
+      // Обновляем профиль - убираем указание на Google
+      await _firebaseService.updateUserProfile({
+        'authProvider': 'email', // Остается только email
+      });
+
       debugPrint('Google аккаунт успешно отвязан');
     } catch (e) {
       debugPrint('Ошибка при отвязке Google аккаунта: $e');
@@ -263,7 +289,7 @@ class GoogleSignInService {
     if (currentUser == null) return false;
 
     return currentUser.providerData.any(
-      (provider) => provider.providerId == GoogleAuthProvider.PROVIDER_ID,
+          (provider) => provider.providerId == GoogleAuthProvider.PROVIDER_ID,
     );
   }
 
@@ -341,10 +367,71 @@ class GoogleSignInService {
   /// Автоматический тихий вход (если пользователь уже входил)
   Future<GoogleSignInAccount?> signInSilently() async {
     try {
-      return await _googleSignIn.signInSilently();
+      final account = await _googleSignIn.signInSilently();
+
+      // Если удалось войти тихо, обновляем Firebase Auth
+      if (account != null) {
+        final GoogleSignInAuthentication googleAuth = await account.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        await _auth.signInWithCredential(credential);
+        debugPrint('✅ Тихий вход через Google выполнен успешно');
+      }
+
+      return account;
     } catch (e) {
       debugPrint('Ошибка при тихом входе через Google: $e');
       return null;
+    }
+  }
+
+  /// Создание профиля для существующего Google пользователя (миграция)
+  Future<void> createProfileForExistingUser() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Проверяем, что пользователь вошел через Google
+      final isGoogleUser = user.providerData.any(
+            (provider) => provider.providerId == GoogleAuthProvider.PROVIDER_ID,
+      );
+
+      if (!isGoogleUser) return;
+
+      // Проверяем, есть ли уже профиль
+      final existingProfile = await _firebaseService.getUserProfile();
+      if (existingProfile.exists) return;
+
+      // Создаем профиль для существующего Google пользователя
+      await _firebaseService.createUserProfile({
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+        'photoUrl': user.photoURL ?? '',
+        'authProvider': 'google',
+        'country': '',
+        'city': '',
+        'experience': 'beginner',
+        'fishingTypes': ['Обычная рыбалка'],
+      });
+
+      // Сохраняем базовые согласия
+      await _firebaseService.updateUserConsents({
+        'privacyPolicyAccepted': true,
+        'termsOfServiceAccepted': true,
+        'consentDate': FieldValue.serverTimestamp(),
+        'appVersion': '1.0.0',
+        'authProvider': 'google',
+        'deviceInfo': {
+          'platform': kIsWeb ? 'web' : 'mobile',
+        },
+      });
+
+      debugPrint('✅ Создан профиль для существующего Google пользователя');
+    } catch (e) {
+      debugPrint('❌ Ошибка при создании профиля для существующего пользователя: $e');
     }
   }
 }

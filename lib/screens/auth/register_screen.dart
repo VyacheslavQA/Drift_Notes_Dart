@@ -74,11 +74,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
   }
 
-  // Функция для сохранения согласий пользователя в Firebase
-  Future<void> _saveUserConsents(String userId) async {
+  // Функция для создания профиля пользователя (новая структура)
+  Future<void> _createUserProfile(String userId, String name, String email) async {
     try {
-      final consentsData = {
-        'userId': userId,
+      await _firebaseService.createUserProfile({
+        'email': email,
+        'displayName': name,
+        'photoUrl': null,
+        'city': '',
+        'country': '',
+        'experience': 'beginner',
+        'fishingTypes': ['Обычная рыбалка'],
+      });
+
+      debugPrint('✅ Профиль пользователя создан в новой структуре');
+    } catch (e) {
+      debugPrint('❌ Ошибка при создании профиля пользователя: $e');
+      // Не прерываем регистрацию, если не удалось создать профиль
+    }
+  }
+
+  // Функция для сохранения согласий пользователя (новая структура)
+  Future<void> _saveUserConsents() async {
+    try {
+      await _firebaseService.updateUserConsents({
         'privacyPolicyAccepted': true,
         'termsOfServiceAccepted': true,
         'consentDate': FieldValue.serverTimestamp(),
@@ -87,14 +106,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'platform': Theme.of(context).platform.name,
           // Можно добавить больше информации об устройстве
         },
-      };
+      });
 
-      await FirebaseFirestore.instance
-          .collection('user_consents')
-          .doc(userId)
-          .set(consentsData);
-
-      debugPrint('✅ Согласия пользователя сохранены в Firebase');
+      debugPrint('✅ Согласия пользователя сохранены в новой структуре');
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении согласий: $e');
       // Не прерываем регистрацию, если не удалось сохранить согласия
@@ -136,8 +150,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Обновляем имя пользователя
         await user.updateDisplayName(name);
 
-        // Сохраняем согласия пользователя в Firestore
-        await _saveUserConsents(user.uid);
+        // === НОВАЯ СТРУКТУРА: Создаем профиль пользователя ===
+        await _createUserProfile(user.uid, name, email);
+
+        // === НОВАЯ СТРУКТУРА: Сохраняем согласия пользователя ===
+        await _saveUserConsents();
 
         if (mounted) {
           final localizations = AppLocalizations.of(context);

@@ -387,7 +387,9 @@ class FirebaseService {
     }
   }
 
-  // Добавление заметки о рыбалке
+  // === СТАРЫЕ МЕТОДЫ (СОХРАНЕНЫ ДЛЯ СОВМЕСТИМОСТИ) ===
+
+  // Добавление заметки о рыбалке (старый метод)
   Future<DocumentReference> addFishingNote(Map<String, dynamic> noteData) async {
     try {
       return await _firestore.collection('fishing_notes').add(noteData);
@@ -399,7 +401,7 @@ class FirebaseService {
     }
   }
 
-  // Обновление заметки о рыбалке
+  // Обновление заметки о рыбалке (старый метод)
   Future<void> updateFishingNote(String noteId, Map<String, dynamic> noteData) async {
     try {
       await _firestore.collection('fishing_notes').doc(noteId).update(noteData);
@@ -411,7 +413,7 @@ class FirebaseService {
     }
   }
 
-  // Получение заметок пользователя
+  // Получение заметок пользователя (старый метод)
   Future<QuerySnapshot> getUserFishingNotes(String userId) async {
     try {
       return await _firestore
@@ -718,6 +720,486 @@ class FirebaseService {
       if (kDebugMode) {
         debugPrint('Ошибка при очистке кэша пользователя: $e');
       }
+    }
+  }
+
+  // ========================================================================
+  // === НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С SUBCOLLECTIONS (СТРУКТУРА "ПО ПОЛОЧКАМ") ===
+  // ========================================================================
+
+  // === МЕТОДЫ ДЛЯ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ===
+
+  /// Создание или обновление профиля пользователя
+  Future<void> createUserProfile(Map<String, dynamic> profileData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore.collection('users').doc(userId).set({
+        'uid': userId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        ...profileData,
+      }, SetOptions(merge: true));
+
+      if (kDebugMode) {
+        debugPrint('Профиль пользователя создан/обновлен: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при создании профиля пользователя: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение профиля пользователя
+  Future<DocumentSnapshot> getUserProfile() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore.collection('users').doc(userId).get();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении профиля пользователя: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Обновление профиля пользователя
+  Future<void> updateUserProfile(Map<String, dynamic> profileData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'updatedAt': FieldValue.serverTimestamp(),
+        ...profileData,
+      });
+
+      if (kDebugMode) {
+        debugPrint('Профиль пользователя обновлен: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении профиля пользователя: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ ЗАМЕТОК О РЫБАЛКЕ (НОВАЯ СТРУКТУРА) ===
+
+  /// Добавление заметки о рыбалке (новая структура)
+  Future<DocumentReference> addFishingNoteNew(Map<String, dynamic> noteData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_notes')
+          .add({
+        ...noteData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении заметки о рыбалке: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Обновление заметки о рыбалке (новая структура)
+  Future<void> updateFishingNoteNew(String noteId, Map<String, dynamic> noteData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_notes')
+          .doc(noteId)
+          .update({
+        ...noteData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении заметки о рыбалке: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение заметок о рыбалке пользователя (новая структура) - ИСПРАВЛЕНО
+  Future<QuerySnapshot> getUserFishingNotesNew() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      // Сортируем по 'date' (это поле точно есть в заметках)
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_notes')
+          .orderBy('date', descending: true)
+          .get();
+    } catch (e) {
+      // Если ошибка связана с индексом, пытаемся выполнить запрос без сортировки
+      if (e.toString().contains('index')) {
+        if (kDebugMode) {
+          debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
+        }
+        return await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('fishing_notes')
+            .get();
+      }
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении заметок о рыбалке: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление заметки о рыбалке (новая структура)
+  Future<void> deleteFishingNoteNew(String noteId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_notes')
+          .doc(noteId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении заметки о рыбалке: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ ПОЕЗДОК НА РЫБАЛКУ ===
+
+  /// Добавление поездки на рыбалку
+  Future<DocumentReference> addFishingTrip(Map<String, dynamic> tripData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .add({
+        ...tripData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении поездки на рыбалку: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Обновление поездки на рыбалку
+  Future<void> updateFishingTrip(String tripId, Map<String, dynamic> tripData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .update({
+        ...tripData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении поездки на рыбалку: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение поездок на рыбалку пользователя
+  Future<QuerySnapshot> getUserFishingTrips() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении поездок на рыбалку: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление поездки на рыбалку
+  Future<void> deleteFishingTrip(String tripId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении поездки на рыбалку: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ МАРКЕРНЫХ КАРТ ===
+
+  /// Добавление маркерной карты
+  Future<DocumentReference> addMarkerMap(Map<String, dynamic> mapData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('marker_maps')
+          .add({
+        ...mapData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении маркерной карты: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Обновление маркерной карты
+  Future<void> updateMarkerMap(String mapId, Map<String, dynamic> mapData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('marker_maps')
+          .doc(mapId)
+          .update({
+        ...mapData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении маркерной карты: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение маркерных карт пользователя
+  Future<QuerySnapshot> getUserMarkerMaps() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('marker_maps')
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении маркерных карт: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление маркерной карты
+  Future<void> deleteMarkerMap(String mapId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('marker_maps')
+          .doc(mapId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении маркерной карты: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ БЮДЖЕТА ===
+
+  /// Добавление заметки о бюджете
+  Future<DocumentReference> addBudgetNote(Map<String, dynamic> budgetData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('budget_notes')
+          .add({
+        ...budgetData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении заметки о бюджете: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Обновление заметки о бюджете
+  Future<void> updateBudgetNote(String noteId, Map<String, dynamic> budgetData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('budget_notes')
+          .doc(noteId)
+          .update({
+        ...budgetData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении заметки о бюджете: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение заметок о бюджете пользователя
+  Future<QuerySnapshot> getUserBudgetNotes() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('budget_notes')
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении заметок о бюджете: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление заметки о бюджете
+  Future<void> deleteBudgetNote(String noteId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('budget_notes')
+          .doc(noteId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении заметки о бюджете: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ СОГЛАСИЙ ПОЛЬЗОВАТЕЛЯ ===
+
+  /// Обновление согласий пользователя
+  Future<void> updateUserConsents(Map<String, dynamic> consentsData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('user_consents')
+          .doc('consents') // Используем фиксированный ID для согласий
+          .set({
+        ...consentsData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (kDebugMode) {
+        debugPrint('Согласия пользователя обновлены: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении согласий пользователя: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение согласий пользователя
+  Future<DocumentSnapshot> getUserConsents() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('user_consents')
+          .doc('consents')
+          .get();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении согласий пользователя: $e');
+      }
+      rethrow;
     }
   }
 }

@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
-import '../../repositories/fishing_note_repository.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: заменил repository на service
 import '../../services/weather/weather_service.dart';
 import '../../utils/network_utils.dart';
 import '../../utils/date_formatter.dart';
@@ -37,7 +37,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   final _tackleController = TextEditingController();
   final _notesController = TextEditingController();
 
-  final _fishingNoteRepository = FishingNoteRepository();
+  final _firebaseService = FirebaseService(); // ИЗМЕНЕНО: заменил repository на service
   final _weatherService = WeatherService();
   final _aiService = AIBitePredictionService();
   final _weatherSettings = WeatherSettingsService();
@@ -414,6 +414,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
+  // ИЗМЕНЕНО: полностью переписан метод для работы с новой структурой Firebase
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -438,6 +439,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     });
 
     try {
+      // Подготовка данных для ИИ-предсказания
       Map<String, dynamic>? aiPredictionMap;
       if (_aiPrediction != null) {
         aiPredictionMap = {
@@ -451,69 +453,120 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         };
       }
 
-      final note = FishingNoteModel(
-        id: const Uuid().v4(),
-        userId: '',
-        location: _locationController.text.trim(),
-        latitude: _latitude,
-        longitude: _longitude,
-        date: _startDate,
-        endDate: _isMultiDay ? _endDate : null,
-        isMultiDay: _isMultiDay,
-        tackle: _tackleController.text.trim(),
-        notes: _notesController.text.trim(),
-        photoUrls: [],
-        fishingType: _selectedFishingType,
-        weather: _weather,
-        biteRecords: _biteRecords,
-        mapMarkers: [],
-        aiPrediction: aiPredictionMap,
-      );
-
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        await _fishingNoteRepository.addFishingNote(note, _selectedPhotos);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations.translate('note_saved_successfully')),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          _hasUnsavedChanges = false;
-          Navigator.pop(context, true);
-        }
-      } else {
-        await _fishingNoteRepository.addFishingNote(note, _selectedPhotos);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                localizations.translate('no_internet_saved_locally'),
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-
-          _hasUnsavedChanges = false;
-          Navigator.pop(context, true);
-        }
+      // Подготовка данных погоды
+      Map<String, dynamic>? weatherMap;
+      if (_weather != null) {
+        weatherMap = {
+          'temperature': _weather!.temperature,
+          'feelsLike': _weather!.feelsLike,
+          'humidity': _weather!.humidity,
+          'pressure': _weather!.pressure,
+          'windSpeed': _weather!.windSpeed,
+          'windDirection': _weather!.windDirection,
+          'cloudCover': _weather!.cloudCover,
+          'sunrise': _weather!.sunrise,
+          'sunset': _weather!.sunset,
+          'isDay': _weather!.isDay,
+          'observationTime': _weather!.observationTime,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
       }
-    } catch (e) {
+
+      // Подготовка данных поклевок
+      List<Map<String, dynamic>> biteRecordsData = _biteRecords.map((record) => {
+        'id': record.id,
+        'time': record.time.millisecondsSinceEpoch,
+        'fishType': record.fishType,
+        'weight': record.weight,
+        'length': record.length,
+        'notes': record.notes,
+        'photoUrls': record.photoUrls,
+      }).toList();
+
+      // НОВАЯ СТРУКТУРА: подготавливаем данные как Map<String, dynamic>
+      final noteData = {
+        'id': const Uuid().v4(),
+        'location': _locationController.text.trim(),
+        'latitude': _latitude,
+        'longitude': _longitude,
+        'date': _startDate.millisecondsSinceEpoch,
+        'endDate': _isMultiDay ? _endDate.millisecondsSinceEpoch : null,
+        'isMultiDay': _isMultiDay,
+        'tackle': _tackleController.text.trim(),
+        'notes': _notesController.text.trim(),
+        'fishingType': _selectedFishingType,
+        'weather': weatherMap,
+        'biteRecords': biteRecordsData,
+        'aiPrediction': aiPredictionMap,
+        'photoUrls': <String>[], // Будет заполнено после загрузки фотографий
+        'mapMarkers': <Map<String, dynamic>>[], // Пустой список маркеров
+      };
+
+      // НОВЫЙ ПОДХОД: загружаем фотографии и обновляем URLs
+      if (_selectedPhotos.isNotEmpty) {
+        final List<String> photoUrls = [];
+        final userId = _firebaseService.currentUserId;
+
+        for (int i = 0; i < _selectedPhotos.length; i++) {
+          final file = _selectedPhotos[i];
+          final fileName = '${noteData['id']}_photo_$i.jpg';
+          final path = 'fishing_notes/$userId/$fileName';
+
+          try {
+            final bytes = await file.readAsBytes();
+            final photoUrl = await _firebaseService.uploadImage(path, bytes);
+            photoUrls.add(photoUrl);
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${localizations.translate('error_uploading_photo')} ${i + 1}'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+          }
+        }
+
+        noteData['photoUrls'] = photoUrls;
+      }
+
+      // НОВЫЙ МЕТОД: используем addFishingNoteNew()
+      await _firebaseService.addFishingNoteNew(noteData);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('error_saving_note')),
+            content: Text(localizations.translate('note_saved_successfully')),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        _hasUnsavedChanges = false;
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMessage;
+        if (e.toString().contains('Пользователь не авторизован')) {
+          errorMessage = localizations.translate('user_not_authorized');
+        } else if (e.toString().contains('No internet') ||
+            e.toString().contains('network')) {
+          errorMessage = localizations.translate('no_internet_connection');
+        } else {
+          errorMessage = localizations.translate('error_saving_note');
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
             action: SnackBarAction(
               label: localizations.translate('retry'),
               textColor: Colors.white,
               onPressed: _saveNote,
             ),
+            duration: const Duration(seconds: 5),
           ),
         );
       }

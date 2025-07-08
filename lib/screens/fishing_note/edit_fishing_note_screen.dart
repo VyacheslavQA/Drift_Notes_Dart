@@ -8,7 +8,7 @@ import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
-import '../../repositories/fishing_note_repository.dart';
+import '../../services/firebase/firebase_service.dart';
 import '../../services/weather/weather_service.dart';
 import '../../services/weather_settings_service.dart';
 import '../../utils/network_utils.dart';
@@ -37,7 +37,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   late TextEditingController _tackleController;
   late TextEditingController _notesController;
 
-  final _fishingNoteRepository = FishingNoteRepository();
+  final _firebaseService = FirebaseService();
   final _weatherService = WeatherService();
   final _weatherSettings = WeatherSettingsService();
 
@@ -111,6 +111,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     );
 
     _animationController.forward();
+
+    debugPrint('🔧 EditFishingNoteScreen: Редактируем заметку ID: ${widget.note.id}');
   }
 
   @override
@@ -299,8 +301,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => MapLocationScreen(
+        builder: (context) => MapLocationScreen(
           initialLatitude: _hasLocation ? _latitude : null,
           initialLongitude: _hasLocation ? _longitude : null,
         ),
@@ -400,8 +401,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => BiteRecordScreen(
+        builder: (context) => BiteRecordScreen(
           fishingStartDate: _startDate,
           fishingEndDate: _isMultiDay ? _endDate : null,
           isMultiDay: _isMultiDay,
@@ -432,6 +432,50 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     }
   }
 
+  // ИСПРАВЛЕНО: Преобразование модели в Map для новой структуры Firebase
+  Map<String, dynamic> _convertNoteToMap(FishingNoteModel note) {
+    return {
+      'title': note.title,
+      'location': note.location,
+      'date': note.date.millisecondsSinceEpoch,
+      'endDate': note.endDate?.millisecondsSinceEpoch,
+      'isMultiDay': note.isMultiDay,
+      'fishingType': note.fishingType,
+      'tackle': note.tackle,
+      'notes': note.notes,
+      'photoUrls': note.photoUrls,
+      'coverPhotoUrl': note.coverPhotoUrl,
+      'coverCropSettings': note.coverCropSettings,
+      'biteRecords': note.biteRecords.map((record) => {
+        'id': record.id,
+        'time': record.time.millisecondsSinceEpoch,
+        'fishType': record.fishType,
+        'weight': record.weight,
+        'length': record.length,
+        'notes': record.notes,
+        'photoUrls': record.photoUrls,
+      }).toList(),
+      'weather': note.weather != null ? {
+        'temperature': note.weather!.temperature,
+        'feelsLike': note.weather!.feelsLike,
+        'humidity': note.weather!.humidity,
+        'pressure': note.weather!.pressure,
+        'windSpeed': note.weather!.windSpeed,
+        'windDirection': note.weather!.windDirection,
+        'cloudCover': note.weather!.cloudCover,
+        'sunrise': note.weather!.sunrise,
+        'sunset': note.weather!.sunset,
+        'isDay': note.weather!.isDay,
+        'observationTime': note.weather!.observationTime.millisecondsSinceEpoch,
+      } : null,
+      'latitude': note.latitude,
+      'longitude': note.longitude,
+      'aiPrediction': note.aiPrediction,
+      // ❌ userId НЕ включаем в данные - он теперь часть пути коллекции!
+    };
+  }
+
+  // ИСПРАВЛЕНО: Метод сохранения заметки с новой структурой Firebase
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -456,6 +500,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     });
 
     try {
+      debugPrint('💾 Начинаем сохранение заметки ID: ${widget.note.id}');
+
       // ИСПРАВЛЕНО: Сохраняем ИИ-анализ в заметку
       Map<String, dynamic>? aiPredictionMap;
       if (_aiPrediction != null) {
@@ -468,6 +514,36 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           'fishingType': _aiPrediction!.fishingType,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         };
+        debugPrint('🧠 Сохраняем ИИ-анализ: ${_aiPrediction!.overallScore} баллов');
+      }
+
+      // Создаем список всех URL фото (существующие + новые, если есть)
+      List<String> allPhotoUrls = List.from(_existingPhotoUrls);
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Подключение к интернету: ${isOnline ? "есть" : "нет"}');
+
+      if (isOnline && _newPhotos.isNotEmpty) {
+        // Если есть интернет и новые фото, загружаем их
+        debugPrint('📸 Загружаем ${_newPhotos.length} новых фото...');
+        for (int i = 0; i < _newPhotos.length; i++) {
+          final photo = _newPhotos[i];
+          try {
+            final photoBytes = await photo.readAsBytes();
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final photoPath = 'fishing_notes/${widget.note.id}/photos/${timestamp}_$i.jpg';
+
+            final photoUrl = await _firebaseService.uploadImage(photoPath, photoBytes);
+            allPhotoUrls.add(photoUrl);
+            debugPrint('✅ Фото ${i + 1} загружено: $photoUrl');
+          } catch (e) {
+            debugPrint('❌ Ошибка загрузки фото ${i + 1}: $e');
+            // Продолжаем загрузку остальных фото
+          }
+        }
+      } else if (_newPhotos.isNotEmpty) {
+        debugPrint('⚠️ Новые фото не загружены - нет интернета');
       }
 
       // Обновляем модель заметки
@@ -480,63 +556,39 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         isMultiDay: _isMultiDay,
         tackle: _tackleController.text.trim(),
         notes: _notesController.text.trim(),
-        photoUrls: _existingPhotoUrls, // Существующие URL фото
+        photoUrls: allPhotoUrls,
         fishingType: _selectedFishingType,
         weather: _weather,
         biteRecords: _biteRecords,
-        mapMarkers: [],
-        aiPrediction: aiPredictionMap, // ДОБАВЛЕНО сохранение ИИ-анализа
+        aiPrediction: aiPredictionMap,
       );
 
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // Преобразуем модель в Map для Firebase (БЕЗ userId)
+      final noteData = _convertNoteToMap(updatedNote);
+      debugPrint('📝 Данные для сохранения подготовлены');
 
       if (isOnline) {
-        // Если есть интернет, обновляем заметку и загружаем новые фото, если они есть
-        if (_newPhotos.isNotEmpty) {
-          // Загрузка новых фото и добавление их URL к заметке
-          await _fishingNoteRepository.updateFishingNoteWithPhotos(
-            updatedNote,
-            _newPhotos,
+        // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ SUBCOLLECTIONS СТРУКТУРЫ
+        debugPrint('🔥 Обновляем заметку в Firebase через updateFishingNoteNew()');
+        debugPrint('📍 Путь: /users/{currentUserId}/fishing_notes/${widget.note.id}');
+
+        await _firebaseService.updateFishingNoteNew(widget.note.id, noteData);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                localizations.translate('note_updated_successfully'),
+              ),
+              backgroundColor: Colors.green,
+            ),
           );
 
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  localizations.translate('note_updated_successfully'),
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            Navigator.pop(
-              context,
-              true,
-            ); // Возвращаем true для обновления списка заметок
-          }
-        } else {
-          // Просто обновляем заметку без новых фото
-          await _fishingNoteRepository.updateFishingNote(updatedNote);
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  localizations.translate('note_updated_successfully'),
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            Navigator.pop(
-              context,
-              true,
-            ); // Возвращаем true для обновления списка заметок
-          }
+          debugPrint('✅ Заметка успешно обновлена в Firebase');
+          Navigator.pop(context, true); // Возвращаем true для обновления списка заметок
         }
       } else {
-        // Если нет интернета
+        // Если нет интернета, показываем сообщение
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -546,23 +598,20 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
               backgroundColor: Colors.orange,
             ),
           );
-        }
 
-        await _fishingNoteRepository.saveOfflineNoteUpdate(
-          updatedNote,
-          _newPhotos,
-        );
-        if (mounted) {
-          Navigator.pop(context);
+          debugPrint('⚠️ Нет интернета - изменения сохранены локально');
+          Navigator.pop(context, true);
         }
       }
     } catch (e) {
+      debugPrint('❌ Ошибка при сохранении заметки: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               '${AppLocalizations.of(context).translate('error_saving')}: $e',
             ),
+            backgroundColor: Colors.red,
           ),
         );
       }

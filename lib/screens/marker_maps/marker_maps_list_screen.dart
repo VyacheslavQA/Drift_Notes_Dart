@@ -3,19 +3,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
-import '../../constants/subscription_constants.dart'; // ContentType находится здесь
+import '../../constants/subscription_constants.dart';
 import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
-import '../../repositories/marker_map_repository.dart';
-import '../../repositories/fishing_note_repository.dart';
+import '../../services/firebase/firebase_service.dart';
 import '../../services/subscription/subscription_service.dart';
 import '../../widgets/loading_overlay.dart';
-// УБРАНО: import '../../widgets/subscription/premium_create_button.dart';
 import '../../widgets/subscription/usage_badge.dart';
-// ДОБАВЛЕНО: Импорт PaywallScreen
 import '../subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
 import 'marker_map_screen.dart';
@@ -28,8 +26,7 @@ class MarkerMapsListScreen extends StatefulWidget {
 }
 
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
-  final _markerMapRepository = MarkerMapRepository();
-  final _fishingNoteRepository = FishingNoteRepository();
+  final _firebaseService = FirebaseService();
   final _subscriptionService = SubscriptionService();
 
   List<MarkerMapModel> _maps = [];
@@ -41,8 +38,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   void initState() {
     super.initState();
     _loadData();
+    debugPrint('🗺️ MarkerMapsListScreen: Инициализация экрана списка карт');
   }
 
+  // ✅ ПРОДАКШЕН: Загрузка данных через новую структуру Firebase
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -50,11 +49,142 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     });
 
     try {
-      // Загружаем все маркерные карты
-      final maps = await _markerMapRepository.getUserMarkerMaps();
+      debugPrint('📥 Загружаем маркерные карты...');
 
-      // Загружаем список заметок для диалога создания новой карты
-      final notes = await _fishingNoteRepository.getUserFishingNotes();
+      // Загружаем все маркерные карты из новой структуры
+      final mapsSnapshot = await _firebaseService.getUserMarkerMaps();
+
+      // Конвертируем QuerySnapshot в список моделей MarkerMapModel
+      final maps = <MarkerMapModel>[];
+      for (final doc in mapsSnapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+
+          // Обработка дат с учетом Timestamp и int
+          DateTime mapDate;
+          if (data['date'] != null) {
+            if (data['date'] is Timestamp) {
+              mapDate = (data['date'] as Timestamp).toDate();
+            } else {
+              mapDate = DateTime.fromMillisecondsSinceEpoch(data['date'] as int);
+            }
+          } else if (data['createdAt'] != null) {
+            if (data['createdAt'] is Timestamp) {
+              mapDate = (data['createdAt'] as Timestamp).toDate();
+            } else {
+              mapDate = DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int);
+            }
+          } else {
+            mapDate = DateTime.now();
+          }
+
+          // Создаем модель маркерной карты
+          final map = MarkerMapModel(
+            id: doc.id,
+            userId: '', // Пустой, так как теперь userId часть пути коллекции
+            name: data['name'] ?? data['title'] ?? '', // Поддержка старых названий полей
+            date: mapDate,
+            sector: data['sector'],
+            noteIds: List<String>.from(data['noteIds'] ?? []),
+            noteNames: List<String>.from(data['noteNames'] ?? []),
+            markers: List<Map<String, dynamic>>.from(data['markers'] ?? []),
+          );
+
+          maps.add(map);
+          debugPrint('✅ Загружена карта: ${map.name} (ID: ${map.id})');
+        } catch (e) {
+          debugPrint('❌ Ошибка при обработке карты ${doc.id}: $e');
+          // Продолжаем обработку остальных карт
+        }
+      }
+
+      // Загружаем заметки для диалога создания новой карты
+      debugPrint('📝 Загружаем заметки для привязки...');
+      final notesSnapshot = await _firebaseService.getUserFishingNotesNew();
+
+      final notes = <FishingNoteModel>[];
+      for (final doc in notesSnapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+
+          // Создаем BiteRecord вручную
+          final biteRecords = <BiteRecord>[];
+          final biteRecordsData = data['biteRecords'] as List<dynamic>? ?? [];
+          for (final recordData in biteRecordsData) {
+            try {
+              final record = recordData as Map<String, dynamic>;
+              biteRecords.add(BiteRecord(
+                id: record['id'] ?? '',
+                time: DateTime.fromMillisecondsSinceEpoch(record['time'] ?? 0),
+                fishType: record['fishType'] ?? '',
+                weight: record['weight']?.toDouble() ?? 0.0,
+                length: record['length']?.toDouble() ?? 0.0,
+                notes: record['notes'] ?? '',
+                photoUrls: List<String>.from(record['photoUrls'] ?? []),
+              ));
+            } catch (e) {
+              debugPrint('❌ Ошибка при обработке записи о поклевке: $e');
+            }
+          }
+
+          // Создаем FishingWeather вручную, если есть данные
+          FishingWeather? weather;
+          if (data['weather'] != null) {
+            try {
+              final weatherData = data['weather'] as Map<String, dynamic>;
+              weather = FishingWeather(
+                temperature: weatherData['temperature']?.toDouble() ?? 0.0,
+                feelsLike: weatherData['feelsLike']?.toDouble() ?? 0.0,
+                humidity: weatherData['humidity']?.toInt() ?? 0,
+                pressure: weatherData['pressure']?.toDouble() ?? 0.0,
+                windSpeed: weatherData['windSpeed']?.toDouble() ?? 0.0,
+                windDirection: weatherData['windDirection'] ?? '',
+                cloudCover: weatherData['cloudCover']?.toInt() ?? 0,
+                sunrise: weatherData['sunrise'] ?? '',
+                sunset: weatherData['sunset'] ?? '',
+                isDay: weatherData['isDay'] ?? true,
+                observationTime: DateTime.fromMillisecondsSinceEpoch(
+                    weatherData['observationTime'] ?? 0
+                ),
+              );
+            } catch (e) {
+              debugPrint('❌ Ошибка при обработке погодных данных: $e');
+            }
+          }
+
+          // Создаем модель заметки
+          final note = FishingNoteModel(
+            id: doc.id,
+            userId: '', // Пустой, так как теперь userId часть пути коллекции
+            title: data['title'] ?? '',
+            location: data['location'] ?? '',
+            date: DateTime.fromMillisecondsSinceEpoch(data['date'] ?? 0),
+            endDate: data['endDate'] != null
+                ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
+                : null,
+            isMultiDay: data['isMultiDay'] ?? false,
+            fishingType: data['fishingType'] ?? 'shore_fishing',
+            tackle: data['tackle'] ?? '',
+            notes: data['notes'] ?? '',
+            photoUrls: List<String>.from(data['photoUrls'] ?? []),
+            coverPhotoUrl: data['coverPhotoUrl'],
+            coverCropSettings: data['coverCropSettings'] != null
+                ? Map<String, dynamic>.from(data['coverCropSettings'])
+                : null,
+            biteRecords: biteRecords,
+            weather: weather,
+            latitude: data['latitude']?.toDouble() ?? 0.0,
+            longitude: data['longitude']?.toDouble() ?? 0.0,
+            aiPrediction: data['aiPrediction'] != null
+                ? Map<String, dynamic>.from(data['aiPrediction'])
+                : null,
+          );
+
+          notes.add(note);
+        } catch (e) {
+          debugPrint('❌ Ошибка при обработке заметки ${doc.id}: $e');
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -62,8 +192,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _notes = notes;
           _isLoading = false;
         });
+
+        debugPrint('✅ Загружено ${maps.length} маркерных карт и ${notes.length} заметок');
       }
     } catch (e) {
+      debugPrint('❌ Ошибка при загрузке данных: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Ошибка загрузки данных: $e';
@@ -73,35 +206,34 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // ИСПРАВЛЕНО: Упрощенная проверка лимитов с детальным логированием
+  // Проверка лимитов с детальным логированием
   Future<void> _handleCreateMapPress() async {
     final localizations = AppLocalizations.of(context);
 
     try {
-      print('🔍 Начинаем проверку лимитов для создания маркерной карты...');
+      debugPrint('🔍 Начинаем проверку лимитов для создания маркерной карты...');
 
       // Проверяем лимиты
       final canCreate = await _subscriptionService.canCreateContent(ContentType.markerMaps);
-      print('✅ Результат canCreateContent: $canCreate');
+      debugPrint('✅ Результат canCreateContent: $canCreate');
 
       if (!canCreate) {
-        print('❌ Лимит превышен, показываем диалог премиума');
-        // ИСПРАВЛЕНО: Используем PaywallScreen вместо самодельного диалога
+        debugPrint('❌ Лимит превышен, показываем диалог премиума');
         _showPremiumRequired(ContentType.markerMaps);
         return;
       }
 
-      print('✅ Лимиты позволяют создать карту, переходим к созданию');
+      debugPrint('✅ Лимиты позволяют создать карту, переходим к созданию');
       _showCreateMapDialog();
 
     } catch (e) {
-      print('❌ Ошибка при проверке лимитов: $e');
+      debugPrint('❌ Ошибка при проверке лимитов: $e');
       // В случае ошибки показываем диалог премиума (безопасный подход)
       _showPremiumRequired(ContentType.markerMaps);
     }
   }
 
-  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  // Единый метод для показа PaywallScreen
   void _showPremiumRequired(ContentType contentType) {
     Navigator.push(
       context,
@@ -223,7 +355,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           location: '',
           fishingType: '',
           date: DateTime.now(),
-          // ИСПРАВЛЕНО: убрали все неправильные поля, оставили только обязательные
         ),
       );
       if (note.id.isNotEmpty) {
@@ -460,7 +591,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                     padding: const EdgeInsets.all(16.0),
                                     child: Text(
                                       localizations.translate(
-                                        'no_notes',
+                                        'no_notes_available',
                                       ),
                                       style: TextStyle(
                                         color: AppConstants.textColor
@@ -622,8 +753,18 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Сохраняем обновленную карту
-        await _markerMapRepository.updateMarkerMap(result);
+        // Сохраняем обновленную карту через новую структуру Firebase
+        final mapData = {
+          'name': result.name,
+          'date': result.date.millisecondsSinceEpoch,
+          'sector': result.sector,
+          'noteIds': result.noteIds,
+          'noteNames': result.noteNames,
+          'markers': result.markers,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        };
+
+        await _firebaseService.updateMarkerMap(result.id, mapData);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -637,6 +778,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _loadData();
         }
       } catch (e) {
+        debugPrint('❌ Ошибка при сохранении карты: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -691,9 +833,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        await _markerMapRepository.deleteMarkerMap(map.id);
+        // Удаляем карту через новую структуру Firebase
+        await _firebaseService.deleteMarkerMap(map.id);
 
-        // ДОБАВЛЕНО: Уменьшаем счетчик при удалении
+        // Уменьшаем счетчик при удалении
         if (!_subscriptionService.hasPremiumAccess()) {
           await _subscriptionService.decrementUsage(ContentType.markerMaps);
         }
@@ -712,6 +855,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _loadData();
         }
       } catch (e) {
+        debugPrint('❌ Ошибка при удалении карты: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -964,7 +1108,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                     padding: const EdgeInsets.all(16.0),
                                     child: Text(
                                       localizations.translate(
-                                        'no_notes',
+                                        'no_notes_available',
                                       ),
                                       style: TextStyle(
                                         color: AppConstants.textColor
@@ -1127,13 +1271,24 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Сохраняем новую карту
-        final mapId = await _markerMapRepository.addMarkerMap(result);
+        // Сохраняем новую карту через новую структуру Firebase
+        final mapData = {
+          'name': result.name,
+          'date': result.date.millisecondsSinceEpoch,
+          'sector': result.sector,
+          'noteIds': result.noteIds,
+          'noteNames': result.noteNames,
+          'markers': result.markers,
+          'createdAt': DateTime.now().millisecondsSinceEpoch,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        };
+
+        final docRef = await _firebaseService.addMarkerMap(mapData);
 
         // Открываем экран редактирования карты
         if (mounted) {
           setState(() => _isLoading = false);
-          final map = result.copyWith(id: mapId);
+          final map = result.copyWith(id: docRef.id);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1142,6 +1297,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           ).then((_) => _loadData());
         }
       } catch (e) {
+        debugPrint('❌ Ошибка при создании карты: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           final localizations = AppLocalizations.of(context);
@@ -1164,7 +1320,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        // ИСПРАВЛЕНО: Добавлен UsageBadge в заголовок как на экране заметок
         title: Row(
           children: [
             Expanded(
@@ -1179,7 +1334,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                 maxLines: 1,
               ),
             ),
-            // ДОБАВЛЕН: Бейдж использования в заголовке
             UsageBadge(
               contentType: ContentType.markerMaps,
               fontSize: isSmallScreen ? 10 : 12,
@@ -1216,14 +1370,20 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             ? _buildEmptyState()
             : _buildMapsList(),
       ),
-      // ИСПРАВЛЕНО: Заменили PremiumFloatingActionButton на обычную кнопку с нашей проверкой
+      // ✅ ОСНОВНАЯ КНОПКА: Всегда показывается в правом нижнем углу
       floatingActionButton: FloatingActionButton(
         onPressed: _handleCreateMapPress,
         backgroundColor: AppConstants.primaryColor,
         foregroundColor: AppConstants.textColor,
-        heroTag: "add_marker_map",
-        child: const Icon(Icons.add),
+        elevation: 6,
+        heroTag: "create_map_fab_main",
+        child: Icon(
+          Icons.add_location_alt, // Иконка маркера
+          size: isSmallScreen ? 24 : 28,
+        ),
+        tooltip: localizations.translate('create_marker_map'),
       ),
+      // Стандартное расположение - правый нижний угол
     );
   }
 
@@ -1294,7 +1454,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             ),
             SizedBox(height: ResponsiveConstants.spacingL),
             Text(
-              localizations.translate('no_notes'),
+              localizations.translate('no_marker_maps'),
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: isSmallScreen ? 18 : (isTablet ? 26 : 22),
@@ -1306,7 +1466,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             ),
             SizedBox(height: ResponsiveConstants.spacingM),
             Text(
-              localizations.translate('start_journal'),
+              localizations.translate('start_mapping'),
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.7),
                 fontSize: isSmallScreen ? 14 : 16,
@@ -1316,7 +1476,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             SizedBox(height: ResponsiveConstants.spacingXL),
-            // ИСПРАВЛЕНО: Заменили PremiumCreateButton на обычную кнопку
+            // ✅ ДОПОЛНИТЕЛЬНАЯ КНОПКА: Показывается только когда нет карт
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
