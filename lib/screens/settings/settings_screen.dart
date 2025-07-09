@@ -660,26 +660,6 @@ class SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
 
-              const SizedBox(height: 20),
-
-              // === НОВАЯ СЕКЦИЯ: АДМИНИСТРИРОВАНИЕ ===
-              _buildSectionHeader('Администрирование'),
-              Card(
-                color: AppConstants.cardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.storage, color: Colors.purple),
-                  title: const Text('Миграция данных'),
-                  subtitle: const Text('Переход на новую структуру "по полочкам"'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/simple_migration');
-                  },
-                ),
-              ),
-
               const SizedBox(height: 40),
             ],
           ),

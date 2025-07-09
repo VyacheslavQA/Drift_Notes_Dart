@@ -6,10 +6,11 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_text.dart';
-import '../../services/firebase/firebase_service.dart';
+import '../../services/subscription/subscription_service.dart';
+import '../../constants/subscription_constants.dart';
 
 /// Экран добавления всех расходов на рыбалку за одну поездку
 class AddExpenseScreen extends StatefulWidget {
@@ -31,8 +32,8 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
-  final FirebaseService _firebaseService = FirebaseService();
+  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   // Общая информация о рыбалке
   DateTime _selectedDate = DateTime.now();
@@ -244,6 +245,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  // ИЗМЕНЕНО: Полностью переписан метод сохранения под новую структуру Firebase
   Future<void> _saveFishingTripExpenses() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -305,95 +307,141 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  // ИЗМЕНЕНО: Новый метод создания поездки через Firebase subcollections
   Future<void> _createNewTrip() async {
     final localizations = AppLocalizations.of(context);
 
-    // Подготавливаем описания с локализацией
-    final Map<FishingExpenseCategory, String> localizedDescriptions = {};
-    for (final category in _categoryDescriptions.keys) {
-      final description = _categoryDescriptions[category]?.trim() ?? '';
-      localizedDescriptions[category] = description.isNotEmpty
-          ? description
-          : (localizations.translate('expenses_default') ?? 'Расходы');
-    }
+    try {
+      // Создаем данные поездки
+      final tripData = {
+        'userId': _firebaseService.currentUserId,
+        'date': _selectedDate,
+        'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+        'notes': _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
+        'currency': _selectedCurrency,
+      };
 
-    await _expenseRepository.createTripWithExpenses(
-      date: _selectedDate,
-      locationName: _locationController.text.trim().isEmpty
-          ? null
-          : _locationController.text.trim(),
-      notes: _tripNotesController.text.trim().isEmpty
-          ? null
-          : _tripNotesController.text.trim(),
-      currency: _selectedCurrency,
-      categoryAmounts: _categoryAmounts,
-      categoryDescriptions: localizedDescriptions,
-      categoryNotes: _categoryNotes,
-    );
+      // Создаем поездку
+      final tripRef = await _firebaseService.addFishingTrip(tripData);
+      final tripId = tripRef.id;
+
+      // Создаем список расходов для добавления
+      final expensesToAdd = <Map<String, dynamic>>[];
+
+      for (final category in FishingExpenseCategory.allCategories) {
+        final amount = _categoryAmounts[category] ?? 0.0;
+        if (amount > 0) {
+          final description = _categoryDescriptions[category]?.trim() ?? '';
+          final expenseNotes = _categoryNotes[category]?.trim() ?? '';
+
+          final expenseData = {
+            'userId': _firebaseService.currentUserId,
+            'tripId': tripId,
+            'amount': amount,
+            'description': description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
+            'category': category.id,
+            'date': _selectedDate,
+            'currency': _selectedCurrency,
+            'notes': expenseNotes.isEmpty ? null : expenseNotes,
+            'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          };
+
+          expensesToAdd.add(expenseData);
+        }
+      }
+
+      // Добавляем все расходы к поездке
+      for (final expenseData in expensesToAdd) {
+        await _firebaseService.addFishingExpense(tripId, expenseData);
+      }
+
+      // Увеличиваем счетчик использования после успешного создания
+      try {
+        await _subscriptionService.incrementUsage(ContentType.expenses);
+        debugPrint('✅ Счетчик расходов/поездок увеличен');
+      } catch (e) {
+        debugPrint('❌ Ошибка увеличения счетчика расходов/поездок: $e');
+      }
+
+    } catch (e) {
+      debugPrint('Ошибка создания поездки: $e');
+      rethrow;
+    }
   }
 
+  // ИЗМЕНЕНО: Новый метод обновления поездки через Firebase subcollections
   Future<void> _updateExistingTrip() async {
     final localizations = AppLocalizations.of(context);
     final existingTrip = widget.tripToEdit!;
 
-    // Создаем новые расходы на основе текущих данных формы
-    final List<FishingExpenseModel> newExpenses = [];
-    int expenseIndex = 0;
+    try {
+      // Обновляем данные поездки
+      final tripData = {
+        'date': _selectedDate,
+        'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+        'notes': _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
+        'currency': _selectedCurrency,
+      };
 
-    for (final category in FishingExpenseCategory.allCategories) {
-      final amount = _categoryAmounts[category] ?? 0.0;
-      if (amount > 0) {
-        final description = _categoryDescriptions[category]?.trim() ?? '';
-        final expenseNotes = _categoryNotes[category]?.trim() ?? '';
+      await _firebaseService.updateFishingTrip(existingTrip.id, tripData);
 
-        // Ищем существующий расход этой категории для сохранения ID
-        final existingExpense = existingTrip.expenses
-            .where((e) => e.category == category)
-            .isNotEmpty
-            ? existingTrip.expenses.firstWhere((e) => e.category == category)
-            : null;
+      // Получаем текущие расходы поездки
+      final currentExpensesSnapshot = await _firebaseService.getFishingTripExpenses(existingTrip.id);
+      final currentExpenses = <String, Map<String, dynamic>>{};
 
-        final now = DateTime.now();
-        final expenseId = existingExpense?.id ?? 'expense_${now.millisecondsSinceEpoch}_$expenseIndex';
-
-        final expense = FishingExpenseModel(
-          id: expenseId,
-          userId: existingTrip.userId,
-          tripId: existingTrip.id,
-          amount: amount,
-          description: description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
-          category: category,
-          date: _selectedDate,
-          currency: _selectedCurrency,
-          notes: expenseNotes.isEmpty ? null : expenseNotes,
-          locationName: _locationController.text.trim().isEmpty
-              ? null
-              : _locationController.text.trim(),
-          createdAt: existingExpense?.createdAt ?? now,
-          updatedAt: now,
-          isSynced: false,
-        );
-
-        newExpenses.add(expense);
-        expenseIndex++;
+      for (var doc in currentExpensesSnapshot.docs) {
+        final expenseData = doc.data() as Map<String, dynamic>;
+        final category = expenseData['category'] as String;
+        currentExpenses[category] = {
+          'id': doc.id,
+          ...expenseData,
+        };
       }
+
+      // Обновляем/добавляем/удаляем расходы по категориям
+      for (final category in FishingExpenseCategory.allCategories) {
+        final amount = _categoryAmounts[category] ?? 0.0;
+        final categoryId = category.id;
+
+        if (amount > 0) {
+          // Есть расход в этой категории
+          final description = _categoryDescriptions[category]?.trim() ?? '';
+          final expenseNotes = _categoryNotes[category]?.trim() ?? '';
+
+          final expenseData = {
+            'userId': _firebaseService.currentUserId,
+            'tripId': existingTrip.id,
+            'amount': amount,
+            'description': description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
+            'category': categoryId,
+            'date': _selectedDate,
+            'currency': _selectedCurrency,
+            'notes': expenseNotes.isEmpty ? null : expenseNotes,
+            'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          };
+
+          if (currentExpenses.containsKey(categoryId)) {
+            // Обновляем существующий расход
+            final existingExpenseId = currentExpenses[categoryId]!['id'];
+            await _firebaseService.updateFishingExpense(existingTrip.id, existingExpenseId, expenseData);
+          } else {
+            // Добавляем новый расход
+            await _firebaseService.addFishingExpense(existingTrip.id, expenseData);
+          }
+        } else {
+          // Нет расхода в этой категории
+          if (currentExpenses.containsKey(categoryId)) {
+            // Удаляем существующий расход
+            final existingExpenseId = currentExpenses[categoryId]!['id'];
+            await _firebaseService.deleteFishingExpense(existingTrip.id, existingExpenseId);
+          }
+        }
+      }
+
+    } catch (e) {
+      debugPrint('Ошибка обновления поездки: $e');
+      rethrow;
     }
-
-    // Обновляем поездку с новыми данными
-    final updatedTrip = existingTrip.copyWith(
-      date: _selectedDate,
-      locationName: _locationController.text.trim().isEmpty
-          ? null
-          : _locationController.text.trim(),
-      notes: _tripNotesController.text.trim().isEmpty
-          ? null
-          : _tripNotesController.text.trim(),
-      currency: _selectedCurrency,
-      updatedAt: DateTime.now(),
-      expenses: newExpenses,
-    );
-
-    await _expenseRepository.updateTrip(updatedTrip);
   }
 
   void _showErrorSnackBar(String message) {

@@ -7,7 +7,7 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -36,7 +36,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
+  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService вместо репозитория
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   List<FishingTripModel> _trips = [];
@@ -57,13 +57,55 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     super.dispose();
   }
 
+  // ИЗМЕНЕНО: Новый метод загрузки поездок через FirebaseService
   Future<void> _loadTrips() async {
     try {
       setState(() => _isLoading = true);
 
-      final trips = await _expenseRepository.getUserTrips();
+      // Загружаем поездки через FirebaseService
+      final tripsSnapshot = await _firebaseService.getUserFishingTrips();
+      final List<FishingTripModel> trips = [];
+
+      for (var doc in tripsSnapshot.docs) {
+        try {
+          final tripData = doc.data() as Map<String, dynamic>;
+          tripData['id'] = doc.id; // Добавляем ID документа
+
+          // Загружаем расходы для каждой поездки из subcollection
+          final expensesSnapshot = await _firebaseService.getFishingTripExpenses(doc.id);
+          final List<FishingExpenseModel> expenses = [];
+
+          for (var expenseDoc in expensesSnapshot.docs) {
+            try {
+              final expenseData = expenseDoc.data() as Map<String, dynamic>;
+              expenseData['id'] = expenseDoc.id;
+              expenses.add(FishingExpenseModel.fromMap(expenseData));
+            } catch (e) {
+              debugPrint('Ошибка парсинга расхода ${expenseDoc.id}: $e');
+            }
+          }
+
+          // Создаем поездку с расходами
+          final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
+          trips.add(trip);
+        } catch (e) {
+          debugPrint('Ошибка парсинга поездки ${doc.id}: $e');
+        }
+      }
+
+      // Сортируем поездки по дате (новые сначала)
+      trips.sort((a, b) => b.date.compareTo(a.date));
+
       final filteredTrips = _filterTripsByPeriod(trips, _selectedPeriod);
       final statistics = FishingTripStatistics.fromTrips(filteredTrips);
+
+      // ДОБАВЛЕНО: Обновляем лимиты подписки после загрузки поездок
+      try {
+        await _subscriptionService.refreshUsageLimits();
+        debugPrint('✅ Лимиты подписки обновлены после загрузки поездок');
+      } catch (e) {
+        debugPrint('❌ Ошибка обновления лимитов: $e');
+      }
 
       if (mounted) {
         setState(() {
@@ -81,9 +123,10 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     }
   }
 
+  // ИЗМЕНЕНО: Упрощенная проверка Firestore (теперь через новую структуру)
   Future<void> _checkFirestoreDirectly() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = _firebaseService.currentUserId;
       final localizations = AppLocalizations.of(context);
 
       if (userId == null) {
@@ -91,9 +134,11 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         return;
       }
 
+      // Проверяем новую структуру subcollections
       final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
           .collection('fishing_trips')
-          .where('userId', isEqualTo: userId)
           .get();
 
       _showErrorSnackBar('Firestore: ${snapshot.docs.length} ${localizations.translate('trips')} | ${localizations.translate('locally')}: ${_trips.length} ${localizations.translate('trips')}');
@@ -103,14 +148,12 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     }
   }
 
+  // ИЗМЕНЕНО: Упрощенная синхронизация
   Future<void> _forceFirestoreSync() async {
     try {
       setState(() => _isLoading = true);
 
-      // ТОЛЬКО очищаем локальный кеш через публичный метод репозитория
-      await _expenseRepository.clearOfflineCache();
-
-      // Загружаем заново из Firestore
+      // Просто перезагружаем данные из Firestore
       await _loadTrips();
 
       final localizations = AppLocalizations.of(context);

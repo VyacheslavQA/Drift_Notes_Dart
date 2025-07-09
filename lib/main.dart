@@ -49,7 +49,6 @@ import 'services/scheduled_reminder_service.dart';
 import 'services/tournament_service.dart';
 import 'services/timer/timer_service.dart';
 import 'screens/tournaments/tournament_detail_screen.dart';
-import 'screens/debug/simple_migration_page.dart';
 
 // Глобальная переменная для flutter_local_notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -922,21 +921,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   Widget build(BuildContext context) {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
-        // Проверяем инициализацию перед построением UI
-        if (!languageProvider.isInitialized) {
-          return MaterialApp(
-            home: Scaffold(
-              backgroundColor: AppConstants.backgroundColor,
-              body: Center(
-                child: CircularProgressIndicator(
-                  color: AppConstants.textColor,
-                ),
-              ),
-            ),
-            debugShowCheckedModeBanner: false,
-          );
-        }
-
         return MaterialApp(
           navigatorKey: globalNavigatorKey,
           title: 'Drift Notes',
@@ -1088,7 +1072,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             '/help_contact': (context) => const HelpContactScreen(),
             '/settings/accepted_agreements': (context) => const AcceptedAgreementsScreen(),
             '/timers': (context) => const TimersScreen(),
-            '/simple_migration': (context) => SimpleMigrationPage(),
           },
         );
       },

@@ -668,7 +668,7 @@ class FirebaseService {
       final userDoc = _firestore.collection('users').doc(userId);
       batch.delete(userDoc);
 
-      // Удаляем все заметки пользователя
+      // Удаляем все заметки пользователя (старая структура)
       final notesQuery = await _firestore
           .collection('fishing_notes')
           .where('userId', isEqualTo: userId)
@@ -678,7 +678,7 @@ class FirebaseService {
         batch.delete(doc.reference);
       }
 
-      // Удаляем все маркерные карты пользователя
+      // Удаляем все маркерные карты пользователя (старая структура)
       final mapsQuery = await _firestore
           .collection('marker_maps')
           .where('userId', isEqualTo: userId)
@@ -1154,37 +1154,108 @@ class FirebaseService {
     }
   }
 
-  // === МЕТОДЫ ДЛЯ СОГЛАСИЙ ПОЛЬЗОВАТЕЛЯ ===
+  // === МЕТОДЫ ДЛЯ СОГЛАСИЙ ПОЛЬЗОВАТЕЛЯ (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ) ===
 
-  /// Обновление согласий пользователя
+  /// Обновление согласий пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
   Future<void> updateUserConsents(Map<String, dynamic> consentsData) async {
     final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ СОГЛАСИЙ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔍 consentsData: $consentsData');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null!');
+      throw Exception('Пользователь не авторизован');
+    }
 
     try {
-      await _firestore
+      final docRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('user_consents')
-          .doc('consents') // Используем фиксированный ID для согласий
-          .set({
+          .doc('consents');
+
+      debugPrint('🔍 Полный путь: users/$userId/user_consents/consents');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final dataToSave = {
         ...consentsData,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'debug_userId': userId,
+        'debug_timestamp': DateTime.now().toIso8601String(),
+      };
 
-      if (kDebugMode) {
-        debugPrint('Согласия пользователя обновлены: $userId');
+      debugPrint('🔍 Данные для сохранения: $dataToSave');
+
+      await docRef.set(dataToSave, SetOptions(merge: true));
+
+      debugPrint('✅ Согласия успешно сохранены в Firebase!');
+
+      // Проверяем что данные действительно сохранились
+      final savedDoc = await docRef.get();
+      debugPrint('🔍 Проверка сохранения: exists=${savedDoc.exists}');
+      if (savedDoc.exists) {
+        debugPrint('🔍 Сохраненные данные: ${savedDoc.data()}');
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении согласий пользователя: $e');
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при сохранении согласий: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+
+    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ СОГЛАСИЙ ===');
+  }
+
+  /// Получение согласий пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  Future<DocumentSnapshot> getUserConsents() async {
+    final userId = currentUserId;
+
+    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ СОГЛАСИЙ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при получении согласий!');
+      throw Exception('Пользователь не авторизован');
+    }
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('user_consents')
+          .doc('consents');
+
+      debugPrint('🔍 Полный путь для получения: users/$userId/user_consents/consents');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final doc = await docRef.get();
+
+      debugPrint('🔍 Документ существует: ${doc.exists}');
+      if (doc.exists) {
+        debugPrint('🔍 Данные из Firebase: ${doc.data()}');
+      } else {
+        debugPrint('⚠️ Документ согласий не найден в Firebase');
       }
+
+      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ СОГЛАСИЙ ===');
+      return doc;
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при получении согласий: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
       rethrow;
     }
   }
 
-  /// Получение согласий пользователя
-  Future<DocumentSnapshot> getUserConsents() async {
+  // === МЕТОДЫ ДЛЯ РАСХОДОВ РЫБАЛКИ (SUBCOLLECTIONS) ===
+
+  /// Добавление расхода к поездке
+  Future<DocumentReference> addFishingExpense(String tripId, Map<String, dynamic> expenseData) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
@@ -1192,14 +1263,398 @@ class FirebaseService {
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('user_consents')
-          .doc('consents')
+          .collection('fishing_trips')
+          .doc(tripId)
+          .collection('expenses')
+          .add({
+        ...expenseData,
+        'tripId': tripId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при добавлении расхода к поездке: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение всех расходов поездки
+  Future<QuerySnapshot> getFishingTripExpenses(String tripId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .collection('expenses')
+          .orderBy('createdAt', descending: false)
           .get();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Ошибка при получении согласий пользователя: $e');
+        debugPrint('Ошибка при получении расходов поездки: $e');
       }
       rethrow;
+    }
+  }
+
+  /// Обновление расхода
+  Future<void> updateFishingExpense(String tripId, String expenseId, Map<String, dynamic> expenseData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .collection('expenses')
+          .doc(expenseId)
+          .update({
+        ...expenseData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при обновлении расхода: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление расхода
+  Future<void> deleteFishingExpense(String tripId, String expenseId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .collection('expenses')
+          .doc(expenseId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении расхода: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение поездки с расходами
+  Future<Map<String, dynamic>?> getFishingTripWithExpenses(String tripId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      // Получаем основную поездку
+      final tripDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId)
+          .get();
+
+      if (!tripDoc.exists) return null;
+
+      // Получаем расходы поездки
+      final expensesSnapshot = await getFishingTripExpenses(tripId);
+
+      final tripData = tripDoc.data() as Map<String, dynamic>;
+      tripData['id'] = tripDoc.id;
+
+      // Добавляем расходы в данные поездки
+      final expenses = expensesSnapshot.docs.map((doc) {
+        final expenseData = doc.data() as Map<String, dynamic>;
+        expenseData['id'] = doc.id;
+        return expenseData;
+      }).toList();
+
+      tripData['expenses'] = expenses;
+
+      return tripData;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении поездки с расходами: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Получение всех расходов пользователя (для аналитики)
+  Future<List<Map<String, dynamic>>> getAllUserExpenses() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      final allExpenses = <Map<String, dynamic>>[];
+
+      // Получаем все поездки пользователя
+      final tripsSnapshot = await getUserFishingTrips();
+
+      // Для каждой поездки получаем расходы
+      for (var tripDoc in tripsSnapshot.docs) {
+        final tripId = tripDoc.id;
+        final expensesSnapshot = await getFishingTripExpenses(tripId);
+
+        for (var expenseDoc in expensesSnapshot.docs) {
+          final expenseData = expenseDoc.data() as Map<String, dynamic>;
+          expenseData['id'] = expenseDoc.id;
+          expenseData['tripId'] = tripId;
+          allExpenses.add(expenseData);
+        }
+      }
+
+      return allExpenses;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при получении всех расходов пользователя: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Создание поездки с расходами (пакетная операция)
+  Future<String> createFishingTripWithExpenses({
+    required Map<String, dynamic> tripData,
+    required List<Map<String, dynamic>> expenses,
+  }) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      // Создаем поездку
+      final tripRef = await addFishingTrip(tripData);
+      final tripId = tripRef.id;
+
+      // Добавляем расходы к поездке
+      for (final expenseData in expenses) {
+        await addFishingExpense(tripId, expenseData);
+      }
+
+      return tripId;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при создании поездки с расходами: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Удаление поездки со всеми расходами
+  Future<void> deleteFishingTripWithExpenses(String tripId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      // Удаляем все расходы поездки
+      final expensesSnapshot = await getFishingTripExpenses(tripId);
+      final batch = _firestore.batch();
+
+      for (var expenseDoc in expensesSnapshot.docs) {
+        batch.delete(expenseDoc.reference);
+      }
+
+      // Удаляем саму поездку
+      final tripRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips')
+          .doc(tripId);
+
+      batch.delete(tripRef);
+
+      // Выполняем пакетное удаление
+      await batch.commit();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ошибка при удалении поездки с расходами: $e');
+      }
+      rethrow;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ ПОДПИСКИ ПОЛЬЗОВАТЕЛЯ (НОВАЯ СТРУКТУРА) ===
+
+  /// Обновление подписки пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  Future<void> updateUserSubscription(Map<String, dynamic> subscriptionData) async {
+    final userId = currentUserId;
+
+    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ ПОДПИСКИ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔍 subscriptionData: $subscriptionData');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при обновлении подписки!');
+      throw Exception('Пользователь не авторизован');
+    }
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subscription')
+          .doc('current');
+
+      debugPrint('🔍 Полный путь подписки: users/$userId/subscription/current');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final dataToSave = {
+        ...subscriptionData,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'debug_userId': userId,
+        'debug_timestamp': DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('🔍 Данные подписки для сохранения: $dataToSave');
+
+      await docRef.set(dataToSave, SetOptions(merge: true));
+
+      debugPrint('✅ Подписка успешно сохранена в Firebase!');
+
+      // Проверяем что данные действительно сохранились
+      final savedDoc = await docRef.get();
+      debugPrint('🔍 Проверка сохранения подписки: exists=${savedDoc.exists}');
+      if (savedDoc.exists) {
+        debugPrint('🔍 Сохраненные данные подписки: ${savedDoc.data()}');
+      }
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при сохранении подписки: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+
+    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ ПОДПИСКИ ===');
+  }
+
+  /// Получение подписки пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  Future<DocumentSnapshot> getUserSubscription() async {
+    final userId = currentUserId;
+
+    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ ПОДПИСКИ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при получении подписки!');
+      throw Exception('Пользователь не авторизован');
+    }
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subscription')
+          .doc('current');
+
+      debugPrint('🔍 Полный путь для получения подписки: users/$userId/subscription/current');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final doc = await docRef.get();
+
+      debugPrint('🔍 Документ подписки существует: ${doc.exists}');
+      if (doc.exists) {
+        debugPrint('🔍 Данные подписки из Firebase: ${doc.data()}');
+      } else {
+        debugPrint('⚠️ Документ подписки не найден в Firebase');
+      }
+
+      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ ПОДПИСКИ ===');
+      return doc;
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при получении подписки: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Отмена подписки пользователя
+  Future<void> cancelUserSubscription() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 Отмена подписки для пользователя: $userId');
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subscription')
+          .doc('current')
+          .update({
+        'status': 'canceled',
+        'isActive': false,
+        'canceledAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ Подписка отменена: $userId');
+    } catch (e) {
+      debugPrint('❌ Ошибка при отмене подписки: $e');
+      rethrow;
+    }
+  }
+
+  /// Удаление подписки пользователя (полное удаление документа)
+  Future<void> deleteUserSubscription() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 Удаление подписки для пользователя: $userId');
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subscription')
+          .doc('current')
+          .delete();
+
+      debugPrint('✅ Подписка удалена: $userId');
+    } catch (e) {
+      debugPrint('❌ Ошибка при удалении подписки: $e');
+      rethrow;
+    }
+  }
+
+  /// Проверка активности подписки
+  Future<bool> isSubscriptionActive() async {
+    try {
+      final doc = await getUserSubscription();
+      if (!doc.exists) return false;
+
+      final data = doc.data() as Map<String, dynamic>;
+      final isActive = data['isActive'] ?? false;
+      final status = data['status'] ?? 'none';
+
+      // Проверяем дату истечения если есть
+      if (data['expirationDate'] != null) {
+        final expirationDate = (data['expirationDate'] as Timestamp).toDate();
+        final isNotExpired = DateTime.now().isBefore(expirationDate);
+
+        debugPrint('🔍 Проверка подписки: active=$isActive, status=$status, expires=${expirationDate.toIso8601String()}, notExpired=$isNotExpired');
+
+        return isActive && status == 'active' && isNotExpired;
+      }
+
+      debugPrint('🔍 Проверка подписки: active=$isActive, status=$status');
+      return isActive && status == 'active';
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке активности подписки: $e');
+      return false;
     }
   }
 }

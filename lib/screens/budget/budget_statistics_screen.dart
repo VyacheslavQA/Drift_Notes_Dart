@@ -1,11 +1,13 @@
 // Путь: lib/screens/budget/budget_statistics_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ДОБАВЛЕНО: Для работы с Timestamp
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart';
+import '../../models/fishing_expense_model.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -25,7 +27,7 @@ class BudgetStatisticsScreen extends StatefulWidget {
 }
 
 class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
+  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
 
   String _selectedPeriod = 'all'; // month, year, all, custom
   DateTime? _customStartDate;
@@ -42,6 +44,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     }
   }
 
+  // ИЗМЕНЕНО: Новый метод загрузки статистики через Firebase
   Future<void> _loadStatistics() async {
     setState(() => _isLoading = true);
 
@@ -70,7 +73,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           break;
       }
 
-      final statistics = await _expenseRepository.getTripStatistics(
+      final statistics = await _getTripStatistics(
         startDate: startDate,
         endDate: endDate,
       );
@@ -87,6 +90,61 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
         final localizations = AppLocalizations.of(context);
         _showErrorSnackBar('${localizations.translate('statistics_loading_error')}: $e');
       }
+    }
+  }
+
+  // ИЗМЕНЕНО: Новый метод получения статистики поездок через Firebase
+  Future<FishingTripStatistics> _getTripStatistics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      // Получаем все поездки пользователя
+      final tripsSnapshot = await _firebaseService.getUserFishingTrips();
+      final List<FishingTripModel> allTrips = [];
+
+      for (var doc in tripsSnapshot.docs) {
+        try {
+          final tripData = doc.data() as Map<String, dynamic>;
+          tripData['id'] = doc.id;
+
+          // Загружаем расходы для каждой поездки
+          final expensesSnapshot = await _firebaseService.getFishingTripExpenses(doc.id);
+          final List<FishingExpenseModel> expenses = [];
+
+          for (var expenseDoc in expensesSnapshot.docs) {
+            try {
+              final expenseData = expenseDoc.data() as Map<String, dynamic>;
+              expenseData['id'] = expenseDoc.id;
+              expenses.add(FishingExpenseModel.fromMap(expenseData));
+            } catch (e) {
+              debugPrint('Ошибка парсинга расхода ${expenseDoc.id}: $e');
+            }
+          }
+
+          // Создаем поездку с расходами
+          final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
+          allTrips.add(trip);
+        } catch (e) {
+          debugPrint('Ошибка парсинга поездки ${doc.id}: $e');
+        }
+      }
+
+      // Фильтруем поездки по периоду
+      final filteredTrips = allTrips.where((trip) {
+        if (startDate != null && trip.date.isBefore(startDate)) return false;
+        if (endDate != null && trip.date.isAfter(endDate)) return false;
+        return true;
+      }).toList();
+
+      return FishingTripStatistics.fromTrips(
+        filteredTrips,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      debugPrint('Ошибка получения статистики поездок: $e');
+      return FishingTripStatistics.fromTrips([]);
     }
   }
 

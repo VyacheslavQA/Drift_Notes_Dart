@@ -21,8 +21,9 @@ class SubscriptionService {
   SubscriptionService._internal();
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
-  final FirebaseService _firebaseService = FirebaseService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ИСПРАВЛЕНО: FirebaseService теперь инжектируется извне
+  FirebaseService? _firebaseService;
   final UsageLimitsService _usageLimitsService = UsageLimitsService();
 
   // Тестовые аккаунты для Google Play Review
@@ -55,10 +56,23 @@ class SubscriptionService {
   // Стрим статуса подписки для совместимости с виджетами
   Stream<SubscriptionStatus> get subscriptionStatusStream => _subscriptionStatusController.stream;
 
+  /// Установка FirebaseService (вызывается ServiceManager'ом)
+  void setFirebaseService(FirebaseService firebaseService) {
+    _firebaseService = firebaseService;
+  }
+
+  /// Получение FirebaseService (с проверкой инициализации)
+  FirebaseService get firebaseService {
+    if (_firebaseService == null) {
+      throw Exception('SubscriptionService не инициализирован! FirebaseService не установлен.');
+    }
+    return _firebaseService!;
+  }
+
   /// Проверка тестового аккаунта
   bool _isTestAccount() {
     try {
-      final currentUser = _firebaseService.currentUser;
+      final currentUser = firebaseService.currentUser;
       if (currentUser?.email == null) return false;
 
       final email = currentUser!.email!.toLowerCase().trim();
@@ -85,7 +99,7 @@ class SubscriptionService {
   /// Получение email текущего пользователя
   String? getCurrentUserEmail() {
     try {
-      return _firebaseService.currentUser?.email?.toLowerCase().trim();
+      return firebaseService.currentUser?.email?.toLowerCase().trim();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения email: $e');
@@ -99,6 +113,14 @@ class SubscriptionService {
     try {
       if (kDebugMode) {
         debugPrint('🔄 Инициализация SubscriptionService...');
+      }
+
+      // Проверяем что FirebaseService установлен
+      if (_firebaseService == null) {
+        if (kDebugMode) {
+          debugPrint('⚠️ FirebaseService не установлен, пропускаем инициализацию SubscriptionService');
+        }
+        return;
       }
 
       // Инициализируем UsageLimitsService (для совместимости, но не используем для подсчета)
@@ -150,10 +172,10 @@ class SubscriptionService {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Обновление кэша использования из новой структуры Firebase
+  /// ОБНОВЛЕН: Обновление кэша использования из новой структуры Firebase
   Future<void> _refreshUsageCache() async {
     try {
-      final userId = _firebaseService.currentUserId;
+      final userId = firebaseService.currentUserId;
       if (userId == null) {
         _usageCache.clear();
         return;
@@ -165,13 +187,9 @@ class SubscriptionService {
 
       final Map<ContentType, int> newCache = {};
 
-      // Подсчитываем fishing_notes из новой структуры
+      // ИСПРАВЛЕНО: Подсчитываем из новой структуры subcollections
       try {
-        final fishingNotesSnapshot = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('fishing_notes')
-            .get();
+        final fishingNotesSnapshot = await firebaseService.getUserFishingNotesNew();
         newCache[ContentType.fishingNotes] = fishingNotesSnapshot.docs.length;
       } catch (e) {
         if (kDebugMode) {
@@ -180,13 +198,9 @@ class SubscriptionService {
         newCache[ContentType.fishingNotes] = 0;
       }
 
-      // Подсчитываем marker_maps из новой структуры
+      // ИСПРАВЛЕНО: Подсчитываем маркерные карты из новой структуры
       try {
-        final markerMapsSnapshot = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('marker_maps')
-            .get();
+        final markerMapsSnapshot = await firebaseService.getUserMarkerMaps();
         newCache[ContentType.markerMaps] = markerMapsSnapshot.docs.length;
       } catch (e) {
         if (kDebugMode) {
@@ -195,17 +209,13 @@ class SubscriptionService {
         newCache[ContentType.markerMaps] = 0;
       }
 
-      // Подсчитываем budget_notes из новой структуры
+      // ИСПРАВЛЕНО: Подсчитываем поездки из новой структуры
       try {
-        final budgetNotesSnapshot = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('budget_notes')
-            .get();
-        newCache[ContentType.expenses] = budgetNotesSnapshot.docs.length;
+        final fishingTripsSnapshot = await firebaseService.getUserFishingTrips();
+        newCache[ContentType.expenses] = fishingTripsSnapshot.docs.length;
       } catch (e) {
         if (kDebugMode) {
-          debugPrint('❌ Ошибка подсчета budget_notes: $e');
+          debugPrint('❌ Ошибка подсчета fishing_trips: $e');
         }
         newCache[ContentType.expenses] = 0;
       }
@@ -217,7 +227,7 @@ class SubscriptionService {
       _lastUsageCacheUpdate = DateTime.now();
 
       if (kDebugMode) {
-        debugPrint('✅ Кэш использования обновлен:');
+        debugPrint('✅ Кэш использования обновлен из новой структуры:');
         for (final entry in _usageCache.entries) {
           debugPrint('   ${entry.key.name}: ${entry.value}');
         }
@@ -235,37 +245,25 @@ class SubscriptionService {
     return DateTime.now().difference(_lastUsageCacheUpdate!) < _cacheValidDuration;
   }
 
-  /// НОВЫЙ МЕТОД: Прямой подсчет использования из новой структуры Firebase
+  /// ОБНОВЛЕН: Прямой подсчет использования из новой структуры Firebase
   Future<int> _getDirectUsageCount(ContentType contentType) async {
     try {
-      final userId = _firebaseService.currentUserId;
+      final userId = firebaseService.currentUserId;
       if (userId == null) return 0;
 
       QuerySnapshot snapshot;
 
       switch (contentType) {
         case ContentType.fishingNotes:
-          snapshot = await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .get();
+          snapshot = await firebaseService.getUserFishingNotesNew();
           break;
 
         case ContentType.markerMaps:
-          snapshot = await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('marker_maps')
-              .get();
+          snapshot = await firebaseService.getUserMarkerMaps();
           break;
 
         case ContentType.expenses:
-          snapshot = await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('budget_notes')
-              .get();
+          snapshot = await firebaseService.getUserFishingTrips();
           break;
 
         case ContentType.depthChart:
@@ -529,10 +527,10 @@ class SubscriptionService {
     }
   }
 
-  /// Загрузка текущей подписки пользователя
+  /// ОБНОВЛЕН: Загрузка текущей подписки пользователя из новой структуры
   Future<SubscriptionModel> loadCurrentSubscription() async {
     try {
-      final userId = _firebaseService.currentUserId;
+      final userId = firebaseService.currentUserId;
       if (userId == null) {
         _cachedSubscription = SubscriptionModel.defaultSubscription('');
         _subscriptionStatusController.add(_cachedSubscription!.status);
@@ -566,15 +564,12 @@ class SubscriptionService {
         return _cachedSubscription!;
       }
 
-      // Пытаемся загрузить из Firebase
+      // ИСПРАВЛЕНО: Загружаем из новой структуры Firebase через FirebaseService
       if (await NetworkUtils.isNetworkAvailable()) {
-        final doc = await _firestore
-            .collection(SubscriptionConstants.subscriptionCollection)
-            .doc(userId)
-            .get();
+        final doc = await firebaseService.getUserSubscription();
 
         if (doc.exists && doc.data() != null) {
-          _cachedSubscription = SubscriptionModel.fromMap(doc.data()!, userId);
+          _cachedSubscription = SubscriptionModel.fromMap(doc.data()! as Map<String, dynamic>, userId);
         } else {
           _cachedSubscription = SubscriptionModel.defaultSubscription(userId);
         }
@@ -592,7 +587,7 @@ class SubscriptionService {
       if (kDebugMode) {
         debugPrint('❌ Ошибка загрузки подписки: $e');
       }
-      final userId = _firebaseService.currentUserId ?? '';
+      final userId = firebaseService.currentUserId ?? '';
       _cachedSubscription = SubscriptionModel.defaultSubscription(userId);
       _subscriptionStatusController.add(_cachedSubscription!.status);
       return _cachedSubscription!;
@@ -810,13 +805,13 @@ class SubscriptionService {
     // Пользователь отменил покупку - ничего не делаем
   }
 
-  /// Обновление статуса подписки в Firebase
+  /// ИСПРАВЛЕНО: Обновление статуса подписки в новой структуре Firebase
   Future<void> _updateSubscriptionStatus(
       PurchaseDetails purchaseDetails,
       SubscriptionStatus status,
       ) async {
     try {
-      final userId = _firebaseService.currentUserId;
+      final userId = firebaseService.currentUserId;
       if (userId == null) return;
 
       final subscriptionType = SubscriptionConstants.getSubscriptionType(purchaseDetails.productID);
@@ -826,6 +821,29 @@ class SubscriptionService {
       DateTime? expirationDate;
       if (status == SubscriptionStatus.active) {
         expirationDate = _calculateExpirationDate(subscriptionType);
+      }
+
+      // Создаем данные подписки
+      final subscriptionData = {
+        'userId': userId,
+        'status': status.name,
+        'type': subscriptionType.name,
+        'expirationDate': expirationDate != null ? Timestamp.fromDate(expirationDate) : null,
+        'purchaseToken': purchaseDetails.purchaseID ?? '',
+        'platform': Platform.isAndroid
+            ? SubscriptionConstants.androidPlatform
+            : SubscriptionConstants.iosPlatform,
+        'createdAt': _cachedSubscription?.createdAt != null
+            ? Timestamp.fromDate(_cachedSubscription!.createdAt)
+            : FieldValue.serverTimestamp(),
+        'isActive': status == SubscriptionStatus.active &&
+            expirationDate != null &&
+            DateTime.now().isBefore(expirationDate),
+      };
+
+      // ИСПРАВЛЕНО: Сохраняем через FirebaseService в новую структуру
+      if (await NetworkUtils.isNetworkAvailable()) {
+        await firebaseService.updateUserSubscription(subscriptionData);
       }
 
       // Создаем обновленную модель подписки
@@ -845,14 +863,6 @@ class SubscriptionService {
             DateTime.now().isBefore(expirationDate),
       );
 
-      // Сохраняем в Firebase
-      if (await NetworkUtils.isNetworkAvailable()) {
-        await _firestore
-            .collection(SubscriptionConstants.subscriptionCollection)
-            .doc(userId)
-            .set(subscription.toMap(), SetOptions(merge: true));
-      }
-
       // Сохраняем в кэш
       await _saveToCache(subscription);
       _cachedSubscription = subscription;
@@ -862,7 +872,7 @@ class SubscriptionService {
       _subscriptionStatusController.add(subscription.status);
 
       if (kDebugMode) {
-        debugPrint('✅ Статус подписки обновлен: $status');
+        debugPrint('✅ Статус подписки обновлен в новой структуре: $status');
       }
     } catch (e) {
       if (kDebugMode) {

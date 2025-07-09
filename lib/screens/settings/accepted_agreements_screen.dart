@@ -75,7 +75,7 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
         debugPrint(
           '🔄 Принудительная синхронизация локальных данных с Firebase',
         );
-        await _consentService.syncConsentsFromFirestore(user.uid);
+        await _consentService.syncConsentsFromFirestore();
 
         // Перезагружаем статус после синхронизации
         final statusAfterSync = await _consentService.getUserConsentStatus(

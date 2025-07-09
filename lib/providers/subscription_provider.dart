@@ -8,6 +8,7 @@ import '../models/subscription_model.dart';
 import '../models/usage_limits_model.dart';
 import '../services/subscription/subscription_service.dart';
 import '../services/subscription/usage_limits_service.dart';
+import '../services/firebase/firebase_service.dart'; // ДОБАВЛЕНО
 
 /// Provider для управления состоянием подписки в приложении
 class SubscriptionProvider extends ChangeNotifier {
@@ -62,6 +63,16 @@ class SubscriptionProvider extends ChangeNotifier {
       _isLoading = true;
       _lastError = null;
       notifyListeners();
+
+      // ИСПРАВЛЕНО: Создаем и устанавливаем FirebaseService в SubscriptionService
+      try {
+        final firebaseService = FirebaseService();
+        _subscriptionService.setFirebaseService(firebaseService);
+        debugPrint('✅ FirebaseService установлен в SubscriptionService');
+      } catch (e) {
+        debugPrint('⚠️ Не удалось установить FirebaseService: $e');
+        // Продолжаем инициализацию без FirebaseService для избежания полного краха
+      }
 
       // Инициализируем сервисы
       await _subscriptionService.initialize();

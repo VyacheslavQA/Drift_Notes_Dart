@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../models/user_consent_models.dart';
+import 'firebase/firebase_service.dart';
 
 /// Уровни ограничений при отказе от принятия политики
 enum ConsentRestrictionLevel {
@@ -95,8 +96,8 @@ class UserConsentService {
   static const String _lastPolicyUpdateNotificationKey =
       'last_policy_update_notification';
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // ОБНОВЛЕНО: Используем FirebaseService вместо прямого доступа к Firebase
+  final FirebaseService _firebaseService = FirebaseService();
 
   // Кэш для версий и хешей файлов
   String? _cachedPrivacyPolicyVersion;
@@ -158,8 +159,8 @@ class UserConsentService {
 
   /// Загружает и анализирует файл политики конфиденциальности
   Future<Map<String, String>> _loadPrivacyPolicyInfo(
-    String languageCode,
-  ) async {
+      String languageCode,
+      ) async {
     try {
       final fileName = 'assets/privacy_policy/privacy_policy_$languageCode.txt';
       String content;
@@ -191,8 +192,8 @@ class UserConsentService {
 
   /// Загружает и анализирует файл пользовательского соглашения
   Future<Map<String, String>> _loadTermsOfServiceInfo(
-    String languageCode,
-  ) async {
+      String languageCode,
+      ) async {
     try {
       final fileName =
           'assets/terms_of_service/terms_of_service_$languageCode.txt';
@@ -270,17 +271,17 @@ class UserConsentService {
         '📋 Текущие версии: Privacy=$currentPrivacyVersion, Terms=$currentTermsVersion',
       );
 
-      final user = _auth.currentUser;
+      // ОБНОВЛЕНО: Проверяем авторизацию через FirebaseService
+      if (_firebaseService.isUserLoggedIn) {
+        final userId = _firebaseService.currentUserId;
 
-      if (user != null) {
         // Для авторизованного пользователя проверяем Firebase и локальные данные
         debugPrint(
-          '👤 Проверяем согласия для авторизованного пользователя: ${user.uid}',
+          '👤 Проверяем согласия для авторизованного пользователя: $userId',
         );
 
         // Сначала проверяем Firebase
         final firebaseResult = await _checkFirebaseConsents(
-          user.uid,
           currentPrivacyVersion,
           currentTermsVersion,
         );
@@ -303,7 +304,7 @@ class UserConsentService {
           debugPrint(
             '🔄 Синхронизируем согласия из Firebase в локальное хранилище',
           );
-          await syncConsentsFromFirestore(user.uid);
+          await syncConsentsFromFirestore();
 
           // Проверяем еще раз после синхронизации
           return await _checkLocalConsents(
@@ -333,20 +334,17 @@ class UserConsentService {
     }
   }
 
-  /// Проверяет согласия в Firebase (раздельно)
+  /// ОБНОВЛЕНО: Проверяет согласия в Firebase (через FirebaseService)
   Future<ConsentCheckResult> _checkFirebaseConsents(
-    String userId,
-    String currentPrivacyVersion,
-    String currentTermsVersion,
-  ) async {
+      String currentPrivacyVersion,
+      String currentTermsVersion,
+      ) async {
     try {
-      final doc =
-          await _firestore.collection('user_consents').doc(userId).get();
+      // ОБНОВЛЕНО: Используем FirebaseService
+      final doc = await _firebaseService.getUserConsents();
 
       if (!doc.exists) {
-        debugPrint(
-          '📄 Документ согласий не найден в Firebase для пользователя: $userId',
-        );
+        debugPrint('📄 Документ согласий не найден в Firebase');
         return ConsentCheckResult(
           allValid: false,
           needPrivacyPolicy: true,
@@ -356,7 +354,7 @@ class UserConsentService {
         );
       }
 
-      final data = doc.data()!;
+      final data = doc.data() as Map<String, dynamic>;
       final privacyAccepted = data['privacy_policy_accepted'] ?? false;
       final termsAccepted = data['terms_of_service_accepted'] ?? false;
       final savedPrivacyVersion = data['privacy_policy_version'] ?? '';
@@ -379,7 +377,7 @@ class UserConsentService {
         currentPrivacyVersion: currentPrivacyVersion,
         currentTermsVersion: currentTermsVersion,
         savedPrivacyVersion:
-            savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
+        savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
         savedTermsVersion: savedTermsVersion.isEmpty ? null : savedTermsVersion,
       );
 
@@ -399,9 +397,9 @@ class UserConsentService {
 
   /// Проверяет локальные согласия (раздельно)
   Future<ConsentCheckResult> _checkLocalConsents(
-    String currentPrivacyVersion,
-    String currentTermsVersion,
-  ) async {
+      String currentPrivacyVersion,
+      String currentTermsVersion,
+      ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
@@ -429,7 +427,7 @@ class UserConsentService {
         currentPrivacyVersion: currentPrivacyVersion,
         currentTermsVersion: currentTermsVersion,
         savedPrivacyVersion:
-            savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
+        savedPrivacyVersion.isEmpty ? null : savedPrivacyVersion,
         savedTermsVersion: savedTermsVersion.isEmpty ? null : savedTermsVersion,
       );
 
@@ -447,7 +445,7 @@ class UserConsentService {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Записывает отказ от принятия политики
+  /// ОБНОВЛЕНО: Записывает отказ от принятия политики
   Future<void> recordPolicyRejection([String? languageCode]) async {
     try {
       languageCode ??= 'ru';
@@ -466,14 +464,12 @@ class UserConsentService {
         '📝 Записан отказ от принятия политики версии $currentPrivacyVersion',
       );
 
-      // Также записываем в Firebase если пользователь авторизован
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore.collection('user_consents').doc(user.uid).set({
+      // ОБНОВЛЕНО: Записываем в Firebase через FirebaseService
+      if (_firebaseService.isUserLoggedIn) {
+        await _firebaseService.updateUserConsents({
           'policy_rejection_date': FieldValue.serverTimestamp(),
           'policy_rejection_version': currentPrivacyVersion,
-          'user_id': user.uid,
-        }, SetOptions(merge: true));
+        });
       }
     } catch (e) {
       debugPrint('❌ Ошибка при записи отказа от политики: $e');
@@ -545,7 +541,7 @@ class UserConsentService {
         canSyncData: level != ConsentRestrictionLevel.deletion,
         canEditProfile: level == ConsentRestrictionLevel.soft,
         showAccountDeletionWarning:
-            level == ConsentRestrictionLevel.final_ ||
+        level == ConsentRestrictionLevel.final_ ||
             level == ConsentRestrictionLevel.deletion,
         rejectionDate: rejectionDate,
         restrictionMessage: _getRestrictionMessage(
@@ -570,10 +566,10 @@ class UserConsentService {
 
   /// НОВЫЙ МЕТОД: Формирует сообщение об ограничениях
   String _getRestrictionMessage(
-    ConsentRestrictionLevel level,
-    int days,
-    String languageCode,
-  ) {
+      ConsentRestrictionLevel level,
+      int days,
+      String languageCode,
+      ) {
     if (languageCode == 'ru') {
       switch (level) {
         case ConsentRestrictionLevel.none:
@@ -604,7 +600,7 @@ class UserConsentService {
     }
   }
 
-  /// НОВЫЙ МЕТОД: Очищает данные об отказе (при принятии политики)
+  /// ОБНОВЛЕНО: Очищает данные об отказе (при принятии политики)
   Future<void> clearRejectionData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -613,10 +609,9 @@ class UserConsentService {
 
       debugPrint('🧹 Данные об отказе от политики очищены');
 
-      // Также очищаем в Firebase
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore.collection('user_consents').doc(user.uid).update({
+      // ОБНОВЛЕНО: Очищаем в Firebase через FirebaseService
+      if (_firebaseService.isUserLoggedIn) {
+        await _firebaseService.updateUserConsents({
           'policy_rejection_date': FieldValue.delete(),
           'policy_rejection_version': FieldValue.delete(),
         });
@@ -661,7 +656,7 @@ class UserConsentService {
     return result.allValid;
   }
 
-  /// Сохраняет согласия пользователя (теперь раздельно!)
+  /// ОБНОВЛЕНО: Сохраняет согласия пользователя (теперь через FirebaseService)
   Future<bool> saveUserConsents({
     required bool privacyPolicyAccepted,
     required bool termsOfServiceAccepted,
@@ -714,11 +709,9 @@ class UserConsentService {
       // ВАЖНО: Очищаем данные об отказе при принятии политики
       await clearRejectionData();
 
-      // Сохраняем в Firestore если пользователь авторизован
-      final user = _auth.currentUser;
-      if (user != null) {
+      // ОБНОВЛЕНО: Сохраняем в Firebase через FirebaseService
+      if (_firebaseService.isUserLoggedIn) {
         await _saveConsentsToFirestore(
-          user.uid,
           privacyPolicyAccepted,
           termsOfServiceAccepted,
           currentPrivacyVersion,
@@ -795,11 +788,9 @@ class UserConsentService {
       );
       await prefs.setString('consent_language', languageCode);
 
-      // Сохраняем в Firestore если пользователь авторизован
-      final user = _auth.currentUser;
-      if (user != null) {
+      // ОБНОВЛЕНО: Сохраняем в Firebase через FirebaseService
+      if (_firebaseService.isUserLoggedIn) {
         await _saveSelectiveConsentsToFirestore(
-          user.uid,
           privacyPolicyAccepted,
           termsOfServiceAccepted,
           languageCode,
@@ -813,46 +804,42 @@ class UserConsentService {
     }
   }
 
-  /// Сохраняет согласия в Firestore (раздельно)
+  /// ОБНОВЛЕНО: Сохраняет согласия в Firebase через FirebaseService
   Future<void> _saveConsentsToFirestore(
-    String userId,
-    bool privacyAccepted,
-    bool termsAccepted,
-    String privacyVersion,
-    String termsVersion,
-    String languageCode,
-  ) async {
+      bool privacyAccepted,
+      bool termsAccepted,
+      String privacyVersion,
+      String termsVersion,
+      String languageCode,
+      ) async {
     try {
-      await _firestore.collection('user_consents').doc(userId).set({
+      await _firebaseService.updateUserConsents({
         'privacy_policy_accepted': privacyAccepted,
         'terms_of_service_accepted': termsAccepted,
         'privacy_policy_version': privacyVersion,
         'terms_of_service_version': termsVersion,
         'consent_language': languageCode,
         'consent_timestamp': FieldValue.serverTimestamp(),
-        'user_id': userId,
         'privacy_policy_hash': _cachedPrivacyPolicyHash,
         'terms_of_service_hash': _cachedTermsOfServiceHash,
-      }, SetOptions(merge: true));
+      });
 
-      debugPrint('✅ Согласия сохранены в Firestore для пользователя: $userId');
+      debugPrint('✅ Согласия сохранены в Firebase');
     } catch (e) {
-      debugPrint('❌ Ошибка при сохранении согласий в Firestore: $e');
+      debugPrint('❌ Ошибка при сохранении согласий в Firebase: $e');
     }
   }
 
-  /// НОВЫЙ МЕТОД: Селективное сохранение в Firestore
+  /// ОБНОВЛЕНО: Селективное сохранение в Firebase через FirebaseService
   Future<void> _saveSelectiveConsentsToFirestore(
-    String userId,
-    bool? privacyAccepted,
-    bool? termsAccepted,
-    String languageCode,
-  ) async {
+      bool? privacyAccepted,
+      bool? termsAccepted,
+      String languageCode,
+      ) async {
     try {
       Map<String, dynamic> updateData = {
         'consent_language': languageCode,
         'consent_timestamp': FieldValue.serverTimestamp(),
-        'user_id': userId,
       };
 
       if (privacyAccepted == true) {
@@ -877,41 +864,33 @@ class UserConsentService {
         });
       }
 
-      await _firestore
-          .collection('user_consents')
-          .doc(userId)
-          .set(updateData, SetOptions(merge: true));
+      await _firebaseService.updateUserConsents(updateData);
 
-      debugPrint(
-        '✅ Селективные согласия сохранены в Firestore для пользователя: $userId',
-      );
+      debugPrint('✅ Селективные согласия сохранены в Firebase');
     } catch (e) {
-      debugPrint(
-        '❌ Ошибка при селективном сохранении согласий в Firestore: $e',
-      );
+      debugPrint('❌ Ошибка при селективном сохранении согласий в Firebase: $e');
     }
   }
 
-  /// Проверяет, является ли пользователь новым
-  Future<bool> isNewGoogleUser(String userId) async {
+  /// ОБНОВЛЕНО: Проверяет, является ли пользователь новым
+  Future<bool> isNewGoogleUser() async {
     try {
-      final doc =
-          await _firestore.collection('user_consents').doc(userId).get();
+      if (!_firebaseService.isUserLoggedIn) {
+        return true;
+      }
+
+      final doc = await _firebaseService.getUserConsents();
 
       if (doc.exists) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
         final hasConsents =
-            data?['privacy_policy_accepted'] == true &&
-            data?['terms_of_service_accepted'] == true;
-        debugPrint(
-          '🔍 Пользователь $userId имеет согласия в Firestore: $hasConsents',
-        );
+            data['privacy_policy_accepted'] == true &&
+                data['terms_of_service_accepted'] == true;
+        debugPrint('🔍 Пользователь имеет согласия в Firebase: $hasConsents');
         return !hasConsents;
       }
 
-      debugPrint(
-        '🔍 Пользователь $userId не найден в Firestore - новый пользователь',
-      );
+      debugPrint('🔍 Пользователь не найден в Firebase - новый пользователь');
       return true;
     } catch (e) {
       debugPrint('❌ Ошибка при проверке нового пользователя: $e');
@@ -919,20 +898,24 @@ class UserConsentService {
     }
   }
 
-  /// Синхронизирует согласия из Firestore в локальное хранилище (раздельно)
-  Future<void> syncConsentsFromFirestore(String userId) async {
+  /// ОБНОВЛЕНО: Синхронизирует согласия из Firebase через FirebaseService
+  Future<void> syncConsentsFromFirestore() async {
     try {
-      final doc =
-          await _firestore.collection('user_consents').doc(userId).get();
+      if (!_firebaseService.isUserLoggedIn) {
+        debugPrint('❌ Пользователь не авторизован для синхронизации');
+        return;
+      }
+
+      final doc = await _firebaseService.getUserConsents();
 
       if (doc.exists) {
-        final data = doc.data();
-        final privacyAccepted = data?['privacy_policy_accepted'] ?? false;
-        final termsAccepted = data?['terms_of_service_accepted'] ?? false;
-        final privacyVersion = data?['privacy_policy_version'] ?? '';
-        final termsVersion = data?['terms_of_service_version'] ?? '';
-        final consentLanguage = data?['consent_language'] ?? 'ru';
-        final consentTimestamp = data?['consent_timestamp'];
+        final data = doc.data() as Map<String, dynamic>;
+        final privacyAccepted = data['privacy_policy_accepted'] ?? false;
+        final termsAccepted = data['terms_of_service_accepted'] ?? false;
+        final privacyVersion = data['privacy_policy_version'] ?? '';
+        final termsVersion = data['terms_of_service_version'] ?? '';
+        final consentLanguage = data['consent_language'] ?? 'ru';
+        final consentTimestamp = data['consent_timestamp'];
 
         // Обновляем локальные данные (РАЗДЕЛЬНО!)
         final prefs = await SharedPreferences.getInstance();
@@ -950,26 +933,24 @@ class UserConsentService {
         }
 
         // Также синхронизируем хеши если они есть
-        if (data?['privacy_policy_hash'] != null) {
+        if (data['privacy_policy_hash'] != null) {
           await prefs.setString(
             _privacyPolicyHashKey,
-            data!['privacy_policy_hash'],
+            data['privacy_policy_hash'],
           );
         }
-        if (data?['terms_of_service_hash'] != null) {
+        if (data['terms_of_service_hash'] != null) {
           await prefs.setString(
             _termsOfServiceHashKey,
-            data!['terms_of_service_hash'],
+            data['terms_of_service_hash'],
           );
         }
 
         debugPrint(
-          '✅ Согласия синхронизированы из Firestore: Privacy($privacyAccepted, $privacyVersion), Terms($termsAccepted, $termsVersion)',
+          '✅ Согласия синхронизированы из Firebase: Privacy($privacyAccepted, $privacyVersion), Terms($termsAccepted, $termsVersion)',
         );
       } else {
-        debugPrint(
-          '❌ Документ согласий не найден в Firestore для синхронизации',
-        );
+        debugPrint('❌ Документ согласий не найден в Firebase для синхронизации');
       }
     } catch (e) {
       debugPrint('❌ Ошибка при синхронизации согласий: $e');
@@ -1145,11 +1126,11 @@ class UserConsentService {
 
   /// НОВЫЙ МЕТОД: Получает локализованное описание
   String _getLocalizedDescription(
-    String type,
-    String version,
-    String languageCode,
-    bool isCurrent,
-  ) {
+      String type,
+      String version,
+      String languageCode,
+      bool isCurrent,
+      ) {
     if (languageCode == 'ru') {
       if (type == 'privacy_policy') {
         return isCurrent

@@ -308,11 +308,11 @@ class UsageLimitsService {
     }
   }
 
-  /// Пересчет лимитов на основе фактических данных
+  /// ИСПРАВЛЕНО: Пересчет лимитов на основе фактических данных из НОВОЙ структуры
   Future<void> recalculateLimits() async {
     try {
       if (kDebugMode) {
-        debugPrint('🔄 Пересчет лимитов использования...');
+        debugPrint('🔄 Пересчет лимитов использования из НОВОЙ структуры...');
       }
 
       final userId = _firebaseService.currentUserId;
@@ -327,72 +327,98 @@ class UsageLimitsService {
         debugPrint('👤 Пересчитываем лимиты для пользователя: $userId');
       }
 
-      // Подсчитываем фактическое количество контента из каждой коллекции
+      // Подсчитываем фактическое количество контента из НОВОЙ структуры subcollections
       int actualNotesCount = 0;
       int actualMapsCount = 0;
       int actualExpensesCount = 0;
 
       if (await NetworkUtils.isNetworkAvailable()) {
         try {
-          // Считаем заметки
+          // ИСПРАВЛЕНО: Считаем заметки из НОВОЙ структуры
           if (kDebugMode) {
-            debugPrint('📝 Подсчет заметок из коллекции: fishing_notes...');
+            debugPrint('📝 Подсчет заметок из НОВОЙ структуры: users/$userId/fishing_notes');
           }
-          final notesQuery = _firestore
-              .collection('fishing_notes')
-              .where('userId', isEqualTo: userId);
 
-          if (kDebugMode) {
-            debugPrint('📝 Выполняем запрос заметок...');
-          }
-          final notesSnapshot = await notesQuery.get();
+          final notesSnapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('fishing_notes')    // ← НОВАЯ СТРУКТУРА
+              .get();
+
           actualNotesCount = notesSnapshot.docs.length;
           if (kDebugMode) {
-            debugPrint('📝 Найдено заметок: $actualNotesCount');
+            debugPrint('📝 Найдено заметок в НОВОЙ структуре: $actualNotesCount');
           }
 
-          // Считаем маркерные карты
+          // ИСПРАВЛЕНО: Считаем маркерные карты из НОВОЙ структуры
           if (kDebugMode) {
-            debugPrint('🗺️ Подсчет карт из коллекции: marker_maps...');
+            debugPrint('🗺️ Подсчет карт из НОВОЙ структуры: users/$userId/marker_maps');
           }
-          final mapsQuery = _firestore
-              .collection('marker_maps')
-              .where('userId', isEqualTo: userId);
 
-          if (kDebugMode) {
-            debugPrint('🗺️ Выполняем запрос карт...');
-          }
-          final mapsSnapshot = await mapsQuery.get();
+          final mapsSnapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('marker_maps')      // ← НОВАЯ СТРУКТУРА
+              .get();
+
           actualMapsCount = mapsSnapshot.docs.length;
           if (kDebugMode) {
-            debugPrint('🗺️ Найдено карт: $actualMapsCount');
+            debugPrint('🗺️ Найдено карт в НОВОЙ структуре: $actualMapsCount');
           }
 
-          // Считаем расходы (по уникальным tripId)
+          // ИСПРАВЛЕНО: Считаем поездки из НОВОЙ структуры
           if (kDebugMode) {
-            debugPrint('💰 Подсчет расходов из коллекции: fishing_trips...');
+            debugPrint('💰 Подсчет поездок из НОВОЙ структуры: users/$userId/fishing_trips');
           }
-          final expensesQuery = _firestore
-              .collection('fishing_trips')
-              .where('userId', isEqualTo: userId);
 
-          if (kDebugMode) {
-            debugPrint('💰 Выполняем запрос расходов...');
-          }
-          final expensesSnapshot = await expensesQuery.get();
+          final tripsSnapshot = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('fishing_trips')    // ← НОВАЯ СТРУКТУРА
+              .get();
 
           // Считаем количество поездок (каждая поездка = один элемент расходов)
-          actualExpensesCount = expensesSnapshot.docs.length;
+          actualExpensesCount = tripsSnapshot.docs.length;
           if (kDebugMode) {
-            debugPrint('💰 Найдено поездок: $actualExpensesCount');
+            debugPrint('💰 Найдено поездок в НОВОЙ структуре: $actualExpensesCount');
             // Показываем ID всех поездок для диагностики
-            final tripIds = expensesSnapshot.docs.map((doc) => doc.id).toList();
+            final tripIds = tripsSnapshot.docs.map((doc) => doc.id).toList();
             debugPrint('💰 ID поездок: $tripIds');
+          }
+
+          // ДОПОЛНИТЕЛЬНО: Проверяем старую структуру для сравнения
+          if (kDebugMode) {
+            debugPrint('🔍 === СРАВНЕНИЕ СО СТАРОЙ СТРУКТУРОЙ ===');
+
+            try {
+              // Старая структура заметок
+              final oldNotesSnapshot = await _firestore
+                  .collection('fishing_notes')
+                  .where('userId', isEqualTo: userId)
+                  .get();
+              debugPrint('📝 Старая структура заметок: ${oldNotesSnapshot.docs.length}');
+
+              // Старая структура карт
+              final oldMapsSnapshot = await _firestore
+                  .collection('marker_maps')
+                  .where('userId', isEqualTo: userId)
+                  .get();
+              debugPrint('🗺️ Старая структура карт: ${oldMapsSnapshot.docs.length}');
+
+              // Старая структура поездок
+              final oldTripsSnapshot = await _firestore
+                  .collection('fishing_trips')
+                  .where('userId', isEqualTo: userId)
+                  .get();
+              debugPrint('💰 Старая структура поездок: ${oldTripsSnapshot.docs.length}');
+            } catch (e) {
+              debugPrint('❌ Ошибка проверки старой структуры: $e');
+            }
           }
 
         } catch (e) {
           if (kDebugMode) {
-            debugPrint('❌ Ошибка подсчета данных из Firebase: $e');
+            debugPrint('❌ Ошибка подсчета данных из НОВОЙ структуры Firebase: $e');
           }
           // В случае ошибки используем данные из кэша
           final currentLimits = _cachedLimits ?? UsageLimitsModel.defaultLimits(userId);
@@ -426,10 +452,10 @@ class UsageLimitsService {
       await _saveLimits(updatedLimits);
 
       if (kDebugMode) {
-        debugPrint('✅ Лимиты пересчитаны и сохранены:');
+        debugPrint('✅ Лимиты пересчитаны из НОВОЙ структуры и сохранены:');
         debugPrint('   📝 Заметки: $actualNotesCount/${SubscriptionConstants.freeNotesLimit}');
         debugPrint('   🗺️ Карты: $actualMapsCount/${SubscriptionConstants.freeMarkerMapsLimit}');
-        debugPrint('   💰 Расходы: $actualExpensesCount/${SubscriptionConstants.freeExpensesLimit}');
+        debugPrint('   💰 Поездки: $actualExpensesCount/${SubscriptionConstants.freeExpensesLimit}');
       }
     } catch (e) {
       if (kDebugMode) {

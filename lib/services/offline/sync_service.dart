@@ -103,9 +103,9 @@ class SyncService {
 
   /// Обрабатывает локальные URI файлов в структуре данных и заменяет их на серверные URL
   Future<void> _processLocalFileUrls(
-    Map<String, dynamic> data,
-    String userId,
-  ) async {
+      Map<String, dynamic> data,
+      String userId,
+      ) async {
     // Проверяем наличие списка photoUrls
     if (data['photoUrls'] is List) {
       final photoUrls = List<String>.from(data['photoUrls']);
@@ -185,10 +185,10 @@ class SyncService {
         try {
           // Получаем все заметки пользователя и удаляем их
           final snapshot =
-              await _firestore
-                  .collection('fishing_notes')
-                  .where('userId', isEqualTo: userId)
-                  .get();
+          await _firestore
+              .collection('fishing_notes')
+              .where('userId', isEqualTo: userId)
+              .get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -397,10 +397,10 @@ class SyncService {
         try {
           // Получаем все маркерные карты пользователя и удаляем их
           final snapshot =
-              await _firestore
-                  .collection('marker_maps')
-                  .where('userId', isEqualTo: userId)
-                  .get();
+          await _firestore
+              .collection('marker_maps')
+              .where('userId', isEqualTo: userId)
+              .get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -574,11 +574,11 @@ class SyncService {
 
       final pendingChanges =
           offlineNotes.length +
-          offlineNoteUpdates.length +
-          offlineMaps.length +
-          offlineMapUpdates.length +
-          notesToDelete.length +
-          mapsToDelete.length;
+              offlineNoteUpdates.length +
+              offlineMaps.length +
+              offlineMapUpdates.length +
+              notesToDelete.length +
+              mapsToDelete.length;
 
       final isConnected = await NetworkUtils.isNetworkAvailable();
 
@@ -625,7 +625,7 @@ class SyncService {
       if (!await directory.exists()) return 0;
 
       final files =
-          await directory.list().where((entity) => entity is File).toList();
+      await directory.list().where((entity) => entity is File).toList();
       return files.length;
     } catch (e) {
       debugPrint('❌ Ошибка при подсчете локальных файлов: $e');

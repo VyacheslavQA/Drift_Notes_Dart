@@ -315,7 +315,6 @@ class _SplashScreenState extends State<SplashScreen>
     // Простая адаптивность
     final bool isTablet = screenSize.width >= 600;
     final bool isSmallScreen = screenSize.height < 600;
-    final double availableHeight = screenSize.height;
 
     // Адаптивные размеры шрифтов
     final double titleFontSize = (isTablet ? 60 : (isSmallScreen ? 42 : 54)) *
@@ -366,7 +365,7 @@ class _SplashScreenState extends State<SplashScreen>
                       constraints: BoxConstraints(
                         minHeight: contentHeight,
                       ),
-                      child: _buildContent(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
+                      child: _buildContentWithIntrinsicHeight(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
                     ),
                   );
                 } else {
@@ -386,6 +385,117 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
+  // Версия контента с фиксированными отступами (для прокрутки)
+  Widget _buildContentWithIntrinsicHeight(BuildContext context, bool isTablet, bool isSmallScreen, double titleFontSize, double subtitleFontSize) {
+    final screenSize = MediaQuery.of(context).size;
+    final localizations = AppLocalizations.of(context);
+
+    return IntrinsicHeight(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Верхний отступ
+          SizedBox(height: isSmallScreen ? 40 : (isTablet ? 80 : 60)),
+
+          // Заголовок приложения
+          Text(
+            'Drift Notes',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: titleFontSize,
+              fontWeight: FontWeight.bold,
+              color: AppConstants.textColor,
+            ),
+          ),
+
+          SizedBox(height: isTablet ? 32 : (isSmallScreen ? 16 : 24)),
+
+          // Подзаголовок
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: isTablet ? 600 : screenSize.width * 0.85,
+            ),
+            child: Text(
+              localizations.translate('your_personal_fishing_journal'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: subtitleFontSize,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          SizedBox(height: isSmallScreen ? 8 : 16),
+
+          // Дополнительный текст
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: isTablet ? 600 : screenSize.width * 0.85,
+            ),
+            child: Text(
+              localizations.translate('remember_great_trips'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: subtitleFontSize,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          // Средний отступ
+          SizedBox(height: isSmallScreen ? 60 : (isTablet ? 120 : 80)),
+
+          // Кнопка входа
+          GestureDetector(
+            onTapDown: (_) {
+              if (!_isLoading) {
+                setState(() {
+                  _isPressed = true;
+                });
+                _pressAnimationController.forward();
+              }
+            },
+            onTapUp: (_) {
+              if (!_isLoading) {
+                setState(() {
+                  _isPressed = false;
+                });
+                _pressAnimationController.reverse();
+                _handleLogin();
+              }
+            },
+            onTapCancel: () {
+              if (!_isLoading) {
+                setState(() {
+                  _isPressed = false;
+                });
+                _pressAnimationController.reverse();
+              }
+            },
+            child: _buildAnimatedButton(),
+          ),
+
+          SizedBox(height: isTablet ? 32 : 24),
+
+          // Кнопка "Выход"
+          TextButton(
+            onPressed: _isLoading ? null : _handleExit,
+            child: Text(
+              localizations.translate('exit'),
+              style: TextStyle(
+                color: _isLoading ? Colors.white38 : Colors.white70,
+                fontSize: isTablet ? 18 : 16,
+              ),
+            ),
+          ),
+
+          SizedBox(height: isSmallScreen ? 40 : (isTablet ? 80 : 60)),
+        ],
+      ),
+    );
+  }
+
+  // Версия контента с гибкими отступами (без прокрутки)
   Widget _buildContent(BuildContext context, bool isTablet, bool isSmallScreen, double titleFontSize, double subtitleFontSize) {
     final screenSize = MediaQuery.of(context).size;
     final localizations = AppLocalizations.of(context);
@@ -394,7 +504,7 @@ class _SplashScreenState extends State<SplashScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Гибкий верхний отступ
-        Flexible(
+        Expanded(
           flex: isSmallScreen ? 1 : (isTablet ? 3 : 2),
           child: Container(),
         ),
@@ -445,7 +555,7 @@ class _SplashScreenState extends State<SplashScreen>
         ),
 
         // Гибкий средний отступ
-        Flexible(
+        Expanded(
           flex: isSmallScreen ? 2 : (isTablet ? 4 : 3),
           child: Container(),
         ),

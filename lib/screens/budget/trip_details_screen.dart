@@ -2,14 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ДОБАВЛЕНО: Для работы с Timestamp
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
 import '../../models/fishing_expense_model.dart';
-import '../../repositories/fishing_expense_repository.dart';
+import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
+import '../../services/subscription/subscription_service.dart';
+import '../../constants/subscription_constants.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 
 /// Экран деталей поездки с расходами
@@ -27,7 +30,8 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
+  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   FishingTripModel? _currentTrip;
   bool _isLoading = false;
@@ -40,18 +44,46 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     _loadTripDetails();
   }
 
+  // ИЗМЕНЕНО: Новый метод загрузки деталей поездки через Firebase
   Future<void> _loadTripDetails() async {
     setState(() => _isLoading = true);
 
     try {
       // Перезагружаем поездку с актуальными расходами
-      final trip = await _expenseRepository.getTripById(widget.trip.id);
+      final tripData = await _firebaseService.getFishingTripWithExpenses(widget.trip.id);
 
-      if (mounted) {
-        setState(() {
-          _currentTrip = trip ?? widget.trip;
-          _isLoading = false;
-        });
+      if (tripData != null) {
+        // Преобразуем данные в FishingTripModel
+        final expenses = <FishingExpenseModel>[];
+
+        if (tripData['expenses'] is List) {
+          for (final expenseData in tripData['expenses'] as List) {
+            if (expenseData is Map<String, dynamic>) {
+              try {
+                expenses.add(FishingExpenseModel.fromMap(expenseData));
+              } catch (e) {
+                debugPrint('Ошибка парсинга расхода: $e');
+              }
+            }
+          }
+        }
+
+        // Создаем поездку с расходами
+        final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
+
+        if (mounted) {
+          setState(() {
+            _currentTrip = trip;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _currentTrip = widget.trip;
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -61,6 +93,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  // ИЗМЕНЕНО: Новый метод удаления поездки через Firebase
   Future<void> _deleteTrip() async {
     final localizations = AppLocalizations.of(context);
 
@@ -117,7 +150,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       setState(() => _isDeleting = true);
 
       try {
-        await _expenseRepository.deleteTrip(widget.trip.id);
+        // Удаляем поездку со всеми расходами через Firebase
+        await _firebaseService.deleteFishingTripWithExpenses(widget.trip.id);
+
+        // Уменьшаем счетчик использования
+        try {
+          await _subscriptionService.decrementUsage(ContentType.expenses);
+          debugPrint('✅ Счетчик расходов/поездок уменьшен');
+        } catch (e) {
+          debugPrint('❌ Ошибка уменьшения счетчика расходов/поездок: $e');
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -154,6 +196,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  // ИЗМЕНЕНО: Новый метод удаления расхода через Firebase
   Future<void> _deleteExpense(FishingExpenseModel expense) async {
     final localizations = AppLocalizations.of(context);
 
@@ -208,15 +251,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     if (confirmed == true) {
       try {
-        // Удаляем расход из текущей поездки
-        final updatedExpenses = _currentTrip!.expenses
-            .where((e) => e.id != expense.id)
-            .toList();
-
-        final updatedTrip = _currentTrip!.withExpenses(updatedExpenses);
-
-        // Обновляем поездку в репозитории
-        await _expenseRepository.updateTrip(updatedTrip);
+        // Удаляем расход через Firebase
+        await _firebaseService.deleteFishingExpense(_currentTrip!.id, expense.id);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
