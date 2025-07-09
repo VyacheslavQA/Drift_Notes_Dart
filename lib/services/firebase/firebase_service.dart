@@ -838,7 +838,7 @@ class FirebaseService {
     }
   }
 
-  /// Получение заметок о рыбалке пользователя (новая структура) - ИСПРАВЛЕНО
+  /// Получение заметок о рыбалке пользователя (новая структура) - ИСПРАВЛЕНО с защитой от null
   Future<QuerySnapshot> getUserFishingNotesNew() async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
@@ -986,7 +986,11 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      return await _firestore
+      debugPrint('🔥 === НАЧАЛО ДОБАВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
+      debugPrint('🔥 userId: $userId');
+      debugPrint('🔥 mapData: $mapData');
+
+      final docRef = await _firestore
           .collection('users')
           .doc(userId)
           .collection('marker_maps')
@@ -995,35 +999,71 @@ class FirebaseService {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      debugPrint('🔥 Маркерная карта добавлена с ID: ${docRef.id}');
+      debugPrint('🔥 Полный путь: users/$userId/marker_maps/${docRef.id}');
+      debugPrint('🔥 === КОНЕЦ ДОБАВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
+
+      return docRef;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении маркерной карты: $e');
-      }
+      debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
       rethrow;
     }
   }
 
-  /// Обновление маркерной карты
+  /// Обновление маркерной карты (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
   Future<void> updateMarkerMap(String mapId, Map<String, dynamic> mapData) async {
     final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    debugPrint('🔥 === НАЧАЛО ОБНОВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
+    debugPrint('🔥 userId: $userId');
+    debugPrint('🔥 mapId: $mapId');
+    debugPrint('🔥 isUserLoggedIn: $isUserLoggedIn');
+    debugPrint('🔥 currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔥 mapData: $mapData');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при обновлении маркерной карты!');
+      throw Exception('Пользователь не авторизован');
+    }
 
     try {
-      await _firestore
+      final docRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('marker_maps')
-          .doc(mapId)
-          .update({
+          .doc(mapId);
+
+      debugPrint('🔥 Полный путь: users/$userId/marker_maps/$mapId');
+      debugPrint('🔥 DocumentReference: ${docRef.path}');
+
+      final dataToSave = {
         ...mapData,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении маркерной карты: $e');
+        'debug_userId': userId,
+        'debug_timestamp': DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('🔥 Данные для сохранения: $dataToSave');
+
+      await docRef.update(dataToSave);
+
+      debugPrint('✅ Маркерная карта успешно обновлена в Firebase!');
+
+      // Проверяем что данные действительно сохранились
+      final savedDoc = await docRef.get();
+      debugPrint('🔥 Проверка сохранения: exists=${savedDoc.exists}');
+      if (savedDoc.exists) {
+        debugPrint('🔥 Сохраненные данные: ${savedDoc.data()}');
       }
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
       rethrow;
     }
+
+    debugPrint('🔥 === КОНЕЦ ОБНОВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
   }
 
   /// Получение маркерных карт пользователя
