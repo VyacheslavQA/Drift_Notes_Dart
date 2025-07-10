@@ -10,8 +10,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/subscription_model.dart';
 import '../../models/usage_limits_model.dart';
+import '../../models/offline_usage_result.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../services/subscription/usage_limits_service.dart';
+import '../../services/offline/offline_storage_service.dart';
 import '../../utils/network_utils.dart';
 
 /// Сервис для управления подписками и покупками
@@ -25,6 +27,9 @@ class SubscriptionService {
   // ИСПРАВЛЕНО: FirebaseService теперь инжектируется извне
   FirebaseService? _firebaseService;
   final UsageLimitsService _usageLimitsService = UsageLimitsService();
+
+  // 🔥 НОВОЕ: Офлайн сторадж для кэширования
+  final OfflineStorageService _offlineStorage = OfflineStorageService();
 
   // Тестовые аккаунты для Google Play Review
   static const List<String> _testAccounts = [
@@ -123,6 +128,9 @@ class SubscriptionService {
         return;
       }
 
+      // 🔥 НОВОЕ: Инициализируем офлайн сторадж
+      await _offlineStorage.initialize();
+
       // Инициализируем UsageLimitsService (для совместимости, но не используем для подсчета)
       await _usageLimitsService.initialize();
 
@@ -172,7 +180,377 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Обновление кэша использования из новой структуры Firebase
+  // 🔥 НОВЫЕ МЕТОДЫ для офлайн режима
+
+  /// Основной метод проверки возможности создания контента офлайн
+  Future<bool> canCreateContentOffline(ContentType contentType) async {
+    try {
+      // 1. Проверка тестового аккаунта - безлимитный доступ
+      if (_isTestAccount()) {
+        if (kDebugMode) {
+          debugPrint('🧪 Тестовый аккаунт - безлимитный доступ к $contentType');
+        }
+        return true;
+      }
+
+      // 2. Проверка кэшированного премиум статуса
+      final cachedSubscription = await _offlineStorage.getCachedSubscriptionStatus();
+      if (cachedSubscription?.isPremium == true) {
+        // Проверяем актуальность кэша
+        if (await _offlineStorage.isSubscriptionCacheValid()) {
+          if (kDebugMode) {
+            debugPrint('🔥 Кэшированный премиум статус действителен - разрешаем $contentType');
+          }
+          return true;
+        }
+      }
+
+      // 3. Получаем текущее использование с учетом локальных счетчиков
+      final currentUsage = await _getCurrentOfflineUsage(contentType);
+      final limit = getLimit(contentType);
+
+      // 4. ЖЕСТКАЯ ПРОВЕРКА: лимит + grace period
+      if (currentUsage >= limit + SubscriptionConstants.offlineGraceLimit) {
+        if (kDebugMode) {
+          debugPrint('❌ Превышен лимит + grace period для $contentType: $currentUsage >= ${limit + SubscriptionConstants.offlineGraceLimit}');
+        }
+        return false; // Блокировка
+      }
+
+      if (kDebugMode) {
+        debugPrint('✅ Разрешено создание $contentType: $currentUsage < ${limit + SubscriptionConstants.offlineGraceLimit}');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки офлайн создания контента: $e');
+      }
+      // При ошибке разрешаем создание (принцип "fail open")
+      return true;
+    }
+  }
+
+  /// Получение детальной информации о статусе офлайн использования
+  Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
+    try {
+      final currentUsage = await _getCurrentOfflineUsage(contentType);
+      final limit = getLimit(contentType);
+      final canCreate = await canCreateContentOffline(contentType);
+
+      final warningType = SubscriptionConstants.getWarningType(currentUsage, limit);
+      final message = SubscriptionConstants.getLimitStatusMessage(currentUsage, limit, contentType);
+      final remaining = SubscriptionConstants.getRemainingGraceElements(currentUsage, limit);
+
+      return OfflineUsageResult(
+        canCreate: canCreate,
+        warningType: warningType,
+        message: message,
+        currentUsage: currentUsage,
+        limit: limit,
+        remaining: remaining,
+        contentType: contentType,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки офлайн использования: $e');
+      }
+
+      return OfflineUsageResult(
+        canCreate: true,
+        warningType: OfflineLimitWarningType.normal,
+        message: 'Ошибка проверки лимитов',
+        currentUsage: 0,
+        limit: getLimit(contentType),
+        remaining: SubscriptionConstants.offlineGraceLimit,
+        contentType: contentType,
+      );
+    }
+  }
+
+  /// Получение текущего использования с учетом локальных счетчиков
+  Future<int> _getCurrentOfflineUsage(ContentType contentType) async {
+    try {
+      // Получаем серверное использование (из кэша)
+      final serverUsage = await getCurrentUsage(contentType);
+
+      // Получаем локальные счетчики
+      final localUsage = await _offlineStorage.getLocalUsageCount(contentType);
+
+      final totalUsage = serverUsage + localUsage;
+
+      if (kDebugMode) {
+        debugPrint('📊 Использование $contentType: сервер=$serverUsage, локально=$localUsage, всего=$totalUsage');
+      }
+
+      return totalUsage;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения офлайн использования: $e');
+      }
+      return 0;
+    }
+  }
+
+  /// Кэширование данных подписки при онлайн режиме
+  Future<void> cacheSubscriptionDataOnline() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔄 Кэширование данных подписки онлайн...');
+      }
+
+      // Проверяем доступность сети
+      if (!await NetworkUtils.isNetworkAvailable()) {
+        if (kDebugMode) {
+          debugPrint('⚠️ Нет сети - пропускаем кэширование');
+        }
+        return;
+      }
+
+      // Загружаем актуальную подписку
+      final subscription = await loadCurrentSubscription();
+
+      // Кэшируем подписку
+      await _offlineStorage.cacheSubscriptionStatus(subscription);
+
+      // Кэшируем лимиты (если есть UsageLimitsModel)
+      try {
+        final usageLimits = await _loadUsageLimits();
+        if (usageLimits != null) {
+          await _offlineStorage.cacheUsageLimits(usageLimits);
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('⚠️ Ошибка кэширования лимитов: $e');
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('✅ Данные подписки успешно кэшированы');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка кэширования данных подписки: $e');
+      }
+    }
+  }
+
+  /// Принудительное обновление офлайн кэша
+  Future<void> refreshOfflineCache() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔄 Принудительное обновление офлайн кэша...');
+      }
+
+      // Обновляем кэш использования
+      await _refreshUsageCache();
+
+      // Кэшируем данные подписки если есть сеть
+      await cacheSubscriptionDataOnline();
+
+      if (kDebugMode) {
+        debugPrint('✅ Офлайн кэш обновлен');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обновления офлайн кэша: $e');
+      }
+    }
+  }
+
+  /// Увеличение офлайн счетчика использования
+  Future<void> incrementOfflineUsage(ContentType contentType) async {
+    try {
+      // Увеличиваем локальный счетчик
+      await _offlineStorage.incrementLocalUsage(contentType);
+
+      if (kDebugMode) {
+        final localCount = await _offlineStorage.getLocalUsageCount(contentType);
+        debugPrint('📈 Увеличен офлайн счетчик $contentType: локально=$localCount');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка увеличения офлайн счетчика: $e');
+      }
+    }
+  }
+
+  /// Уменьшение офлайн счетчика использования
+  Future<void> decrementOfflineUsage(ContentType contentType) async {
+    try {
+      // Уменьшаем локальный счетчик
+      await _offlineStorage.decrementLocalUsage(contentType);
+
+      if (kDebugMode) {
+        final localCount = await _offlineStorage.getLocalUsageCount(contentType);
+        debugPrint('📉 Уменьшен офлайн счетчик $contentType: локально=$localCount');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка уменьшения офлайн счетчика: $e');
+      }
+    }
+  }
+
+  /// Получение UsageLimitsModel для кэширования
+  Future<UsageLimitsModel?> _loadUsageLimits() async {
+    try {
+      final userId = firebaseService.currentUserId;
+      if (userId == null) return null;
+
+      // Создаем UsageLimitsModel из текущих данных
+      final fishingNotes = await getCurrentUsage(ContentType.fishingNotes);
+      final markerMaps = await getCurrentUsage(ContentType.markerMaps);
+      final expenses = await getCurrentUsage(ContentType.expenses);
+
+      return UsageLimitsModel(
+        userId: userId,
+        notesCount: fishingNotes,
+        markerMapsCount: markerMaps,
+        expensesCount: expenses,
+        lastResetDate: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка загрузки лимитов использования: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Получение статистики офлайн использования
+  Future<Map<String, dynamic>> getOfflineUsageStatistics() async {
+    try {
+      final allLocalCounters = await _offlineStorage.getAllLocalUsageCounters();
+      final resetTime = await _offlineStorage.getLocalCountersResetTime();
+
+      Map<String, dynamic> stats = {
+        'localCounters': {},
+        'totalUsage': {},
+        'lastReset': resetTime?.toIso8601String(),
+      };
+
+      // Локальные счетчики
+      for (final entry in allLocalCounters.entries) {
+        stats['localCounters'][entry.key.name] = entry.value;
+      }
+
+      // Общее использование
+      for (final contentType in ContentType.values) {
+        final total = await _getCurrentOfflineUsage(contentType);
+        stats['totalUsage'][contentType.name] = total;
+      }
+
+      return stats;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения статистики офлайн использования: $e');
+      }
+      return {};
+    }
+  }
+
+  /// Проверка необходимости показа предупреждения о лимите
+  Future<bool> shouldShowLimitWarning(ContentType contentType) async {
+    try {
+      final result = await checkOfflineUsage(contentType);
+      return result.shouldShowWarning;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки необходимости предупреждения: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Проверка необходимости показа диалога премиум
+  Future<bool> shouldShowPremiumDialog(ContentType contentType) async {
+    try {
+      final result = await checkOfflineUsage(contentType);
+      return result.shouldShowPremiumDialog;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки необходимости диалога премиум: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Получение информации о кэше подписки
+  Future<Map<String, dynamic>> getSubscriptionCacheInfo() async {
+    try {
+      final cachedSubscription = await _offlineStorage.getCachedSubscriptionStatus();
+      final isValid = await _offlineStorage.isSubscriptionCacheValid();
+
+      return {
+        'hasCachedSubscription': cachedSubscription != null,
+        'isPremium': cachedSubscription?.isPremium ?? false,
+        'isCacheValid': isValid,
+        'status': cachedSubscription?.status.name,
+        'expirationDate': cachedSubscription?.expirationDate?.toIso8601String(),
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения информации о кэше подписки: $e');
+      }
+      return {
+        'hasCachedSubscription': false,
+        'isPremium': false,
+        'isCacheValid': false,
+      };
+    }
+  }
+
+  /// Очистка локальных счетчиков (для синхронизации)
+  Future<void> clearLocalCounters() async {
+    try {
+      await _offlineStorage.resetLocalUsageCounters();
+      if (kDebugMode) {
+        debugPrint('✅ Локальные счетчики очищены');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка очистки локальных счетчиков: $e');
+      }
+    }
+  }
+
+  /// Получение всех локальных счетчиков
+  Future<Map<ContentType, int>> getAllLocalCounters() async {
+    try {
+      return await _offlineStorage.getAllLocalUsageCounters();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения локальных счетчиков: $e');
+      }
+      return {};
+    }
+  }
+
+  /// Проверка возможности создания контента для UI (синхронная)
+  bool canCreateContentSync(ContentType contentType) {
+    try {
+      // Для тестовых аккаунтов - всегда разрешаем
+      if (_isTestAccount()) {
+        return true;
+      }
+
+      // Для обычных проверок используем асинхронный метод
+      // Этот метод только для случаев, когда нужна синхронная проверка
+      final serverUsage = getCurrentUsageSync(contentType);
+      final limit = getLimit(contentType);
+
+      // Проверяем только базовый лимит (без учета локальных счетчиков)
+      return serverUsage < limit;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка синхронной проверки: $e');
+      }
+      return true; // При ошибке разрешаем
+    }
+  }
+
+  // ОБНОВЛЕН: Обновление кэша использования из новой структуры Firebase
   Future<void> _refreshUsageCache() async {
     try {
       final userId = firebaseService.currentUserId;
@@ -387,7 +765,7 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Увеличение счетчика использования с обновлением кэша
+  /// ОБНОВЛЕН: Увеличение счетчика использования с проверкой офлайн лимитов
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
@@ -395,8 +773,8 @@ class SubscriptionService {
         return true;
       }
 
-      // Проверяем возможность создания контента перед увеличением
-      if (!await canCreateContent(contentType)) {
+      // 🔥 НОВОЕ: Проверяем возможность создания контента с учетом офлайн лимитов
+      if (!await canCreateContentOffline(contentType)) {
         return false;
       }
 
@@ -405,7 +783,7 @@ class SubscriptionService {
       _usageCache[contentType] = currentCount + 1;
 
       if (kDebugMode) {
-        debugPrint('✅ Увеличен счетчик $contentType: ${currentCount + 1}');
+        debugPrint('✅ Увеличен серверный счетчик $contentType: ${currentCount + 1}');
       }
 
       return true;

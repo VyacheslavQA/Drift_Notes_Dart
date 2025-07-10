@@ -5,12 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
-import '../services/user_consent_service.dart'; // НОВЫЙ ИМПОРТ!
+import '../services/user_consent_service.dart';
 
 class UserRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final UserConsentService _consentService = UserConsentService(); // НОВОЕ!
+  final UserConsentService _consentService = UserConsentService();
 
   // Получение текущего пользователя
   User? get currentUser => _auth.currentUser;
@@ -53,8 +53,8 @@ class UserRepository {
     }
 
     return _firestore.collection('users').doc(userId).snapshots().map((
-      snapshot,
-    ) {
+        snapshot,
+        ) {
       if (!snapshot.exists) {
         return null;
       }
@@ -88,9 +88,16 @@ class UserRepository {
     });
   }
 
-  // Выход из аккаунта (ИСПРАВЛЕНО!)
+  // Выход из аккаунта (С ОТЛАДКОЙ!)
   Future<void> signOut() async {
     try {
+      // 🔥 ДОБАВЛЯЕМ ОТЛАДКУ ДЛЯ ПОИСКА МЕСТА ВЫЗОВА
+      if (kDebugMode) {
+        debugPrint('🚨 UserRepository.signOut() ВЫЗВАН!');
+        debugPrint('📍 Stack trace вызова:');
+        debugPrint(StackTrace.current.toString());
+      }
+
       // ВАЖНО: Очищаем согласия ПЕРЕД выходом
       debugPrint('🧹 Очищаем согласия пользователя перед выходом');
       await _consentService.clearAllConsents();

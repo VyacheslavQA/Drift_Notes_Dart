@@ -3,11 +3,15 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../constants/subscription_constants.dart';
+import '../../models/subscription_model.dart';
+import '../../models/usage_limits_model.dart';
 
 /// Сервис для централизованного управления офлайн хранилищем данных
 class OfflineStorageService {
   static final OfflineStorageService _instance =
-      OfflineStorageService._internal();
+  OfflineStorageService._internal();
 
   factory OfflineStorageService() {
     return _instance;
@@ -32,6 +36,23 @@ class OfflineStorageService {
   static const String _deleteAllMarkerMapsKey = 'delete_all_marker_maps';
   static const String _deleteAllNotesKey = 'delete_all_notes';
 
+  // 🔥 НОВЫЕ КОНСТАНТЫ для кэширования подписки
+  static const String _cachedSubscriptionKey = 'cached_subscription_data';
+  static const String _subscriptionCacheTimeKey = 'subscription_cache_time';
+  static const String _usageLimitsKey = 'usage_limits_data';
+
+  // 🔥 НОВЫЕ КОНСТАНТЫ для локальных счетчиков офлайн операций
+  static const String _localNotesCountKey = 'local_notes_count';
+  static const String _localMapsCountKey = 'local_maps_count';
+  static const String _localExpensesCountKey = 'local_expenses_count';
+  static const String _localDepthChartCountKey = 'local_depth_chart_count';
+  static const String _localCountersResetKey = 'local_counters_reset_time';
+
+  // 🔥 НОВЫЕ КОНСТАНТЫ для офлайн авторизации
+  static const String _offlineUserDataKey = 'offline_auth_user_data';
+  static const String _offlineAuthValidUntilKey = 'offline_auth_valid_until';
+  static const String _offlineAuthCacheTimeKey = 'offline_auth_cache_time';
+
   /// Инициализация сервиса
   Future<void> initialize() async {
     if (_preferences == null) {
@@ -46,6 +67,515 @@ class OfflineStorageService {
       await initialize();
     }
     return _preferences!;
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для офлайн авторизации
+
+  /// Сохранить данные пользователя для офлайн авторизации
+  Future<void> saveOfflineUserData(User user) async {
+    try {
+      final prefs = await preferences;
+
+      // Создаем объект данных пользователя
+      final userData = {
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName,
+        'photoURL': user.photoURL,
+        'emailVerified': user.emailVerified,
+        'isAnonymous': user.isAnonymous,
+        'providerId': user.providerData.isNotEmpty ? user.providerData.first.providerId : null,
+        'creationTime': user.metadata.creationTime?.toIso8601String(),
+        'lastSignInTime': user.metadata.lastSignInTime?.toIso8601String(),
+        'phoneNumber': user.phoneNumber,
+        'refreshToken': user.refreshToken,
+      };
+
+      // Сохраняем данные пользователя
+      await prefs.setString(_offlineUserDataKey, jsonEncode(userData));
+
+      // Устанавливаем время кэширования
+      await prefs.setInt(_offlineAuthCacheTimeKey, DateTime.now().millisecondsSinceEpoch);
+
+      // Устанавливаем время действия офлайн авторизации (30 дней)
+      final validUntil = DateTime.now().add(Duration(days: 30));
+      await prefs.setString(_offlineAuthValidUntilKey, validUntil.toIso8601String());
+
+      // 🔥 ПРИНУДИТЕЛЬНО СОХРАНЯЕМ В ПАМЯТЬ УСТРОЙСТВА
+      debugPrint('🔄 Принудительное сохранение данных в SharedPreferences...');
+
+      // Проверяем, что данные действительно сохранились
+      final savedData = prefs.getString(_offlineUserDataKey);
+      if (savedData != null && savedData.isNotEmpty) {
+        debugPrint('✅ Данные УСПЕШНО сохранены в SharedPreferences');
+        debugPrint('📊 Размер сохраненных данных: ${savedData.length} символов');
+      } else {
+        debugPrint('❌ ОШИБКА: Данные НЕ сохранились в SharedPreferences!');
+      }
+
+      debugPrint('Данные пользователя сохранены в офлайн хранилище');
+      debugPrint('Данные пользователя сохранены в кэш');
+      debugPrint('📅 Офлайн авторизация действительна до: $validUntil');
+    } catch (e) {
+      debugPrint('❌ Ошибка сохранения данных пользователя для офлайн: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить кэшированные данные пользователя
+  Future<Map<String, dynamic>?> getCachedUserData() async {
+    try {
+      final prefs = await preferences;
+      final userDataJson = prefs.getString(_offlineUserDataKey);
+
+      if (userDataJson == null || userDataJson.isEmpty) {
+        debugPrint('🔒 Нет кэшированных данных пользователя');
+        return null;
+      }
+
+      final userData = jsonDecode(userDataJson) as Map<String, dynamic>;
+      debugPrint('✅ Загружены кэшированные данные пользователя: ${userData['email']}');
+      return userData;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированных данных пользователя: $e');
+      return null;
+    }
+  }
+
+  /// Проверить, действительна ли офлайн авторизация
+  Future<bool> isOfflineAuthValid() async {
+    try {
+      final prefs = await preferences;
+
+      // Проверяем наличие данных пользователя
+      final userData = await getCachedUserData();
+      if (userData == null) {
+        debugPrint('🔒 Нет данных пользователя для офлайн авторизации');
+        return false;
+      }
+
+      // Проверяем время действия
+      final validUntilStr = prefs.getString(_offlineAuthValidUntilKey);
+      if (validUntilStr == null) {
+        debugPrint('📅 Не найдено время действия офлайн авторизации');
+        return false;
+      }
+
+      final validUntil = DateTime.tryParse(validUntilStr);
+      if (validUntil == null) {
+        debugPrint('📅 Неверный формат времени действия офлайн авторизации');
+        return false;
+      }
+
+      final now = DateTime.now();
+      final isValid = now.isBefore(validUntil);
+
+      if (isValid) {
+        debugPrint('✅ Офлайн авторизация действительна до: $validUntil');
+      } else {
+        debugPrint('❌ Офлайн авторизация истекла: $validUntil');
+      }
+
+      return isValid;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки офлайн авторизации: $e');
+      return false;
+    }
+  }
+
+  /// Очистить данные офлайн авторизации
+  Future<void> clearOfflineAuthData() async {
+    try {
+      // 🔥 ДОБАВЛЯЕМ ОТЛАДКУ ДЛЯ ПОИСКА МЕСТА ВЫЗОВА
+      if (kDebugMode) {
+        debugPrint('🚨 OfflineStorageService.clearOfflineAuthData() ВЫЗВАН!');
+        debugPrint('📍 Stack trace вызова:');
+        debugPrint(StackTrace.current.toString());
+      }
+
+      final prefs = await preferences;
+      await prefs.remove(_offlineUserDataKey);
+      await prefs.remove(_offlineAuthValidUntilKey);
+      await prefs.remove(_offlineAuthCacheTimeKey);
+      debugPrint('🧹 Данные офлайн авторизации очищены');
+    } catch (e) {
+      debugPrint('❌ Ошибка очистки данных офлайн авторизации: $e');
+    }
+  }
+
+  /// Обновить время действия офлайн авторизации
+  Future<void> refreshOfflineAuthValidity() async {
+    try {
+      final prefs = await preferences;
+      final validUntil = DateTime.now().add(Duration(days: 30));
+      await prefs.setString(_offlineAuthValidUntilKey, validUntil.toIso8601String());
+      debugPrint('📅 Время действия офлайн авторизации обновлено до: $validUntil');
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления времени действия офлайн авторизации: $e');
+    }
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для кэширования подписки
+
+  /// Кэширование статуса подписки при онлайн режиме
+  Future<void> cacheSubscriptionStatus(SubscriptionModel subscription) async {
+    try {
+      final prefs = await preferences;
+
+      // Сохраняем данные подписки
+      final subscriptionData = {
+        'userId': subscription.userId,
+        'status': subscription.status.name,
+        'type': subscription.type?.name,
+        'expirationDate': subscription.expirationDate?.toIso8601String(),
+        'purchaseToken': subscription.purchaseToken,
+        'platform': subscription.platform,
+        'createdAt': subscription.createdAt.toIso8601String(),
+        'updatedAt': subscription.updatedAt.toIso8601String(),
+        'isActive': subscription.isActive,
+      };
+
+      await prefs.setString(_cachedSubscriptionKey, jsonEncode(subscriptionData));
+      await prefs.setInt(_subscriptionCacheTimeKey, DateTime.now().millisecondsSinceEpoch);
+
+      debugPrint('✅ Статус подписки кэширован для офлайн использования');
+    } catch (e) {
+      debugPrint('❌ Ошибка кэширования подписки: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение кэшированного статуса подписки
+  Future<SubscriptionModel?> getCachedSubscriptionStatus() async {
+    try {
+      final prefs = await preferences;
+      final cachedData = prefs.getString(_cachedSubscriptionKey);
+
+      if (cachedData == null || cachedData.isEmpty) {
+        return null;
+      }
+
+      final data = jsonDecode(cachedData) as Map<String, dynamic>;
+
+      // Парсим данные подписки
+      final status = SubscriptionStatus.values
+          .where((s) => s.name == data['status'])
+          .firstOrNull ?? SubscriptionStatus.none;
+
+      final type = data['type'] != null
+          ? SubscriptionType.values
+          .where((t) => t.name == data['type'])
+          .firstOrNull
+          : null;
+
+      final expirationDate = data['expirationDate'] != null
+          ? DateTime.tryParse(data['expirationDate'])
+          : null;
+
+      final createdAt = DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now();
+      final updatedAt = DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now();
+
+      return SubscriptionModel(
+        userId: data['userId'] ?? '',
+        status: status,
+        type: type,
+        expirationDate: expirationDate,
+        purchaseToken: data['purchaseToken'] ?? '',
+        platform: data['platform'] ?? '',
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        isActive: data['isActive'] ?? false,
+      );
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированной подписки: $e');
+      return null;
+    }
+  }
+
+  /// Проверка актуальности кэша подписки
+  Future<bool> isSubscriptionCacheValid() async {
+    try {
+      final prefs = await preferences;
+      final cacheTime = prefs.getInt(_subscriptionCacheTimeKey);
+
+      if (cacheTime == null) {
+        return false;
+      }
+
+      final cacheDateTime = DateTime.fromMillisecondsSinceEpoch(cacheTime);
+      final now = DateTime.now();
+      final daysSinceCache = now.difference(cacheDateTime).inDays;
+
+      // Кэш доверия 30 дней
+      return daysSinceCache < 30;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки актуальности кэша: $e');
+      return false;
+    }
+  }
+
+  /// Кэширование лимитов использования
+  Future<void> cacheUsageLimits(UsageLimitsModel limits) async {
+    try {
+      final prefs = await preferences;
+
+      final limitsData = {
+        'userId': limits.userId,
+        'notesCount': limits.notesCount,
+        'markerMapsCount': limits.markerMapsCount,
+        'expensesCount': limits.expensesCount,
+        'lastResetDate': limits.lastResetDate.toIso8601String(),
+        'updatedAt': limits.updatedAt.toIso8601String(),
+      };
+
+      await prefs.setString(_usageLimitsKey, jsonEncode(limitsData));
+      debugPrint('✅ Лимиты использования кэшированы');
+    } catch (e) {
+      debugPrint('❌ Ошибка кэширования лимитов: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение кэшированных лимитов использования
+  Future<UsageLimitsModel?> getCachedUsageLimits() async {
+    try {
+      final prefs = await preferences;
+      final cachedData = prefs.getString(_usageLimitsKey);
+
+      if (cachedData == null || cachedData.isEmpty) {
+        return null;
+      }
+
+      final data = jsonDecode(cachedData) as Map<String, dynamic>;
+
+      return UsageLimitsModel(
+        userId: data['userId'] ?? '',
+        notesCount: data['notesCount'] ?? 0,
+        markerMapsCount: data['markerMapsCount'] ?? 0,
+        expensesCount: data['expensesCount'] ?? 0,
+        lastResetDate: DateTime.tryParse(data['lastResetDate'] ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированных лимитов: $e');
+      return null;
+    }
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для локальных счетчиков
+
+  /// Увеличение локального счетчика использования
+  Future<void> incrementLocalUsage(ContentType contentType) async {
+    try {
+      final prefs = await preferences;
+      final key = _getLocalCountKey(contentType);
+      final currentCount = prefs.getInt(key) ?? 0;
+
+      await prefs.setInt(key, currentCount + 1);
+      debugPrint('✅ Увеличен локальный счетчик $contentType: ${currentCount + 1}');
+    } catch (e) {
+      debugPrint('❌ Ошибка увеличения локального счетчика: $e');
+      rethrow;
+    }
+  }
+
+  /// Уменьшение локального счетчика использования
+  Future<void> decrementLocalUsage(ContentType contentType) async {
+    try {
+      final prefs = await preferences;
+      final key = _getLocalCountKey(contentType);
+      final currentCount = prefs.getInt(key) ?? 0;
+
+      if (currentCount > 0) {
+        await prefs.setInt(key, currentCount - 1);
+        debugPrint('✅ Уменьшен локальный счетчик $contentType: ${currentCount - 1}');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка уменьшения локального счетчика: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение локального счетчика использования
+  Future<int> getLocalUsageCount(ContentType contentType) async {
+    try {
+      final prefs = await preferences;
+      final key = _getLocalCountKey(contentType);
+      return prefs.getInt(key) ?? 0;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения локального счетчика: $e');
+      return 0;
+    }
+  }
+
+  /// Сброс всех локальных счетчиков использования
+  Future<void> resetLocalUsageCounters() async {
+    try {
+      final prefs = await preferences;
+
+      await prefs.setInt(_localNotesCountKey, 0);
+      await prefs.setInt(_localMapsCountKey, 0);
+      await prefs.setInt(_localExpensesCountKey, 0);
+      await prefs.setInt(_localDepthChartCountKey, 0);
+      await prefs.setInt(_localCountersResetKey, DateTime.now().millisecondsSinceEpoch);
+
+      debugPrint('✅ Все локальные счетчики сброшены');
+    } catch (e) {
+      debugPrint('❌ Ошибка сброса локальных счетчиков: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение всех локальных счетчиков
+  Future<Map<ContentType, int>> getAllLocalUsageCounters() async {
+    try {
+      final prefs = await preferences;
+
+      return {
+        ContentType.fishingNotes: prefs.getInt(_localNotesCountKey) ?? 0,
+        ContentType.markerMaps: prefs.getInt(_localMapsCountKey) ?? 0,
+        ContentType.expenses: prefs.getInt(_localExpensesCountKey) ?? 0,
+        ContentType.depthChart: prefs.getInt(_localDepthChartCountKey) ?? 0,
+      };
+    } catch (e) {
+      debugPrint('❌ Ошибка получения всех локальных счетчиков: $e');
+      return {};
+    }
+  }
+
+  /// Получение ключа для локального счетчика по типу контента
+  String _getLocalCountKey(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return _localNotesCountKey;
+      case ContentType.markerMaps:
+        return _localMapsCountKey;
+      case ContentType.expenses:
+        return _localExpensesCountKey;
+      case ContentType.depthChart:
+        return _localDepthChartCountKey;
+    }
+  }
+
+  /// Получение времени последнего сброса локальных счетчиков
+  Future<DateTime?> getLocalCountersResetTime() async {
+    try {
+      final prefs = await preferences;
+      final timestamp = prefs.getInt(_localCountersResetKey);
+
+      if (timestamp == null) {
+        return null;
+      }
+
+      return DateTime.fromMillisecondsSinceEpoch(timestamp);
+    } catch (e) {
+      debugPrint('❌ Ошибка получения времени сброса счетчиков: $e');
+      return null;
+    }
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для кэширования данных
+
+  /// Кэширование заметок рыбалки для офлайн доступа
+  Future<void> cacheFishingNotes(List<dynamic> notes) async {
+    try {
+      final prefs = await preferences;
+      final notesJson = notes.map((note) => jsonEncode(note)).toList();
+
+      await prefs.setStringList('cached_fishing_notes', notesJson);
+      debugPrint('✅ Заметки рыбалки кэшированы (${notes.length} записей)');
+    } catch (e) {
+      debugPrint('❌ Ошибка кэширования заметок: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение кэшированных заметок рыбалки
+  Future<List<Map<String, dynamic>>> getCachedFishingNotes() async {
+    try {
+      final prefs = await preferences;
+      final notesJson = prefs.getStringList('cached_fishing_notes') ?? [];
+
+      List<Map<String, dynamic>> notes = [];
+      for (var noteJson in notesJson) {
+        try {
+          notes.add(jsonDecode(noteJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('❌ Ошибка декодирования кэшированной заметки: $e');
+        }
+      }
+
+      return notes;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированных заметок: $e');
+      return [];
+    }
+  }
+
+  /// Кэширование маркерных карт для офлайн доступа
+  Future<void> cacheMarkerMaps(List<dynamic> maps) async {
+    try {
+      final prefs = await preferences;
+      final mapsJson = maps.map((map) => jsonEncode(map)).toList();
+
+      await prefs.setStringList('cached_marker_maps', mapsJson);
+      debugPrint('✅ Маркерные карты кэшированы (${maps.length} записей)');
+    } catch (e) {
+      debugPrint('❌ Ошибка кэширования маркерных карт: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение кэшированных маркерных карт
+  Future<List<Map<String, dynamic>>> getCachedMarkerMaps() async {
+    try {
+      final prefs = await preferences;
+      final mapsJson = prefs.getStringList('cached_marker_maps') ?? [];
+
+      List<Map<String, dynamic>> maps = [];
+      for (var mapJson in mapsJson) {
+        try {
+          maps.add(jsonDecode(mapJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('❌ Ошибка декодирования кэшированной карты: $e');
+        }
+      }
+
+      return maps;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированных карт: $e');
+      return [];
+    }
+  }
+
+  /// Сохранение заметки рыбалки в офлайн режиме с флагом синхронизации
+  Future<void> saveOfflineFishingNote(Map<String, dynamic> noteData) async {
+    try {
+      // Добавляем флаг синхронизации
+      noteData['isSynced'] = false;
+      noteData['offlineCreatedAt'] = DateTime.now().toIso8601String();
+
+      await saveOfflineNote(noteData);
+      debugPrint('✅ Заметка сохранена в офлайн режиме с флагом синхронизации');
+    } catch (e) {
+      debugPrint('❌ Ошибка сохранения заметки в офлайн режиме: $e');
+      rethrow;
+    }
+  }
+
+  /// Сохранение маркерной карты в офлайн режиме с флагом синхронизации
+  Future<void> saveOfflineMarkerMapWithSync(Map<String, dynamic> mapData) async {
+    try {
+      // Добавляем флаг синхронизации
+      mapData['isSynced'] = false;
+      mapData['offlineCreatedAt'] = DateTime.now().toIso8601String();
+
+      await saveOfflineMarkerMap(mapData);
+      debugPrint('✅ Маркерная карта сохранена в офлайн режиме с флагом синхронизации');
+    } catch (e) {
+      debugPrint('❌ Ошибка сохранения маркерной карты в офлайн режиме: $e');
+      rethrow;
+    }
   }
 
   /// Сохранить заметку о рыбалке в офлайн хранилище
@@ -98,7 +628,7 @@ class OfflineStorageService {
           prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
       try {
         Map<String, dynamic> updates =
-            jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
+        jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
         if (updates.containsKey(noteId.toString())) {
           updates.remove(noteId.toString());
           await prefs.setString(_offlineNotesUpdatesKey, jsonEncode(updates));
@@ -115,9 +645,9 @@ class OfflineStorageService {
 
   /// Сохранить обновление заметки
   Future<void> saveNoteUpdate(
-    String noteId,
-    Map<String, dynamic> noteData,
-  ) async {
+      String noteId,
+      Map<String, dynamic> noteData,
+      ) async {
     try {
       final prefs = await preferences;
       String offlineUpdatesJson =
@@ -141,9 +671,9 @@ class OfflineStorageService {
 
   /// Сохранить пути к фотографиям для заметки
   Future<void> saveOfflinePhotoPaths(
-    String noteId,
-    List<String> photoPaths,
-  ) async {
+      String noteId,
+      List<String> photoPaths,
+      ) async {
     try {
       final prefs = await preferences;
       String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
@@ -228,9 +758,9 @@ class OfflineStorageService {
 
   /// Сохранить обновление маркерной карты
   Future<void> saveMarkerMapUpdate(
-    String mapId,
-    Map<String, dynamic> mapData,
-  ) async {
+      String mapId,
+      Map<String, dynamic> mapData,
+      ) async {
     try {
       final prefs = await preferences;
       String offlineUpdatesJson =
@@ -509,7 +1039,7 @@ class OfflineStorageService {
     try {
       final prefs = await preferences;
       final key =
-          isMarkerMap ? _offlineMarkerMapsUpdatesKey : _offlineNotesUpdatesKey;
+      isMarkerMap ? _offlineMarkerMapsUpdatesKey : _offlineNotesUpdatesKey;
 
       await prefs.setString(key, '{}');
     } catch (e) {
@@ -542,7 +1072,7 @@ class OfflineStorageService {
       String offlinePhotosJson = prefs.getString(_offlinePhotosKey) ?? '{}';
       try {
         Map<String, dynamic> photosMap =
-            jsonDecode(offlinePhotosJson) as Map<String, dynamic>;
+        jsonDecode(offlinePhotosJson) as Map<String, dynamic>;
         photosMap.remove(noteId);
         await prefs.setString(_offlinePhotosKey, jsonEncode(photosMap));
       } catch (e) {
@@ -586,6 +1116,13 @@ class OfflineStorageService {
   /// Очистить все офлайн данные
   Future<void> clearAllOfflineData() async {
     try {
+      // 🔥 ДОБАВЛЯЕМ ОТЛАДКУ ДЛЯ ПОИСКА МЕСТА ВЫЗОВА
+      if (kDebugMode) {
+        debugPrint('🚨 OfflineStorageService.clearAllOfflineData() ВЫЗВАН!');
+        debugPrint('📍 Stack trace вызова:');
+        debugPrint(StackTrace.current.toString());
+      }
+
       final prefs = await preferences;
       await prefs.remove(_offlineNotesKey);
       await prefs.remove(_offlineNotesUpdatesKey);
@@ -597,6 +1134,21 @@ class OfflineStorageService {
       await prefs.remove(_statisticsCacheKey);
       await prefs.remove(_deleteAllMarkerMapsKey);
       await prefs.remove(_deleteAllNotesKey);
+
+      // 🔥 Очищаем новые ключи
+      await prefs.remove(_cachedSubscriptionKey);
+      await prefs.remove(_subscriptionCacheTimeKey);
+      await prefs.remove(_usageLimitsKey);
+      await prefs.remove(_localNotesCountKey);
+      await prefs.remove(_localMapsCountKey);
+      await prefs.remove(_localExpensesCountKey);
+      await prefs.remove(_localDepthChartCountKey);
+      await prefs.remove(_localCountersResetKey);
+      await prefs.remove('cached_fishing_notes');
+      await prefs.remove('cached_marker_maps');
+
+      // 🔥 Очищаем данные офлайн авторизации
+      await clearOfflineAuthData();
 
       debugPrint('Все офлайн данные очищены');
     } catch (e) {

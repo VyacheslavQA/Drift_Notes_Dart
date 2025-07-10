@@ -1,5 +1,5 @@
 // Путь: lib/screens/home_screen.dart
-// ОБНОВЛЕННАЯ ВЕРСИЯ с ИСПРАВЛЕННЫМ адаптивным отступом в Drawer
+// ОБНОВЛЕННАЯ ВЕРСИЯ с ОФЛАЙН ПОДДЕРЖКОЙ
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +11,7 @@ import '../models/user_model.dart';
 import '../models/subscription_model.dart';
 import '../constants/app_constants.dart';
 import '../utils/date_formatter.dart';
+import '../utils/network_utils.dart';
 import '../localization/app_localizations.dart';
 import '../widgets/center_button_tooltip.dart';
 import '../services/user_consent_service.dart';
@@ -57,6 +58,13 @@ class _HomeScreenState extends State<HomeScreen> {
   ConsentRestrictionResult? _policyRestrictions;
   bool _hasPolicyBeenChecked = false;
 
+  // ===== НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ОФЛАЙН РЕЖИМА =====
+  bool _isOfflineMode = false;
+  bool _isInitialized = false;
+  Map<String, dynamic>? _offlineAuthStatus;
+  bool _hasNetworkConnection = true;
+  String? _offlineStatusMessage;
+
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
   // ХАРДКОР: Фиксированные размеры навигации (не зависят от адаптивности)
@@ -91,8 +99,217 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFishingNotes();
-    _fishingNoteRepository.syncOfflineDataOnStartup();
+    // ===== НОВОЕ: Инициализация с поддержкой офлайн режима =====
+    _initializeOfflineMode();
+  }
+
+  // ===== НОВЫЙ МЕТОД: Инициализация офлайн режима =====
+  Future<void> _initializeOfflineMode() async {
+    try {
+      debugPrint('🚀 Инициализация HomeScreen с поддержкой офлайн режима...');
+
+      // Проверяем подключение к сети
+      _hasNetworkConnection = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${_hasNetworkConnection ? "онлайн" : "офлайн"}');
+
+      if (_hasNetworkConnection) {
+        // Онлайн режим
+        await _initializeOnlineMode();
+      } else {
+        // Офлайн режим
+        await _initializeOfflineOnly();
+      }
+
+      // Получаем статус офлайн авторизации
+      _offlineAuthStatus = await _firebaseService.getOfflineAuthStatus();
+      _isOfflineMode = _firebaseService.isOfflineMode;
+
+      // Загружаем данные с fallback на кэш
+      await _loadDataWithFallback();
+
+      // Загружаем заметки
+      await _loadFishingNotes();
+
+      // Синхронизируем офлайн данные
+      await _fishingNoteRepository.syncOfflineDataOnStartup();
+
+      _isInitialized = true;
+
+      if (mounted) {
+        setState(() {});
+        _showOfflineStatusIfNeeded();
+      }
+
+      debugPrint('✅ Инициализация завершена успешно');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при инициализации: $e');
+
+      // Fallback: пытаемся загрузить хотя бы кэшированные данные
+      await _loadDataWithFallback();
+      await _loadFishingNotes();
+
+      _isInitialized = true;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  // ===== НОВЫЙ МЕТОД: Инициализация онлайн режима =====
+  Future<void> _initializeOnlineMode() async {
+    try {
+      debugPrint('🌐 Инициализация онлайн режима...');
+
+      // Кэшируем данные подписки при онлайн режиме
+      await _subscriptionService.cacheSubscriptionDataOnline();
+
+      // Переключаемся в онлайн режим если были офлайн
+      if (_firebaseService.isOfflineMode) {
+        await _firebaseService.switchToOnlineMode();
+      }
+
+      debugPrint('✅ Онлайн режим инициализирован');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при инициализации онлайн режима: $e');
+      // Продолжаем работу с кэшированными данными
+    }
+  }
+
+  // ===== НОВЫЙ МЕТОД: Инициализация только офлайн режима =====
+  Future<void> _initializeOfflineOnly() async {
+    try {
+      debugPrint('📱 Инициализация офлайн режима...');
+
+      // Пытаемся инициализировать приложение с поддержкой офлайн
+      final initialized = await _firebaseService.initializeWithOfflineSupport();
+
+      if (initialized) {
+        _isOfflineMode = true;
+        _offlineStatusMessage = 'Работаете в офлайн режиме';
+        debugPrint('✅ Офлайн режим активирован');
+      } else {
+        _offlineStatusMessage = 'Нет подключения к интернету';
+        debugPrint('⚠️ Офлайн режим недоступен');
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при инициализации офлайн режима: $e');
+      _offlineStatusMessage = 'Ошибка подключения';
+    }
+  }
+
+  // ===== НОВЫЙ МЕТОД: Загрузка данных с fallback на кэш =====
+  Future<void> _loadDataWithFallback() async {
+    try {
+      debugPrint('📊 Загрузка данных с fallback на кэш...');
+
+      if (_hasNetworkConnection) {
+        // Онлайн: загружаем с сервера и кэшируем
+        debugPrint('🌐 Загрузка данных с сервера...');
+        // Здесь можно добавить загрузку других данных профиля если нужно
+
+      } else {
+        // Офлайн: загружаем из кэша
+        debugPrint('💾 Загрузка данных из кэша...');
+        // Данные пользователя уже загружены через FirebaseService
+      }
+
+      debugPrint('✅ Данные загружены успешно');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при загрузке данных: $e');
+      // Продолжаем работу с доступными данными
+    }
+  }
+
+  // ===== НОВЫЙ МЕТОД: Показ статуса офлайн режима =====
+  void _showOfflineStatusIfNeeded() {
+    if (!_hasNetworkConnection || _isOfflineMode) {
+      final localizations = AppLocalizations.of(context);
+
+      // Показываем снэкбар только один раз при инициализации
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _offlineStatusMessage ??
+                          localizations.translate('offline_mode_active') ??
+                          'Офлайн режим активен',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: _isOfflineMode ? Colors.blue : Colors.orange,
+              duration: const Duration(seconds: 4),
+              action: !_hasNetworkConnection ? SnackBarAction(
+                label: localizations.translate('retry') ?? 'Повторить',
+                textColor: Colors.white,
+                onPressed: () => _refreshConnection(),
+              ) : null,
+            ),
+          );
+        }
+      });
+    }
+  }
+
+  // ===== НОВЫЙ МЕТОД: Обновление подключения =====
+  Future<void> _refreshConnection() async {
+    try {
+      debugPrint('🔄 Проверка подключения...');
+
+      final hasConnection = await NetworkUtils.isNetworkAvailable();
+
+      if (hasConnection != _hasNetworkConnection) {
+        _hasNetworkConnection = hasConnection;
+
+        if (_hasNetworkConnection) {
+          // Восстановлено подключение
+          debugPrint('🌐 Подключение восстановлено');
+          await _initializeOnlineMode();
+
+          if (mounted) {
+            final localizations = AppLocalizations.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.wifi, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      localizations.translate('connection_restored') ??
+                          'Подключение восстановлено',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+
+        if (mounted) {
+          setState(() {});
+        }
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке подключения: $e');
+    }
   }
 
   @override
@@ -315,21 +532,36 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ===== ОБНОВЛЕНО: Загрузка заметок с fallback =====
   Future<void> _loadFishingNotes() async {
     try {
+      debugPrint('📝 Загрузка заметок о рыбалке...');
+
       final notes = await _fishingNoteRepository.getUserFishingNotes();
+
       if (mounted) {
         setState(() {
           _fishingNotes = notes;
         });
       }
+
+      debugPrint('✅ Загружено ${notes.length} заметок');
+
     } catch (e) {
+      debugPrint('❌ Ошибка при загрузке заметок: $e');
+
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               '${localizations.translate('loading_error')}: ${e.toString()}',
+            ),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: localizations.translate('retry') ?? 'Повторить',
+              textColor: Colors.white,
+              onPressed: () => _loadFishingNotes(),
             ),
           ),
         );
@@ -1093,6 +1325,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ===== НОВЫЙ ВИДЖЕТ: Индикатор офлайн статуса =====
+  Widget _buildOfflineStatusIndicator() {
+    if (!_isInitialized) {
+      return const SizedBox.shrink();
+    }
+
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем только если есть проблемы с подключением или активен офлайн режим
+    if (_hasNetworkConnection && !_isOfflineMode) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        color: _isOfflineMode ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isOfflineMode ? Colors.blue : Colors.orange,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: (_isOfflineMode ? Colors.blue : Colors.orange).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+              color: _isOfflineMode ? Colors.blue : Colors.orange,
+              size: iconSize,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isOfflineMode
+                      ? (localizations.translate('offline_mode') ?? 'Офлайн режим')
+                      : (localizations.translate('no_connection') ?? 'Нет подключения'),
+                  style: TextStyle(
+                    color: _isOfflineMode ? Colors.blue : Colors.orange,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isOfflineMode
+                      ? (localizations.translate('offline_mode_description') ?? 'Данные сохраняются локально')
+                      : (localizations.translate('connection_required') ?? 'Для полной функциональности требуется интернет'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.7),
+                    fontSize: fontSize - 2,
+                  ),
+                ),
+                // Показываем информацию о сроке действия офлайн режима
+                if (_isOfflineMode && _offlineAuthStatus != null && _offlineAuthStatus!['daysUntilExpiry'] != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Действует ${_offlineAuthStatus!['daysUntilExpiry']} дней',
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: fontSize - 3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Кнопка обновления подключения
+          if (!_hasNetworkConnection)
+            IconButton(
+              onPressed: _refreshConnection,
+              icon: const Icon(Icons.refresh),
+              color: Colors.orange,
+            ),
+        ],
+      ),
+    );
+  }
+
   Color _getRealizationColor(double rate) {
     if (rate >= 70) return Colors.green;
     if (rate >= 40) return Colors.orange;
@@ -1108,7 +1429,7 @@ class _HomeScreenState extends State<HomeScreen> {
         key: _scaffoldKey,
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          // ОБНОВЛЕН: Заголовок с бейджем подписки
+          // ОБНОВЛЕН: Заголовок с бейджем подписки и индикатором офлайн режима
           title: Row(
             children: [
               Expanded(
@@ -1121,6 +1442,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              // ===== НОВОЕ: Индикатор офлайн режима =====
+              if (_isOfflineMode || !_hasNetworkConnection)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _isOfflineMode ? Colors.blue : Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isOfflineMode ? 'OFF' : 'NO NET',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               // ДОБАВЛЕН: Компактный бейдж статуса подписки
               StreamBuilder<SubscriptionStatus>(
                 stream: _subscriptionService.subscriptionStatusStream,
@@ -1203,6 +1553,8 @@ class _HomeScreenState extends State<HomeScreen> {
         drawer: _buildDrawer(),
         body: RefreshIndicator(
           onRefresh: () async {
+            // ===== ОБНОВЛЕНО: Обновление с проверкой подключения =====
+            await _refreshConnection();
             await _checkPolicyCompliance();
             await _loadFishingNotes();
           },
@@ -1218,6 +1570,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildQuickActionsGrid(),
                   const SizedBox(height: 24),
+
+                  // ===== НОВОЕ: Индикатор офлайн статуса =====
+                  _buildOfflineStatusIndicator(),
 
                   // ДОБАВЛЕНО: Карточки ограничений и подписки НАД статистикой
                   if (_policyRestrictions?.hasRestrictions == true)
@@ -1372,6 +1727,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // ===== НОВОЕ: Индикатор офлайн режима в drawer =====
+                          if (_isOfflineMode || !_hasNetworkConnection)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _isOfflineMode ? Colors.blue : Colors.orange,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _isOfflineMode
+                                        ? (localizations.translate('offline_mode') ?? 'Офлайн режим')
+                                        : (localizations.translate('no_connection') ?? 'Нет сети'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Image.asset(
                             'assets/images/drawer_logo.png',
                             width: 110.0,
@@ -1702,6 +2088,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: CompactUsageBadge(
                                   contentType: ContentType.fishingNotes,
                                   showOnlyWhenNearLimit: true,
+                                ),
+                              ),
+                            // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
+                            if (_isOfflineMode || !_hasNetworkConnection)
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                child: Container(
+                                  width: 20.0,
+                                  height: 20.0,
+                                  decoration: BoxDecoration(
+                                    color: _isOfflineMode ? Colors.blue : Colors.orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                                    color: Colors.white,
+                                    size: 12.0,
+                                  ),
                                 ),
                               ),
                           ],

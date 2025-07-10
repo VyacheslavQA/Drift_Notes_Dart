@@ -19,6 +19,10 @@ import 'bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
+// ДОБАВЛЕНО: импорты для премиум системы
+import '../../services/subscription/subscription_service.dart';
+import '../../services/offline/offline_storage_service.dart';
+import '../../constants/subscription_constants.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -41,6 +45,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   final _weatherService = WeatherService();
   final _aiService = AIBitePredictionService();
   final _weatherSettings = WeatherSettingsService();
+
+  // ДОБАВЛЕНО: сервисы для премиум системы
+  final _subscriptionService = SubscriptionService();
+  final _offlineStorage = OfflineStorageService();
 
   late DateTime _startDate;
   late DateTime _endDate;
@@ -414,7 +422,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ИЗМЕНЕНО: полностью переписан метод для работы с новой структурой Firebase
+  // ИЗМЕНЕНО: добавлена проверка лимитов и офлайн сохранение
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -434,11 +442,35 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       return;
     }
 
+    // ДОБАВЛЕНО: проверка лимитов перед сохранением
+    try {
+      final canCreate = await _subscriptionService.canCreateContent(ContentType.fishingNotes);
+      if (!canCreate) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Достигнут лимит создания заметок. Обновитесь до Premium для безлимитного доступа.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint('Ошибка при проверке лимитов: $e');
+      // Продолжаем сохранение при ошибке проверки лимитов
+    }
+
     setState(() {
       _isSaving = true;
     });
 
     try {
+      // ДОБАВЛЕНО: проверка подключения к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('Статус сети: ${isOnline ? "онлайн" : "офлайн"}');
+
       // Подготовка данных для ИИ-предсказания
       Map<String, dynamic>? aiPredictionMap;
       if (_aiPrediction != null) {
@@ -500,44 +532,102 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         'aiPrediction': aiPredictionMap,
         'photoUrls': <String>[], // Будет заполнено после загрузки фотографий
         'mapMarkers': <Map<String, dynamic>>[], // Пустой список маркеров
+        'isOffline': !isOnline, // ДОБАВЛЕНО: помечаем как офлайн запись
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
       };
 
-      // НОВЫЙ ПОДХОД: загружаем фотографии и обновляем URLs
-      if (_selectedPhotos.isNotEmpty) {
-        final List<String> photoUrls = [];
-        final userId = _firebaseService.currentUserId;
+      if (isOnline) {
+        // ОНЛАЙН СОХРАНЕНИЕ
+        debugPrint('Сохранение онлайн...');
 
-        for (int i = 0; i < _selectedPhotos.length; i++) {
-          final file = _selectedPhotos[i];
-          final fileName = '${noteData['id']}_photo_$i.jpg';
-          final path = 'fishing_notes/$userId/$fileName';
+        // НОВЫЙ ПОДХОД: загружаем фотографии и обновляем URLs
+        if (_selectedPhotos.isNotEmpty) {
+          final List<String> photoUrls = [];
+          final userId = _firebaseService.currentUserId;
 
-          try {
-            final bytes = await file.readAsBytes();
-            final photoUrl = await _firebaseService.uploadImage(path, bytes);
-            photoUrls.add(photoUrl);
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${localizations.translate('error_uploading_photo')} ${i + 1}'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+          for (int i = 0; i < _selectedPhotos.length; i++) {
+            final file = _selectedPhotos[i];
+            final fileName = '${noteData['id']}_photo_$i.jpg';
+            final path = 'fishing_notes/$userId/$fileName';
+
+            try {
+              final bytes = await file.readAsBytes();
+              final photoUrl = await _firebaseService.uploadImage(path, bytes);
+              photoUrls.add(photoUrl);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${localizations.translate('error_uploading_photo')} ${i + 1}'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
             }
           }
+
+          noteData['photoUrls'] = photoUrls;
         }
 
-        noteData['photoUrls'] = photoUrls;
-      }
+        // НОВЫЙ МЕТОД: используем addFishingNoteNew()
+        await _firebaseService.addFishingNoteNew(noteData);
 
-      // НОВЫЙ МЕТОД: используем addFishingNoteNew()
-      await _firebaseService.addFishingNoteNew(noteData);
+        // ДОБАВЛЕНО: увеличиваем счетчик использования
+        await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+
+        debugPrint('Заметка сохранена онлайн');
+
+      } else {
+        // ДОБАВЛЕНО: ОФЛАЙН СОХРАНЕНИЕ
+        debugPrint('Сохранение офлайн...');
+
+        // Сохраняем фотографии локально (упрощенный вариант)
+        if (_selectedPhotos.isNotEmpty) {
+          final List<String> localPhotoPaths = [];
+
+          for (int i = 0; i < _selectedPhotos.length; i++) {
+            final file = _selectedPhotos[i];
+
+            try {
+              // Просто добавляем путь к файлу для офлайн использования
+              localPhotoPaths.add(file.path);
+            } catch (e) {
+              debugPrint('Ошибка подготовки фото офлайн $i: $e');
+            }
+          }
+
+          noteData['photoUrls'] = localPhotoPaths;
+          noteData['localPhotoPaths'] = localPhotoPaths;
+        }
+
+        // Сохраняем заметку локально
+        await _offlineStorage.saveOfflineFishingNote(noteData);
+
+        // ДОБАВЛЕНО: увеличиваем офлайн счетчик
+        await _subscriptionService.incrementOfflineUsage(ContentType.fishingNotes);
+
+        debugPrint('Заметка сохранена офлайн');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations.translate('note_saved_successfully')),
+            content: Row(
+              children: [
+                Icon(
+                  isOnline ? Icons.cloud_done : Icons.offline_bolt,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isOnline
+                        ? localizations.translate('note_saved_successfully')
+                        : 'Заметка сохранена офлайн и будет синхронизирована при подключении к сети',
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -546,6 +636,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         Navigator.pop(context, true);
       }
     } catch (e) {
+      debugPrint('Ошибка при сохранении заметки: $e');
+
       if (mounted) {
         String errorMessage;
         if (e.toString().contains('Пользователь не авторизован')) {

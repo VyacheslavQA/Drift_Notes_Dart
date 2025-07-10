@@ -1,6 +1,7 @@
 // Путь: lib/constants/subscription_constants.dart
 
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // Типы подписки (вынесены наружу из класса)
@@ -33,6 +34,24 @@ enum SupportedCurrency {
   kzt,    // Казахстанские тенге
   eur,    // Евро
   uah,    // Украинские гривны
+}
+
+// 🔥 НОВЫЕ ЕНУМЫ для офлайн режима
+
+/// Типы предупреждений о лимитах в офлайн режиме
+enum OfflineLimitWarningType {
+  normal,       // Нормальное использование
+  approaching,  // Приближение к лимиту
+  overLimit,    // Превышение лимита (но в рамках grace period)
+  blocked,      // Критическое превышение - блокировка
+}
+
+/// Статус кэша подписки
+enum CacheStatus {
+  trusted,    // Доверенный кэш (до 30 дней)
+  warning,    // Предупреждение (30-60 дней)
+  expired,    // Истекший (60-90 дней)
+  invalid,    // Недействительный (более 90 дней)
 }
 
 class SubscriptionConstants {
@@ -123,6 +142,29 @@ class SubscriptionConstants {
   static const int freeExpensesLimit = 3;
   static const int unlimitedValue = 999999;
 
+  // 🔥 НОВЫЕ КОНСТАНТЫ для офлайн режима
+
+  /// Офлайн режим - количество дополнительных элементов сверх лимита
+  static const int offlineGraceLimit = 3;
+
+  /// Кэширование подписки - дни полного доверия к кэшу
+  static const int cacheTrustDays = 30;
+
+  /// Кэширование подписки - дни с предупреждением о проверке
+  static const int cacheWarningDays = 60;
+
+  /// Кэширование подписки - полное истечение кэша
+  static const int cacheExpireDays = 90;
+
+  /// Время действия кэша использования (в минутах)
+  static const int usageCacheMinutes = 5;
+
+  /// Максимальное количество попыток синхронизации
+  static const int maxSyncRetries = 3;
+
+  /// Задержка между попытками синхронизации (в секундах)
+  static const int syncRetryDelaySeconds = 5;
+
   // ========================================
   // ЛОКАЛИЗАЦИЯ И КЭШИРОВАНИЕ
   // ========================================
@@ -162,6 +204,191 @@ class SubscriptionConstants {
   static const String iosPlatform = 'ios';
 
   static const Duration limitResetPeriod = Duration(days: 30);
+
+  // ========================================
+  // 🔥 НОВЫЕ МЕТОДЫ для офлайн режима
+  // ========================================
+
+  /// Проверка превышения лимита с учетом офлайн режима
+  static bool isOverLimitWithGrace(int currentUsage, int limit) {
+    return currentUsage >= (limit + offlineGraceLimit);
+  }
+
+  /// Получение оставшихся дополнительных элементов
+  static int getRemainingGraceElements(int currentUsage, int limit) {
+    if (currentUsage <= limit) {
+      return offlineGraceLimit;
+    }
+
+    final used = currentUsage - limit;
+    return (offlineGraceLimit - used).clamp(0, offlineGraceLimit);
+  }
+
+  /// Проверка критического превышения лимита
+  static bool isCriticalOverage(int currentUsage, int limit) {
+    return currentUsage >= (limit + offlineGraceLimit);
+  }
+
+  /// Проверка приближения к лимиту
+  static bool isApproachingLimit(int currentUsage, int limit) {
+    return currentUsage >= (limit - 2); // За 2 элемента до лимита
+  }
+
+  /// Проверка превышения базового лимита
+  static bool isOverBaseLimit(int currentUsage, int limit) {
+    return currentUsage > limit;
+  }
+
+  /// Получение типа предупреждения о лимите
+  static OfflineLimitWarningType getWarningType(int currentUsage, int limit) {
+    if (isCriticalOverage(currentUsage, limit)) {
+      return OfflineLimitWarningType.blocked;
+    }
+
+    if (isOverBaseLimit(currentUsage, limit)) {
+      return OfflineLimitWarningType.overLimit;
+    }
+
+    if (isApproachingLimit(currentUsage, limit)) {
+      return OfflineLimitWarningType.approaching;
+    }
+
+    return OfflineLimitWarningType.normal;
+  }
+
+  /// Получение сообщения о статусе лимита
+  static String getLimitStatusMessage(int currentUsage, int limit, ContentType contentType) {
+    final warningType = getWarningType(currentUsage, limit);
+    final contentName = getContentTypeName(contentType);
+
+    switch (warningType) {
+      case OfflineLimitWarningType.blocked:
+        return 'Лимит $contentName исчерпан. Требуется Premium подписка.';
+
+      case OfflineLimitWarningType.overLimit:
+        final remaining = getRemainingGraceElements(currentUsage, limit);
+        return 'Использовано ${currentUsage - limit} из $offlineGraceLimit дополнительных $contentName. Осталось: $remaining.';
+
+      case OfflineLimitWarningType.approaching:
+        final remaining = limit - currentUsage;
+        return 'Осталось $remaining $contentName до лимита.';
+
+      case OfflineLimitWarningType.normal:
+        return 'Использовано $currentUsage из $limit $contentName.';
+    }
+  }
+
+  /// Получение названия типа контента
+  static String getContentTypeName(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return 'заметок';
+      case ContentType.markerMaps:
+        return 'карт';
+      case ContentType.expenses:
+        return 'поездок';
+      case ContentType.depthChart:
+        return 'графиков глубины';
+    }
+  }
+
+  /// Проверка актуальности кэша по времени
+  static bool isCacheValid(DateTime cacheTime, int validDays) {
+    final now = DateTime.now();
+    final daysSinceCache = now.difference(cacheTime).inDays;
+    return daysSinceCache < validDays;
+  }
+
+  /// Получение статуса кэша
+  static CacheStatus getCacheStatus(DateTime cacheTime) {
+    final now = DateTime.now();
+    final daysSinceCache = now.difference(cacheTime).inDays;
+
+    if (daysSinceCache < cacheTrustDays) {
+      return CacheStatus.trusted;
+    } else if (daysSinceCache < cacheWarningDays) {
+      return CacheStatus.warning;
+    } else if (daysSinceCache < cacheExpireDays) {
+      return CacheStatus.expired;
+    } else {
+      return CacheStatus.invalid;
+    }
+  }
+
+  /// Получение цвета для индикатора лимита
+  static Color getLimitIndicatorColor(int currentUsage, int limit) {
+    final warningType = getWarningType(currentUsage, limit);
+
+    switch (warningType) {
+      case OfflineLimitWarningType.normal:
+        return Colors.green;
+      case OfflineLimitWarningType.approaching:
+        return Colors.orange;
+      case OfflineLimitWarningType.overLimit:
+        return Colors.red;
+      case OfflineLimitWarningType.blocked:
+        return Colors.red.shade800;
+    }
+  }
+
+  /// Получение иконки для индикатора лимита
+  static IconData getLimitIndicatorIcon(int currentUsage, int limit) {
+    final warningType = getWarningType(currentUsage, limit);
+
+    switch (warningType) {
+      case OfflineLimitWarningType.normal:
+        return Icons.check_circle;
+      case OfflineLimitWarningType.approaching:
+        return Icons.warning;
+      case OfflineLimitWarningType.overLimit:
+        return Icons.error;
+      case OfflineLimitWarningType.blocked:
+        return Icons.block;
+    }
+  }
+
+  /// Получение процента использования
+  static double getUsagePercentage(int currentUsage, int limit) {
+    if (limit == 0) return 0.0;
+    return (currentUsage / limit).clamp(0.0, 1.0);
+  }
+
+  /// Получение процента использования с учетом grace period
+  static double getUsagePercentageWithGrace(int currentUsage, int limit) {
+    final totalLimit = limit + offlineGraceLimit;
+    if (totalLimit == 0) return 0.0;
+    return (currentUsage / totalLimit).clamp(0.0, 1.0);
+  }
+
+  /// Проверка необходимости показа предупреждения
+  static bool shouldShowWarning(int currentUsage, int limit) {
+    return getWarningType(currentUsage, limit) != OfflineLimitWarningType.normal;
+  }
+
+  /// Проверка необходимости показа диалога премиум
+  static bool shouldShowPremiumDialog(int currentUsage, int limit) {
+    return getWarningType(currentUsage, limit) == OfflineLimitWarningType.blocked;
+  }
+
+  /// Получение заголовка для диалога превышения лимита
+  static String getLimitDialogTitle(ContentType contentType) {
+    final contentName = getContentTypeName(contentType);
+    return 'Лимит $contentName превышен';
+  }
+
+  /// Получение описания для диалога превышения лимита
+  static String getLimitDialogDescription(ContentType contentType, int currentUsage, int limit) {
+    final contentName = getContentTypeName(contentType);
+    final remaining = getRemainingGraceElements(currentUsage, limit);
+
+    if (isCriticalOverage(currentUsage, limit)) {
+      return 'Вы превысили лимит на ${currentUsage - limit} $contentName. Для продолжения использования требуется Premium подписка.';
+    } else if (isOverBaseLimit(currentUsage, limit)) {
+      return 'Вы превысили базовый лимит на ${currentUsage - limit} $contentName. Осталось $remaining дополнительных элементов.';
+    } else {
+      return 'Приближается лимит использования $contentName.';
+    }
+  }
 
   // ========================================
   // МЕТОДЫ ДЛЯ РАБОТЫ С ВАЛЮТАМИ

@@ -6,10 +6,12 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
+import '../../utils/network_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -31,6 +33,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   String _errorMessage = '';
 
+  // Новые переменные для офлайн режима
+  bool _isOfflineMode = false;
+  bool _hasInternet = true;
+  bool _canAuthenticateOffline = false;
+  bool _checkingConnection = false;
+
   // Ключи для сохранения данных
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
@@ -40,6 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _checkNetworkStatusAndOfflineCapability();
   }
 
   @override
@@ -47,6 +56,56 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Проверка сетевого статуса и возможности офлайн авторизации
+  Future<void> _checkNetworkStatusAndOfflineCapability() async {
+    setState(() {
+      _checkingConnection = true;
+    });
+
+    try {
+      // Проверяем подключение к интернету
+      final hasInternet = await NetworkUtils.isNetworkAvailable();
+
+      // Проверяем возможность офлайн авторизации
+      final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
+
+      setState(() {
+        _hasInternet = hasInternet;
+        _canAuthenticateOffline = canOfflineAuth;
+        _isOfflineMode = !hasInternet;
+      });
+
+      debugPrint('🌐 Сетевой статус: ${hasInternet ? 'Онлайн' : 'Офлайн'}');
+      debugPrint('📱 Офлайн авторизация: ${canOfflineAuth ? 'Доступна' : 'Недоступна'}');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки сетевого статуса: $e');
+      setState(() {
+        _hasInternet = false;
+        _canAuthenticateOffline = false;
+      });
+    } finally {
+      setState(() {
+        _checkingConnection = false;
+      });
+    }
+  }
+
+  /// Повторная проверка подключения
+  Future<void> _refreshConnection() async {
+    await _checkNetworkStatusAndOfflineCapability();
+
+    if (_hasInternet && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Подключение к интернету восстановлено'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   // Загрузка сохраненных данных при открытии экрана
@@ -156,6 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Основной метод авторизации с поддержкой офлайн
   Future<void> _login() async {
     FocusScope.of(context).unfocus();
 
@@ -170,48 +230,17 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      // Выполняем вход
-      final userCredential = await _firebaseService.signInWithEmailAndPassword(
-        email,
-        password,
-        context,
-      );
+      // Проверяем подключение к интернету
+      final hasInternet = await NetworkUtils.isNetworkAvailable();
 
-      // === НОВАЯ СТРУКТУРА: Проверяем и создаем профиль ===
-      if (userCredential.user != null) {
-        await _ensureUserProfileExists(
-          email,
-          userCredential.user!.displayName,
-        );
+      if (hasInternet) {
+        // ОНЛАЙН АВТОРИЗАЦИЯ
+        await _performOnlineLogin(email, password);
+      } else {
+        // ОФЛАЙН АВТОРИЗАЦИЯ
+        await _performOfflineLogin(email, password);
       }
 
-      await _saveCredentials(email, password);
-
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('login_successful')),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        if (widget.onAuthSuccess != null) {
-          debugPrint('🎯 Вызываем коллбэк после успешной авторизации');
-          Navigator.of(context).pushReplacementNamed('/home');
-          Future.delayed(const Duration(milliseconds: 500), () {
-            widget.onAuthSuccess!();
-          });
-        } else {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) {
-              Navigator.of(context).pushReplacementNamed('/home');
-            }
-          });
-        }
-      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -225,6 +254,209 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  /// Онлайн авторизация через Firebase
+  Future<void> _performOnlineLogin(String email, String password) async {
+    debugPrint('🌐 Выполняем онлайн авторизацию');
+
+    try {
+      // Выполняем обычную авторизацию
+      final userCredential = await _firebaseService.signInWithEmailAndPassword(
+        email,
+        password,
+        context,
+      );
+
+      // === НОВАЯ СТРУКТУРА: Проверяем и создаем профиль ===
+      if (userCredential.user != null) {
+        await _ensureUserProfileExists(
+          email,
+          userCredential.user!.displayName,
+        );
+
+        // Кэшируем данные пользователя для офлайн режима
+        await _firebaseService.cacheUserDataForOffline(userCredential.user!);
+        debugPrint('✅ Данные пользователя закэшированы для офлайн режима');
+      }
+
+      await _saveCredentials(email, password);
+      await _proceedToHomeScreen('login_successful');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка онлайн авторизации: $e');
+
+      // Если Firebase недоступен, пробуем офлайн авторизацию
+      if (e.toString().contains('network') || e.toString().contains('unavailable')) {
+        debugPrint('🔄 Переключаемся на офлайн авторизацию из-за сетевой ошибки');
+        await _performOfflineLogin(email, password);
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  /// Офлайн авторизация через кэшированные данные
+  Future<void> _performOfflineLogin(String email, String password) async {
+    debugPrint('📱 Выполняем офлайн авторизацию');
+
+    try {
+      // Проверяем возможность офлайн авторизации
+      final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
+
+      if (!canOfflineAuth) {
+        throw Exception('Офлайн авторизация недоступна. Войдите в приложение при наличии интернета, чтобы кэшировать данные.');
+      }
+
+      // Пытаемся выполнить офлайн авторизацию
+      final success = await _firebaseService.tryOfflineAuthentication();
+
+      if (success) {
+        await _saveCredentials(email, password);
+        await _proceedToHomeScreen('offline_login_successful');
+        debugPrint('✅ Офлайн авторизация успешна');
+      } else {
+        throw Exception('Не удалось выполнить офлайн авторизацию. Проверьте подключение к интернету.');
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка офлайн авторизации: $e');
+      rethrow;
+    }
+  }
+
+  /// Переход к главному экрану после успешной авторизации
+  Future<void> _proceedToHomeScreen(String successMessageKey) async {
+    if (mounted) {
+      final localizations = AppLocalizations.of(context);
+      final message = successMessageKey == 'offline_login_successful'
+          ? 'Вход выполнен в офлайн режиме'
+          : localizations.translate('login_successful');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: _isOfflineMode ? Colors.orange : Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      if (widget.onAuthSuccess != null) {
+        debugPrint('🎯 Вызываем коллбэк после успешной авторизации');
+        Navigator.of(context).pushReplacementNamed('/home');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          widget.onAuthSuccess!();
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        });
+      }
+    }
+  }
+
+  /// Показать диалог для офлайн авторизации
+  Future<void> _showOfflineAuthDialog() async {
+    if (!_canAuthenticateOffline) {
+      _showOfflineAuthError();
+      return;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.wifi_off, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Офлайн режим'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Отсутствует подключение к интернету.'),
+            SizedBox(height: 8),
+            Text('Вы можете войти в офлайн режиме, используя ранее сохраненные данные.'),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'В офлайн режиме функции приложения ограничены.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Войти офлайн'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _performOfflineLogin(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+    }
+  }
+
+  /// Показать ошибку невозможности офлайн авторизации
+  void _showOfflineAuthError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Офлайн авторизация недоступна'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Для использования офлайн режима необходимо:'),
+            SizedBox(height: 8),
+            Text('• Войти в приложение при наличии интернета'),
+            Text('• Кэшировать данные пользователя'),
+            SizedBox(height: 16),
+            Text('Подключитесь к интернету и попробуйте снова.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Понятно'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Безопасный адаптивный текст из гайда
@@ -266,6 +498,9 @@ class _LoginScreenState extends State<LoginScreen> {
     required bool isTablet,
     String? semanticLabel,
     bool isLoading = false,
+    Color? backgroundColor,
+    Color? textColor,
+    Color? borderColor,
   }) {
     final buttonHeight = isTablet ? 56.0 : 48.0;
 
@@ -281,9 +516,9 @@ class _LoginScreenState extends State<LoginScreen> {
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: AppConstants.textColor,
-            side: BorderSide(color: AppConstants.textColor),
+            backgroundColor: backgroundColor ?? Colors.transparent,
+            foregroundColor: textColor ?? AppConstants.textColor,
+            side: BorderSide(color: borderColor ?? AppConstants.textColor),
             padding: EdgeInsets.symmetric(
               horizontal: isTablet ? 32 : 24,
               vertical: isTablet ? 16 : 14,
@@ -299,7 +534,7 @@ class _LoginScreenState extends State<LoginScreen> {
             height: isTablet ? 24 : 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+              valueColor: AlwaysStoppedAnimation<Color>(textColor ?? AppConstants.textColor),
             ),
           )
               : FittedBox(
@@ -310,10 +545,95 @@ class _LoginScreenState extends State<LoginScreen> {
               baseFontSize: 16.0,
               isTablet: isTablet,
               fontWeight: FontWeight.bold,
-              color: AppConstants.textColor,
+              color: textColor ?? AppConstants.textColor,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Индикатор статуса сети
+  Widget _buildNetworkStatusIndicator(bool isTablet) {
+    if (_checkingConnection) {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+              ),
+            ),
+            SizedBox(width: 6),
+            Text(
+              'Проверка подключения...',
+              style: TextStyle(
+                fontSize: isTablet ? 14 : 12,
+                color: AppConstants.textColor,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!_hasInternet) {
+      return GestureDetector(
+        onTap: _refreshConnection,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.wifi_off, size: 16, color: Colors.orange),
+              SizedBox(width: 6),
+              Text(
+                'Нет подключения',
+                style: TextStyle(
+                  fontSize: isTablet ? 14 : 12,
+                  color: Colors.orange,
+                ),
+              ),
+              SizedBox(width: 4),
+              Icon(Icons.refresh, size: 14, color: Colors.orange),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.wifi, size: 16, color: Colors.green),
+          SizedBox(width: 6),
+          Text(
+            'Подключено',
+            style: TextStyle(
+              fontSize: isTablet ? 14 : 12,
+              color: Colors.green,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -348,7 +668,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Кнопка назад
+                      // Кнопка назад и статус сети
                       Row(
                         children: [
                           Semantics(
@@ -375,6 +695,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const Spacer(),
+                          // Индикатор статуса сети
+                          _buildNetworkStatusIndicator(isTablet),
                         ],
                       ),
 
@@ -515,15 +837,30 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
 
-                      // Кнопка входа
+                      // Кнопка входа (основная)
                       _buildSafeButton(
                         context: context,
-                        text: localizations.translate('login'),
+                        text: _hasInternet ? localizations.translate('login') : 'Войти онлайн',
                         onPressed: _isLoading ? null : _login,
                         isTablet: isTablet,
                         isLoading: _isLoading,
                         semanticLabel: 'Войти в приложение',
                       ),
+
+                      // Кнопка офлайн входа (если нет интернета)
+                      if (!_hasInternet) ...[
+                        SizedBox(height: isTablet ? 16 : 12),
+                        _buildSafeButton(
+                          context: context,
+                          text: 'Войти офлайн',
+                          onPressed: _canAuthenticateOffline && !_isLoading ? _showOfflineAuthDialog : null,
+                          isTablet: isTablet,
+                          backgroundColor: Colors.orange.withOpacity(0.1),
+                          textColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
+                          borderColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
+                          semanticLabel: 'Войти в офлайн режиме',
+                        ),
+                      ],
 
                       SizedBox(height: isTablet ? 24 : 16),
 

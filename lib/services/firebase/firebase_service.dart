@@ -24,19 +24,36 @@ class FirebaseService {
   static const String _authUserIdKey = 'auth_user_id';
   static const String _authUserDisplayNameKey = 'auth_user_display_name';
 
+  // ===== НОВЫЕ КЛЮЧИ ДЛЯ ОФЛАЙН АВТОРИЗАЦИИ =====
+  static const String _offlineAuthEnabledKey = 'offline_auth_enabled';
+  static const String _lastOnlineAuthKey = 'last_online_auth_timestamp';
+  static const String _offlineUserDataKey = 'offline_cached_user_data';
+  static const String _offlineAuthExpiryKey = 'offline_auth_expiry_date';
+
+  // Константы для офлайн авторизации
+  static const int _offlineAuthValidityDays = 30;
+  static const int _offlineAuthWarningDays = 7;
+
   // Кэшированные данные для быстрого доступа
   static String? _cachedUserId;
+  static bool _isOfflineMode = false;
 
   // Получение текущего пользователя
   User? get currentUser => _auth.currentUser;
 
-  // Проверка авторизации пользователя
-  bool get isUserLoggedIn => _auth.currentUser != null;
+  // Проверка авторизации пользователя (с учетом офлайн режима)
+  bool get isUserLoggedIn => _auth.currentUser != null || _isOfflineMode;
+
+  // Проверка офлайн режима
+  bool get isOfflineMode => _isOfflineMode;
 
   // Получение ID текущего пользователя
   String? get currentUserId {
     if (_auth.currentUser != null) {
       return _auth.currentUser!.uid;
+    } else if (_isOfflineMode) {
+      // В офлайн режиме возвращаем кэшированный ID
+      return _cachedUserId;
     } else {
       // Если пользователь не авторизован, пытаемся получить ID из кэша
       return _getCachedUserId();
@@ -71,6 +88,287 @@ class FirebaseService {
     }
   }
 
+  // ===== НОВЫЕ МЕТОДЫ ДЛЯ ОФЛАЙН АВТОРИЗАЦИИ =====
+
+  /// Проверка возможности офлайн авторизации
+  Future<bool> canAuthenticateOffline() async {
+    try {
+      debugPrint('🔥 FirebaseService.canAuthenticateOffline() - проверяем офлайн кэш...');
+
+      // Используем OfflineStorageService для проверки
+      final isValid = await _offlineStorage.isOfflineAuthValid();
+      debugPrint('🔥 OfflineStorageService.isOfflineAuthValid() = $isValid');
+
+      if (!isValid) {
+        debugPrint('🔒 Офлайн авторизация невозможна - нет валидного кэша');
+        return false;
+      }
+
+      // 🔥 ИСПРАВЛЕНИЕ: Убираем дополнительную проверку SharedPreferences
+      // Если OfflineStorageService говорит что данные валидны, доверяем ему
+      debugPrint('✅ Офлайн авторизация возможна (данные валидны)');
+      return true;
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке офлайн авторизации: $e');
+      return false;
+    }
+  }
+
+  /// Получение кэшированного пользователя для офлайн режима
+  Future<User?> getOfflineCachedUser() async {
+    try {
+      debugPrint('🔥 FirebaseService.getOfflineCachedUser() - получаем кэшированные данные...');
+
+      final cachedData = await _offlineStorage.getCachedUserData();
+
+      if (cachedData != null) {
+        debugPrint('📱 Загружены кэшированные данные пользователя для офлайн режима');
+        debugPrint('📱 Данные: $cachedData');
+        // Возвращаем null, так как Firebase User нельзя создать вручную
+        // Вместо этого используем флаг _isOfflineMode
+        return null;
+      }
+
+      debugPrint('🔒 Нет кэшированных данных пользователя');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении кэшированного пользователя: $e');
+      return null;
+    }
+  }
+
+  /// Кэширование данных пользователя для офлайн режима (ИСПРАВЛЕНО)
+  Future<void> cacheUserDataForOffline(User user) async {
+    try {
+      debugPrint('🔥 FirebaseService.cacheUserDataForOffline() ВЫЗВАН');
+      debugPrint('🔥 Пользователь: ${user.email} (${user.uid})');
+
+      // ===== ИСПРАВЛЕНИЕ: Используем новый OfflineStorageService =====
+      await _offlineStorage.saveOfflineUserData(user);
+      debugPrint('✅ OfflineStorageService.saveOfflineUserData() завершен');
+
+      // Дополнительно сохраняем в старом формате для совместимости
+      final prefs = await SharedPreferences.getInstance();
+
+      // Кэшируем основные данные пользователя
+      final userData = {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+        'photoURL': user.photoURL ?? '',
+        'emailVerified': user.emailVerified,
+        'isAnonymous': user.isAnonymous,
+        'metadata': {
+          'creationTime': user.metadata.creationTime?.toIso8601String(),
+          'lastSignInTime': user.metadata.lastSignInTime?.toIso8601String(),
+        }
+      };
+
+      // Сохраняем данные пользователя в старом формате
+      await prefs.setString(_offlineUserDataKey, userData.toString());
+
+      // Включаем офлайн авторизацию
+      await prefs.setBool(_offlineAuthEnabledKey, true);
+
+      // Устанавливаем время последней онлайн авторизации
+      await prefs.setInt(_lastOnlineAuthKey, DateTime.now().millisecondsSinceEpoch);
+
+      // Устанавливаем срок действия офлайн авторизации
+      final expiryDate = DateTime.now().add(Duration(days: _offlineAuthValidityDays));
+      await prefs.setInt(_offlineAuthExpiryKey, expiryDate.millisecondsSinceEpoch);
+
+      debugPrint('✅ Данные пользователя кэшированы для офлайн режима');
+      debugPrint('📅 Офлайн авторизация действительна до: ${expiryDate.toIso8601String()}');
+      debugPrint('✅ FirebaseService завершил кэширование');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при кэшировании данных пользователя: $e');
+    }
+  }
+
+  /// Попытка офлайн авторизации
+  Future<bool> tryOfflineAuthentication() async {
+    try {
+      debugPrint('🔄 Попытка офлайн авторизации...');
+
+      // Проверяем возможность офлайн авторизации
+      final canAuth = await canAuthenticateOffline();
+      if (!canAuth) {
+        debugPrint('🔒 Офлайн авторизация невозможна');
+        return false;
+      }
+
+      // Загружаем кэшированные данные через OfflineStorageService
+      final cachedData = await _offlineStorage.getCachedUserData();
+      if (cachedData == null) {
+        debugPrint('❌ Нет кэшированных данных пользователя');
+        return false;
+      }
+
+      final cachedUserId = cachedData['uid'] as String?;
+      if (cachedUserId == null) {
+        debugPrint('❌ Нет кэшированного ID пользователя');
+        return false;
+      }
+
+      // Устанавливаем офлайн режим
+      _isOfflineMode = true;
+      _cachedUserId = cachedUserId;
+
+      // Сохраняем данные пользователя в офлайн сервис
+      await _offlineStorage.saveUserData({
+        'uid': cachedUserId,
+        'email': cachedData['email'] ?? '',
+        'displayName': cachedData['displayName'] ?? '',
+        'isOfflineMode': true,
+        'offlineAuthTimestamp': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('✅ Офлайн авторизация успешна');
+      debugPrint('👤 Пользователь: ${cachedData['email']} ($cachedUserId)');
+
+      // Проверяем срок действия и показываем предупреждение если нужно
+      await _checkOfflineAuthExpiry();
+
+      return true;
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при офлайн авторизации: $e');
+      _isOfflineMode = false;
+      _cachedUserId = null;
+      return false;
+    }
+  }
+
+  /// Проверка срока действия офлайн авторизации
+  Future<void> _checkOfflineAuthExpiry() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final expiryTimestamp = prefs.getInt(_offlineAuthExpiryKey) ?? 0;
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
+      final now = DateTime.now();
+
+      final daysUntilExpiry = expiryDate.difference(now).inDays;
+
+      if (daysUntilExpiry <= _offlineAuthWarningDays) {
+        debugPrint('⚠️ Офлайн авторизация истекает через $daysUntilExpiry дней');
+        // Здесь можно добавить уведомление пользователю
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке срока офлайн авторизации: $e');
+    }
+  }
+
+  /// Инициализация приложения с учетом офлайн режима
+  Future<bool> initializeWithOfflineSupport() async {
+    try {
+      debugPrint('🚀 Инициализация приложения с поддержкой офлайн режима...');
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        debugPrint('🌐 Интернет доступен - обычная авторизация');
+
+        // Если есть текущий пользователь, кэшируем его данные
+        if (_auth.currentUser != null) {
+          await cacheUserDataForOffline(_auth.currentUser!);
+          _isOfflineMode = false;
+          return true;
+        }
+
+        // Если нет текущего пользователя, но есть офлайн кэш, не активируем офлайн режим
+        return false;
+
+      } else {
+        debugPrint('📱 Интернет недоступен - попытка офлайн авторизации');
+
+        // Пытаемся авторизоваться офлайн
+        return await tryOfflineAuthentication();
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при инициализации приложения: $e');
+      return false;
+    }
+  }
+
+  /// Переключение в онлайн режим (при восстановлении сети)
+  Future<void> switchToOnlineMode() async {
+    try {
+      debugPrint('🌐 Переключение в онлайн режим...');
+
+      if (_isOfflineMode && _auth.currentUser != null) {
+        // Если у нас есть активный пользователь Firebase, отключаем офлайн режим
+        _isOfflineMode = false;
+        debugPrint('✅ Переключен в онлайн режим');
+
+        // Обновляем кэш с актуальными данными
+        await cacheUserDataForOffline(_auth.currentUser!);
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при переключении в онлайн режим: $e');
+    }
+  }
+
+  /// Отключение офлайн режима
+  Future<void> disableOfflineMode() async {
+    try {
+      debugPrint('🔒 Отключение офлайн режима...');
+
+      _isOfflineMode = false;
+      _cachedUserId = null;
+
+      // Очищаем через OfflineStorageService
+      await _offlineStorage.clearOfflineAuthData();
+
+      // Дополнительно очищаем старые ключи
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_offlineAuthEnabledKey, false);
+      await prefs.remove(_offlineUserDataKey);
+      await prefs.remove(_offlineAuthExpiryKey);
+
+      debugPrint('✅ Офлайн режим отключен');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при отключении офлайн режима: $e');
+    }
+  }
+
+  /// Получение статуса офлайн авторизации
+  Future<Map<String, dynamic>> getOfflineAuthStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final isEnabled = prefs.getBool(_offlineAuthEnabledKey) ?? false;
+      final lastOnlineAuth = prefs.getInt(_lastOnlineAuthKey) ?? 0;
+      final expiryTimestamp = prefs.getInt(_offlineAuthExpiryKey) ?? 0;
+
+      final lastOnlineDate = DateTime.fromMillisecondsSinceEpoch(lastOnlineAuth);
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
+      final now = DateTime.now();
+
+      return {
+        'isEnabled': isEnabled,
+        'isCurrentlyOffline': _isOfflineMode,
+        'lastOnlineAuth': lastOnlineDate.toIso8601String(),
+        'expiryDate': expiryDate.toIso8601String(),
+        'daysUntilExpiry': expiryDate.difference(now).inDays,
+        'isExpired': now.isAfter(expiryDate),
+        'cachedUserId': _cachedUserId,
+      };
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении статуса офлайн авторизации: $e');
+      return {'isEnabled': false, 'isCurrentlyOffline': false};
+    }
+  }
+
+  // ===== МОДИФИЦИРОВАННЫЕ СУЩЕСТВУЮЩИЕ МЕТОДЫ =====
+
   Future<SharedPreferences> getSharedPreferences() async {
     return await SharedPreferences.getInstance();
   }
@@ -96,6 +394,11 @@ class FirebaseService {
 
       // Сохраняем данные пользователя в кэш
       await _cacheUserData(userCredential.user);
+
+      // ===== НОВОЕ: Кэшируем для офлайн режима =====
+      if (userCredential.user != null) {
+        await cacheUserDataForOffline(userCredential.user!);
+      }
 
       return userCredential;
     } catch (e) {
@@ -127,6 +430,12 @@ class FirebaseService {
 
       // Сохраняем данные пользователя в кэш
       await _cacheUserData(userCredential.user);
+
+      // ===== НОВОЕ: Кэшируем для офлайн режима =====
+      if (userCredential.user != null) {
+        await cacheUserDataForOffline(userCredential.user!);
+        _isOfflineMode = false; // Отключаем офлайн режим при успешном входе
+      }
 
       return userCredential;
     } catch (e) {
@@ -269,6 +578,12 @@ class FirebaseService {
   /// Кэширование данных пользователя из UserCredential (для Google Sign-In)
   Future<void> cacheUserDataFromCredential(UserCredential userCredential) async {
     await _cacheUserData(userCredential.user);
+
+    // ===== НОВОЕ: Кэшируем для офлайн режима =====
+    if (userCredential.user != null) {
+      await cacheUserDataForOffline(userCredential.user!);
+      _isOfflineMode = false; // Отключаем офлайн режим при успешном входе
+    }
   }
 
   // Выход пользователя
@@ -282,6 +597,12 @@ class FirebaseService {
 
       // Очищаем статический кэш
       _cachedUserId = null;
+
+      // ===== НОВОЕ: Отключаем офлайн режим =====
+      _isOfflineMode = false;
+      // Можно оставить офлайн кэш для будущих входов или очистить его
+      // await disableOfflineMode(); // Раскомментировать для полной очистки
+
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Ошибка при удалении кэшированных данных пользователя: $e');
@@ -712,6 +1033,10 @@ class FirebaseService {
 
       // Очищаем статический кэш
       _cachedUserId = null;
+
+      // ===== НОВОЕ: Очищаем офлайн данные =====
+      _isOfflineMode = false;
+      await disableOfflineMode();
 
       if (kDebugMode) {
         debugPrint('Кэшированные данные пользователя очищены');

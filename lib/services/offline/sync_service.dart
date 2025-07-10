@@ -4,10 +4,13 @@ import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../firebase/firebase_service.dart';
+import '../subscription/subscription_service.dart';
 import 'offline_storage_service.dart';
 import '../../utils/network_utils.dart';
 import '../local/local_file_service.dart';
+import '../../constants/subscription_constants.dart';
 
 /// Сервис для синхронизации данных между локальным хранилищем и облаком
 class SyncService {
@@ -23,6 +26,9 @@ class SyncService {
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LocalFileService _localFileService = LocalFileService();
+
+  // 🔥 НОВЫЕ ПОЛЯ для офлайн премиум
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   bool _isSyncing = false;
   Timer? _syncTimer;
@@ -87,6 +93,12 @@ class SyncService {
         return;
       }
 
+      // 🔥 НОВОЕ: Синхронизируем счетчики использования ПЕРВЫМИ
+      await syncUsageCounters();
+
+      // 🔥 НОВОЕ: Синхронизируем статус подписки
+      await syncSubscriptionStatus();
+
       // Синхронизируем все типы данных
       await Future.wait([_syncMarkerMaps(userId), _syncNotes(userId)]);
 
@@ -98,6 +110,249 @@ class SyncService {
       debugPrint('❌ Ошибка при синхронизации данных: $e');
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для синхронизации счетчиков
+
+  /// Синхронизация счетчиков использования после восстановления сети
+  Future<void> syncUsageCounters() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔄 Начинаем синхронизацию счетчиков использования...');
+      }
+
+      // Проверяем доступность сети
+      if (!await NetworkUtils.isNetworkAvailable()) {
+        if (kDebugMode) {
+          debugPrint('❌ Нет сети для синхронизации счетчиков');
+        }
+        return;
+      }
+
+      // 1. Получаем локальные счетчики
+      final localCounters = await _offlineStorage.getAllLocalUsageCounters();
+
+      if (localCounters.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('✅ Нет локальных счетчиков для синхронизации');
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        debugPrint('📊 Локальные счетчики для синхронизации:');
+        for (final entry in localCounters.entries) {
+          debugPrint('   ${entry.key.name}: ${entry.value}');
+        }
+      }
+
+      // 2. Обновляем актуальные лимиты с сервера
+      await _subscriptionService.refreshUsageLimits();
+
+      // 3. Проверяем превышения лимитов
+      bool hasOverages = false;
+      for (final entry in localCounters.entries) {
+        final contentType = entry.key;
+        final localCount = entry.value;
+
+        if (localCount > 0) {
+          await _checkAndHandleLimitOverage(contentType, localCount);
+          hasOverages = true;
+        }
+      }
+
+      // 4. Сбрасываем локальные счетчики после успешной синхронизации
+      await _offlineStorage.resetLocalUsageCounters();
+
+      if (kDebugMode) {
+        debugPrint('✅ Синхронизация счетчиков завершена');
+      }
+
+      // 5. Показываем уведомление о синхронизации
+      await _showSyncNotification(hasOverages);
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка синхронизации счетчиков: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Проверка и обработка превышения лимитов
+  Future<void> _checkAndHandleLimitOverage(ContentType contentType, int localCount) async {
+    try {
+      // Получаем текущее использование с сервера
+      final serverUsage = await _subscriptionService.getCurrentUsage(contentType);
+      final limit = _subscriptionService.getLimit(contentType);
+      final totalUsage = serverUsage + localCount;
+
+      if (kDebugMode) {
+        debugPrint('🔍 Проверка превышения для $contentType:');
+        debugPrint('   Серверное использование: $serverUsage');
+        debugPrint('   Локальное использование: $localCount');
+        debugPrint('   Общее использование: $totalUsage');
+        debugPrint('   Лимит: $limit');
+      }
+
+      // Проверяем превышение лимита + grace period
+      if (totalUsage > limit + SubscriptionConstants.offlineGraceLimit) {
+        await handleOfflineLimitExceeded(contentType, totalUsage - limit);
+      } else if (totalUsage > limit) {
+        await _handleGracePeriodUsage(contentType, totalUsage - limit);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка проверки превышения лимитов для $contentType: $e');
+      }
+    }
+  }
+
+  /// Обработка превышения лимита + grace period
+  Future<void> handleOfflineLimitExceeded(ContentType contentType, int exceededBy) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🚨 Превышение лимита для $contentType на $exceededBy элементов');
+      }
+
+      // Логируем превышение
+      await _logLimitExceeded(contentType, exceededBy);
+
+      // Показываем уведомление пользователю
+      await _showLimitExceededNotification(contentType, exceededBy);
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обработки превышения лимита: $e');
+      }
+    }
+  }
+
+  /// Обработка использования в пределах grace period
+  Future<void> _handleGracePeriodUsage(ContentType contentType, int overageCount) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('⚠️ Использование в grace period для $contentType: +$overageCount элементов');
+      }
+
+      // Показываем предупреждение о приближении к лимиту
+      await _showGracePeriodWarning(contentType, overageCount);
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка обработки grace period: $e');
+      }
+    }
+  }
+
+  /// Синхронизация статуса подписки
+  Future<void> syncSubscriptionStatus() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔄 Синхронизация статуса подписки...');
+      }
+
+      // Проверяем доступность сети
+      if (!await NetworkUtils.isNetworkAvailable()) {
+        if (kDebugMode) {
+          debugPrint('❌ Нет сети для синхронизации подписки');
+        }
+        return;
+      }
+
+      // Кэшируем данные подписки
+      await _subscriptionService.cacheSubscriptionDataOnline();
+
+      if (kDebugMode) {
+        debugPrint('✅ Статус подписки синхронизирован');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка синхронизации подписки: $e');
+      }
+    }
+  }
+
+  /// Логирование превышения лимита
+  Future<void> _logLimitExceeded(ContentType contentType, int exceededBy) async {
+    try {
+      final logData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'contentType': contentType.name,
+        'exceededBy': exceededBy,
+        'userId': _firebaseService.currentUserId,
+        'type': 'limit_exceeded_offline',
+      };
+
+      // Можно отправить в аналитику или сохранить локально
+      if (kDebugMode) {
+        debugPrint('📊 Лог превышения лимита: $logData');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка логирования превышения лимита: $e');
+      }
+    }
+  }
+
+  /// Показать уведомление о превышении лимита
+  Future<void> _showLimitExceededNotification(ContentType contentType, int exceededBy) async {
+    try {
+      final contentName = SubscriptionConstants.getContentTypeName(contentType);
+
+      if (kDebugMode) {
+        debugPrint('🚨 Уведомление: Превышен лимит $contentName на $exceededBy элементов');
+      }
+
+      // Здесь можно добавить показ уведомления пользователю
+      // Например, через NotificationService или SnackBar
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка показа уведомления о превышении лимита: $e');
+      }
+    }
+  }
+
+  /// Показать предупреждение о grace period
+  Future<void> _showGracePeriodWarning(ContentType contentType, int overageCount) async {
+    try {
+      final contentName = SubscriptionConstants.getContentTypeName(contentType);
+      final remaining = SubscriptionConstants.offlineGraceLimit - overageCount;
+
+      if (kDebugMode) {
+        debugPrint('⚠️ Предупреждение: Использовано $overageCount из ${SubscriptionConstants.offlineGraceLimit} дополнительных $contentName. Осталось: $remaining');
+      }
+
+      // Здесь можно добавить показ предупреждения пользователю
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка показа предупреждения grace period: $e');
+      }
+    }
+  }
+
+  /// Показать уведомление о синхронизации
+  Future<void> _showSyncNotification(bool hasOverages) async {
+    try {
+      if (hasOverages) {
+        if (kDebugMode) {
+          debugPrint('🔄 Синхронизация завершена с превышениями лимитов');
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('✅ Синхронизация завершена успешно');
+        }
+      }
+
+      // Здесь можно добавить показ уведомления пользователю
+
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка показа уведомления о синхронизации: $e');
+      }
     }
   }
 
@@ -586,6 +841,10 @@ class SyncService {
       final localFilesCount = await _getLocalFilesCount();
       final localFilesCacheSize = await _localFileService.getCacheSize();
 
+      // 🔥 НОВОЕ: Добавляем информацию о локальных счетчиках
+      final localCounters = await _offlineStorage.getAllLocalUsageCounters();
+      final subscriptionCacheInfo = await _subscriptionService.getSubscriptionCacheInfo();
+
       return {
         'lastSyncTime': lastSyncTime,
         'isSyncing': _isSyncing,
@@ -600,6 +859,9 @@ class SyncService {
         'errorCounters': _errorCounters,
         'localFilesCount': localFilesCount,
         'localFilesCacheSize': _formatFileSize(localFilesCacheSize),
+        // 🔥 НОВЫЕ ПОЛЯ
+        'localCounters': localCounters.map((k, v) => MapEntry(k.name, v)),
+        'subscriptionCache': subscriptionCacheInfo,
       };
     } catch (e) {
       debugPrint('❌ Ошибка при получении статуса синхронизации: $e');
@@ -656,6 +918,39 @@ class SyncService {
     } catch (e) {
       debugPrint('❌ Ошибка при принудительной синхронизации: $e');
       return false;
+    }
+  }
+
+  /// Принудительная синхронизация только счетчиков
+  Future<bool> forceSyncCounters() async {
+    try {
+      if (_isSyncing) {
+        debugPrint('⚠️ Синхронизация уже запущена, пропускаем');
+        return false;
+      }
+
+      // Проверяем подключение к интернету
+      final isConnected = await NetworkUtils.isNetworkAvailable();
+      if (!isConnected) {
+        debugPrint('❌ Нет подключения к интернету, синхронизация невозможна');
+        return false;
+      }
+
+      await syncUsageCounters();
+      return true;
+    } catch (e) {
+      debugPrint('❌ Ошибка при принудительной синхронизации счетчиков: $e');
+      return false;
+    }
+  }
+
+  /// Получение статистики офлайн использования
+  Future<Map<String, dynamic>> getOfflineUsageStatistics() async {
+    try {
+      return await _subscriptionService.getOfflineUsageStatistics();
+    } catch (e) {
+      debugPrint('❌ Ошибка получения статистики офлайн использования: $e');
+      return {};
     }
   }
 }

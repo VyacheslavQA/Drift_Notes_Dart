@@ -694,6 +694,18 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
   void _checkDocumentUpdatesAfterAuth() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
+      // 🔥 ДОБАВЛЯЕМ ОТЛАДКУ ДЛЯ ПОИСКА ПРОБЛЕМЫ
+      if (kDebugMode) {
+        if (user != null) {
+          debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ АВТОРИЗОВАН - ${user.email}');
+          debugPrint('🔐 User UID: ${user.uid}');
+        } else {
+          debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ ВЫШЕЛ ИЗ СИСТЕМЫ');
+          debugPrint('🔐 Stack trace для отладки:');
+          debugPrint(StackTrace.current.toString());
+        }
+      }
+
       if (user != null && widget.consentService != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _initializeScheduledReminderContext();
