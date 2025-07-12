@@ -4,9 +4,9 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Совместимые версии для старого Firebase
-        classpath("com.android.tools.build:gradle:7.4.2")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
+        // ОБНОВЛЕННЫЕ версии для совместимости с Gradle 8.10.2
+        classpath("com.android.tools.build:gradle:8.3.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10")
         classpath("com.google.gms:google-services:4.4.0")
     }
 }
@@ -15,6 +15,14 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    // Принудительно используем Java 17
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.addAll(listOf(
+            "-Xlint:-options",
+            "-Xlint:-deprecation"
+        ))
     }
 }
 

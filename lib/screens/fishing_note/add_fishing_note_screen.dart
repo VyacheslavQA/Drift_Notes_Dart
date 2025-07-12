@@ -145,7 +145,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
               surface: AppConstants.surfaceColor,
               onSurface: AppConstants.textColor,
             ),
-            dialogTheme: DialogTheme(
+            dialogTheme: DialogThemeData(
               backgroundColor: AppConstants.backgroundColor,
             ),
           ),

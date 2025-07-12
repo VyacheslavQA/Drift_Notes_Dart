@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
@@ -39,8 +40,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hasNumber = false;
   bool _passwordFieldFocused = false;
 
+  // Для валидации символов пароля
+  bool _showInvalidCharMessage = false;
+  String _invalidCharMessage = '';
+
   final FocusNode _passwordFocusNode = FocusNode();
   final FocusNode _confirmPasswordFocusNode = FocusNode();
+
+  // Регулярное выражение для допустимых символов в пароле
+  final RegExp _allowedPasswordChars = RegExp(r'^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
 
   @override
   void initState() {
@@ -51,6 +59,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _passwordFieldFocused = _passwordFocusNode.hasFocus;
       });
+    });
+
+    // Добавляем слушатель для предотвращения автовыделения в поле email
+    _emailController.addListener(() {
+      if (_emailController.selection.start == 0 &&
+          _emailController.selection.end == _emailController.text.length) {
+        // Используем Future.microtask для избежания рекурсии
+        Future.microtask(() {
+          if (mounted && _emailController.selection.start == 0 &&
+              _emailController.selection.end == _emailController.text.length) {
+            _emailController.selection = TextSelection.collapsed(
+              offset: _emailController.text.length,
+            );
+          }
+        });
+      }
+    });
+
+    // Добавляем такой же слушатель для поля имени
+    _nameController.addListener(() {
+      if (_nameController.selection.start == 0 &&
+          _nameController.selection.end == _nameController.text.length) {
+        Future.microtask(() {
+          if (mounted && _nameController.selection.start == 0 &&
+              _nameController.selection.end == _nameController.text.length) {
+            _nameController.selection = TextSelection.collapsed(
+              offset: _nameController.text.length,
+            );
+          }
+        });
+      }
+    });
+
+    // И для поля подтверждения пароля
+    _confirmPasswordController.addListener(() {
+      if (_confirmPasswordController.selection.start == 0 &&
+          _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+        Future.microtask(() {
+          if (mounted && _confirmPasswordController.selection.start == 0 &&
+              _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+            _confirmPasswordController.selection = TextSelection.collapsed(
+              offset: _confirmPasswordController.text.length,
+            );
+          }
+        });
+      }
     });
   }
 
@@ -72,6 +126,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _hasUppercase = password.contains(RegExp(r'[A-Z]'));
       _hasNumber = password.contains(RegExp(r'[0-9]'));
     });
+  }
+
+  void _validatePasswordInput(String input) {
+    if (!_allowedPasswordChars.hasMatch(input)) {
+      final localizations = AppLocalizations.of(context);
+      setState(() {
+        _showInvalidCharMessage = true;
+        _invalidCharMessage = localizations.translate('password_invalid_characters');
+      });
+
+      // Скрываем сообщение через 3 секунды
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _showInvalidCharMessage = false;
+          });
+        }
+      });
+    }
   }
 
   // Функция для создания профиля пользователя (новая структура)
@@ -337,22 +410,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Поле для имени - компактная версия
+                                // Поле для имени
                                 Container(
                                   constraints: BoxConstraints(
-                                    minHeight: isTablet ? 56 : 48, // ✅ Минимум для touch target
+                                    minHeight: isTablet ? 56 : 48,
                                     maxHeight: isTablet ? 72 : 64,
                                   ),
                                   child: TextFormField(
                                     controller: _nameController,
-                                    enableInteractiveSelection: true,
                                     onTap: () {
-                                      // Устанавливаем курсор в позицию клика
-                                      if (_nameController.selection == TextSelection.fromPosition(TextPosition(offset: _nameController.text.length))) {
-                                        _nameController.selection = TextSelection.fromPosition(
-                                          TextPosition(offset: _nameController.text.length),
-                                        );
-                                      }
+                                      // Предотвращаем автовыделение всего текста
+                                      Future.delayed(Duration.zero, () {
+                                        if (_nameController.selection.baseOffset == 0 &&
+                                            _nameController.selection.extentOffset == _nameController.text.length) {
+                                          // Если весь текст выделен, ставим курсор в конец
+                                          _nameController.selection = TextSelection.fromPosition(
+                                            TextPosition(offset: _nameController.text.length),
+                                          );
+                                        }
+                                      });
                                     },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
@@ -414,7 +490,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для email - ИСПРАВЛЕНО
+                                // Поле для email
                                 Container(
                                   constraints: BoxConstraints(
                                     minHeight: isTablet ? 56 : 48,
@@ -422,14 +498,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: TextFormField(
                                     controller: _emailController,
-                                    enableInteractiveSelection: true,
                                     onTap: () {
-                                      // Убираем автоматическое выделение всего текста
-                                      if (_emailController.selection == TextSelection.fromPosition(TextPosition(offset: _emailController.text.length))) {
-                                        _emailController.selection = TextSelection.fromPosition(
-                                          TextPosition(offset: _emailController.text.length),
+                                      // Множественные попытки сбросить автовыделение для старых устройств
+                                      Future.microtask(() {
+                                        if (_emailController.selection.start == 0 &&
+                                            _emailController.selection.end == _emailController.text.length) {
+                                          _emailController.selection = TextSelection.collapsed(
+                                            offset: _emailController.text.length,
+                                          );
+                                        }
+                                      });
+
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (_emailController.selection.start == 0 &&
+                                            _emailController.selection.end == _emailController.text.length) {
+                                          _emailController.selection = TextSelection.collapsed(
+                                            offset: _emailController.text.length,
+                                          );
+                                        }
+                                      });
+
+                                      // Дополнительная проверка через небольшую задержку
+                                      Future.delayed(Duration(milliseconds: 10), () {
+                                        if (_emailController.selection.start == 0 &&
+                                            _emailController.selection.end == _emailController.text.length) {
+                                          _emailController.selection = TextSelection.collapsed(
+                                            offset: _emailController.text.length,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    onChanged: (value) {
+                                      // Сбрасываем автовыделение при вводе символов (особенно @ и других спецсимволов)
+                                      // Используем несколько методов для максимальной надежности
+                                      if (_emailController.selection.start == 0 &&
+                                          _emailController.selection.end == _emailController.text.length) {
+                                        _emailController.selection = TextSelection.collapsed(
+                                          offset: _emailController.text.length,
                                         );
                                       }
+
+                                      Future.microtask(() {
+                                        if (_emailController.selection.start == 0 &&
+                                            _emailController.selection.end == _emailController.text.length) {
+                                          _emailController.selection = TextSelection.collapsed(
+                                            offset: _emailController.text.length,
+                                          );
+                                        }
+                                      });
+
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (_emailController.selection.start == 0 &&
+                                            _emailController.selection.end == _emailController.text.length) {
+                                          _emailController.selection = TextSelection.collapsed(
+                                            offset: _emailController.text.length,
+                                          );
+                                        }
+                                      });
                                     },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
@@ -491,7 +616,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для пароля - возвращаем нормальную ширину
+                                // Поле для пароля с валидацией символов
                                 Column(
                                   children: [
                                     Container(
@@ -502,15 +627,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       child: TextFormField(
                                         controller: _passwordController,
                                         focusNode: _passwordFocusNode,
-                                        enableInteractiveSelection: true,
                                         onTap: () {
-                                          // Убираем автоматическое выделение всего текста
-                                          if (_passwordController.selection == TextSelection.fromPosition(TextPosition(offset: _passwordController.text.length))) {
-                                            _passwordController.selection = TextSelection.fromPosition(
-                                              TextPosition(offset: _passwordController.text.length),
-                                            );
-                                          }
+                                          // Множественные попытки сбросить автовыделение для старых устройств
+                                          Future.microtask(() {
+                                            if (_passwordController.selection.start == 0 &&
+                                                _passwordController.selection.end == _passwordController.text.length) {
+                                              _passwordController.selection = TextSelection.collapsed(
+                                                offset: _passwordController.text.length,
+                                              );
+                                            }
+                                          });
+
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                            if (_passwordController.selection.start == 0 &&
+                                                _passwordController.selection.end == _passwordController.text.length) {
+                                              _passwordController.selection = TextSelection.collapsed(
+                                                offset: _passwordController.text.length,
+                                              );
+                                            }
+                                          });
+
+                                          // Дополнительная проверка через небольшую задержку
+                                          Future.delayed(Duration(milliseconds: 10), () {
+                                            if (_passwordController.selection.start == 0 &&
+                                                _passwordController.selection.end == _passwordController.text.length) {
+                                              _passwordController.selection = TextSelection.collapsed(
+                                                offset: _passwordController.text.length,
+                                              );
+                                            }
+                                          });
                                         },
+                                        onChanged: (value) {
+                                          // Сбрасываем автовыделение при вводе символов и одновременно валидируем
+                                          Future.microtask(() {
+                                            if (_passwordController.selection.start == 0 &&
+                                                _passwordController.selection.end == _passwordController.text.length) {
+                                              _passwordController.selection = TextSelection.collapsed(
+                                                offset: _passwordController.text.length,
+                                              );
+                                            }
+                                          });
+                                          _validatePasswordInput(value);
+                                        },
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(_allowedPasswordChars),
+                                        ],
                                         style: TextStyle(
                                           color: AppConstants.textColor,
                                           fontSize: isTablet ? 18 : 16,
@@ -587,6 +748,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         textInputAction: TextInputAction.next,
                                       ),
                                     ),
+
+                                    // Сообщение о недопустимых символах
+                                    if (_showInvalidCharMessage)
+                                      Container(
+                                        margin: EdgeInsets.only(top: isTablet ? 8 : 6),
+                                        padding: EdgeInsets.all(isTablet ? 12 : 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.redAccent.withValues(alpha: 0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: Colors.redAccent,
+                                              size: isTablet ? 18 : 16,
+                                            ),
+                                            SizedBox(width: isTablet ? 8 : 6),
+                                            Expanded(
+                                              child: Text(
+                                                _invalidCharMessage,
+                                                style: TextStyle(
+                                                  color: Colors.redAccent,
+                                                  fontSize: isTablet ? 12 : 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
 
                                     // Требования к паролю под полем
                                     if (_passwordFieldFocused ||
@@ -705,7 +901,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для подтверждения пароля - ИСПРАВЛЕНО (убрали визуальный индикатор ошибки)
+                                // Поле для подтверждения пароля
                                 Container(
                                   constraints: BoxConstraints(
                                     minHeight: isTablet ? 56 : 48,
@@ -714,14 +910,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   child: TextFormField(
                                     controller: _confirmPasswordController,
                                     focusNode: _confirmPasswordFocusNode,
-                                    enableInteractiveSelection: true,
                                     onTap: () {
-                                      // Убираем автоматическое выделение всего текста
-                                      if (_confirmPasswordController.selection == TextSelection.fromPosition(TextPosition(offset: _confirmPasswordController.text.length))) {
-                                        _confirmPasswordController.selection = TextSelection.fromPosition(
-                                          TextPosition(offset: _confirmPasswordController.text.length),
-                                        );
-                                      }
+                                      // Множественные попытки сбросить автовыделение для старых устройств
+                                      Future.microtask(() {
+                                        if (_confirmPasswordController.selection.start == 0 &&
+                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+                                          _confirmPasswordController.selection = TextSelection.collapsed(
+                                            offset: _confirmPasswordController.text.length,
+                                          );
+                                        }
+                                      });
+
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (_confirmPasswordController.selection.start == 0 &&
+                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+                                          _confirmPasswordController.selection = TextSelection.collapsed(
+                                            offset: _confirmPasswordController.text.length,
+                                          );
+                                        }
+                                      });
+
+                                      // Дополнительная проверка через небольшую задержку
+                                      Future.delayed(Duration(milliseconds: 10), () {
+                                        if (_confirmPasswordController.selection.start == 0 &&
+                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+                                          _confirmPasswordController.selection = TextSelection.collapsed(
+                                            offset: _confirmPasswordController.text.length,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    onChanged: (value) {
+                                      // Сбрасываем автовыделение при вводе символов
+                                      Future.microtask(() {
+                                        if (_confirmPasswordController.selection.start == 0 &&
+                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+                                          _confirmPasswordController.selection = TextSelection.collapsed(
+                                            offset: _confirmPasswordController.text.length,
+                                          );
+                                        }
+                                      });
                                     },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
@@ -916,7 +1144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 ),
 
-                              // Кнопка регистрации - ИСПРАВЛЕНО (убрали проверку _passwordsMatch)
+                              // Кнопка регистрации
                               Semantics(
                                 button: true,
                                 label: 'Зарегистрироваться',

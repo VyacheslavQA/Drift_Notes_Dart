@@ -330,7 +330,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
           SizedBox(height: isTablet ? 32 : 24),
 
-          // Поле ввода email
+          // Поле ввода email с убранной логикой автовыделения
           Semantics(
             textField: true,
             label: 'Поле ввода email адреса',
@@ -343,6 +343,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 child: TextFormField(
                   controller: _emailController,
+                  onTap: () {
+                    // Множественные попытки сбросить автовыделение для старых устройств
+                    Future.microtask(() {
+                      if (_emailController.selection.start == 0 &&
+                          _emailController.selection.end == _emailController.text.length) {
+                        _emailController.selection = TextSelection.collapsed(
+                          offset: _emailController.text.length,
+                        );
+                      }
+                    });
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_emailController.selection.start == 0 &&
+                          _emailController.selection.end == _emailController.text.length) {
+                        _emailController.selection = TextSelection.collapsed(
+                          offset: _emailController.text.length,
+                        );
+                      }
+                    });
+
+                    // Дополнительная проверка через небольшую задержку
+                    Future.delayed(Duration(milliseconds: 10), () {
+                      if (_emailController.selection.start == 0 &&
+                          _emailController.selection.end == _emailController.text.length) {
+                        _emailController.selection = TextSelection.collapsed(
+                          offset: _emailController.text.length,
+                        );
+                      }
+                    });
+                  },
+                  onChanged: (value) {
+                    // Сбрасываем автовыделение при вводе символов (особенно @ и других спецсимволов)
+                    Future.microtask(() {
+                      if (_emailController.selection.start == 0 &&
+                          _emailController.selection.end == _emailController.text.length) {
+                        _emailController.selection = TextSelection.collapsed(
+                          offset: _emailController.text.length,
+                        );
+                      }
+                    });
+                  },
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: isTablet ? 18 : 16,

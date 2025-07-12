@@ -65,7 +65,7 @@ class ResponsiveTheme {
       // Общие настройки
       scaffoldBackgroundColor: backgroundColor,
       canvasColor: surfaceColor,
-      dividerColor: textSecondaryColor.withOpacity(0.2),
+      dividerColor: textSecondaryColor.withValues(alpha: 0.2),
 
       // Анимации
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -87,12 +87,9 @@ class ResponsiveTheme {
         secondary: Color(0xFF81C784), // Более яркий зеленый
         secondaryContainer: Color(0xFF2E7D32),
         surface: Color(0xFF000000), // Чистый черный
-        background: Color(0xFF000000),
-        error: Color(0xFFFF5722), // Более яркий красный
         onPrimary: Color(0xFF000000),
         onSecondary: Color(0xFF000000),
         onSurface: Color(0xFFFFFFFF),
-        onBackground: Color(0xFFFFFFFF),
         onError: Color(0xFF000000),
       );
     }
@@ -103,12 +100,9 @@ class ResponsiveTheme {
       secondary: accentColor,
       secondaryContainer: accentDarkColor,
       surface: surfaceColor,
-      background: backgroundColor,
-      error: errorColor,
       onPrimary: textPrimaryColor,
       onSecondary: textPrimaryColor,
       onSurface: textPrimaryColor,
-      onBackground: textPrimaryColor,
       onError: textPrimaryColor,
     );
   }
@@ -327,8 +321,8 @@ class ResponsiveTheme {
 
   // ========== CARD THEME ==========
 
-  static CardTheme _createCardTheme(BuildContext context) {
-    return CardTheme(
+  static CardThemeData _createCardTheme(BuildContext context) {
+    return CardThemeData(
       color: cardColor,
       elevation: ResponsiveConstants.elevationLow,
       shape: RoundedRectangleBorder(
@@ -350,13 +344,13 @@ class ResponsiveTheme {
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
         ),
-        borderSide: BorderSide(color: textSecondaryColor.withOpacity(0.3)),
+        borderSide: BorderSide(color: textSecondaryColor.withValues(alpha: 0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(
           ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
         ),
-        borderSide: BorderSide(color: textSecondaryColor.withOpacity(0.3)),
+        borderSide: BorderSide(color: textSecondaryColor.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(
@@ -376,7 +370,7 @@ class ResponsiveTheme {
       ),
       labelStyle: _createTextTheme(context).bodyMedium,
       hintStyle: _createTextTheme(context).bodyMedium?.copyWith(
-        color: textSecondaryColor.withOpacity(0.6),
+        color: textSecondaryColor.withValues(alpha: 0.6),
       ),
     );
   }
@@ -424,7 +418,7 @@ class ResponsiveTheme {
   static ListTileThemeData _createListTileTheme(BuildContext context) {
     return ListTileThemeData(
       tileColor: Colors.transparent,
-      selectedTileColor: primaryColor.withOpacity(0.1),
+      selectedTileColor: primaryColor.withValues(alpha: 0.1),
       contentPadding: EdgeInsets.symmetric(
         horizontal: ResponsiveUtils.getHorizontalPadding(context),
         vertical: ResponsiveConstants.spacingS,
@@ -438,8 +432,8 @@ class ResponsiveTheme {
 
   // ========== DIALOG THEME ==========
 
-  static DialogTheme _createDialogTheme(BuildContext context) {
-    return DialogTheme(
+  static DialogThemeData _createDialogTheme(BuildContext context) {
+    return DialogThemeData(
       backgroundColor: cardColor,
       elevation: ResponsiveConstants.elevationHigh,
       shape: RoundedRectangleBorder(
@@ -495,7 +489,7 @@ class ResponsiveTheme {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.2),
+          color: Colors.black.withValues(alpha: 0.2),
           blurRadius: ResponsiveConstants.elevationMedium,
           offset: const Offset(0, 2),
         ),

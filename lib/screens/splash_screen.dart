@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 import '../services/firebase/firebase_service.dart';
+import '../services/location_service.dart';
 import '../localization/app_localizations.dart';
-import '../utils/responsive_utils.dart';
-import '../constants/responsive_constants.dart';
-import '../widgets/responsive/responsive_text.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,8 +17,10 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   final _firebaseService = FirebaseService();
+  final _locationService = LocationService();
   bool _isLoading = false;
   bool _isPressed = false;
+  bool _locationPermissionChecked = false;
 
   // Контроллеры для разных анимаций
   late AnimationController _pressAnimationController;
@@ -39,6 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _setupAnimations();
     _startPulseAnimation();
+    _checkLocationPermission();
   }
 
   void _setupAnimations() {
@@ -117,6 +118,33 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
     });
+  }
+
+  // Проверка разрешений на геолокацию при запуске
+  Future<void> _checkLocationPermission() async {
+    try {
+      // Проверяем, запрашивали ли мы разрешение ранее
+      final hasRequestedBefore = await _locationService.hasRequestedPermissionBefore();
+
+      if (!hasRequestedBefore) {
+        // Запрашиваем разрешение через системный диалог Android/iOS
+        debugPrint('🌍 Первый запуск - запрашиваем разрешение на геолокацию...');
+        final granted = await _locationService.requestLocationPermission();
+        debugPrint('🌍 Разрешение на геолокацию: ${granted ? "предоставлено" : "отклонено"}');
+      } else {
+        // Просто проверяем текущий статус разрешений
+        await _locationService.checkLocationPermission();
+      }
+
+      setState(() {
+        _locationPermissionChecked = true;
+      });
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки разрешений геолокации: $e');
+      setState(() {
+        _locationPermissionChecked = true;
+      });
+    }
   }
 
   @override
@@ -344,268 +372,122 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
           child: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Используем доступную высоту для расчета отступов
-                final double contentHeight = constraints.maxHeight;
-                final double buttonHeight = isTablet ? 64.0 : 56.0;
-                final double totalFixedHeight = titleFontSize +
-                    (subtitleFontSize * 2) +
-                    buttonHeight +
-                    200; // Приблизительная высота фиксированного контента
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 32.0 : 16.0,
+                vertical: 16.0,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Гибкий верхний отступ
+                  Expanded(
+                    flex: isSmallScreen ? 1 : (isTablet ? 3 : 2),
+                    child: Container(),
+                  ),
 
-                // Если контент не помещается, делаем экран прокручиваемым
-                if (totalFixedHeight > contentHeight) {
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isTablet ? 32.0 : 16.0,
-                      vertical: 16.0,
+                  // Заголовок приложения
+                  Text(
+                    'Drift Notes',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: AppConstants.textColor,
                     ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: contentHeight,
+                  ),
+
+                  SizedBox(height: isTablet ? 32 : (isSmallScreen ? 16 : 24)),
+
+                  // Подзаголовок
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: isTablet ? 600 : screenSize.width * 0.85,
+                    ),
+                    child: Text(
+                      localizations.translate('your_personal_fishing_journal'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: subtitleFontSize,
+                        color: Colors.white,
                       ),
-                      child: _buildContentWithIntrinsicHeight(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
                     ),
-                  );
-                } else {
-                  return Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isTablet ? 32.0 : 16.0,
-                      vertical: 16.0,
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 8 : 16),
+
+                  // Дополнительный текст
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: isTablet ? 600 : screenSize.width * 0.85,
                     ),
-                    child: _buildContent(context, isTablet, isSmallScreen, titleFontSize, subtitleFontSize),
-                  );
-                }
-              },
+                    child: Text(
+                      localizations.translate('remember_great_trips'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: subtitleFontSize,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+
+                  // Гибкий средний отступ
+                  Expanded(
+                    flex: isSmallScreen ? 2 : (isTablet ? 4 : 3),
+                    child: Container(),
+                  ),
+
+                  // Кнопка входа
+                  GestureDetector(
+                    onTapDown: (_) {
+                      if (!_isLoading) {
+                        setState(() {
+                          _isPressed = true;
+                        });
+                        _pressAnimationController.forward();
+                      }
+                    },
+                    onTapUp: (_) {
+                      if (!_isLoading) {
+                        setState(() {
+                          _isPressed = false;
+                        });
+                        _pressAnimationController.reverse();
+                        _handleLogin();
+                      }
+                    },
+                    onTapCancel: () {
+                      if (!_isLoading) {
+                        setState(() {
+                          _isPressed = false;
+                        });
+                        _pressAnimationController.reverse();
+                      }
+                    },
+                    child: _buildAnimatedButton(),
+                  ),
+
+                  SizedBox(height: isTablet ? 32 : 24),
+
+                  // Кнопка "Выход"
+                  TextButton(
+                    onPressed: _isLoading ? null : _handleExit,
+                    child: Text(
+                      localizations.translate('exit'),
+                      style: TextStyle(
+                        color: _isLoading ? Colors.white38 : Colors.white70,
+                        fontSize: isTablet ? 18 : 16,
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 16 : (isTablet ? 48 : 32)),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  // Версия контента с фиксированными отступами (для прокрутки)
-  Widget _buildContentWithIntrinsicHeight(BuildContext context, bool isTablet, bool isSmallScreen, double titleFontSize, double subtitleFontSize) {
-    final screenSize = MediaQuery.of(context).size;
-    final localizations = AppLocalizations.of(context);
-
-    return IntrinsicHeight(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Верхний отступ
-          SizedBox(height: isSmallScreen ? 40 : (isTablet ? 80 : 60)),
-
-          // Заголовок приложения
-          Text(
-            'Drift Notes',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.bold,
-              color: AppConstants.textColor,
-            ),
-          ),
-
-          SizedBox(height: isTablet ? 32 : (isSmallScreen ? 16 : 24)),
-
-          // Подзаголовок
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: isTablet ? 600 : screenSize.width * 0.85,
-            ),
-            child: Text(
-              localizations.translate('your_personal_fishing_journal'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: subtitleFontSize,
-                color: Colors.white,
-              ),
-            ),
-          ),
-
-          SizedBox(height: isSmallScreen ? 8 : 16),
-
-          // Дополнительный текст
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: isTablet ? 600 : screenSize.width * 0.85,
-            ),
-            child: Text(
-              localizations.translate('remember_great_trips'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: subtitleFontSize,
-                color: Colors.white,
-              ),
-            ),
-          ),
-
-          // Средний отступ
-          SizedBox(height: isSmallScreen ? 60 : (isTablet ? 120 : 80)),
-
-          // Кнопка входа
-          GestureDetector(
-            onTapDown: (_) {
-              if (!_isLoading) {
-                setState(() {
-                  _isPressed = true;
-                });
-                _pressAnimationController.forward();
-              }
-            },
-            onTapUp: (_) {
-              if (!_isLoading) {
-                setState(() {
-                  _isPressed = false;
-                });
-                _pressAnimationController.reverse();
-                _handleLogin();
-              }
-            },
-            onTapCancel: () {
-              if (!_isLoading) {
-                setState(() {
-                  _isPressed = false;
-                });
-                _pressAnimationController.reverse();
-              }
-            },
-            child: _buildAnimatedButton(),
-          ),
-
-          SizedBox(height: isTablet ? 32 : 24),
-
-          // Кнопка "Выход"
-          TextButton(
-            onPressed: _isLoading ? null : _handleExit,
-            child: Text(
-              localizations.translate('exit'),
-              style: TextStyle(
-                color: _isLoading ? Colors.white38 : Colors.white70,
-                fontSize: isTablet ? 18 : 16,
-              ),
-            ),
-          ),
-
-          SizedBox(height: isSmallScreen ? 40 : (isTablet ? 80 : 60)),
-        ],
-      ),
-    );
-  }
-
-  // Версия контента с гибкими отступами (без прокрутки)
-  Widget _buildContent(BuildContext context, bool isTablet, bool isSmallScreen, double titleFontSize, double subtitleFontSize) {
-    final screenSize = MediaQuery.of(context).size;
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Гибкий верхний отступ
-        Expanded(
-          flex: isSmallScreen ? 1 : (isTablet ? 3 : 2),
-          child: Container(),
-        ),
-
-        // Заголовок приложения
-        Text(
-          'Drift Notes',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.bold,
-            color: AppConstants.textColor,
-          ),
-        ),
-
-        SizedBox(height: isTablet ? 32 : (isSmallScreen ? 16 : 24)),
-
-        // Подзаголовок
-        Container(
-          constraints: BoxConstraints(
-            maxWidth: isTablet ? 600 : screenSize.width * 0.85,
-          ),
-          child: Text(
-            localizations.translate('your_personal_fishing_journal'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: subtitleFontSize,
-              color: Colors.white,
-            ),
-          ),
-        ),
-
-        SizedBox(height: isSmallScreen ? 8 : 16),
-
-        // Дополнительный текст
-        Container(
-          constraints: BoxConstraints(
-            maxWidth: isTablet ? 600 : screenSize.width * 0.85,
-          ),
-          child: Text(
-            localizations.translate('remember_great_trips'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: subtitleFontSize,
-              color: Colors.white,
-            ),
-          ),
-        ),
-
-        // Гибкий средний отступ
-        Expanded(
-          flex: isSmallScreen ? 2 : (isTablet ? 4 : 3),
-          child: Container(),
-        ),
-
-        // Кнопка входа
-        GestureDetector(
-          onTapDown: (_) {
-            if (!_isLoading) {
-              setState(() {
-                _isPressed = true;
-              });
-              _pressAnimationController.forward();
-            }
-          },
-          onTapUp: (_) {
-            if (!_isLoading) {
-              setState(() {
-                _isPressed = false;
-              });
-              _pressAnimationController.reverse();
-              _handleLogin();
-            }
-          },
-          onTapCancel: () {
-            if (!_isLoading) {
-              setState(() {
-                _isPressed = false;
-              });
-              _pressAnimationController.reverse();
-            }
-          },
-          child: _buildAnimatedButton(),
-        ),
-
-        SizedBox(height: isTablet ? 32 : 24),
-
-        // Кнопка "Выход"
-        TextButton(
-          onPressed: _isLoading ? null : _handleExit,
-          child: Text(
-            localizations.translate('exit'),
-            style: TextStyle(
-              color: _isLoading ? Colors.white38 : Colors.white70,
-              fontSize: isTablet ? 18 : 16,
-            ),
-          ),
-        ),
-
-        SizedBox(height: isSmallScreen ? 16 : (isTablet ? 48 : 32)),
-      ],
     );
   }
 }

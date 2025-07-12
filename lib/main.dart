@@ -49,6 +49,7 @@ import 'services/scheduled_reminder_service.dart';
 import 'services/tournament_service.dart';
 import 'services/timer/timer_service.dart';
 import 'screens/tournaments/tournament_detail_screen.dart';
+import 'services/location_service.dart';
 
 // Глобальная переменная для flutter_local_notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -197,6 +198,10 @@ Future<void> _initializeServices() async {
         () async {
       await ScheduledReminderService().initialize();
       if (kDebugMode) debugPrint('✅ ScheduledReminderService инициализирован');
+    },
+        () async {
+      await LocationService().initialize();
+      if (kDebugMode) debugPrint('✅ LocationService инициализирован');
     },
   ];
 
@@ -983,7 +988,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
               ),
               iconTheme: IconThemeData(color: AppConstants.textColor),
             ),
-            cardTheme: CardTheme(
+            cardTheme: CardThemeData(
               color: AppConstants.cardColor,
               elevation: 4,
               shape: RoundedRectangleBorder(

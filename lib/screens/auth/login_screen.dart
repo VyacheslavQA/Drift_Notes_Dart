@@ -877,7 +877,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Безопасное поле ввода
+  // Безопасное поле ввода с убранной логикой автовыделения
   Widget _buildInputField({
     required BuildContext context,
     required TextEditingController controller,
@@ -897,6 +897,47 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextFormField(
         controller: controller,
+        onTap: () {
+          // Множественные попытки сбросить автовыделение для старых устройств
+          Future.microtask(() {
+            if (controller.selection.start == 0 &&
+                controller.selection.end == controller.text.length) {
+              controller.selection = TextSelection.collapsed(
+                offset: controller.text.length,
+              );
+            }
+          });
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (controller.selection.start == 0 &&
+                controller.selection.end == controller.text.length) {
+              controller.selection = TextSelection.collapsed(
+                offset: controller.text.length,
+              );
+            }
+          });
+
+          // Дополнительная проверка через небольшую задержку
+          Future.delayed(Duration(milliseconds: 10), () {
+            if (controller.selection.start == 0 &&
+                controller.selection.end == controller.text.length) {
+              controller.selection = TextSelection.collapsed(
+                offset: controller.text.length,
+              );
+            }
+          });
+        },
+        onChanged: (value) {
+          // Сбрасываем автовыделение при вводе символов (особенно @ и других спецсимволов)
+          Future.microtask(() {
+            if (controller.selection.start == 0 &&
+                controller.selection.end == controller.text.length) {
+              controller.selection = TextSelection.collapsed(
+                offset: controller.text.length,
+              );
+            }
+          });
+        },
         style: TextStyle(
           color: AppConstants.textColor,
           fontSize: isTablet ? 18 : 16,
