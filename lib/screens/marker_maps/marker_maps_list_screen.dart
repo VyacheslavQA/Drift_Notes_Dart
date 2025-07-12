@@ -3,14 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
-import '../../services/firebase/firebase_service.dart';
+import '../../repositories/marker_map_repository.dart';
+import '../../repositories/fishing_note_repository.dart';
 import '../../services/subscription/subscription_service.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/subscription/usage_badge.dart';
@@ -26,7 +26,9 @@ class MarkerMapsListScreen extends StatefulWidget {
 }
 
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
-  final _firebaseService = FirebaseService();
+  // ✅ ИСПРАВЛЕНО: Используем Repository вместо прямых Firebase вызовов
+  final _markerMapRepository = MarkerMapRepository();
+  final _fishingNoteRepository = FishingNoteRepository();
   final _subscriptionService = SubscriptionService();
 
   List<MarkerMapModel> _maps = [];
@@ -41,7 +43,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     debugPrint('🗺️ MarkerMapsListScreen: Инициализация экрана списка карт');
   }
 
-  // ✅ ПРОДАКШЕН: Загрузка данных через новую структуру Firebase
+  // ✅ ИСПРАВЛЕНО: Загрузка данных через Repository
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -49,142 +51,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     });
 
     try {
-      debugPrint('📥 Загружаем маркерные карты...');
+      debugPrint('📥 Загружаем маркерные карты через Repository...');
 
-      // Загружаем все маркерные карты из новой структуры
-      final mapsSnapshot = await _firebaseService.getUserMarkerMaps();
+      // Загружаем карты через Repository
+      final maps = await _markerMapRepository.getUserMarkerMaps();
 
-      // Конвертируем QuerySnapshot в список моделей MarkerMapModel
-      final maps = <MarkerMapModel>[];
-      for (final doc in mapsSnapshot.docs) {
-        try {
-          final data = doc.data() as Map<String, dynamic>;
-
-          // Обработка дат с учетом Timestamp и int
-          DateTime mapDate;
-          if (data['date'] != null) {
-            if (data['date'] is Timestamp) {
-              mapDate = (data['date'] as Timestamp).toDate();
-            } else {
-              mapDate = DateTime.fromMillisecondsSinceEpoch(data['date'] as int);
-            }
-          } else if (data['createdAt'] != null) {
-            if (data['createdAt'] is Timestamp) {
-              mapDate = (data['createdAt'] as Timestamp).toDate();
-            } else {
-              mapDate = DateTime.fromMillisecondsSinceEpoch(data['createdAt'] as int);
-            }
-          } else {
-            mapDate = DateTime.now();
-          }
-
-          // Создаем модель маркерной карты
-          final map = MarkerMapModel(
-            id: doc.id,
-            userId: '', // Пустой, так как теперь userId часть пути коллекции
-            name: data['name'] ?? data['title'] ?? '', // Поддержка старых названий полей
-            date: mapDate,
-            sector: data['sector'],
-            noteIds: List<String>.from(data['noteIds'] ?? []),
-            noteNames: List<String>.from(data['noteNames'] ?? []),
-            markers: List<Map<String, dynamic>>.from(data['markers'] ?? []),
-          );
-
-          maps.add(map);
-          debugPrint('✅ Загружена карта: ${map.name} (ID: ${map.id})');
-        } catch (e) {
-          debugPrint('❌ Ошибка при обработке карты ${doc.id}: $e');
-          // Продолжаем обработку остальных карт
-        }
-      }
-
-      // Загружаем заметки для диалога создания новой карты
-      debugPrint('📝 Загружаем заметки для привязки...');
-      final notesSnapshot = await _firebaseService.getUserFishingNotesNew();
-
-      final notes = <FishingNoteModel>[];
-      for (final doc in notesSnapshot.docs) {
-        try {
-          final data = doc.data() as Map<String, dynamic>;
-
-          // Создаем BiteRecord вручную
-          final biteRecords = <BiteRecord>[];
-          final biteRecordsData = data['biteRecords'] as List<dynamic>? ?? [];
-          for (final recordData in biteRecordsData) {
-            try {
-              final record = recordData as Map<String, dynamic>;
-              biteRecords.add(BiteRecord(
-                id: record['id'] ?? '',
-                time: DateTime.fromMillisecondsSinceEpoch(record['time'] ?? 0),
-                fishType: record['fishType'] ?? '',
-                weight: record['weight']?.toDouble() ?? 0.0,
-                length: record['length']?.toDouble() ?? 0.0,
-                notes: record['notes'] ?? '',
-                photoUrls: List<String>.from(record['photoUrls'] ?? []),
-              ));
-            } catch (e) {
-              debugPrint('❌ Ошибка при обработке записи о поклевке: $e');
-            }
-          }
-
-          // Создаем FishingWeather вручную, если есть данные
-          FishingWeather? weather;
-          if (data['weather'] != null) {
-            try {
-              final weatherData = data['weather'] as Map<String, dynamic>;
-              weather = FishingWeather(
-                temperature: weatherData['temperature']?.toDouble() ?? 0.0,
-                feelsLike: weatherData['feelsLike']?.toDouble() ?? 0.0,
-                humidity: weatherData['humidity']?.toInt() ?? 0,
-                pressure: weatherData['pressure']?.toDouble() ?? 0.0,
-                windSpeed: weatherData['windSpeed']?.toDouble() ?? 0.0,
-                windDirection: weatherData['windDirection'] ?? '',
-                cloudCover: weatherData['cloudCover']?.toInt() ?? 0,
-                sunrise: weatherData['sunrise'] ?? '',
-                sunset: weatherData['sunset'] ?? '',
-                isDay: weatherData['isDay'] ?? true,
-                observationTime: DateTime.fromMillisecondsSinceEpoch(
-                    weatherData['observationTime'] ?? 0
-                ),
-              );
-            } catch (e) {
-              debugPrint('❌ Ошибка при обработке погодных данных: $e');
-            }
-          }
-
-          // Создаем модель заметки
-          final note = FishingNoteModel(
-            id: doc.id,
-            userId: '', // Пустой, так как теперь userId часть пути коллекции
-            title: data['title'] ?? '',
-            location: data['location'] ?? '',
-            date: DateTime.fromMillisecondsSinceEpoch(data['date'] ?? 0),
-            endDate: data['endDate'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
-                : null,
-            isMultiDay: data['isMultiDay'] ?? false,
-            fishingType: data['fishingType'] ?? 'shore_fishing',
-            tackle: data['tackle'] ?? '',
-            notes: data['notes'] ?? '',
-            photoUrls: List<String>.from(data['photoUrls'] ?? []),
-            coverPhotoUrl: data['coverPhotoUrl'],
-            coverCropSettings: data['coverCropSettings'] != null
-                ? Map<String, dynamic>.from(data['coverCropSettings'])
-                : null,
-            biteRecords: biteRecords,
-            weather: weather,
-            latitude: data['latitude']?.toDouble() ?? 0.0,
-            longitude: data['longitude']?.toDouble() ?? 0.0,
-            aiPrediction: data['aiPrediction'] != null
-                ? Map<String, dynamic>.from(data['aiPrediction'])
-                : null,
-          );
-
-          notes.add(note);
-        } catch (e) {
-          debugPrint('❌ Ошибка при обработке заметки ${doc.id}: $e');
-        }
-      }
+      // Загружаем заметки через Repository для диалога создания
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
 
       if (mounted) {
         setState(() {
@@ -193,10 +66,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _isLoading = false;
         });
 
-        debugPrint('✅ Загружено ${maps.length} маркерных карт и ${notes.length} заметок');
+        debugPrint('✅ Загружено ${maps.length} маркерных карт и ${notes.length} заметок через Repository');
       }
     } catch (e) {
-      debugPrint('❌ Ошибка при загрузке данных: $e');
+      debugPrint('❌ Ошибка при загрузке данных через Repository: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Ошибка загрузки данных: $e';
@@ -206,20 +79,20 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // Проверка лимитов с детальным логированием
+  // ✅ ИСПРАВЛЕНО: Проверка лимитов с офлайн поддержкой и PaywallScreen
   Future<void> _handleCreateMapPress() async {
     final localizations = AppLocalizations.of(context);
 
     try {
-      debugPrint('🔍 Начинаем проверку лимитов для создания маркерной карты...');
+      debugPrint('🔍 Проверяем возможность создания маркерной карты...');
 
-      // Проверяем лимиты
-      final canCreate = await _subscriptionService.canCreateContent(ContentType.markerMaps);
-      debugPrint('✅ Результат canCreateContent: $canCreate');
+      // Проверяем лимиты через Repository
+      final canCreate = await _markerMapRepository.canCreateMarkerMap();
+      debugPrint('✅ Результат canCreateMarkerMap: $canCreate');
 
       if (!canCreate) {
-        debugPrint('❌ Лимит превышен, показываем диалог премиума');
-        _showPremiumRequired(ContentType.markerMaps);
+        debugPrint('❌ Лимит превышен, показываем PaywallScreen');
+        _showPaywallScreen();
         return;
       }
 
@@ -228,18 +101,18 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
     } catch (e) {
       debugPrint('❌ Ошибка при проверке лимитов: $e');
-      // В случае ошибки показываем диалог премиума (безопасный подход)
-      _showPremiumRequired(ContentType.markerMaps);
+      // В случае ошибки показываем PaywallScreen (безопасный подход)
+      _showPaywallScreen();
     }
   }
 
-  // Единый метод для показа PaywallScreen
-  void _showPremiumRequired(ContentType contentType) {
+  // ✅ ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  void _showPaywallScreen() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => PaywallScreen(
-          contentType: contentType.name,
+          contentType: ContentType.markerMaps.name,
         ),
       ),
     );
@@ -335,7 +208,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
-  // Диалог редактирования информации о карте
+  // ✅ ИСПРАВЛЕНО: Диалог редактирования через Repository
   Future<void> _showEditMapInfoDialog(MarkerMapModel map) async {
     final localizations = AppLocalizations.of(context);
     final nameController = TextEditingController(text: map.name);
@@ -348,8 +221,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     for (String noteId in map.noteIds) {
       final note = _notes.firstWhere(
             (n) => n.id == noteId,
-        orElse:
-            () => FishingNoteModel(
+        orElse: () => FishingNoteModel(
           id: '',
           userId: '',
           location: '',
@@ -425,18 +297,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: nameController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText:
-                                '${localizations.translate('map_name')}*',
+                                labelText: '${localizations.translate('map_name')}*',
                                 labelStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                 ),
                                 enabledBorder: UnderlineInputBorder(
                                   borderSide: BorderSide(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.5,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.5),
                                   ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
@@ -469,8 +336,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           onSurface: AppConstants.textColor,
                                         ),
                                         dialogTheme: DialogThemeData(
-                                          backgroundColor:
-                                          AppConstants.backgroundColor,
+                                          backgroundColor: AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -485,15 +351,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppConstants.textColor.withOpacity(
-                                        0.5,
-                                      ),
+                                      color: AppConstants.textColor.withOpacity(0.5),
                                       width: 1,
                                     ),
                                   ),
@@ -530,18 +392,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: sectorController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText:
-                                '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
                                 labelStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                 ),
                                 enabledBorder: UnderlineInputBorder(
                                   borderSide: BorderSide(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.5,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.5),
                                   ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
@@ -559,9 +416,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               Text(
                                 '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                   fontSize: 14,
                                 ),
                               ),
@@ -570,32 +425,23 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                               // Показываем список заметок с чекбоксами
                               Container(
-                                constraints: const BoxConstraints(
-                                  maxHeight: 200,
-                                ),
+                                constraints: const BoxConstraints(maxHeight: 200),
                                 decoration: BoxDecoration(
-                                  color: AppConstants.backgroundColor
-                                      .withOpacity(0.3),
+                                  color: AppConstants.backgroundColor.withOpacity(0.3),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.2,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.2),
                                     width: 1,
                                   ),
                                 ),
-                                child:
-                                _notes.isEmpty
+                                child: _notes.isEmpty
                                     ? Center(
                                   child: Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Text(
-                                      localizations.translate(
-                                        'no_notes_available',
-                                      ),
+                                      localizations.translate('no_notes_available'),
                                       style: TextStyle(
-                                        color: AppConstants.textColor
-                                            .withOpacity(0.7),
+                                        color: AppConstants.textColor.withOpacity(0.7),
                                         fontSize: 14,
                                       ),
                                     ),
@@ -606,12 +452,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                   itemCount: _notes.length,
                                   itemBuilder: (context, index) {
                                     final note = _notes[index];
-                                    final title =
-                                    note.title.isNotEmpty
-                                        ? note.title
-                                        : note.location;
-                                    final isSelected = selectedNotes
-                                        .contains(note);
+                                    final title = note.title.isNotEmpty ? note.title : note.location;
+                                    final isSelected = selectedNotes.contains(note);
 
                                     return CheckboxListTile(
                                       title: Text(
@@ -633,14 +475,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           }
                                         });
                                       },
-                                      activeColor:
-                                      AppConstants.primaryColor,
-                                      checkColor:
-                                      AppConstants.textColor,
+                                      activeColor: AppConstants.primaryColor,
+                                      checkColor: AppConstants.textColor,
                                       dense: true,
-                                      controlAffinity:
-                                      ListTileControlAffinity
-                                          .leading,
+                                      controlAffinity: ListTileControlAffinity.leading,
                                     );
                                   },
                                 ),
@@ -669,9 +507,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(
-                            color: AppConstants.textColor.withOpacity(
-                              0.1,
-                            ),
+                            color: AppConstants.textColor.withOpacity(0.1),
                             width: 1,
                           ),
                         ),
@@ -695,9 +531,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      localizations.translate(
-                                        'map_name_required',
-                                      ),
+                                      localizations.translate('map_name_required'),
                                     ),
                                   ),
                                 );
@@ -708,21 +542,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               final updatedMap = map.copyWith(
                                 name: nameController.text.trim(),
                                 date: selectedDate,
-                                sector:
-                                sectorController.text.trim().isEmpty
+                                sector: sectorController.text.trim().isEmpty
                                     ? null
                                     : sectorController.text.trim(),
-                                noteIds:
-                                selectedNotes
-                                    .map((note) => note.id)
-                                    .toList(),
-                                noteNames:
-                                selectedNotes
+                                noteIds: selectedNotes.map((note) => note.id).toList(),
+                                noteNames: selectedNotes
                                     .map(
-                                      (note) =>
-                                  note.title.isNotEmpty
-                                      ? note.title
-                                      : note.location,
+                                      (note) => note.title.isNotEmpty ? note.title : note.location,
                                 )
                                     .toList(),
                               );
@@ -753,18 +579,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Сохраняем обновленную карту через новую структуру Firebase
-        final mapData = {
-          'name': result.name,
-          'date': result.date.millisecondsSinceEpoch,
-          'sector': result.sector,
-          'noteIds': result.noteIds,
-          'noteNames': result.noteNames,
-          'markers': result.markers,
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        };
-
-        await _firebaseService.updateMarkerMap(result.id, mapData);
+        // ✅ ИСПРАВЛЕНО: Сохраняем через Repository
+        await _markerMapRepository.updateMarkerMap(result);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -778,7 +594,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _loadData();
         }
       } catch (e) {
-        debugPrint('❌ Ошибка при сохранении карты: $e');
+        debugPrint('❌ Ошибка при сохранении карты через Repository: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -792,14 +608,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // Подтверждение удаления конкретной карты
+  // ✅ ИСПРАВЛЕНО: Подтверждение удаления через Repository
   Future<void> _confirmDeleteMap(MarkerMapModel map) async {
     final localizations = AppLocalizations.of(context);
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
         title: Text(
           localizations.translate('delete_map'),
@@ -833,13 +648,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Удаляем карту через новую структуру Firebase
-        await _firebaseService.deleteMarkerMap(map.id);
-
-        // Уменьшаем счетчик при удалении
-        if (!_subscriptionService.hasPremiumAccess()) {
-          await _subscriptionService.decrementUsage(ContentType.markerMaps);
-        }
+        // ✅ ИСПРАВЛЕНО: Удаляем через Repository (счетчики обрабатываются автоматически)
+        await _markerMapRepository.deleteMarkerMap(map.id);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -855,7 +665,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           _loadData();
         }
       } catch (e) {
-        debugPrint('❌ Ошибка при удалении карты: $e');
+        debugPrint('❌ Ошибка при удалении карты через Repository: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -871,6 +681,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
+  // ✅ ИСПРАВЛЕНО: Создание карты через Repository
   Future<void> _showCreateMapDialog() async {
     final localizations = AppLocalizations.of(context);
     final nameController = TextEditingController();
@@ -930,7 +741,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       ),
                     ),
 
-                    // Содержимое
+                    // Содержимое аналогично edit диалогу
                     Flexible(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(20),
@@ -942,18 +753,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: nameController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText:
-                                '${localizations.translate('map_name')}*',
+                                labelText: '${localizations.translate('map_name')}*',
                                 labelStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                 ),
                                 enabledBorder: UnderlineInputBorder(
                                   borderSide: BorderSide(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.5,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.5),
                                   ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
@@ -986,8 +792,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           onSurface: AppConstants.textColor,
                                         ),
                                         dialogTheme: DialogThemeData(
-                                          backgroundColor:
-                                          AppConstants.backgroundColor,
+                                          backgroundColor: AppConstants.backgroundColor,
                                         ),
                                       ),
                                       child: child!,
@@ -1002,15 +807,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppConstants.textColor.withOpacity(
-                                        0.5,
-                                      ),
+                                      color: AppConstants.textColor.withOpacity(0.5),
                                       width: 1,
                                     ),
                                   ),
@@ -1047,18 +848,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                               controller: sectorController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                labelText:
-                                '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
+                                labelText: '${localizations.translate('sector')} (${localizations.translate('other').toLowerCase()})',
                                 labelStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                 ),
                                 enabledBorder: UnderlineInputBorder(
                                   borderSide: BorderSide(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.5,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.5),
                                   ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
@@ -1071,64 +867,35 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
                             const SizedBox(height: 20),
 
-                            // Привязка к заметкам (множественный выбор)
+                            // Привязка к заметкам (аналогично edit диалогу)
                             if (_notes.isNotEmpty) ...[
                               Text(
                                 '${localizations.translate('my_notes')} (${localizations.translate('other').toLowerCase()}):',
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: AppConstants.textColor.withOpacity(0.7),
                                   fontSize: 14,
                                 ),
                               ),
 
                               const SizedBox(height: 12),
 
-                              // Показываем список заметок с чекбоксами
                               Container(
-                                constraints: const BoxConstraints(
-                                  maxHeight: 200,
-                                ),
+                                constraints: const BoxConstraints(maxHeight: 200),
                                 decoration: BoxDecoration(
-                                  color: AppConstants.backgroundColor
-                                      .withOpacity(0.3),
+                                  color: AppConstants.backgroundColor.withOpacity(0.3),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: AppConstants.textColor.withOpacity(
-                                      0.2,
-                                    ),
+                                    color: AppConstants.textColor.withOpacity(0.2),
                                     width: 1,
                                   ),
                                 ),
-                                child:
-                                _notes.isEmpty
-                                    ? Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Text(
-                                      localizations.translate(
-                                        'no_notes_available',
-                                      ),
-                                      style: TextStyle(
-                                        color: AppConstants.textColor
-                                            .withOpacity(0.7),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                    : ListView.builder(
+                                child: ListView.builder(
                                   shrinkWrap: true,
                                   itemCount: _notes.length,
                                   itemBuilder: (context, index) {
                                     final note = _notes[index];
-                                    final title =
-                                    note.title.isNotEmpty
-                                        ? note.title
-                                        : note.location;
-                                    final isSelected = selectedNotes
-                                        .contains(note);
+                                    final title = note.title.isNotEmpty ? note.title : note.location;
+                                    final isSelected = selectedNotes.contains(note);
 
                                     return CheckboxListTile(
                                       title: Text(
@@ -1150,14 +917,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                           }
                                         });
                                       },
-                                      activeColor:
-                                      AppConstants.primaryColor,
-                                      checkColor:
-                                      AppConstants.textColor,
+                                      activeColor: AppConstants.primaryColor,
+                                      checkColor: AppConstants.textColor,
                                       dense: true,
-                                      controlAffinity:
-                                      ListTileControlAffinity
-                                          .leading,
+                                      controlAffinity: ListTileControlAffinity.leading,
                                     );
                                   },
                                 ),
@@ -1186,9 +949,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           top: BorderSide(
-                            color: AppConstants.textColor.withOpacity(
-                              0.1,
-                            ),
+                            color: AppConstants.textColor.withOpacity(0.1),
                             width: 1,
                           ),
                         ),
@@ -1219,27 +980,19 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                                 return;
                               }
 
-                              // Создаем новую карту с множественными привязками
+                              // Создаем новую карту
                               final newMap = MarkerMapModel(
                                 id: const Uuid().v4(),
                                 userId: '',
                                 name: nameController.text.trim(),
                                 date: selectedDate,
-                                sector:
-                                sectorController.text.trim().isEmpty
+                                sector: sectorController.text.trim().isEmpty
                                     ? null
                                     : sectorController.text.trim(),
-                                noteIds:
-                                selectedNotes
-                                    .map((note) => note.id)
-                                    .toList(),
-                                noteNames:
-                                selectedNotes
+                                noteIds: selectedNotes.map((note) => note.id).toList(),
+                                noteNames: selectedNotes
                                     .map(
-                                      (note) =>
-                                  note.title.isNotEmpty
-                                      ? note.title
-                                      : note.location,
+                                      (note) => note.title.isNotEmpty ? note.title : note.location,
                                 )
                                     .toList(),
                                 markers: [],
@@ -1271,24 +1024,13 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // Сохраняем новую карту через новую структуру Firebase
-        final mapData = {
-          'name': result.name,
-          'date': result.date.millisecondsSinceEpoch,
-          'sector': result.sector,
-          'noteIds': result.noteIds,
-          'noteNames': result.noteNames,
-          'markers': result.markers,
-          'createdAt': DateTime.now().millisecondsSinceEpoch,
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        };
-
-        final docRef = await _firebaseService.addMarkerMap(mapData);
+        // ✅ ИСПРАВЛЕНО: Создаем карту через Repository (лимиты и счетчики обрабатываются автоматически)
+        final mapId = await _markerMapRepository.addMarkerMap(result);
 
         // Открываем экран редактирования карты
         if (mounted) {
           setState(() => _isLoading = false);
-          final map = result.copyWith(id: docRef.id);
+          final map = result.copyWith(id: mapId);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1297,15 +1039,21 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
           ).then((_) => _loadData());
         }
       } catch (e) {
-        debugPrint('❌ Ошибка при создании карты: $e');
+        debugPrint('❌ Ошибка при создании карты через Repository: $e');
         if (mounted) {
           setState(() => _isLoading = false);
           final localizations = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${localizations.translate('error_saving')}: $e'),
-            ),
-          );
+
+          // Проверяем, не превышен ли лимит
+          if (e.toString().contains('лимит') || e.toString().contains('limit')) {
+            _showPaywallScreen();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${localizations.translate('error_saving')}: $e'),
+              ),
+            );
+          }
         }
       }
     }
@@ -1363,8 +1111,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: localizations.translate('loading'),
-        child:
-        _errorMessage != null
+        child: _errorMessage != null
             ? _buildErrorState()
             : _maps.isEmpty
             ? _buildEmptyState()
@@ -1383,7 +1130,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         ),
         tooltip: localizations.translate('create_marker_map'),
       ),
-      // Стандартное расположение - правый нижний угол
     );
   }
 
@@ -1553,9 +1299,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withOpacity(
-                            0.2,
-                          ),
+                          color: AppConstants.primaryColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -1586,9 +1330,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             Text(
                               DateFormat('dd.MM.yyyy').format(map.date),
                               style: TextStyle(
-                                color: AppConstants.textColor.withOpacity(
-                                  0.7,
-                                ),
+                                color: AppConstants.textColor.withOpacity(0.7),
                                 fontSize: 14,
                               ),
                             ),
@@ -1603,14 +1345,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withOpacity(
-                            0.1,
-                          ),
+                          color: AppConstants.primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: AppConstants.primaryColor.withOpacity(
-                              0.3,
-                            ),
+                            color: AppConstants.primaryColor.withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -1636,9 +1374,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                         children: [
                           Icon(
                             Icons.grid_on,
-                            color: AppConstants.textColor.withOpacity(
-                              0.7,
-                            ),
+                            color: AppConstants.textColor.withOpacity(0.7),
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -1653,7 +1389,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       ),
                     ),
 
-                  // Привязанные заметки (обновлено для множественных привязок)
+                  // Привязанные заметки
                   if (map.noteNames.isNotEmpty)
                     Row(
                       children: [

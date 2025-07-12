@@ -6,11 +6,12 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
+import '../../repositories/fishing_expense_repository.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
+import '../../screens/subscription/paywall_screen.dart';
 
 /// Экран добавления всех расходов на рыбалку за одну поездку
 class AddExpenseScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   // Общая информация о рыбалке
@@ -40,6 +41,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String _selectedCurrency = 'KZT';
   final _locationController = TextEditingController();
   final _tripNotesController = TextEditingController();
+
+  // ИСПРАВЛЕНО: Добавили контроллеры для каждого поля ввода
+  final Map<FishingExpenseCategory, TextEditingController> _amountControllers = {};
+  final Map<FishingExpenseCategory, TextEditingController> _descriptionControllers = {};
+  final Map<FishingExpenseCategory, TextEditingController> _notesControllers = {};
 
   // Расходы по категориям
   final Map<FishingExpenseCategory, double> _categoryAmounts = {};
@@ -65,12 +71,36 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _initializeData() {
-    // Инициализируем данные для всех категорий
+    // ИСПРАВЛЕНО: Инициализируем контроллеры для всех категорий
     for (final category in FishingExpenseCategory.allCategories) {
       _categoryAmounts[category] = 0.0;
       _categoryDescriptions[category] = '';
       _categoryNotes[category] = '';
       _expandedCategories[category] = false;
+
+      // Создаем контроллеры для каждой категории
+      _amountControllers[category] = TextEditingController();
+      _descriptionControllers[category] = TextEditingController();
+      _notesControllers[category] = TextEditingController();
+
+      // Добавляем слушатели для автоматического обновления данных
+      _amountControllers[category]!.addListener(() {
+        final text = _amountControllers[category]!.text;
+        final amount = double.tryParse(text) ?? 0.0;
+        if (_categoryAmounts[category] != amount) {
+          _categoryAmounts[category] = amount;
+          _updateTotalAmount();
+          debugPrint('Сумма для ${category.name} обновлена: $amount');
+        }
+      });
+
+      _descriptionControllers[category]!.addListener(() {
+        _categoryDescriptions[category] = _descriptionControllers[category]!.text;
+      });
+
+      _notesControllers[category]!.addListener(() {
+        _categoryNotes[category] = _notesControllers[category]!.text;
+      });
     }
 
     // Если редактируем поездку, загружаем ее данные
@@ -96,20 +126,44 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _locationController.text = trip.locationName ?? '';
       _tripNotesController.text = trip.notes ?? '';
 
-      // Загружаем данные расходов по категориям
+      // ОТЛАДКА: Выводим информацию о загружаемой поездке
+      debugPrint('=== ЗАГРУЗКА ПОЕЗДКИ ДЛЯ РЕДАКТИРОВАНИЯ ===');
+      debugPrint('ID поездки: ${trip.id}');
+      debugPrint('Дата: ${trip.date}');
+      debugPrint('Место: ${trip.locationName}');
+      debugPrint('Заметки: ${trip.notes}');
+      debugPrint('Валюта: ${trip.currency}');
+      debugPrint('Количество расходов: ${trip.expenses.length}');
+
+      // ИСПРАВЛЕНО: Загружаем данные расходов в контроллеры
       for (final expense in trip.expenses) {
+        debugPrint('Загружаем расход: ${expense.category.name} - ${expense.amount}');
+        debugPrint('  Описание: ${expense.description}');
+        debugPrint('  Заметки: ${expense.notes}');
+
         _categoryAmounts[expense.category] = expense.amount;
         _categoryDescriptions[expense.category] = expense.description;
         _categoryNotes[expense.category] = expense.notes ?? '';
         _expandedCategories[expense.category] = true;
+
+        // Устанавливаем значения в контроллеры
+        _amountControllers[expense.category]!.text = expense.amount == 0
+            ? ''
+            : expense.amount.toStringAsFixed(2).replaceAll('.00', '');
+        _descriptionControllers[expense.category]!.text = expense.description;
+        _notesControllers[expense.category]!.text = expense.notes ?? '';
       }
 
       // Если указана категория фокуса, раскрываем ее
       if (widget.focusCategory != null) {
         _expandedCategories[widget.focusCategory!] = true;
+        debugPrint('Фокус на категории: ${widget.focusCategory!.name}');
       }
 
       _updateTotalAmount();
+
+      debugPrint('Общая сумма после загрузки: $_totalAmount');
+      debugPrint('========================================');
     });
   }
 
@@ -117,6 +171,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void dispose() {
     _locationController.dispose();
     _tripNotesController.dispose();
+
+    // ИСПРАВЛЕНО: Освобождаем все контроллеры
+    for (final category in FishingExpenseCategory.allCategories) {
+      _amountControllers[category]?.dispose();
+      _descriptionControllers[category]?.dispose();
+      _notesControllers[category]?.dispose();
+    }
+
     super.dispose();
   }
 
@@ -135,16 +197,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
   }
 
-  void _updateCategoryAmount(FishingExpenseCategory category, String value) {
-    final amount = double.tryParse(value) ?? 0.0;
-    setState(() {
-      _categoryAmounts[category] = amount;
-      _updateTotalAmount();
-    });
-  }
-
+  // ИСПРАВЛЕНО: Упрощенный метод обновления общей суммы
   void _updateTotalAmount() {
-    _totalAmount = _categoryAmounts.values.fold(0.0, (sum, amount) => sum + amount);
+    setState(() {
+      _totalAmount = _categoryAmounts.values.fold(0.0, (sum, amount) => sum + amount);
+    });
+    debugPrint('Общая сумма обновлена: $_totalAmount');
   }
 
   String _getCategoryName(FishingExpenseCategory category, AppLocalizations localizations) {
@@ -206,7 +264,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030), // Разрешаем выбирать будущие даты до 2030 года
+      lastDate: DateTime(2030),
       locale: isRussian ? const Locale('ru', 'RU') : const Locale('en', 'US'),
       builder: (context, child) {
         return Theme(
@@ -245,19 +303,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  // ИЗМЕНЕНО: Полностью переписан метод сохранения под новую структуру Firebase
   Future<void> _saveFishingTripExpenses() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final localizations = AppLocalizations.of(context);
-    final userId = _firebaseService.currentUserId;
-
-    if (userId == null) {
-      _showErrorSnackBar(localizations.translate('error_user_not_authorized') ?? 'Пользователь не авторизован');
-      return;
-    }
 
     // Проверяем, что хотя бы один расход указан
     final hasExpenses = _categoryAmounts.values.any((amount) => amount > 0);
@@ -298,7 +349,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('${localizations.translate('error_saving') ?? 'Ошибка сохранения'}: $e');
+        if (e.toString().contains('subscription_limit_exceeded') || e.toString().contains('Превышен лимит')) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaywallScreen(
+                contentType: 'expenses',
+                blockedFeature: localizations.translate('fishing_expenses') ?? 'Расходы на рыбалку',
+              ),
+            ),
+          );
+        } else {
+          _showErrorSnackBar('${localizations.translate('error_saving') ?? 'Ошибка сохранения'}: $e');
+        }
       }
     } finally {
       if (mounted) {
@@ -307,136 +370,92 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  // ИЗМЕНЕНО: Новый метод создания поездки через Firebase subcollections
   Future<void> _createNewTrip() async {
-    final localizations = AppLocalizations.of(context);
-
     try {
-      // Создаем данные поездки
-      final tripData = {
-        'userId': _firebaseService.currentUserId,
-        'date': _selectedDate,
-        'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-        'notes': _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
-        'currency': _selectedCurrency,
-      };
-
-      // Создаем поездку
-      final tripRef = await _firebaseService.addFishingTrip(tripData);
-      final tripId = tripRef.id;
-
-      // Создаем список расходов для добавления
-      final expensesToAdd = <Map<String, dynamic>>[];
-
-      for (final category in FishingExpenseCategory.allCategories) {
-        final amount = _categoryAmounts[category] ?? 0.0;
+      debugPrint('=== СОЗДАНИЕ НОВОЙ ПОЕЗДКИ ===');
+      debugPrint('Дата: $_selectedDate');
+      debugPrint('Место: ${_locationController.text}');
+      debugPrint('Заметки: ${_tripNotesController.text}');
+      debugPrint('Валюта: $_selectedCurrency');
+      debugPrint('Суммы по категориям:');
+      _categoryAmounts.forEach((category, amount) {
         if (amount > 0) {
-          final description = _categoryDescriptions[category]?.trim() ?? '';
-          final expenseNotes = _categoryNotes[category]?.trim() ?? '';
-
-          final expenseData = {
-            'userId': _firebaseService.currentUserId,
-            'tripId': tripId,
-            'amount': amount,
-            'description': description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
-            'category': category.id,
-            'date': _selectedDate,
-            'currency': _selectedCurrency,
-            'notes': expenseNotes.isEmpty ? null : expenseNotes,
-            'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-          };
-
-          expensesToAdd.add(expenseData);
+          debugPrint('  ${category.name}: $amount');
+          debugPrint('    Описание: ${_categoryDescriptions[category]}');
+          debugPrint('    Заметки: ${_categoryNotes[category]}');
         }
-      }
+      });
 
-      // Добавляем все расходы к поездке
-      for (final expenseData in expensesToAdd) {
-        await _firebaseService.addFishingExpense(tripId, expenseData);
-      }
+      await _expenseRepository.createTripWithExpenses(
+        date: _selectedDate,
+        locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+        notes: _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
+        currency: _selectedCurrency,
+        categoryAmounts: _categoryAmounts,
+        categoryDescriptions: _categoryDescriptions,
+        categoryNotes: _categoryNotes,
+      );
 
-      // Увеличиваем счетчик использования после успешного создания
-      try {
-        await _subscriptionService.incrementUsage(ContentType.expenses);
-        debugPrint('✅ Счетчик расходов/поездок увеличен');
-      } catch (e) {
-        debugPrint('❌ Ошибка увеличения счетчика расходов/поездок: $e');
-      }
+      debugPrint('✅ Поездка успешно создана');
 
     } catch (e) {
-      debugPrint('Ошибка создания поездки: $e');
+      debugPrint('❌ Ошибка создания поездки: $e');
       rethrow;
     }
   }
 
-  // ИЗМЕНЕНО: Новый метод обновления поездки через Firebase subcollections
   Future<void> _updateExistingTrip() async {
     final localizations = AppLocalizations.of(context);
     final existingTrip = widget.tripToEdit!;
 
     try {
-      // Обновляем данные поездки
-      final tripData = {
-        'date': _selectedDate,
-        'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-        'notes': _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
-        'currency': _selectedCurrency,
-      };
+      // Создаем обновленный список расходов
+      final expenses = <FishingExpenseModel>[];
 
-      await _firebaseService.updateFishingTrip(existingTrip.id, tripData);
-
-      // Получаем текущие расходы поездки
-      final currentExpensesSnapshot = await _firebaseService.getFishingTripExpenses(existingTrip.id);
-      final currentExpenses = <String, Map<String, dynamic>>{};
-
-      for (var doc in currentExpensesSnapshot.docs) {
-        final expenseData = doc.data() as Map<String, dynamic>;
-        final category = expenseData['category'] as String;
-        currentExpenses[category] = {
-          'id': doc.id,
-          ...expenseData,
-        };
-      }
-
-      // Обновляем/добавляем/удаляем расходы по категориям
       for (final category in FishingExpenseCategory.allCategories) {
         final amount = _categoryAmounts[category] ?? 0.0;
-        final categoryId = category.id;
-
         if (amount > 0) {
-          // Есть расход в этой категории
           final description = _categoryDescriptions[category]?.trim() ?? '';
           final expenseNotes = _categoryNotes[category]?.trim() ?? '';
 
-          final expenseData = {
-            'userId': _firebaseService.currentUserId,
-            'tripId': existingTrip.id,
-            'amount': amount,
-            'description': description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
-            'category': categoryId,
-            'date': _selectedDate,
-            'currency': _selectedCurrency,
-            'notes': expenseNotes.isEmpty ? null : expenseNotes,
-            'locationName': _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-          };
+          // Ищем существующий расход этой категории
+          final existingExpense = existingTrip.expenses.where((e) => e.category == category).firstOrNull;
 
-          if (currentExpenses.containsKey(categoryId)) {
-            // Обновляем существующий расход
-            final existingExpenseId = currentExpenses[categoryId]!['id'];
-            await _firebaseService.updateFishingExpense(existingTrip.id, existingExpenseId, expenseData);
-          } else {
-            // Добавляем новый расход
-            await _firebaseService.addFishingExpense(existingTrip.id, expenseData);
-          }
-        } else {
-          // Нет расхода в этой категории
-          if (currentExpenses.containsKey(categoryId)) {
-            // Удаляем существующий расход
-            final existingExpenseId = currentExpenses[categoryId]!['id'];
-            await _firebaseService.deleteFishingExpense(existingTrip.id, existingExpenseId);
-          }
+          final expense = FishingExpenseModel(
+            id: existingExpense?.id ?? '',
+            userId: existingTrip.userId,
+            tripId: existingTrip.id,
+            amount: amount,
+            description: description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
+            category: category,
+            date: _selectedDate,
+            currency: _selectedCurrency,
+            notes: expenseNotes.isEmpty ? null : expenseNotes,
+            locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+            createdAt: existingExpense?.createdAt ?? DateTime.now(),
+            updatedAt: DateTime.now(),
+            isSynced: existingExpense?.isSynced ?? false,
+          );
+
+          expenses.add(expense);
         }
       }
+
+      // Создаем обновленную поездку
+      final updatedTrip = FishingTripModel(
+        id: existingTrip.id,
+        userId: existingTrip.userId,
+        date: _selectedDate,
+        locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+        notes: _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
+        currency: _selectedCurrency,
+        expenses: expenses,
+        createdAt: existingTrip.createdAt,
+        updatedAt: DateTime.now(),
+        isSynced: false,
+      );
+
+      await _expenseRepository.updateTrip(updatedTrip);
 
     } catch (e) {
       debugPrint('Ошибка обновления поездки: $e');
@@ -512,7 +531,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 _buildTotalSection(),
                 const SizedBox(height: 24),
                 _buildSaveButton(),
-                // Добавляем отступ снизу с учетом системной навигации
                 SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
               ],
             ),
@@ -830,7 +848,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          // Поле суммы
+          // ИСПРАВЛЕНО: Поле суммы с контроллером
           Container(
             decoration: BoxDecoration(
               color: AppConstants.backgroundColor,
@@ -858,9 +876,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 ),
                 Expanded(
                   child: TextFormField(
-                    initialValue: _categoryAmounts[category] == 0
-                        ? ''
-                        : _categoryAmounts[category]!.toStringAsFixed(2),
+                    controller: _amountControllers[category], // ИСПРАВЛЕНО: Используем контроллер
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
@@ -878,7 +894,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.all(16),
                     ),
-                    onChanged: (value) => _updateCategoryAmount(category, value),
+                    onChanged: (value) {
+                      // Обновляем общую сумму при изменении
+                      _updateTotalAmount();
+                    },
                   ),
                 ),
               ],
@@ -886,9 +905,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Поле описания
+          // ИСПРАВЛЕНО: Поле описания с контроллером
           TextFormField(
-            initialValue: _categoryDescriptions[category],
+            controller: _descriptionControllers[category], // ИСПРАВЛЕНО: Используем контроллер
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -906,15 +925,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               contentPadding: const EdgeInsets.all(16),
             ),
-            onChanged: (value) {
-              _categoryDescriptions[category] = value;
-            },
           ),
           const SizedBox(height: 12),
 
-          // Поле заметок
+          // ИСПРАВЛЕНО: Поле заметок с контроллером
           TextFormField(
-            initialValue: _categoryNotes[category],
+            controller: _notesControllers[category], // ИСПРАВЛЕНО: Используем контроллер
             maxLines: 3,
             style: TextStyle(
               color: AppConstants.textColor,
@@ -933,9 +949,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               contentPadding: const EdgeInsets.all(16),
             ),
-            onChanged: (value) {
-              _categoryNotes[category] = value;
-            },
           ),
         ],
       ),

@@ -26,8 +26,8 @@ class OfflineStorageService {
   static const String _offlineNotesUpdatesKey = 'offline_note_updates';
   static const String _offlinePhotosKey = 'offline_fishing_photos';
   static const String _offlineMarkerMapsKey = 'offline_marker_maps';
-  static const String _offlineMarkerMapsUpdatesKey =
-      'offline_marker_map_updates';
+  static const String _offlineMarkerMapsUpdatesKey = 'offline_marker_map_updates';
+  static const String _offlineExpensesKey = 'offline_expenses'; // 🔥 ДОБАВЛЕНО для расходов
   static const String _mapsToDeleteKey = 'maps_to_delete';
   static const String _notesToDeleteKey = 'notes_to_delete';
   static const String _statisticsCacheKey = 'cached_statistics';
@@ -848,6 +848,222 @@ class OfflineStorageService {
     }
   }
 
+  // 🔥 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С РАСХОДАМИ/ПОЕЗДКАМИ
+
+  /// Сохранить поездку с расходами в офлайн режиме
+  Future<void> saveOfflineExpense(Map<String, dynamic> tripData) async {
+    try {
+      final prefs = await preferences;
+      List<String> offlineTripsJson = prefs.getStringList(_offlineExpensesKey) ?? [];
+
+      // Проверяем, есть ли уже поездка с таким ID
+      final tripId = tripData['id'];
+      if (tripId == null || tripId.toString().isEmpty) {
+        throw Exception('ID поездки не может быть пустым');
+      }
+
+      bool tripExists = false;
+      List<String> updatedTrips = [];
+
+      for (var tripJson in offlineTripsJson) {
+        try {
+          final trip = jsonDecode(tripJson) as Map<String, dynamic>;
+          if (trip['id'] == tripId) {
+            // Обновляем существующую поездку
+            updatedTrips.add(jsonEncode(tripData));
+            tripExists = true;
+            debugPrint('📝 Обновлена существующая поездка $tripId в офлайн хранилище');
+          } else {
+            updatedTrips.add(tripJson);
+          }
+        } catch (e) {
+          // Если с парсингом JSON проблема, сохраняем оригинальную строку
+          updatedTrips.add(tripJson);
+          debugPrint('⚠️ Ошибка при декодировании существующей поездки: $e');
+        }
+      }
+
+      // Если такой поездки нет, добавляем новую
+      if (!tripExists) {
+        updatedTrips.add(jsonEncode(tripData));
+        debugPrint('📝 Добавлена новая поездка $tripId в офлайн хранилище');
+      }
+
+      await prefs.setStringList(_offlineExpensesKey, updatedTrips);
+      debugPrint('✅ Поездка $tripId сохранена в офлайн хранилище');
+    } catch (e) {
+      debugPrint('❌ Ошибка при сохранении поездки в офлайн хранилище: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить все офлайн поездки с расходами
+  Future<List<Map<String, dynamic>>> getAllOfflineExpenses() async {
+    try {
+      final prefs = await preferences;
+      final offlineTripsJson = prefs.getStringList(_offlineExpensesKey) ?? [];
+
+      List<Map<String, dynamic>> trips = [];
+      for (var tripJson in offlineTripsJson) {
+        try {
+          trips.add(jsonDecode(tripJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('❌ Ошибка при декодировании поездки: $e');
+          // Пропускаем поездки с неверным форматом JSON
+        }
+      }
+
+      return trips;
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении офлайн поездок: $e');
+      return [];
+    }
+  }
+
+  /// Удалить офлайн поездку с расходами
+  Future<void> removeOfflineExpense(String tripId) async {
+    try {
+      final prefs = await preferences;
+      final offlineTripsJson = prefs.getStringList(_offlineExpensesKey) ?? [];
+
+      List<String> updatedTrips = [];
+      for (var tripJson in offlineTripsJson) {
+        try {
+          final trip = jsonDecode(tripJson) as Map<String, dynamic>;
+          if (trip['id'] != tripId) {
+            updatedTrips.add(tripJson);
+          }
+        } catch (e) {
+          // Если JSON неверный, добавляем поездку как есть
+          updatedTrips.add(tripJson);
+        }
+      }
+
+      await prefs.setStringList(_offlineExpensesKey, updatedTrips);
+      debugPrint('✅ Поездка $tripId удалена из офлайн хранилища');
+    } catch (e) {
+      debugPrint('❌ Ошибка при удалении поездки из офлайн хранилища: $e');
+      rethrow;
+    }
+  }
+
+  /// Получить офлайн поездки для конкретного пользователя
+  Future<List<Map<String, dynamic>>> getOfflineExpenses(String userId) async {
+    try {
+      final prefs = await preferences;
+      final offlineTripsJson = prefs.getStringList(_offlineExpensesKey) ?? [];
+
+      if (kDebugMode) {
+        debugPrint('📱 Всего офлайн поездок в хранилище: ${offlineTripsJson.length}');
+      }
+
+      List<Map<String, dynamic>> userTrips = [];
+
+      if (kDebugMode) {
+        debugPrint('🔍 Ищем поездки для пользователя: $userId');
+      }
+
+      for (var tripJson in offlineTripsJson) {
+        try {
+          final trip = jsonDecode(tripJson) as Map<String, dynamic>;
+          final tripUserId = trip['userId']?.toString();
+
+          if (kDebugMode) {
+            debugPrint('🔍 Проверяем поездку: ${trip['id']}, userId: $tripUserId');
+          }
+
+          if (tripUserId == userId) {
+            userTrips.add(trip);
+            if (kDebugMode) {
+              debugPrint('✅ Найдена поездка для пользователя: ${trip['id']}');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка при декодировании офлайн поездки: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('📊 ИТОГО найдено поездок для пользователя $userId: ${userTrips.length}');
+      }
+
+      return userTrips;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения офлайн поездок: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Сохранить поездку в офлайн режиме с флагом синхронизации
+  Future<void> saveOfflineExpenseWithSync(Map<String, dynamic> tripData) async {
+    try {
+      debugPrint('🔥 === НАЧАЛО СОХРАНЕНИЯ ОФЛАЙН ПОЕЗДКИ ===');
+      debugPrint('🔥 Данные поездки: ${tripData.keys.toList()}');
+      debugPrint('🔥 ID поездки: ${tripData['id']}');
+      debugPrint('🔥 userId поездки: ${tripData['userId']}');
+      debugPrint('🔥 Локация: ${tripData['locationName']}');
+
+      // Добавляем флаг синхронизации
+      tripData['isSynced'] = false;
+      tripData['offlineCreatedAt'] = DateTime.now().toIso8601String();
+
+      // ПРИНУДИТЕЛЬНО проверяем, что userId есть
+      if (tripData['userId'] == null || tripData['userId'].toString().isEmpty) {
+        debugPrint('❌ КРИТИЧЕСКАЯ ОШИБКА: userId отсутствует в данных поездки!');
+        debugPrint('❌ Полные данные: $tripData');
+        throw Exception('userId обязателен для офлайн поездки');
+      }
+
+      await saveOfflineExpense(tripData);
+      debugPrint('✅ Поездка сохранена в офлайн режиме с флагом синхронизации');
+      debugPrint('🔥 === КОНЕЦ СОХРАНЕНИЯ ОФЛАЙН ПОЕЗДКИ ===');
+    } catch (e) {
+      debugPrint('❌ Ошибка сохранения поездки в офлайн режиме: $e');
+      debugPrint('❌ Stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  /// Кэширование поездок для офлайн доступа
+  Future<void> cacheExpenses(List<dynamic> trips) async {
+    try {
+      final prefs = await preferences;
+      final tripsJson = trips.map((trip) => jsonEncode(trip)).toList();
+
+      await prefs.setStringList('cached_expenses', tripsJson);
+      debugPrint('✅ Поездки кэшированы (${trips.length} записей)');
+    } catch (e) {
+      debugPrint('❌ Ошибка кэширования поездок: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение кэшированных поездок
+  Future<List<Map<String, dynamic>>> getCachedExpenses() async {
+    try {
+      final prefs = await preferences;
+      final tripsJson = prefs.getStringList('cached_expenses') ?? [];
+
+      List<Map<String, dynamic>> trips = [];
+      for (var tripJson in tripsJson) {
+        try {
+          trips.add(jsonDecode(tripJson) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('❌ Ошибка декодирования кэшированной поездки: $e');
+        }
+      }
+
+      return trips;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения кэшированных поездок: $e');
+      return [];
+    }
+  }
+
   /// Отметить объект для удаления
   Future<void> markForDeletion(String id, bool isMarkerMap) async {
     try {
@@ -864,6 +1080,24 @@ class OfflineStorageService {
       debugPrint('$type с ID $id отмечена для удаления');
     } catch (e) {
       debugPrint('Ошибка при отметке для удаления: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ ДОБАВЛЕННЫЙ МЕТОД: Отметить маркерную карту для удаления
+  Future<void> markMarkerMapForDeletion(String mapId) async {
+    try {
+      final prefs = await preferences;
+      List<String> mapsToDelete = prefs.getStringList(_mapsToDeleteKey) ?? [];
+
+      if (!mapsToDelete.contains(mapId)) {
+        mapsToDelete.add(mapId);
+      }
+
+      await prefs.setStringList(_mapsToDeleteKey, mapsToDelete);
+      debugPrint('✅ Маркерная карта $mapId отмечена для удаления');
+    } catch (e) {
+      debugPrint('❌ Ошибка при отметке маркерной карты для удаления: $e');
       rethrow;
     }
   }
@@ -1195,6 +1429,7 @@ class OfflineStorageService {
       await prefs.remove(_offlinePhotosKey);
       await prefs.remove(_offlineMarkerMapsKey);
       await prefs.remove(_offlineMarkerMapsUpdatesKey);
+      await prefs.remove(_offlineExpensesKey); // 🔥 ДОБАВЛЕНО для расходов
       await prefs.remove(_mapsToDeleteKey);
       await prefs.remove(_notesToDeleteKey);
       await prefs.remove(_statisticsCacheKey);
@@ -1212,6 +1447,7 @@ class OfflineStorageService {
       await prefs.remove(_localCountersResetKey);
       await prefs.remove('cached_fishing_notes');
       await prefs.remove('cached_marker_maps');
+      await prefs.remove('cached_expenses'); // 🔥 ДОБАВЛЕНО для расходов
 
       // 🔥 Очищаем данные офлайн авторизации
       await clearOfflineAuthData();

@@ -2,22 +2,18 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
+import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../widgets/responsive/responsive_button.dart';
-// ДОБАВЛЕНО: Импорт для UsageBadge
 import '../../widgets/subscription/usage_badge.dart';
 import '../../constants/subscription_constants.dart';
-// ДОБАВЛЕНО: Импорт для проверки лимитов
 import '../../services/subscription/subscription_service.dart';
-// ДОБАВЛЕНО: Импорт PaywallScreen
 import '../subscription/paywall_screen.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 import 'expense_list_screen.dart';
@@ -36,7 +32,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
-  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService вместо репозитория
+  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   List<FishingTripModel> _trips = [];
@@ -57,40 +53,24 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     super.dispose();
   }
 
-  // ИЗМЕНЕНО: Новый метод загрузки поездок через FirebaseService
+  // ИСПРАВЛЕНО: Загрузка поездок через новый репозиторий
   Future<void> _loadTrips() async {
     try {
       setState(() => _isLoading = true);
 
-      // Загружаем поездки через FirebaseService
-      final tripsSnapshot = await _firebaseService.getUserFishingTrips();
-      final List<FishingTripModel> trips = [];
+      debugPrint('🔄 Загружаем поездки через репозиторий...');
 
-      for (var doc in tripsSnapshot.docs) {
-        try {
-          final tripData = doc.data() as Map<String, dynamic>;
-          tripData['id'] = doc.id; // Добавляем ID документа
+      // Загружаем поездки через репозиторий (с офлайн поддержкой)
+      final trips = await _expenseRepository.getUserTrips();
 
-          // Загружаем расходы для каждой поездки из subcollection
-          final expensesSnapshot = await _firebaseService.getFishingTripExpenses(doc.id);
-          final List<FishingExpenseModel> expenses = [];
+      debugPrint('✅ Загружено поездок: ${trips.length}');
 
-          for (var expenseDoc in expensesSnapshot.docs) {
-            try {
-              final expenseData = expenseDoc.data() as Map<String, dynamic>;
-              expenseData['id'] = expenseDoc.id;
-              expenses.add(FishingExpenseModel.fromMap(expenseData));
-            } catch (e) {
-              debugPrint('Ошибка парсинга расхода ${expenseDoc.id}: $e');
-            }
-          }
-
-          // Создаем поездку с расходами
-          final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
-          trips.add(trip);
-        } catch (e) {
-          debugPrint('Ошибка парсинга поездки ${doc.id}: $e');
-        }
+      // Выводим детали по каждой поездке
+      for (final trip in trips) {
+        debugPrint('  📍 Поездка: ${trip.displayTitle}');
+        debugPrint('     Дата: ${trip.date}');
+        debugPrint('     Расходов: ${trip.expenses?.length ?? 0}');
+        debugPrint('     Общая сумма: ${trip.totalAmount}');
       }
 
       // Сортируем поездки по дате (новые сначала)
@@ -99,13 +79,9 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       final filteredTrips = _filterTripsByPeriod(trips, _selectedPeriod);
       final statistics = FishingTripStatistics.fromTrips(filteredTrips);
 
-      // ДОБАВЛЕНО: Обновляем лимиты подписки после загрузки поездок
-      try {
-        await _subscriptionService.refreshUsageLimits();
-        debugPrint('✅ Лимиты подписки обновлены после загрузки поездок');
-      } catch (e) {
-        debugPrint('❌ Ошибка обновления лимитов: $e');
-      }
+      debugPrint('📊 Статистика за период "$_selectedPeriod":');
+      debugPrint('   Поездок: ${filteredTrips.length}');
+      debugPrint('   Общая сумма: ${statistics.totalAmount}');
 
       if (mounted) {
         setState(() {
@@ -115,53 +91,12 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         });
       }
     } catch (e) {
+      debugPrint('❌ Ошибка загрузки поездок: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         final localizations = AppLocalizations.of(context);
-        _showErrorSnackBar('${localizations.translate('data_loading_error')}: $e');
+        _showErrorSnackBar('${localizations.translate('data_loading_error') ?? 'Ошибка загрузки данных'}: $e');
       }
-    }
-  }
-
-  // ИЗМЕНЕНО: Упрощенная проверка Firestore (теперь через новую структуру)
-  Future<void> _checkFirestoreDirectly() async {
-    try {
-      final userId = _firebaseService.currentUserId;
-      final localizations = AppLocalizations.of(context);
-
-      if (userId == null) {
-        _showErrorSnackBar(localizations.translate('user_not_authorized'));
-        return;
-      }
-
-      // Проверяем новую структуру subcollections
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .get();
-
-      _showErrorSnackBar('Firestore: ${snapshot.docs.length} ${localizations.translate('trips')} | ${localizations.translate('locally')}: ${_trips.length} ${localizations.translate('trips')}');
-    } catch (e) {
-      final localizations = AppLocalizations.of(context);
-      _showErrorSnackBar('${localizations.translate('firestore_error')}: $e');
-    }
-  }
-
-  // ИЗМЕНЕНО: Упрощенная синхронизация
-  Future<void> _forceFirestoreSync() async {
-    try {
-      setState(() => _isLoading = true);
-
-      // Просто перезагружаем данные из Firestore
-      await _loadTrips();
-
-      final localizations = AppLocalizations.of(context);
-      _showErrorSnackBar(localizations.translate('data_synced_with_firestore'));
-    } catch (e) {
-      final localizations = AppLocalizations.of(context);
-      _showErrorSnackBar('${localizations.translate('sync_error')}: $e');
-      setState(() => _isLoading = false);
     }
   }
 
@@ -184,16 +119,28 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         return trips;
     }
 
-    return trips.where((trip) =>
+    final filtered = trips.where((trip) =>
     trip.date.isAfter(startDate) || trip.date.isAtSameMomentAs(startDate)
     ).toList();
+
+    debugPrint('🔍 Фильтрация по периоду "$period": ${trips.length} -> ${filtered.length} поездок');
+
+    return filtered;
   }
 
   void _onPeriodChanged(String period) {
+    debugPrint('📅 Изменен период фильтрации: $_selectedPeriod -> $period');
     setState(() {
       _selectedPeriod = period;
     });
-    _loadTrips();
+
+    // Пересчитываем статистику без перезагрузки данных
+    final filteredTrips = _filterTripsByPeriod(_trips, _selectedPeriod);
+    final statistics = FishingTripStatistics.fromTrips(filteredTrips);
+
+    setState(() {
+      _statistics = statistics;
+    });
   }
 
   void _showErrorSnackBar(String message) {
@@ -207,13 +154,17 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
-  // ИСПРАВЛЕНО: Добавлена проверка лимитов перед навигацией
+  // ИСПРАВЛЕНО: Проверка лимитов через репозиторий
   void _navigateToAddExpense() async {
+    debugPrint('➕ Попытка создания новой поездки...');
+
     // Проверяем лимиты перед созданием
     final canCreate = await _subscriptionService.canCreateContent(ContentType.expenses);
 
+    debugPrint('   Можно создать: $canCreate');
+
     if (!canCreate) {
-      // ИСПРАВЛЕНО: Используем PaywallScreen вместо самодельного диалога
+      debugPrint('🚫 Превышен лимит, показываем PaywallScreen');
       _showPremiumRequired(ContentType.expenses);
       return;
     }
@@ -226,11 +177,11 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
 
     if (result == true) {
+      debugPrint('✅ Новая поездка создана, перезагружаем список');
       _loadTrips();
     }
   }
 
-  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
   void _showPremiumRequired(ContentType contentType) {
     Navigator.push(
       context,
@@ -243,6 +194,8 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
   }
 
   void _navigateToTripDetails(FishingTripModel trip) async {
+    debugPrint('👁️ Открываем детали поездки: ${trip.displayTitle}');
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -251,6 +204,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
 
     if (result == true) {
+      debugPrint('🔄 Поездка изменена, перезагружаем список');
       _loadTrips();
     }
   }
@@ -262,7 +216,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        // ИСПРАВЛЕНО: Заголовок с UsageBadge
         title: Row(
           children: [
             Expanded(
@@ -272,7 +225,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
                 fontWeight: FontWeight.w600,
               ),
             ),
-            // ДОБАВЛЕНО: UsageBadge для расходов/поездок
             const SizedBox(width: 8),
             UsageBadge(
               contentType: ContentType.expenses,
@@ -298,7 +250,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Кнопка обновления
           IconButton(
             icon: Icon(
               Icons.refresh,
@@ -306,7 +257,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               size: ResponsiveUtils.getIconSize(context),
             ),
             onPressed: _loadTrips,
-            tooltip: localizations.translate('refresh'),
+            tooltip: localizations.translate('refresh') ?? 'Обновить',
           ),
         ],
         bottom: TabBar(
@@ -340,7 +291,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           _buildAnalyticsTab(),
         ],
       ),
-      // Убрали FloatingActionButton
     );
   }
 
@@ -365,7 +315,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               _buildQuickActions(),
               const SizedBox(height: 24),
               _buildRecentTrips(),
-              const SizedBox(height: 80), // Уменьшили отступ, так как убрали FAB
+              const SizedBox(height: 80),
             ],
           ),
         ),
@@ -539,7 +489,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
-  // ИСПРАВЛЕНО: Кнопка теперь всегда видна, но проверяет лимиты внутри
   Widget _buildQuickActions() {
     final localizations = AppLocalizations.of(context);
 
@@ -548,7 +497,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          // ИСПРАВЛЕНО: Кнопка всегда активна, проверка лимитов внутри _navigateToAddExpense
           onPressed: _navigateToAddExpense,
           icon: const Icon(Icons.add_card, size: 24),
           label: Text(
@@ -760,17 +708,6 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     return result.reversed.join();
   }
 
-  String _formatAmount(double amount, String currencySymbol) {
-    // Форматируем суммы для карточек поездок (краткий формат)
-    if (amount >= 1000000) {
-      return '$currencySymbol ${(amount / 1000000).toStringAsFixed(1)}М';
-    } else if (amount >= 1000) {
-      return '$currencySymbol ${(amount / 1000).toStringAsFixed(0)}К';
-    } else {
-      return '$currencySymbol ${amount.toStringAsFixed(0)}';
-    }
-  }
-
   String _formatLargeAmount(double amount, String currencySymbol) {
     // Форматируем большие суммы для статистики (показываем полностью с разделителями)
     return '$currencySymbol ${_formatFullAmount(amount)}';
@@ -780,11 +717,11 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     final localizations = AppLocalizations.of(context);
 
     if (count == 1) {
-      return localizations.translate('expense_single');
+      return localizations.translate('expense_single') ?? 'расход';
     } else if (count >= 2 && count <= 4) {
-      return localizations.translate('expense_few');
+      return localizations.translate('expense_few') ?? 'расхода';
     } else {
-      return localizations.translate('expense_many');
+      return localizations.translate('expense_many') ?? 'расходов';
     }
   }
 
@@ -796,9 +733,9 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     final dateOnly = DateTime(date.year, date.month, date.day);
 
     if (dateOnly == today) {
-      return localizations.translate('today');
+      return localizations.translate('today') ?? 'Сегодня';
     } else if (dateOnly == yesterday) {
-      return localizations.translate('yesterday');
+      return localizations.translate('yesterday') ?? 'Вчера';
     } else {
       return '${date.day}.${date.month.toString().padLeft(2, '0')}';
     }

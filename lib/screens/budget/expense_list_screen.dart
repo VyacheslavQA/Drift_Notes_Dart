@@ -2,16 +2,19 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ДОБАВЛЕНО: Для работы с Timestamp
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
+import '../../models/fishing_trip_model.dart';
+import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../widgets/responsive/responsive_button.dart';
 import 'add_fishing_trip_expenses_screen.dart';
+
+// ИСПРАВЛЕНО: Импортируем CategoryExpenseSummary из репозитория
+export '../../repositories/fishing_expense_repository.dart' show CategoryExpenseSummary;
 
 /// Экран списка суммированных расходов по категориям
 class ExpenseListScreen extends StatefulWidget {
@@ -28,7 +31,7 @@ class ExpenseListScreen extends StatefulWidget {
 }
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
-  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
 
   Map<FishingExpenseCategory, CategoryExpenseSummary> _categorySummaries = {};
   List<CategoryExpenseSummary> _filteredSummaries = [];
@@ -43,7 +46,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     _loadCategorySummaries();
   }
 
-  // ИЗМЕНЕНО: Новый метод загрузки сводок по категориям через Firebase
+  // ИСПРАВЛЕНО: Загрузка сводок через новый репозиторий
   Future<void> _loadCategorySummaries() async {
     try {
       setState(() => _isLoading = true);
@@ -72,7 +75,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           break;
       }
 
-      final summaries = await _getCategorySummaries(
+      // ИСПРАВЛЕНО: Используем метод репозитория
+      final summaries = await _expenseRepository.getCategorySummaries(
         startDate: startDate,
         endDate: endDate,
       );
@@ -83,91 +87,17 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           _filteredSummaries = summaries.values.toList();
           _isLoading = false;
         });
+
+        // Вызываем callback для обновления родительского экрана
+        widget.onExpenseUpdated?.call();
       }
     } catch (e) {
+      debugPrint('Ошибка загрузки сводок категорий: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         final localizations = AppLocalizations.of(context);
-        _showErrorSnackBar('${localizations.translate('data_loading_error')}: $e');
+        _showErrorSnackBar('${localizations.translate('data_loading_error') ?? 'Ошибка загрузки данных'}: $e');
       }
-    }
-  }
-
-  // ИЗМЕНЕНО: Новый метод получения сводок по категориям через Firebase
-  Future<Map<FishingExpenseCategory, CategoryExpenseSummary>> _getCategorySummaries({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      // Получаем все расходы пользователя
-      final allExpensesData = await _firebaseService.getAllUserExpenses();
-
-      // Преобразуем данные в модели расходов
-      final allExpenses = <FishingExpenseModel>[];
-      for (final expenseData in allExpensesData) {
-        try {
-          final expense = FishingExpenseModel.fromMap(expenseData);
-          allExpenses.add(expense);
-        } catch (e) {
-          debugPrint('Ошибка парсинга расхода: $e');
-        }
-      }
-
-      // Фильтруем расходы по периоду
-      final filteredExpenses = allExpenses.where((expense) {
-        if (startDate != null && expense.date.isBefore(startDate)) return false;
-        if (endDate != null && expense.date.isAfter(endDate)) return false;
-        return true;
-      }).toList();
-
-      // Получаем все поездки для подсчета количества поездок с каждой категорией
-      final tripsSnapshot = await _firebaseService.getUserFishingTrips();
-      final tripIds = <String>{};
-
-      for (var doc in tripsSnapshot.docs) {
-        final tripData = doc.data() as Map<String, dynamic>;
-        final tripDate = (tripData['date'] as Timestamp).toDate();
-
-        // Проверяем, попадает ли поездка в наш период
-        if (startDate != null && tripDate.isBefore(startDate)) continue;
-        if (endDate != null && tripDate.isAfter(endDate)) continue;
-
-        tripIds.add(doc.id);
-      }
-
-      // Создаем сводки по категориям
-      final Map<FishingExpenseCategory, CategoryExpenseSummary> summaries = {};
-
-      for (final category in FishingExpenseCategory.allCategories) {
-        double totalAmount = 0;
-        int expenseCount = 0;
-        final Set<String> tripsWithCategory = {};
-        String currency = 'KZT';
-
-        for (final expense in filteredExpenses) {
-          if (expense.category == category) {
-            totalAmount += expense.amount;
-            expenseCount++;
-            currency = expense.currency;
-            tripsWithCategory.add(expense.tripId);
-          }
-        }
-
-        if (totalAmount > 0) {
-          summaries[category] = CategoryExpenseSummary(
-            category: category,
-            totalAmount: totalAmount,
-            expenseCount: expenseCount,
-            tripCount: tripsWithCategory.length,
-            currency: currency,
-          );
-        }
-      }
-
-      return summaries;
-    } catch (e) {
-      debugPrint('Ошибка получения сводки по категориям: $e');
-      return {};
     }
   }
 
@@ -902,60 +832,5 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 }
 
-/// Сводка расходов по категории (перенесена из репозитория)
-class CategoryExpenseSummary {
-  /// Категория расходов
-  final FishingExpenseCategory category;
-
-  /// Общая сумма по категории
-  final double totalAmount;
-
-  /// Количество расходов
-  final int expenseCount;
-
-  /// Количество поездок с этой категорией
-  final int tripCount;
-
-  /// Валюта
-  final String currency;
-
-  const CategoryExpenseSummary({
-    required this.category,
-    required this.totalAmount,
-    required this.expenseCount,
-    required this.tripCount,
-    required this.currency,
-  });
-
-  /// Получить символ валюты
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
-  }
-
-  /// Отформатированная сумма
-  String get formattedAmount {
-    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
-  }
-
-  /// Описание количества поездок
-  String get tripCountDescription {
-    if (tripCount == 1) {
-      return 'из 1 поездки';
-    } else if (tripCount >= 2 && tripCount <= 4) {
-      return 'из $tripCount поездок';
-    } else {
-      return 'из $tripCount поездок';
-    }
-  }
-}
+// ИСПРАВЛЕНО: Убрали дублирующий класс CategoryExpenseSummary
+// Теперь используется класс из репозитория

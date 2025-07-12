@@ -1,13 +1,12 @@
 // Путь: lib/screens/budget/budget_statistics_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ДОБАВЛЕНО: Для работы с Timestamp
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
 import '../../models/fishing_expense_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
+import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -27,7 +26,7 @@ class BudgetStatisticsScreen extends StatefulWidget {
 }
 
 class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
-  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
 
   String _selectedPeriod = 'all'; // month, year, all, custom
   DateTime? _customStartDate;
@@ -44,11 +43,13 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     }
   }
 
-  // ИЗМЕНЕНО: Новый метод загрузки статистики через Firebase
+  // ИСПРАВЛЕНО: Загрузка статистики через новый репозиторий
   Future<void> _loadStatistics() async {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('📊 Загружаем статистику для периода: $_selectedPeriod');
+
       DateTime? startDate;
       DateTime? endDate;
 
@@ -73,10 +74,16 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           break;
       }
 
-      final statistics = await _getTripStatistics(
+      // ИСПРАВЛЕНО: Используем метод репозитория
+      final statistics = await _expenseRepository.getTripStatistics(
         startDate: startDate,
         endDate: endDate,
       );
+
+      debugPrint('✅ Статистика загружена:');
+      debugPrint('   Поездок: ${statistics.tripCount}');
+      debugPrint('   Общая сумма: ${statistics.totalAmount}');
+      debugPrint('   Среднее за поездку: ${statistics.averagePerTrip}');
 
       if (mounted) {
         setState(() {
@@ -85,70 +92,17 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
         });
       }
     } catch (e) {
+      debugPrint('❌ Ошибка загрузки статистики: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         final localizations = AppLocalizations.of(context);
-        _showErrorSnackBar('${localizations.translate('statistics_loading_error')}: $e');
+        _showErrorSnackBar('${localizations.translate('statistics_loading_error') ?? 'Ошибка загрузки статистики'}: $e');
       }
-    }
-  }
-
-  // ИЗМЕНЕНО: Новый метод получения статистики поездок через Firebase
-  Future<FishingTripStatistics> _getTripStatistics({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      // Получаем все поездки пользователя
-      final tripsSnapshot = await _firebaseService.getUserFishingTrips();
-      final List<FishingTripModel> allTrips = [];
-
-      for (var doc in tripsSnapshot.docs) {
-        try {
-          final tripData = doc.data() as Map<String, dynamic>;
-          tripData['id'] = doc.id;
-
-          // Загружаем расходы для каждой поездки
-          final expensesSnapshot = await _firebaseService.getFishingTripExpenses(doc.id);
-          final List<FishingExpenseModel> expenses = [];
-
-          for (var expenseDoc in expensesSnapshot.docs) {
-            try {
-              final expenseData = expenseDoc.data() as Map<String, dynamic>;
-              expenseData['id'] = expenseDoc.id;
-              expenses.add(FishingExpenseModel.fromMap(expenseData));
-            } catch (e) {
-              debugPrint('Ошибка парсинга расхода ${expenseDoc.id}: $e');
-            }
-          }
-
-          // Создаем поездку с расходами
-          final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
-          allTrips.add(trip);
-        } catch (e) {
-          debugPrint('Ошибка парсинга поездки ${doc.id}: $e');
-        }
-      }
-
-      // Фильтруем поездки по периоду
-      final filteredTrips = allTrips.where((trip) {
-        if (startDate != null && trip.date.isBefore(startDate)) return false;
-        if (endDate != null && trip.date.isAfter(endDate)) return false;
-        return true;
-      }).toList();
-
-      return FishingTripStatistics.fromTrips(
-        filteredTrips,
-        startDate: startDate,
-        endDate: endDate,
-      );
-    } catch (e) {
-      debugPrint('Ошибка получения статистики поездок: $e');
-      return FishingTripStatistics.fromTrips([]);
     }
   }
 
   void _onPeriodChanged(String period) {
+    debugPrint('📅 Изменен период статистики: $_selectedPeriod -> $period');
     setState(() {
       _selectedPeriod = period;
       if (period != 'custom') {
@@ -481,23 +435,6 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     );
   }
 
-  Widget _buildPeriodSelector(AppLocalizations localizations) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildPeriodButton('month', localizations.translate('month') ?? 'Месяц')),
-          Expanded(child: _buildPeriodButton('year', localizations.translate('year') ?? 'Год')),
-          Expanded(child: _buildPeriodButton('all', localizations.translate('all_time') ?? 'Всё время')),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDateFilter(AppLocalizations localizations) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -547,35 +484,6 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
   }
 
   Widget _buildPeriodButton(String period, String label) {
-    final isSelected = _selectedPeriod == period;
-
-    return InkWell(
-      onTap: () => _onPeriodChanged(period),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppConstants.primaryColor : AppConstants.textColor.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppConstants.textColor,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomPeriodButton(String period, String label) {
     final isSelected = _selectedPeriod == period;
 
     return InkWell(

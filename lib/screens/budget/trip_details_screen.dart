@@ -2,12 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ДОБАВЛЕНО: Для работы с Timestamp
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
 import '../../models/fishing_expense_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: Убран FishingExpenseRepository
+import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -30,7 +29,7 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
-  final FirebaseService _firebaseService = FirebaseService(); // ИЗМЕНЕНО: Используем FirebaseService
+  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   FishingTripModel? _currentTrip;
@@ -44,32 +43,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     _loadTripDetails();
   }
 
-  // ИЗМЕНЕНО: Новый метод загрузки деталей поездки через Firebase
+  // ИСПРАВЛЕНО: Загрузка деталей поездки через новый репозиторий
   Future<void> _loadTripDetails() async {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('🔄 Загружаем детали поездки: ${widget.trip.id}');
+
       // Перезагружаем поездку с актуальными расходами
-      final tripData = await _firebaseService.getFishingTripWithExpenses(widget.trip.id);
+      final trip = await _expenseRepository.getTripById(widget.trip.id);
 
-      if (tripData != null) {
-        // Преобразуем данные в FishingTripModel
-        final expenses = <FishingExpenseModel>[];
-
-        if (tripData['expenses'] is List) {
-          for (final expenseData in tripData['expenses'] as List) {
-            if (expenseData is Map<String, dynamic>) {
-              try {
-                expenses.add(FishingExpenseModel.fromMap(expenseData));
-              } catch (e) {
-                debugPrint('Ошибка парсинга расхода: $e');
-              }
-            }
-          }
-        }
-
-        // Создаем поездку с расходами
-        final trip = FishingTripModel.fromMapWithExpenses(tripData).withExpenses(expenses);
+      if (trip != null) {
+        debugPrint('✅ Поездка загружена: ${trip.expenses?.length ?? 0} расходов, общая сумма: ${trip.totalAmount}');
 
         if (mounted) {
           setState(() {
@@ -78,6 +63,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           });
         }
       } else {
+        debugPrint('⚠️ Поездка не найдена, используем исходную');
         if (mounted) {
           setState(() {
             _currentTrip = widget.trip;
@@ -86,6 +72,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         }
       }
     } catch (e) {
+      debugPrint('❌ Ошибка загрузки деталей поездки: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         _showErrorSnackBar('Ошибка загрузки деталей: $e');
@@ -93,7 +80,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  // ИЗМЕНЕНО: Новый метод удаления поездки через Firebase
+  // ИСПРАВЛЕНО: Удаление поездки через новый репозиторий
   Future<void> _deleteTrip() async {
     final localizations = AppLocalizations.of(context);
 
@@ -150,16 +137,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       setState(() => _isDeleting = true);
 
       try {
-        // Удаляем поездку со всеми расходами через Firebase
-        await _firebaseService.deleteFishingTripWithExpenses(widget.trip.id);
+        debugPrint('🗑️ Удаляем поездку: ${widget.trip.id}');
 
-        // Уменьшаем счетчик использования
-        try {
-          await _subscriptionService.decrementUsage(ContentType.expenses);
-          debugPrint('✅ Счетчик расходов/поездок уменьшен');
-        } catch (e) {
-          debugPrint('❌ Ошибка уменьшения счетчика расходов/поездок: $e');
-        }
+        // Удаляем поездку со всеми расходами через репозиторий
+        await _expenseRepository.deleteTrip(widget.trip.id);
+
+        debugPrint('✅ Поездка успешно удалена');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -171,6 +154,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           Navigator.pop(context, true);
         }
       } catch (e) {
+        debugPrint('❌ Ошибка удаления поездки: $e');
         if (mounted) {
           setState(() => _isDeleting = false);
           _showErrorSnackBar('${localizations.translate('delete_error') ?? 'Ошибка удаления'}: $e');
@@ -180,7 +164,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Future<void> _editExpense(FishingExpenseModel expense) async {
-    // Теперь редактируем всю поездку, передавая конкретный расход для фокуса
+    debugPrint('✏️ Редактируем расход: ${expense.category.name} - ${expense.amount}');
+
+    // Редактируем всю поездку, передавая конкретный расход для фокуса
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -192,11 +178,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
 
     if (result == true) {
+      debugPrint('🔄 Расход изменен, перезагружаем детали поездки');
       _loadTripDetails();
     }
   }
 
-  // ИЗМЕНЕНО: Новый метод удаления расхода через Firebase
+  // ИСПРАВЛЕНО: Удаление расхода через новый репозиторий
   Future<void> _deleteExpense(FishingExpenseModel expense) async {
     final localizations = AppLocalizations.of(context);
 
@@ -251,8 +238,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     if (confirmed == true) {
       try {
-        // Удаляем расход через Firebase
-        await _firebaseService.deleteFishingExpense(_currentTrip!.id, expense.id);
+        debugPrint('🗑️ Удаляем расход: ${expense.category.name} - ${expense.amount}');
+
+        // Создаем обновленный список расходов без удаляемого
+        final updatedExpenses = _currentTrip!.expenses?.where((e) => e.id != expense.id).toList() ?? [];
+
+        // Создаем обновленную поездку
+        final updatedTrip = _currentTrip!.copyWith(
+          expenses: updatedExpenses,
+          updatedAt: DateTime.now(),
+          isSynced: false,
+        );
+
+        // Обновляем поездку через репозиторий
+        await _expenseRepository.updateTrip(updatedTrip);
+
+        debugPrint('✅ Расход успешно удален');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -264,6 +265,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           _loadTripDetails();
         }
       } catch (e) {
+        debugPrint('❌ Ошибка удаления расхода: $e');
         if (mounted) {
           _showErrorSnackBar('${localizations.translate('delete_error') ?? 'Ошибка удаления'}: $e');
         }

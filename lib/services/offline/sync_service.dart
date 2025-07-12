@@ -100,7 +100,11 @@ class SyncService {
       await syncSubscriptionStatus();
 
       // Синхронизируем все типы данных
-      await Future.wait([_syncMarkerMaps(userId), _syncNotes(userId)]);
+      await Future.wait([
+        _syncMarkerMaps(userId),
+        _syncNotes(userId),
+        _syncExpenses(userId), // 🔥 ДОБАВЛЕНО: Синхронизация расходов
+      ]);
 
       // Обновляем время последней синхронизации
       await _offlineStorage.updateLastSyncTime();
@@ -196,11 +200,19 @@ class SyncService {
         debugPrint('   Лимит: $limit');
       }
 
-      // Проверяем превышение лимита + grace period
-      if (totalUsage > limit + SubscriptionConstants.offlineGraceLimit) {
-        await handleOfflineLimitExceeded(contentType, totalUsage - limit);
-      } else if (totalUsage > limit) {
-        await _handleGracePeriodUsage(contentType, totalUsage - limit);
+      // 🔥 ИСПРАВЛЕНО: Разная логика для маркерных карт (без grace period)
+      if (contentType == ContentType.markerMaps) {
+        // Для маркерных карт - строгий лимит без grace period
+        if (totalUsage > limit) {
+          await handleOfflineLimitExceeded(contentType, totalUsage - limit);
+        }
+      } else {
+        // Для остальных типов - с grace period
+        if (totalUsage > limit + SubscriptionConstants.offlineGraceLimit) {
+          await handleOfflineLimitExceeded(contentType, totalUsage - limit);
+        } else if (totalUsage > limit) {
+          await _handleGracePeriodUsage(contentType, totalUsage - limit);
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -623,7 +635,7 @@ class SyncService {
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Синхронизировать маркерные карты с НОВОЙ структурой Firebase
+  /// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Синхронизировать маркерные карты с правильной структурой Firebase
   Future<void> _syncMarkerMaps(String userId) async {
     const dataType = 'marker_maps';
 
@@ -639,11 +651,8 @@ class SyncService {
       debugPrint('🔄 Начинаем синхронизацию маркерных карт...');
       _lastSyncAttempt[dataType] = DateTime.now();
 
-      // 🔥 ИСПРАВЛЕНО: Работаем с НОВОЙ структурой users/$userId/marker_maps
-      final userMapsRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('marker_maps');
+      // 🔥 ИСПРАВЛЕНО: Работаем с правильной структурой marker_maps (НЕ subcollection)
+      final markerMapsRef = _firestore.collection('marker_maps');
 
       // Проверяем флаг на удаление всех маркерных карт
       final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(true);
@@ -651,8 +660,10 @@ class SyncService {
         debugPrint('⚠️ Обнаружен флаг на удаление всех маркерных карт');
 
         try {
-          // 🔥 ИСПРАВЛЕНО: Получаем все маркерные карты пользователя из НОВОЙ структуры и удаляем их
-          final snapshot = await userMapsRef.get();
+          // 🔥 ИСПРАВЛЕНО: Получаем все маркерные карты пользователя из правильной структуры и удаляем их
+          final snapshot = await markerMapsRef
+              .where('userId', isEqualTo: userId)
+              .get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -683,9 +694,9 @@ class SyncService {
 
         for (var mapId in mapsToDelete) {
           try {
-            // 🔥 ИСПРАВЛЕНО: Удаляем из НОВОЙ структуры
-            await userMapsRef.doc(mapId).delete();
-            debugPrint('✅ Маркерная карта $mapId удалена из Firestore (новая структура)');
+            // 🔥 ИСПРАВЛЕНО: Удаляем из правильной структуры
+            await markerMapsRef.doc(mapId).delete();
+            debugPrint('✅ Маркерная карта $mapId удалена из Firestore');
           } catch (e) {
             debugPrint(
               '❌ Ошибка при удалении маркерной карты $mapId из Firestore: $e',
@@ -719,11 +730,11 @@ class SyncService {
               mapData['id'] = mapId;
             }
 
-            // 🔥 ИСПРАВЛЕНО: Сохраняем обновления в НОВОЙ структуре
-            await userMapsRef.doc(mapId).set(mapData, SetOptions(merge: true));
+            // 🔥 ИСПРАВЛЕНО: Сохраняем обновления в правильной структуре
+            await markerMapsRef.doc(mapId).set(mapData, SetOptions(merge: true));
 
             debugPrint(
-              '✅ Обновление маркерной карты $mapId успешно синхронизировано (новая структура)',
+              '✅ Обновление маркерной карты $mapId успешно синхронизировано',
             );
           } catch (e) {
             debugPrint(
@@ -741,7 +752,7 @@ class SyncService {
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
       if (offlineMaps.isNotEmpty) {
         debugPrint(
-          '🔄 Синхронизация новых ОФЛАЙН маркерных карт (${offlineMaps.length} шт.) в НОВУЮ структуру',
+          '🔄 Синхронизация новых ОФЛАЙН маркерных карт (${offlineMaps.length} шт.) в правильную структуру',
         );
 
         for (var mapData in offlineMaps) {
@@ -758,13 +769,13 @@ class SyncService {
               mapData['userId'] = userId;
             }
 
-            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем маркерную карту в НОВОЙ структуре users/$userId/marker_maps
-            await userMapsRef.doc(mapId).set(mapData);
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем маркерную карту в правильной структуре marker_maps
+            await markerMapsRef.doc(mapId).set(mapData);
 
             // Удаляем маркерную карту из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineMarkerMap(mapId);
 
-            debugPrint('✅ ОФЛАЙН маркерная карта $mapId успешно синхронизирована в НОВУЮ структуру');
+            debugPrint('✅ ОФЛАЙН маркерная карта $mapId успешно синхронизирована');
           } catch (e) {
             debugPrint('❌ Ошибка при синхронизации ОФЛАЙН маркерной карты: $e');
             _incrementErrorCounter(dataType);
@@ -778,6 +789,100 @@ class SyncService {
       _errorCounters[dataType] = 0;
     } catch (e) {
       debugPrint('❌ Ошибка при синхронизации маркерных карт: $e');
+      _incrementErrorCounter(dataType);
+      rethrow;
+    }
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Синхронизировать расходы/заметки бюджета с НОВОЙ структурой Firebase
+  Future<void> _syncExpenses(String userId) async {
+    const dataType = 'expenses';
+
+    // Проверка на слишком частые попытки синхронизации с ошибками
+    if (_shouldSkipSync(dataType)) {
+      debugPrint('⏭️ Пропускаем синхронизацию расходов из-за частых ошибок');
+      return;
+    }
+
+    try {
+      debugPrint('🔄 Начинаем синхронизацию расходов...');
+      _lastSyncAttempt[dataType] = DateTime.now();
+
+      // 🔥 НОВОЕ: Работаем с НОВОЙ структурой users/$userId/fishing_trips
+      final userTripsRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_trips');
+
+      // Проверяем флаг на удаление всех расходов
+      final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(false); // используем false для expenses
+      if (shouldDeleteAll) {
+        debugPrint('⚠️ Обнаружен флаг на удаление всех расходов');
+
+        try {
+          // Получаем все поездки пользователя из НОВОЙ структуры и удаляем их
+          final snapshot = await userTripsRef.get();
+
+          // Создаем пакетную операцию для удаления
+          final batch = _firestore.batch();
+          for (var doc in snapshot.docs) {
+            batch.delete(doc.reference);
+          }
+
+          await batch.commit();
+          await _offlineStorage.clearDeleteAllFlag(false);
+          debugPrint(
+            '✅ Все расходы пользователя удалены (${snapshot.docs.length} шт.)',
+          );
+        } catch (e) {
+          debugPrint('❌ Ошибка при удалении всех расходов: $e');
+          _incrementErrorCounter(dataType);
+        }
+
+        return;
+      }
+
+      // Получаем офлайн расходы для синхронизации
+      final offlineExpenses = await _offlineStorage.getAllOfflineExpenses();
+      if (offlineExpenses.isNotEmpty) {
+        debugPrint(
+          '🔄 Синхронизация новых ОФЛАЙН расходов (${offlineExpenses.length} шт.) в НОВУЮ структуру',
+        );
+
+        for (var expenseData in offlineExpenses) {
+          try {
+            // Удостоверяемся, что у расхода есть ID и UserID
+            final expenseId = expenseData['id']?.toString();
+            if (expenseId == null || expenseId.isEmpty) {
+              debugPrint('⚠️ Расход без ID, пропускаем');
+              continue;
+            }
+
+            // Проверяем и устанавливаем userId
+            if (expenseData['userId'] == null || expenseData['userId'].isEmpty) {
+              expenseData['userId'] = userId;
+            }
+
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем расход в НОВОЙ структуре users/$userId/fishing_trips
+            await userTripsRef.doc(expenseId).set(expenseData);
+
+            // Удаляем расход из локального хранилища после успешной синхронизации
+            await _offlineStorage.removeOfflineExpense(expenseId);
+
+            debugPrint('✅ ОФЛАЙН расход $expenseId успешно синхронизирован в НОВУЮ структуру');
+          } catch (e) {
+            debugPrint('❌ Ошибка при синхронизации ОФЛАЙН расхода: $e');
+            _incrementErrorCounter(dataType);
+          }
+        }
+      }
+
+      debugPrint('✅ Синхронизация расходов завершена');
+
+      // Сбрасываем счетчик ошибок, если все прошло успешно
+      _errorCounters[dataType] = 0;
+    } catch (e) {
+      debugPrint('❌ Ошибка при синхронизации расходов: $e');
       _incrementErrorCounter(dataType);
       rethrow;
     }
@@ -818,6 +923,7 @@ class SyncService {
       final offlineNoteUpdates = await _offlineStorage.getAllNoteUpdates();
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
       final offlineMapUpdates = await _offlineStorage.getAllMarkerMapUpdates();
+      final offlineExpenses = await _offlineStorage.getAllOfflineExpenses(); // 🔥 ДОБАВЛЕНО
 
       final notesToDelete = await _offlineStorage.getIdsToDelete(false);
       final mapsToDelete = await _offlineStorage.getIdsToDelete(true);
@@ -827,6 +933,7 @@ class SyncService {
               offlineNoteUpdates.length +
               offlineMaps.length +
               offlineMapUpdates.length +
+              offlineExpenses.length + // 🔥 ДОБАВЛЕНО
               notesToDelete.length +
               mapsToDelete.length;
 
@@ -848,6 +955,7 @@ class SyncService {
         'offlineNoteUpdates': offlineNoteUpdates.length,
         'offlineMaps': offlineMaps.length,
         'offlineMapUpdates': offlineMapUpdates.length,
+        'offlineExpenses': offlineExpenses.length, // 🔥 ДОБАВЛЕНО
         'notesToDelete': notesToDelete.length,
         'mapsToDelete': mapsToDelete.length,
         'isOnline': isConnected,

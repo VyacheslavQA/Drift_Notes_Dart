@@ -2,7 +2,7 @@ name: drift_notes_dart
 description: "Мобильное приложение для рыболовов."
 publish_to: 'none'
 
-version: 1.0.1+3
+version: 1.0.1+4
 
 environment:
   sdk: ^3.7.2

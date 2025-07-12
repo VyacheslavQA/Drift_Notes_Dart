@@ -180,9 +180,9 @@ class SubscriptionService {
     }
   }
 
-  // 🔥 НОВЫЕ МЕТОДЫ для офлайн режима
+  // 🔥 ИСПРАВЛЕННЫЕ МЕТОДЫ для офлайн режима и маркерных карт
 
-  /// Основной метод проверки возможности создания контента офлайн
+  /// ✅ ИСПРАВЛЕНО: Основной метод проверки возможности создания контента офлайн (БЕЗ grace period для маркерных карт)
   Future<bool> canCreateContentOffline(ContentType contentType) async {
     try {
       // 1. Проверка тестового аккаунта - безлимитный доступ
@@ -209,16 +209,27 @@ class SubscriptionService {
       final currentUsage = await getCurrentOfflineUsage(contentType);
       final limit = getLimit(contentType);
 
-      // 4. ЖЕСТКАЯ ПРОВЕРКА: строгий лимит для UI (БЕЗ grace period)
-      if (currentUsage >= limit) {
-        if (kDebugMode) {
-          debugPrint('❌ Превышен лимит для $contentType: $currentUsage >= $limit');
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: УБИРАЕМ grace period для маркерных карт
+      if (contentType == ContentType.markerMaps) {
+        // Для маркерных карт - СТРОГИЙ лимит без grace period
+        if (currentUsage >= limit) {
+          if (kDebugMode) {
+            debugPrint('❌ Превышен СТРОГИЙ лимит для маркерных карт: $currentUsage >= $limit');
+          }
+          return false; // Блокировка
         }
-        return false; // Блокировка
+      } else {
+        // Для остальных типов контента можно использовать grace period
+        if (currentUsage >= limit + SubscriptionConstants.offlineGraceLimit) {
+          if (kDebugMode) {
+            debugPrint('❌ Превышен лимит с grace period для $contentType: $currentUsage >= ${limit + SubscriptionConstants.offlineGraceLimit}');
+          }
+          return false; // Блокировка
+        }
       }
 
       if (kDebugMode) {
-        debugPrint('✅ Разрешено создание $contentType: $currentUsage < ${limit + SubscriptionConstants.offlineGraceLimit}');
+        debugPrint('✅ Разрешено создание $contentType: использование=$currentUsage, лимит=$limit');
       }
       return true;
     } catch (e) {
@@ -230,16 +241,39 @@ class SubscriptionService {
     }
   }
 
-  /// Получение детальной информации о статусе офлайн использования
+  /// ✅ ИСПРАВЛЕНО: Получение детальной информации о статусе офлайн использования для маркерных карт
   Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
     try {
       final currentUsage = await getCurrentOfflineUsage(contentType);
       final limit = getLimit(contentType);
       final canCreate = await canCreateContentOffline(contentType);
 
-      final warningType = SubscriptionConstants.getWarningType(currentUsage, limit);
-      final message = SubscriptionConstants.getLimitStatusMessage(currentUsage, limit, contentType);
-      final remaining = SubscriptionConstants.getRemainingGraceElements(currentUsage, limit);
+      // 🔥 ИСПРАВЛЕНО: Разная логика предупреждений для маркерных карт
+      OfflineLimitWarningType warningType;
+      String message;
+      int remaining;
+
+      if (contentType == ContentType.markerMaps) {
+        // Для маркерных карт - строгие предупреждения без grace period
+        if (currentUsage >= limit) {
+          warningType = OfflineLimitWarningType.blocked;
+          message = 'Достигнут лимит маркерных карт ($limit)';
+          remaining = 0;
+        } else if (currentUsage >= limit - 2) {
+          warningType = OfflineLimitWarningType.approaching;
+          message = 'Осталось ${limit - currentUsage} маркерных карт';
+          remaining = limit - currentUsage;
+        } else {
+          warningType = OfflineLimitWarningType.normal;
+          message = 'Доступно ${limit - currentUsage} маркерных карт';
+          remaining = limit - currentUsage;
+        }
+      } else {
+        // Для остальных типов - с grace period
+        warningType = SubscriptionConstants.getWarningType(currentUsage, limit);
+        message = SubscriptionConstants.getLimitStatusMessage(currentUsage, limit, contentType);
+        remaining = SubscriptionConstants.getRemainingGraceElements(currentUsage, limit);
+      }
 
       return OfflineUsageResult(
         canCreate: canCreate,
@@ -261,7 +295,7 @@ class SubscriptionService {
         message: 'Ошибка проверки лимитов',
         currentUsage: 0,
         limit: getLimit(contentType),
-        remaining: SubscriptionConstants.offlineGraceLimit,
+        remaining: getLimit(contentType),
         contentType: contentType,
       );
     }
@@ -550,7 +584,7 @@ class SubscriptionService {
     }
   }
 
-  // ОБНОВЛЕН: Обновление кэша использования из новой структуры Firebase
+  // ✅ ИСПРАВЛЕНО: Обновление кэша использования из новой структуры Firebase с правильным подсчетом маркерных карт
   Future<void> _refreshUsageCache() async {
     try {
       final userId = firebaseService.currentUserId;
@@ -576,10 +610,17 @@ class SubscriptionService {
         newCache[ContentType.fishingNotes] = 0;
       }
 
-      // ИСПРАВЛЕНО: Подсчитываем маркерные карты из новой структуры
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильный подсчет маркерных карт
       try {
-        final markerMapsSnapshot = await firebaseService.getUserMarkerMaps();
+        final markerMapsSnapshot = await FirebaseFirestore.instance
+            .collection('marker_maps')
+            .where('userId', isEqualTo: userId)
+            .get();
         newCache[ContentType.markerMaps] = markerMapsSnapshot.docs.length;
+
+        if (kDebugMode) {
+          debugPrint('✅ Подсчитано маркерных карт: ${markerMapsSnapshot.docs.length}');
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint('❌ Ошибка подсчета marker_maps: $e');
@@ -623,7 +664,7 @@ class SubscriptionService {
     return DateTime.now().difference(_lastUsageCacheUpdate!) < _cacheValidDuration;
   }
 
-  /// ОБНОВЛЕН: Прямой подсчет использования из новой структуры Firebase
+  /// ✅ ИСПРАВЛЕНО: Прямой подсчет использования из новой структуры Firebase для маркерных карт
   Future<int> _getDirectUsageCount(ContentType contentType) async {
     try {
       final userId = firebaseService.currentUserId;
@@ -637,7 +678,11 @@ class SubscriptionService {
           break;
 
         case ContentType.markerMaps:
-          snapshot = await firebaseService.getUserMarkerMaps();
+        // 🔥 ИСПРАВЛЕНО: Правильный запрос для маркерных карт
+          snapshot = await FirebaseFirestore.instance
+              .collection('marker_maps')
+              .where('userId', isEqualTo: userId)
+              .get();
           break;
 
         case ContentType.expenses:
