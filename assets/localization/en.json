@@ -2256,6 +2256,9 @@
   "start_mapping": "Create your first marker map to mark fishing spots",
   "no_notes_available": "No notes available",
 
-  "password_invalid_characters": "Password can only contain letters, numbers, and special characters: !@#$%^&*()_+-=[]{}|;:,.<>?"
+  "password_invalid_characters": "Password can only contain letters, numbers, and special characters: !@#$%^&*()_+-=[]{}|;:,.<>?",
+  "recent_expenses": "Recent Expenses",
+  "no_expenses_yet": "No expenses yet",
+  "add_first_expense_hint": "Press \"Add Expense\" to create your first record"
 
 }

@@ -538,7 +538,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ResponsiveText(
-              localizations.translate('recent_trips') ?? 'Последние поездки',
+              localizations.translate('recent_expenses') ?? 'Последние расходы',
               type: ResponsiveTextType.titleMedium,
               fontWeight: FontWeight.w600,
             ),
@@ -549,13 +549,14 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
                   const Icon(Icons.directions_boat, size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
                   ResponsiveText(
-                    localizations.translate('no_trips_yet') ?? 'Пока нет поездок',
+                    localizations.translate('no_expenses_yet') ?? 'Пока нет расходов',
                     type: ResponsiveTextType.caption,
                   ),
                   const SizedBox(height: 8),
                   ResponsiveText(
-                    localizations.translate('add_first_trip') ?? 'Нажмите "+" чтобы добавить первую поездку',
+                    localizations.translate('add_first_expense_hint') ?? 'Нажмите "Добавить расход" чтобы создать первую запись',
                     type: ResponsiveTextType.caption,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -576,7 +577,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ResponsiveText(
-            localizations.translate('recent_trips') ?? 'Последние поездки',
+            localizations.translate('recent_expenses') ?? 'Последние расходы',
             type: ResponsiveTextType.titleMedium,
             fontWeight: FontWeight.w600,
           ),
