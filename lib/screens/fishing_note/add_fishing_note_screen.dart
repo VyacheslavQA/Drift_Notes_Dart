@@ -422,7 +422,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ИЗМЕНЕНО: добавлена проверка лимитов и офлайн сохранение
+  // ИСПРАВЛЕНО: добавлена проверка лимитов и офлайн сохранение
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -442,9 +442,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       return;
     }
 
-    // ДОБАВЛЕНО: проверка лимитов перед сохранением
+    // ИСПРАВЛЕНО: проверка лимитов перед сохранением
     try {
-      final canCreate = await _subscriptionService.canCreateContent(ContentType.fishingNotes);
+      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
       if (!canCreate) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -467,7 +467,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     });
 
     try {
-      // ДОБАВЛЕНО: проверка подключения к интернету
+      // ИСПРАВЛЕНО: получаем userId в начале
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Проверка подключения к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
       debugPrint('Статус сети: ${isOnline ? "онлайн" : "офлайн"}');
 
@@ -515,9 +521,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         'photoUrls': record.photoUrls,
       }).toList();
 
-      // НОВАЯ СТРУКТУРА: подготавливаем данные как Map<String, dynamic>
+      // ИСПРАВЛЕНО: добавляем userId в данные заметки
       final noteData = {
         'id': const Uuid().v4(),
+        'userId': userId, // ← ИСПРАВЛЕНО: добавлен userId!
         'location': _locationController.text.trim(),
         'latitude': _latitude,
         'longitude': _longitude,
@@ -532,18 +539,20 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         'aiPrediction': aiPredictionMap,
         'photoUrls': <String>[], // Будет заполнено после загрузки фотографий
         'mapMarkers': <Map<String, dynamic>>[], // Пустой список маркеров
-        'isOffline': !isOnline, // ДОБАВЛЕНО: помечаем как офлайн запись
+        'isOffline': !isOnline, // Помечаем как офлайн запись
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       };
+
+      // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Переменная для отслеживания успеха =====
+      bool saveSuccessful = false;
 
       if (isOnline) {
         // ОНЛАЙН СОХРАНЕНИЕ
         debugPrint('Сохранение онлайн...');
 
-        // НОВЫЙ ПОДХОД: загружаем фотографии и обновляем URLs
+        // Загружаем фотографии и обновляем URLs
         if (_selectedPhotos.isNotEmpty) {
           final List<String> photoUrls = [];
-          final userId = _firebaseService.currentUserId;
 
           for (int i = 0; i < _selectedPhotos.length; i++) {
             final file = _selectedPhotos[i];
@@ -569,16 +578,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           noteData['photoUrls'] = photoUrls;
         }
 
-        // НОВЫЙ МЕТОД: используем addFishingNoteNew()
+        // Используем новый метод addFishingNoteNew()
         await _firebaseService.addFishingNoteNew(noteData);
 
-        // ДОБАВЛЕНО: увеличиваем счетчик использования
+        // ИСПРАВЛЕНО: увеличиваем счетчик использования
         await _subscriptionService.incrementUsage(ContentType.fishingNotes);
 
         debugPrint('Заметка сохранена онлайн');
+        saveSuccessful = true; // ← ИСПРАВЛЕНО: Отмечаем успех
 
       } else {
-        // ДОБАВЛЕНО: ОФЛАЙН СОХРАНЕНИЕ
+        // ОФЛАЙН СОХРАНЕНИЕ
         debugPrint('Сохранение офлайн...');
 
         // Сохраняем фотографии локально (упрощенный вариант)
@@ -603,13 +613,15 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         // Сохраняем заметку локально
         await _offlineStorage.saveOfflineFishingNote(noteData);
 
-        // ДОБАВЛЕНО: увеличиваем офлайн счетчик
+        // ИСПРАВЛЕНО: увеличиваем офлайн счетчик
         await _subscriptionService.incrementOfflineUsage(ContentType.fishingNotes);
 
         debugPrint('Заметка сохранена офлайн');
+        saveSuccessful = true; // ← ИСПРАВЛЕНО: Отмечаем успех
       }
 
-      if (mounted) {
+      // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Возврат результата только при успехе =====
+      if (mounted && saveSuccessful) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -633,10 +645,13 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         );
 
         _hasUnsavedChanges = false;
-        Navigator.pop(context, true);
+
+        // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ГАРАНТИРОВАННЫЙ возврат true =====
+        debugPrint('🎯 Возвращаем результат true - заметка успешно сохранена');
+        Navigator.pop(context, true); // ← Это ключевое исправление!
       }
     } catch (e) {
-      debugPrint('Ошибка при сохранении заметки: $e');
+      debugPrint('❌ Ошибка при сохранении заметки: $e');
 
       if (mounted) {
         String errorMessage;

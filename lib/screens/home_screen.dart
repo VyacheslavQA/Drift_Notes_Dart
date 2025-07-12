@@ -1,5 +1,5 @@
 // Путь: lib/screens/home_screen.dart
-// ОБНОВЛЕННАЯ ВЕРСИЯ с ОФЛАЙН ПОДДЕРЖКОЙ
+// ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ с решением критической уязвимости лимитов
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,7 +44,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _firebaseService = FirebaseService();
   final _fishingNoteRepository = FishingNoteRepository();
   final _userRepository = UserRepository();
@@ -64,6 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _offlineAuthStatus;
   bool _hasNetworkConnection = true;
   String? _offlineStatusMessage;
+
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Переменные для кэширования состояния подписки с ОФЛАЙН проверкой
+  SubscriptionStatus _cachedSubscriptionStatus = SubscriptionStatus.none;
+  bool _hasPremiumAccess = false;
+  bool _subscriptionDataLoaded = false;
+  bool? _cachedCanCreateContent; // 🚨 НОВОЕ: Кэшируем результат офлайн проверки лимитов
+  int? _cachedTotalUsage; // 🚨 НОВОЕ: Кэшируем общее использование (серверное + офлайн)
+  int? _cachedLimit; // 🚨 НОВОЕ: Кэшируем лимит
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
@@ -99,8 +107,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // ===== НОВОЕ: Инициализация с поддержкой офлайн режима =====
     _initializeOfflineMode();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // ===== НОВОЕ: Отслеживание когда приложение возвращается в фокус =====
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Когда пользователь возвращается в приложение, обновляем заметки
+      debugPrint('🔄 Приложение вернулось в фокус - обновляем заметки');
+      _loadFishingNotes();
+    }
   }
 
   // ===== НОВЫЙ МЕТОД: Инициализация офлайн режима =====
@@ -123,6 +149,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // Получаем статус офлайн авторизации
       _offlineAuthStatus = await _firebaseService.getOfflineAuthStatus();
       _isOfflineMode = _firebaseService.isOfflineMode;
+
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загружаем данные подписки ОДИН РАЗ с офлайн проверкой
+      await _loadSubscriptionDataWithOfflineCheck();
 
       // Загружаем данные с fallback на кэш
       await _loadDataWithFallback();
@@ -153,6 +182,39 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {});
       }
+    }
+  }
+
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загрузка данных подписки с офлайн проверкой лимитов
+  Future<void> _loadSubscriptionDataWithOfflineCheck() async {
+    try {
+      debugPrint('🔄 Загрузка данных подписки с офлайн проверкой...');
+
+      // Загружаем текущую подписку
+      final subscription = await _subscriptionService.loadCurrentSubscription();
+
+      // Обновляем кэшированные данные
+      _cachedSubscriptionStatus = subscription.status;
+      _hasPremiumAccess = _subscriptionService.hasPremiumAccess();
+
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получаем ОБЩЕЕ использование (серверное + офлайн)
+      _cachedTotalUsage = await _subscriptionService.getCurrentOfflineUsage(ContentType.fishingNotes);
+      _cachedLimit = _subscriptionService.getLimit(ContentType.fishingNotes);
+
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем возможность создания с учетом офлайн лимитов
+      _cachedCanCreateContent = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+
+      _subscriptionDataLoaded = true;
+
+      debugPrint('✅ Данные подписки загружены: $_cachedSubscriptionStatus, Premium: $_hasPremiumAccess');
+      debugPrint('🔍 ПРОВЕРКА ЛИМИТОВ: usage=$_cachedTotalUsage, limit=$_cachedLimit, canCreate=$_cachedCanCreateContent');
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки данных подписки: $e');
+      _subscriptionDataLoaded = true; // Отмечаем как загруженные даже при ошибке
     }
   }
 
@@ -279,6 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
           // Восстановлено подключение
           debugPrint('🌐 Подключение восстановлено');
           await _initializeOnlineMode();
+
+          // Перезагружаем данные подписки
+          await _loadSubscriptionDataWithOfflineCheck();
 
           if (mounted) {
             final localizations = AppLocalizations.of(context);
@@ -484,11 +549,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ИСПРАВЛЕНО: Асинхронная проверка возможности создания контента
-  Future<bool> _canCreateContent() async {
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка возможности создания контента с кэшированными данными
+  bool _canCreateContentCached() {
+    // Проверяем политику
     final policyAllows = _policyRestrictions?.canCreateContent ?? true;
-    final limitsAllow = await _subscriptionService.canCreateContent(ContentType.fishingNotes);
-    return policyAllows && limitsAllow;
+    if (!policyAllows) {
+      return false;
+    }
+
+    // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат офлайн проверки
+    return _cachedCanCreateContent ?? false;
   }
 
   // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
@@ -503,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ОБНОВЛЕНО: Показ сообщений о блокировке
+  // 🚨 ИСПРАВЛЕНО: Показ сообщений о блокировке с правильными диалогами
   Future<void> _showContentCreationBlocked() async {
     final localizations = AppLocalizations.of(context);
 
@@ -526,13 +596,14 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // ИСПРАВЛЕНО: Затем проверяем лимиты и показываем PaywallScreen
-    if (!await _subscriptionService.canCreateContent(ContentType.fishingNotes)) {
+    // 🚨 ИСПРАВЛЕНО: Затем проверяем лимиты и показываем PaywallScreen
+    final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+    if (!canCreate) {
       _showPremiumRequired(ContentType.fishingNotes);
     }
   }
 
-  // ===== ОБНОВЛЕНО: Загрузка заметок с fallback =====
+  // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Перезагрузка заметок после создания =====
   Future<void> _loadFishingNotes() async {
     try {
       debugPrint('📝 Загрузка заметок о рыбалке...');
@@ -634,23 +705,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ИСПРАВЛЕНО: Навигация с асинхронной проверкой
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Навигация с проверкой офлайн лимитов
   Future<void> _navigateToAddNote() async {
-    if (!await _canCreateContent()) {
+    // 🚨 ИСПРАВЛЕНО: Проверяем политику
+    if (!(_policyRestrictions?.canCreateContent ?? true)) {
       await _showContentCreationBlocked();
       return;
     }
 
-    Navigator.push(
+    // 🚨 ИСПРАВЛЕНО: Проверяем офлайн лимиты перед навигацией
+    final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+    if (!canCreate) {
+      _showPremiumRequired(ContentType.fishingNotes);
+      return;
+    }
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const FishingTypeSelectionScreen(),
       ),
-    ).then((value) {
-      if (value == true) {
-        _loadFishingNotes();
-      }
-    });
+    );
+
+    // ИСПРАВЛЕНИЕ: ВСЕГДА обновляем заметки после возврата с экрана создания
+    debugPrint('🔄 Возврат с экрана создания заметки, обновляем список...');
+    await _loadFishingNotes();
+
+    // Дополнительно обновляем данные подписки (для счетчиков лимитов)
+    await _loadSubscriptionDataWithOfflineCheck();
   }
 
   void _navigateToNotifications() {
@@ -866,66 +948,62 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ИСПРАВЛЕНО: Элемент быстрого действия с проверкой лимитов
+  // 🚨 ИСПРАВЛЕНО: Элемент быстрого действия с проверкой офлайн лимитов БЕЗ стримов
   Widget _buildQuickActionItemWithLimits({
     required IconData icon,
     required String label,
     required ContentType contentType,
     required Widget destination,
   }) {
-    return StreamBuilder<SubscriptionStatus>(
-      stream: _subscriptionService.subscriptionStatusStream,
-      builder: (context, snapshot) {
-        return FutureBuilder<bool>(
-          future: _subscriptionService.canCreateContent(contentType),
-          builder: (context, futureSnapshot) {
-            final canCreate = futureSnapshot.data ?? false;
+    // 🚨 ИСПРАВЛЕНИЕ: Используем офлайн проверку лимитов вместо FutureBuilder
+    return FutureBuilder<bool>(
+      future: _subscriptionService.canCreateContentOffline(contentType),
+      builder: (context, futureSnapshot) {
+        final canCreate = futureSnapshot.data ?? false;
 
-            return Stack(
-              children: [
-                _buildQuickActionItem(
-                  icon: icon,
-                  label: label,
-                  onTap: canCreate ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => destination),
-                    );
-                  } : () {
-                    _showLimitReachedMessage(contentType);
-                  },
+        return Stack(
+          children: [
+            _buildQuickActionItem(
+              icon: icon,
+              label: label,
+              onTap: canCreate ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => destination),
+                );
+              } : () {
+                _showLimitReachedMessage(contentType);
+              },
+            ),
+            // Показываем индикатор лимитов
+            if (!canCreate)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.lock,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
-                // Показываем индикатор лимитов
-                if (!canCreate)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.lock,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                // Показываем мини-бейдж использования
-                if (canCreate && !_subscriptionService.hasPremiumAccess())
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: CompactUsageBadge(
-                      contentType: contentType,
-                      showOnlyWhenNearLimit: true,
-                    ),
-                  ),
-              ],
-            );
-          },
+              ),
+            // Показываем мини-бейдж использования
+            if (canCreate && !_hasPremiumAccess)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: CompactUsageBadge(
+                  contentType: contentType,
+                  showOnlyWhenNearLimit: true,
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1098,121 +1176,177 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ИСПРАВЛЕНО: Карточка статуса подписки с кнопкой PaywallScreen
+  // 🚨 ИСПРАВЛЕНИЕ: Карточка статуса подписки с кэшированными данными БЕЗ StreamBuilder
   Widget _buildSubscriptionStatusCard() {
-    return StreamBuilder<SubscriptionStatus>(
-      stream: _subscriptionService.subscriptionStatusStream,
-      builder: (context, snapshot) {
-        final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context);
 
-        // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
-        if (_subscriptionService.hasPremiumAccess()) {
-          return const SizedBox.shrink();
-        }
+    // Если данные подписки еще не загружены, показываем загрузку
+    if (!_subscriptionDataLoaded) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: EdgeInsets.all(cardPadding),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
-        // Показываем лимиты только для бесплатных пользователей
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: AppConstants.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.primaryColor.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
+    if (_hasPremiumAccess) {
+      return const SizedBox.shrink();
+    }
+
+    // Показываем лимиты только для бесплатных пользователей
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        color: AppConstants.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppConstants.primaryColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  color: AppConstants.primaryColor,
+                  size: iconSize,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      localizations.translate('free_plan'),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      localizations.translate('limited_access'),
+                      style: TextStyle(
+                        color: AppConstants.textColor.withOpacity(0.7),
+                        fontSize: fontSize - 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 🚨 ИСПРАВЛЕНО: Показываем ОБЩЕЕ использование (серверное + офлайн)
+          if (_cachedTotalUsage != null && _cachedLimit != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.info_outline,
-                      color: AppConstants.primaryColor,
-                      size: iconSize,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        localizations.translate('fishing_notes'),
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: fontSize - 2,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '$_cachedTotalUsage/$_cachedLimit',
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: fontSize - 2,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          localizations.translate('free_plan'),
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          localizations.translate('limited_access'),
-                          style: TextStyle(
-                            color: AppConstants.textColor.withOpacity(0.7),
-                            fontSize: fontSize - 2,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: _cachedLimit! > 0 ? (_cachedTotalUsage! / _cachedLimit!).clamp(0.0, 1.0) : 0.0,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.withOpacity(0.3),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _cachedLimit! > 0 && (_cachedTotalUsage! / _cachedLimit!) >= 0.8
+                            ? Colors.orange
+                            : AppConstants.primaryColor,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Прогресс-бары для каждого типа контента
-              UsageProgressBar(
-                contentType: ContentType.fishingNotes,
-                height: 8,
-                showText: true,
-              ),
-              const SizedBox(height: 12),
-              UsageProgressBar(
-                contentType: ContentType.markerMaps,
-                height: 8,
-                showText: true,
-              ),
-              const SizedBox(height: 12),
-              UsageProgressBar(
-                contentType: ContentType.expenses,
-                height: 8,
-                showText: true,
-              ),
-              const SizedBox(height: 24), // УВЕЛИЧЕНО: было 20, стало 24
-              SizedBox(
-                width: double.infinity,
-                height: buttonHeight + 4, // УВЕЛИЧЕНО: +4 к высоте кнопки
-                child: ElevatedButton(
-                  onPressed: () {
-                    // ИСПРАВЛЕНО: Навигация к PaywallScreen
-                    _showPremiumRequired(ContentType.fishingNotes);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    localizations.translate('upgrade_to_premium'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Прогресс-бары для других типов контента
+          UsageProgressBar(
+            contentType: ContentType.markerMaps,
+            height: 8,
+            showText: true,
+          ),
+          const SizedBox(height: 12),
+          UsageProgressBar(
+            contentType: ContentType.expenses,
+            height: 8,
+            showText: true,
+          ),
+          const SizedBox(height: 24), // УВЕЛИЧЕНО: было 20, стало 24
+          SizedBox(
+            width: double.infinity,
+            height: buttonHeight + 4, // УВЕЛИЧЕНО: +4 к высоте кнопки
+            child: ElevatedButton(
+              onPressed: () {
+                // ИСПРАВЛЕНО: Навигация к PaywallScreen
+                _showPremiumRequired(ContentType.fishingNotes);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 12), // УВЕЛИЧЕНО: было 4, стало 12
-            ],
+              child: Text(
+                localizations.translate('upgrade_to_premium'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 12), // УВЕЛИЧЕНО: было 4, стало 12
+        ],
+      ),
     );
   }
 
@@ -1429,7 +1563,7 @@ class _HomeScreenState extends State<HomeScreen> {
         key: _scaffoldKey,
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          // ОБНОВЛЕН: Заголовок с бейджем подписки и индикатором офлайн режима
+          // 🚨 ИСПРАВЛЕНИЕ: Заголовок с кэшированными данными БЕЗ StreamBuilder
           title: Row(
             children: [
               Expanded(
@@ -1471,39 +1605,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-              // ДОБАВЛЕН: Компактный бейдж статуса подписки
-              StreamBuilder<SubscriptionStatus>(
-                stream: _subscriptionService.subscriptionStatusStream,
-                builder: (context, snapshot) {
-                  if (_subscriptionService.hasPremiumAccess()) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              // 🚨 ИСПРАВЛЕНИЕ: Компактный бейдж статуса подписки с кэшированными данными
+              if (_subscriptionDataLoaded && _hasPremiumAccess)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.stars, color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'PRO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.stars, color: Colors.white, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'PRO',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
+                    ],
+                  ),
+                ),
             ],
           ),
           centerTitle: true,
@@ -1556,6 +1683,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // ===== ОБНОВЛЕНО: Обновление с проверкой подключения =====
             await _refreshConnection();
             await _checkPolicyCompliance();
+            await _loadSubscriptionDataWithOfflineCheck(); // 🚨 ИСПРАВЛЕНО: Обновляем данные подписки с офлайн проверкой
             await _loadFishingNotes();
           },
           child: SingleChildScrollView(
@@ -1700,7 +1828,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу
+  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу БЕЗ StreamBuilder
   Widget _buildDrawer() {
     final localizations = AppLocalizations.of(context);
     final user = _firebaseService.currentUser;
@@ -1712,232 +1840,227 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppConstants.backgroundColor,
         // ИСПРАВЛЕНО: Используем адаптивный отступ вместо фиксированного
         padding: EdgeInsets.only(bottom: _drawerBottomPadding),
-        child: StreamBuilder<UserModel?>(
-          stream: _userRepository.getUserStream(),
-          builder: (context, snapshot) {
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                Container(
-                  decoration: const BoxDecoration(color: Color(0xFF0A1F1C)),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // ===== НОВОЕ: Индикатор офлайн режима в drawer =====
-                          if (_isOfflineMode || !_hasNetworkConnection)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: _isOfflineMode ? Colors.blue : Colors.orange,
-                                borderRadius: BorderRadius.circular(16),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              decoration: const BoxDecoration(color: Color(0xFF0A1F1C)),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ===== НОВОЕ: Индикатор офлайн режима в drawer =====
+                      if (_isOfflineMode || !_hasNetworkConnection)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _isOfflineMode ? Colors.blue : Colors.orange,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                                color: Colors.white,
+                                size: 16,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _isOfflineMode
-                                        ? (localizations.translate('offline_mode') ?? 'Офлайн режим')
-                                        : (localizations.translate('no_connection') ?? 'Нет сети'),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(width: 6),
+                              Text(
+                                _isOfflineMode
+                                    ? (localizations.translate('offline_mode') ?? 'Офлайн режим')
+                                    : (localizations.translate('no_connection') ?? 'Нет сети'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          Image.asset(
-                            'assets/images/drawer_logo.png',
-                            width: 110.0,
-                            height: 110.0,
-                            fit: BoxFit.contain,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            userName,
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 20.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            userEmail,
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 14.0,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.person,
-                  title: localizations.translate('profile'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (_policyRestrictions?.canEditProfile != true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            localizations.translate('edit_profile_blocked') ??
-                                'Редактирование профиля заблокировано. Примите политику конфиденциальности.',
-                          ),
-                          backgroundColor: Colors.red,
-                          action: SnackBarAction(
-                            label: localizations.translate('accept_policy') ?? 'Принять политику',
-                            textColor: Colors.white,
-                            onPressed: () => _showPolicyUpdateDialog(),
+                            ],
                           ),
                         ),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                    ).then((_) => setState(() {}));
-                  },
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.bar_chart,
-                  title: localizations.translate('statistics'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const StatisticsScreen()),
-                    );
-                  },
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.edit_note,
-                  title: localizations.translate('my_notes'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
-                    ).then((value) {
-                      if (value == true) {
-                        _loadFishingNotes();
-                      }
-                    });
-                  },
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.timer,
-                  title: localizations.translate('timers'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const TimersScreen()),
-                    );
-                  },
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.calendar_today,
-                  title: localizations.translate('calendar'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const FishingCalendarScreen()),
-                    );
-                  },
-                ),
-
-                _buildDrawerItem(
-                  icon: Icons.map,
-                  title: localizations.translate('marker_maps'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
-                    );
-                  },
-                ),
-
-                const Divider(
-                  color: Colors.white24,
-                  height: 1,
-                  thickness: 1,
-                  indent: 16,
-                  endIndent: 16,
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    localizations.translate('other'),
-                    style: const TextStyle(
-                      color: Color(0xFFB3B3B3),
-                      fontSize: 14.0,
-                    ),
+                      Image.asset(
+                        'assets/images/drawer_logo.png',
+                        width: 110.0,
+                        height: 110.0,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        userName,
+                        style: TextStyle(
+                          color: AppConstants.textColor,
+                          fontSize: 20.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userEmail,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 14.0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
+              ),
+            ),
 
-                _buildDrawerItem(
-                  icon: Icons.settings,
-                  title: localizations.translate('settings'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                    );
-                  },
-                ),
+            _buildDrawerItem(
+              icon: Icons.person,
+              title: localizations.translate('profile'),
+              onTap: () {
+                Navigator.pop(context);
+                if (_policyRestrictions?.canEditProfile != true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        localizations.translate('edit_profile_blocked') ??
+                            'Редактирование профиля заблокировано. Примите политику конфиденциальности.',
+                      ),
+                      backgroundColor: Colors.red,
+                      action: SnackBarAction(
+                        label: localizations.translate('accept_policy') ?? 'Принять политику',
+                        textColor: Colors.white,
+                        onPressed: () => _showPolicyUpdateDialog(),
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                ).then((_) => setState(() {}));
+              },
+            ),
 
-                _buildDrawerItem(
-                  icon: Icons.help_outline,
-                  title: localizations.translate('help_contact'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/help_contact');
-                  },
-                ),
+            _buildDrawerItem(
+              icon: Icons.bar_chart,
+              title: localizations.translate('statistics'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+                );
+              },
+            ),
 
-                _buildDrawerItem(
-                  icon: Icons.exit_to_app,
-                  title: localizations.translate('logout'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _firebaseService.signOut();
-                    if (context.mounted) {
-                      Navigator.of(context).pushReplacementNamed('/login');
-                    }
-                  },
+            _buildDrawerItem(
+              icon: Icons.edit_note,
+              title: localizations.translate('my_notes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+                ).then((value) {
+                  if (value == true) {
+                    _loadFishingNotes();
+                  }
+                });
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.timer,
+              title: localizations.translate('timers'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TimersScreen()),
+                );
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.calendar_today,
+              title: localizations.translate('calendar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FishingCalendarScreen()),
+                );
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.map,
+              title: localizations.translate('marker_maps'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
+                );
+              },
+            ),
+
+            const Divider(
+              color: Colors.white24,
+              height: 1,
+              thickness: 1,
+              indent: 16,
+              endIndent: 16,
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                localizations.translate('other'),
+                style: const TextStyle(
+                  color: Color(0xFFB3B3B3),
+                  fontSize: 14.0,
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.settings,
+              title: localizations.translate('settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.help_outline,
+              title: localizations.translate('help_contact'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/help_contact');
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.exit_to_app,
+              title: localizations.translate('logout'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _firebaseService.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacementNamed('/login');
+                }
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -1959,7 +2082,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ИСПРАВЛЕНО: Нижняя навигация с асинхронной проверкой лимитов
+  // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНО: Нижняя навигация с кэшированной проверкой лимитов БЕЗ StreamBuilder
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -2005,7 +2128,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ИСПРАВЛЕНА: Центральная кнопка с асинхронными индикаторами лимитов
+          // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНА: Центральная кнопка с кэшированными данными БЕЗ StreamBuilder
           Positioned(
             top: 0,
             left: 0,
@@ -2013,107 +2136,111 @@ class _HomeScreenState extends State<HomeScreen> {
             child: GestureDetector(
               onTap: () => _onItemTapped(2),
               child: Center(
-                child: StreamBuilder<SubscriptionStatus>(
-                  stream: _subscriptionService.subscriptionStatusStream,
-                  builder: (context, snapshot) {
-                    return FutureBuilder<bool>(
-                      future: _canCreateContent(),
-                      builder: (context, futureSnapshot) {
-                        final canCreate = futureSnapshot.data ?? false;
-
-                        return Stack(
-                          children: [
-                            Container(
-                              width: _centerButtonSize,
-                              height: _centerButtonSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 5,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: Image.asset(
-                                'assets/images/app_logo.png',
-                                width: _centerButtonSize,
-                                height: _centerButtonSize,
-                              ),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: _centerButtonSize,
+                      height: _centerButtonSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 5,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        width: _centerButtonSize,
+                        height: _centerButtonSize,
+                      ),
+                    ),
+                    // Индикатор политики (красный замок)
+                    if (!(_policyRestrictions?.canCreateContent ?? true))
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 22.0,
+                          height: 22.0,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock,
+                            color: Colors.white,
+                            size: 14.0,
+                          ),
+                        ),
+                      ),
+                    // 🚨 ИСПРАВЛЕНО: Индикатор лимитов с кэшированными данными (оранжевый замок) - только если политика разрешает
+                    if ((_policyRestrictions?.canCreateContent ?? true) &&
+                        _subscriptionDataLoaded &&
+                        !(_cachedCanCreateContent ?? false))
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 22.0,
+                          height: 22.0,
+                          decoration: const BoxDecoration(
+                            color: Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock,
+                            color: Colors.white,
+                            size: 14.0,
+                          ),
+                        ),
+                      ),
+                    // 🚨 ИСПРАВЛЕНО: Мини-бейдж использования с кэшированными данными - только если можно создавать и не премиум
+                    if ((_cachedCanCreateContent ?? false) && _subscriptionDataLoaded && !_hasPremiumAccess &&
+                        _cachedTotalUsage != null && _cachedLimit != null)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _cachedLimit! > 0 && (_cachedTotalUsage! / _cachedLimit!) >= 0.8
+                                ? Colors.orange
+                                : AppConstants.primaryColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$_cachedTotalUsage/$_cachedLimit',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
-                            // Индикатор политики (красный замок)
-                            if (!(_policyRestrictions?.canCreateContent ?? true))
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 22.0,
-                                  height: 22.0,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.lock,
-                                    color: Colors.white,
-                                    size: 14.0,
-                                  ),
-                                ),
-                              ),
-                            // Индикатор лимитов (оранжевый замок) - только если политика разрешает
-                            if ((_policyRestrictions?.canCreateContent ?? true) && !canCreate)
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 22.0,
-                                  height: 22.0,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.orange,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.lock,
-                                    color: Colors.white,
-                                    size: 14.0,
-                                  ),
-                                ),
-                              ),
-                            // Мини-бейдж использования - только если можно создавать и не премиум
-                            if (canCreate && !_subscriptionService.hasPremiumAccess())
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: CompactUsageBadge(
-                                  contentType: ContentType.fishingNotes,
-                                  showOnlyWhenNearLimit: true,
-                                ),
-                              ),
-                            // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
-                            if (_isOfflineMode || !_hasNetworkConnection)
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                child: Container(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  decoration: BoxDecoration(
-                                    color: _isOfflineMode ? Colors.blue : Colors.orange,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
-                                    color: Colors.white,
-                                    size: 12.0,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    );
-                  },
+                          ),
+                        ),
+                      ),
+                    // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
+                    if (_isOfflineMode || !_hasNetworkConnection)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: Container(
+                          width: 20.0,
+                          height: 20.0,
+                          decoration: BoxDecoration(
+                            color: _isOfflineMode ? Colors.blue : Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                            color: Colors.white,
+                            size: 12.0,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

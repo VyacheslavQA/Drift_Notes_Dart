@@ -548,17 +548,83 @@ class OfflineStorageService {
     }
   }
 
-  /// Сохранение заметки рыбалки в офлайн режиме с флагом синхронизации
+  /// 🔥 ДОБАВЛЕННЫЙ НЕДОСТАЮЩИЙ МЕТОД: Получить офлайн заметки для конкретного пользователя
+  Future<List<Map<String, dynamic>>> getOfflineFishingNotes(String userId) async {
+    try {
+      final prefs = await preferences;
+      final offlineNotesJson = prefs.getStringList(_offlineNotesKey) ?? [];
+
+      if (kDebugMode) {
+        debugPrint('📱 Всего офлайн заметок в хранилище: ${offlineNotesJson.length}');
+      }
+
+      List<Map<String, dynamic>> userNotes = [];
+
+      if (kDebugMode) {
+        debugPrint('🔍 Ищем заметки для пользователя: $userId');
+      }
+
+      for (var noteJson in offlineNotesJson) {
+        try {
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          final noteUserId = note['userId']?.toString();
+
+          if (kDebugMode) {
+            debugPrint('🔍 Проверяем заметку: ${note['id']}, userId: $noteUserId');
+          }
+
+          if (noteUserId == userId) {
+            userNotes.add(note);
+            if (kDebugMode) {
+              debugPrint('✅ Найдена заметка для пользователя: ${note['id']}');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('❌ Ошибка при декодировании офлайн заметки: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('📊 ИТОГО найдено заметок для пользователя $userId: ${userNotes.length}');
+      }
+
+      return userNotes;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения офлайн заметок: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Сохранение заметки рыбалки в офлайн режиме с флагом синхронизации (С ОТЛАДКОЙ)
   Future<void> saveOfflineFishingNote(Map<String, dynamic> noteData) async {
     try {
+      debugPrint('🔥 === НАЧАЛО СОХРАНЕНИЯ ОФЛАЙН ЗАМЕТКИ ===');
+      debugPrint('🔥 Данные заметки: ${noteData.keys.toList()}');
+      debugPrint('🔥 ID заметки: ${noteData['id']}');
+      debugPrint('🔥 userId заметки: ${noteData['userId']}');
+      debugPrint('🔥 Локация: ${noteData['location']}');
+
       // Добавляем флаг синхронизации
       noteData['isSynced'] = false;
       noteData['offlineCreatedAt'] = DateTime.now().toIso8601String();
 
+      // ПРИНУДИТЕЛЬНО проверяем, что userId есть
+      if (noteData['userId'] == null || noteData['userId'].toString().isEmpty) {
+        debugPrint('❌ КРИТИЧЕСКАЯ ОШИБКА: userId отсутствует в данных заметки!');
+        debugPrint('❌ Полные данные: $noteData');
+        throw Exception('userId обязателен для офлайн заметки');
+      }
+
       await saveOfflineNote(noteData);
       debugPrint('✅ Заметка сохранена в офлайн режиме с флагом синхронизации');
+      debugPrint('🔥 === КОНЕЦ СОХРАНЕНИЯ ОФЛАЙН ЗАМЕТКИ ===');
     } catch (e) {
       debugPrint('❌ Ошибка сохранения заметки в офлайн режиме: $e');
+      debugPrint('❌ Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }

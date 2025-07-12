@@ -206,13 +206,13 @@ class SubscriptionService {
       }
 
       // 3. Получаем текущее использование с учетом локальных счетчиков
-      final currentUsage = await _getCurrentOfflineUsage(contentType);
+      final currentUsage = await getCurrentOfflineUsage(contentType);
       final limit = getLimit(contentType);
 
-      // 4. ЖЕСТКАЯ ПРОВЕРКА: лимит + grace period
-      if (currentUsage >= limit + SubscriptionConstants.offlineGraceLimit) {
+      // 4. ЖЕСТКАЯ ПРОВЕРКА: строгий лимит для UI (БЕЗ grace period)
+      if (currentUsage >= limit) {
         if (kDebugMode) {
-          debugPrint('❌ Превышен лимит + grace period для $contentType: $currentUsage >= ${limit + SubscriptionConstants.offlineGraceLimit}');
+          debugPrint('❌ Превышен лимит для $contentType: $currentUsage >= $limit');
         }
         return false; // Блокировка
       }
@@ -233,7 +233,7 @@ class SubscriptionService {
   /// Получение детальной информации о статусе офлайн использования
   Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
     try {
-      final currentUsage = await _getCurrentOfflineUsage(contentType);
+      final currentUsage = await getCurrentOfflineUsage(contentType);
       final limit = getLimit(contentType);
       final canCreate = await canCreateContentOffline(contentType);
 
@@ -267,8 +267,8 @@ class SubscriptionService {
     }
   }
 
-  /// Получение текущего использования с учетом локальных счетчиков
-  Future<int> _getCurrentOfflineUsage(ContentType contentType) async {
+  /// 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Публичный метод получения текущего использования с учетом локальных счетчиков
+  Future<int> getCurrentOfflineUsage(ContentType contentType) async {
     try {
       // Получаем серверное использование (из кэша)
       final serverUsage = await getCurrentUsage(contentType);
@@ -391,16 +391,16 @@ class SubscriptionService {
     }
   }
 
-  /// Получение UsageLimitsModel для кэширования
+  /// 🔥 ИСПРАВЛЕНО: Получение UsageLimitsModel для кэширования с учетом офлайн данных
   Future<UsageLimitsModel?> _loadUsageLimits() async {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) return null;
 
-      // Создаем UsageLimitsModel из текущих данных
-      final fishingNotes = await getCurrentUsage(ContentType.fishingNotes);
-      final markerMaps = await getCurrentUsage(ContentType.markerMaps);
-      final expenses = await getCurrentUsage(ContentType.expenses);
+      // 🔥 ИСПРАВЛЕНО: Создаем UsageLimitsModel с учетом офлайн данных
+      final fishingNotes = await getCurrentOfflineUsage(ContentType.fishingNotes);
+      final markerMaps = await getCurrentOfflineUsage(ContentType.markerMaps);
+      final expenses = await getCurrentOfflineUsage(ContentType.expenses);
 
       return UsageLimitsModel(
         userId: userId,
@@ -418,7 +418,7 @@ class SubscriptionService {
     }
   }
 
-  /// Получение статистики офлайн использования
+  /// 🔥 ИСПРАВЛЕНО: Получение статистики офлайн использования
   Future<Map<String, dynamic>> getOfflineUsageStatistics() async {
     try {
       final allLocalCounters = await _offlineStorage.getAllLocalUsageCounters();
@@ -435,9 +435,9 @@ class SubscriptionService {
         stats['localCounters'][entry.key.name] = entry.value;
       }
 
-      // Общее использование
+      // 🔥 ИСПРАВЛЕНО: Общее использование с учетом офлайн счетчиков
       for (final contentType in ContentType.values) {
-        final total = await _getCurrentOfflineUsage(contentType);
+        final total = await getCurrentOfflineUsage(contentType);
         stats['totalUsage'][contentType.name] = total;
       }
 
@@ -658,7 +658,7 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Проверка возможности создания контента с новой структурой
+  /// 🔥 ИСПРАВЛЕНО: Проверка возможности создания контента с учетом офлайн лимитов
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
       // Если пользователь имеет премиум - разрешаем всё
@@ -671,12 +671,8 @@ class SubscriptionService {
         return false;
       }
 
-      // Получаем текущее использование
-      final currentUsage = await getCurrentUsage(contentType);
-      final limit = getLimit(contentType);
-
-      // Проверяем лимит
-      return currentUsage < limit;
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем офлайн проверку лимитов
+      return await canCreateContentOffline(contentType);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки возможности создания контента: $e');
@@ -765,7 +761,7 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Увеличение счетчика использования с проверкой офлайн лимитов
+  /// 🔥 ИСПРАВЛЕНО: Увеличение счетчика использования с проверкой офлайн лимитов
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
@@ -773,8 +769,11 @@ class SubscriptionService {
         return true;
       }
 
-      // 🔥 НОВОЕ: Проверяем возможность создания контента с учетом офлайн лимитов
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем возможность создания контента с учетом офлайн лимитов
       if (!await canCreateContentOffline(contentType)) {
+        if (kDebugMode) {
+          debugPrint('❌ Блокировка создания $contentType - превышен лимит с учетом офлайн данных');
+        }
         return false;
       }
 
@@ -831,14 +830,17 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Получение информации об использовании для UI (асинхронно)
+  /// 🔥 ИСПРАВЛЕНО: Получение информации об использовании для UI (асинхронно) с учетом офлайн данных
   Future<Map<ContentType, Map<String, int>>> getUsageInfo() async {
     try {
       final result = <ContentType, Map<String, int>>{};
 
       for (final contentType in ContentType.values) {
+        // 🔥 ИСПРАВЛЕНО: Получаем общее использование (серверное + офлайн)
+        final totalUsage = await getCurrentOfflineUsage(contentType);
+
         result[contentType] = {
-          'current': await getCurrentUsage(contentType),
+          'current': totalUsage,
           'limit': getLimit(contentType),
         };
       }

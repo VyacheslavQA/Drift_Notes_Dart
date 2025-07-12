@@ -6,7 +6,7 @@ import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/subscription_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: заменил repository на service
+import '../../repositories/fishing_note_repository.dart'; // ИСПРАВЛЕНО: используем repository для офлайн поддержки
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../utils/date_formatter.dart';
@@ -15,9 +15,9 @@ import '../../widgets/loading_overlay.dart';
 import '../../widgets/subscription/premium_create_button.dart';
 import '../../widgets/subscription/usage_badge.dart';
 import '../../localization/app_localizations.dart';
+import '../subscription/paywall_screen.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
-
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({super.key});
@@ -28,7 +28,8 @@ class FishingNotesListScreen extends StatefulWidget {
 
 class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     with SingleTickerProviderStateMixin {
-  final _firebaseService = FirebaseService();
+  // ИСПРАВЛЕНО: используем FishingNoteRepository вместо FirebaseService
+  final _fishingNoteRepository = FishingNoteRepository();
   final _subscriptionService = SubscriptionService();
 
   List<FishingNoteModel> _notes = [];
@@ -37,6 +38,14 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  // 🔥 ДОБАВЛЕНО: Кэширование для предотвращения множественных вызовов
+  SubscriptionStatus? _cachedSubscriptionStatus;
+  int? _cachedTotalUsage; // 🚨 ИСПРАВЛЕНО: серверное + офлайн использование
+  int? _cachedLimit;
+  bool _subscriptionDataLoaded = false;
+  bool? _cachedHasPremium;
+  bool? _cachedCanCreate; // 🚨 НОВОЕ: кэшируем результат проверки лимитов
 
   @override
   void initState() {
@@ -51,7 +60,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _loadNotes();
+    // 🚨 ИСПРАВЛЕНО: Сначала загружаем данные подписки, ПОТОМ заметки
+    _loadData();
   }
 
   @override
@@ -60,101 +70,34 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     super.dispose();
   }
 
-  Future<void> _loadNotes() async {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Объединенная загрузка данных
+  Future<void> _loadData() async {
     try {
-      if (_firebaseService.currentUserId == null) {
-        if (mounted) {
-          setState(() {
-            _errorMessage = 'Пользователь не авторизован. Войдите в аккаунт.';
-            _isLoading = false;
-          });
-        }
-        return;
-      }
-
-      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
-
-      // Преобразуем QuerySnapshot в List<FishingNoteModel>
-      final List<FishingNoteModel> notes = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        // Преобразуем данные поклевок
-        List<BiteRecord> biteRecords = [];
-        if (data['biteRecords'] is List) {
-          biteRecords = (data['biteRecords'] as List).map((record) {
-            if (record is Map<String, dynamic>) {
-              return BiteRecord(
-                id: record['id'] ?? '',
-                time: record['time'] is int
-                    ? DateTime.fromMillisecondsSinceEpoch(record['time'])
-                    : DateTime.now(),
-                fishType: record['fishType'] ?? '',
-                weight: (record['weight'] ?? 0).toDouble(),
-                length: (record['length'] ?? 0).toDouble(),
-                notes: record['notes'] ?? '',
-                photoUrls: List<String>.from(record['photoUrls'] ?? []),
-              );
-            }
-            return BiteRecord(
-              id: '',
-              time: DateTime.now(),
-              fishType: '',
-              weight: 0.0,
-              length: 0.0,
-              notes: '',
-              photoUrls: [],
-            );
-          }).toList();
-        }
-
-        // Создаем модель FishingNoteModel используя конструктор
-        return FishingNoteModel(
-          id: doc.id,
-          userId: _firebaseService.currentUserId!,
-          location: data['location'] ?? '',
-          latitude: (data['latitude'] ?? 0.0).toDouble(),
-          longitude: (data['longitude'] ?? 0.0).toDouble(),
-          date: data['date'] is int
-              ? DateTime.fromMillisecondsSinceEpoch(data['date'])
-              : DateTime.now(),
-          endDate: data['endDate'] is int
-              ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
-              : null,
-          isMultiDay: data['isMultiDay'] ?? false,
-          tackle: data['tackle'] ?? '',
-          notes: data['notes'] ?? '',
-          photoUrls: List<String>.from(data['photoUrls'] ?? []),
-          fishingType: data['fishingType'] ?? '',
-          weather: data['weather'] != null
-              ? _createFishingWeather(data['weather'])
-              : null,
-          biteRecords: biteRecords,
-          mapMarkers: List<Map<String, dynamic>>.from(data['mapMarkers'] ?? []),
-          aiPrediction: data['aiPrediction'],
-        );
-      }).toList();
+      debugPrint('🔄 FishingNotesListScreen: Начинаем загрузку данных...');
 
       if (!mounted) return;
 
-      // Сортируем по дате создания (самые новые сверху)
-      notes.sort((a, b) => b.date.compareTo(a.date));
-
       setState(() {
-        _notes = notes;
-        _isLoading = false;
+        _isLoading = true;
+        _errorMessage = null;
       });
 
+      // 1. Загружаем данные подписки
+      await _loadSubscriptionData();
+
+      // 2. 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загружаем заметки из Repository
+      await _loadNotesFromRepository();
+
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         _animationController.forward();
       }
+
+      debugPrint('✅ FishingNotesListScreen: Все данные загружены успешно');
     } catch (e) {
+      debugPrint('❌ FishingNotesListScreen: Ошибка загрузки: $e');
 
       if (!mounted) return;
 
@@ -163,6 +106,73 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
         _isLoading = false;
       });
     }
+  }
+
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получение ОБЩЕГО использования (серверное + офлайн)
+  Future<void> _loadSubscriptionData() async {
+    try {
+      debugPrint('🔄 Загружаем данные подписки...');
+
+      final subscription = await _subscriptionService.loadCurrentSubscription();
+      _cachedSubscriptionStatus = subscription.status;
+      _cachedHasPremium = _subscriptionService.hasPremiumAccess();
+
+      // 🚨 ИСПРАВЛЕНО: Получаем ОБЩЕЕ использование с учетом офлайн счетчиков
+      _cachedTotalUsage = await _subscriptionService.getCurrentOfflineUsage(ContentType.fishingNotes);
+      _cachedLimit = _subscriptionService.getLimit(ContentType.fishingNotes);
+
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем офлайн проверку лимитов
+      _cachedCanCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+
+      _subscriptionDataLoaded = true;
+
+      debugPrint('🔍 ПРОВЕРКА ЛИМИТОВ: usage=$_cachedTotalUsage, limit=$_cachedLimit, canCreate=$_cachedCanCreate, premium=$_cachedHasPremium');
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки данных подписки: $e');
+      _subscriptionDataLoaded = true;
+    }
+  }
+
+  // 🚨 НОВЫЙ МЕТОД: Загрузка заметок из Repository
+  Future<void> _loadNotesFromRepository() async {
+    try {
+      debugPrint('🔄 Загружаем заметки из Repository...');
+
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получаем заметки из Repository
+      final notes = await _fishingNoteRepository.getUserFishingNotes();
+
+      debugPrint('✅ Получено заметок из Repository: ${notes.length}');
+
+      // Выводим список полученных заметок для отладки
+      for (int i = 0; i < notes.length; i++) {
+        final note = notes[i];
+        debugPrint('📋 Заметка ${i + 1}: ${note.id} - ${note.location} (${note.date})');
+      }
+
+      if (mounted) {
+        setState(() {
+          _notes = notes; // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Устанавливаем заметки в состояние!
+        });
+      }
+
+      debugPrint('✅ Заметки успешно установлены в UI состояние');
+    } catch (e) {
+      debugPrint('❌ КРИТИЧЕСКАЯ ошибка загрузки заметок из Repository: $e');
+
+      // В случае ошибки устанавливаем пустой список
+      if (mounted) {
+        setState(() {
+          _notes = [];
+        });
+      }
+
+      rethrow;
+    }
+  }
+
+  // 🚨 УПРОЩЕН: Теперь только обновляем данные
+  Future<void> _loadNotes() async {
+    await _loadData();
   }
 
   // Обработка ошибок с более понятными сообщениями
@@ -181,7 +191,17 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
+  // 🚨 ИСПРАВЛЕНО: Проверяем лимиты ПЕРЕД созданием заметки
   Future<void> _addNewNote() async {
+    // 🚨 КРИТИЧЕСКАЯ ПРОВЕРКА: можем ли создать заметку?
+    final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+
+    if (!canCreate) {
+      // 🚨 БЛОКИРУЕМ и показываем PaywallScreen
+      _showPremiumRequired(ContentType.fishingNotes);
+      return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -200,87 +220,25 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
         ),
       );
 
-      _refreshNotesList();
+      // 🔥 ДОБАВЛЕНО: Обновляем кэш после создания заметки
+      await _refreshNotesList();
     }
   }
 
-  // Обновлен метод для новой структуры Firebase
+  // 🚨 ИСПРАВЛЕН: Полная перезагрузка данных и заметок
   Future<void> _refreshNotesList() async {
     if (!mounted) return;
 
     try {
-      // Используем getUserFishingNotesNew() без параметра userId
-      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
+      debugPrint('🔄 FishingNotesListScreen: Обновление данных и заметок...');
 
-      // Преобразуем QuerySnapshot в List<FishingNoteModel>
-      final List<FishingNoteModel> notes = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+      // 🚨 ИСПРАВЛЕНО: Полная перезагрузка всех данных
+      await _loadData();
 
-        // Преобразуем данные поклевок
-        List<BiteRecord> biteRecords = [];
-        if (data['biteRecords'] is List) {
-          biteRecords = (data['biteRecords'] as List).map((record) {
-            if (record is Map<String, dynamic>) {
-              return BiteRecord(
-                id: record['id'] ?? '',
-                time: record['time'] is int
-                    ? DateTime.fromMillisecondsSinceEpoch(record['time'])
-                    : DateTime.now(),
-                fishType: record['fishType'] ?? '',
-                weight: (record['weight'] ?? 0).toDouble(),
-                length: (record['length'] ?? 0).toDouble(),
-                notes: record['notes'] ?? '',
-                photoUrls: List<String>.from(record['photoUrls'] ?? []),
-              );
-            }
-            return BiteRecord(
-              id: '',
-              time: DateTime.now(),
-              fishType: '',
-              weight: 0.0,
-              length: 0.0,
-              notes: '',
-              photoUrls: [],
-            );
-          }).toList();
-        }
-
-        // Создаем модель FishingNoteModel используя конструктор
-        return FishingNoteModel(
-          id: doc.id,
-          userId: _firebaseService.currentUserId!,
-          location: data['location'] ?? '',
-          latitude: (data['latitude'] ?? 0.0).toDouble(),
-          longitude: (data['longitude'] ?? 0.0).toDouble(),
-          date: data['date'] is int
-              ? DateTime.fromMillisecondsSinceEpoch(data['date'])
-              : DateTime.now(),
-          endDate: data['endDate'] is int
-              ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
-              : null,
-          isMultiDay: data['isMultiDay'] ?? false,
-          tackle: data['tackle'] ?? '',
-          notes: data['notes'] ?? '',
-          photoUrls: List<String>.from(data['photoUrls'] ?? []),
-          fishingType: data['fishingType'] ?? '',
-          weather: data['weather'] != null
-              ? _createFishingWeather(data['weather'])
-              : null,
-          biteRecords: biteRecords,
-          mapMarkers: List<Map<String, dynamic>>.from(data['mapMarkers'] ?? []),
-          aiPrediction: data['aiPrediction'],
-        );
-      }).toList();
-
-      if (!mounted) return;
-
-      // Сортируем по дате создания (самые новые сверху)
-      notes.sort((a, b) => b.date.compareTo(a.date));
-
-      setState(() {
-        _notes = notes;
-      });
+      debugPrint('✅ FishingNotesListScreen: Данные и заметки обновлены');
     } catch (e) {
+      debugPrint('❌ FishingNotesListScreen: Ошибка обновления: $e');
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -330,15 +288,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
                 maxLines: 1,
               ),
             ),
-            // Бейдж использования в заголовке
-            UsageBadge(
-              contentType: ContentType.fishingNotes,
-              fontSize: isSmallScreen ? 10 : 12,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 6 : 8,
-                vertical: isSmallScreen ? 2 : 4,
-              ),
-            ),
+            // 🔥 ИСПРАВЛЕНО: Кэшированный бейдж использования с ОБЩИМ счетчиком
+            if (_subscriptionDataLoaded) _buildUsageBadge(isSmallScreen),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -363,7 +314,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
         child: RefreshIndicator(
           onRefresh: () async {
             _animationController.reset();
-            await _loadNotes();
+            await _loadData(); // 🚨 ИСПРАВЛЕНО: Загружаем ВСЕ данные
           },
           color: AppConstants.primaryColor,
           backgroundColor: AppConstants.surfaceColor,
@@ -379,22 +330,107 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               ),
               itemCount: _notes.length,
               itemBuilder: (context, index) {
-                Future.delayed(Duration(milliseconds: 50 * index), () {
-                  if (mounted) setState(() {});
-                });
+                // 🚨 ИСПРАВЛЕНО: Убрали бесконечные перестройки
                 return _buildNoteCard(_notes[index]);
               },
             ),
           ),
         ),
       ),
-      // FloatingActionButton с проверкой лимитов
-      floatingActionButton: PremiumFloatingActionButton(
-        contentType: ContentType.fishingNotes,
-        onPressed: _addNewNote,
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        heroTag: "add_fishing_note",
+      // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат проверки лимитов
+      floatingActionButton: _subscriptionDataLoaded
+          ? _buildFloatingActionButton()
+          : null,
+    );
+  }
+
+  // 🔥 ИСПРАВЛЕНО: Бейдж использования показывает ОБЩЕЕ использование
+  Widget _buildUsageBadge(bool isSmallScreen) {
+    if (_cachedHasPremium == true) {
+      return Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 6 : 8,
+          vertical: isSmallScreen ? 2 : 4,
+        ),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.stars,
+              color: Colors.white,
+              size: isSmallScreen ? 12 : 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '∞',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 10 : 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final usage = _cachedTotalUsage ?? 0; // 🚨 ИСПРАВЛЕНО: ОБЩЕЕ использование
+    final limit = _cachedLimit ?? 0;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 6 : 8,
+        vertical: isSmallScreen ? 2 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: limit > 0 && (usage / limit) >= 0.8
+            ? Colors.orange.withOpacity(0.9)
+            : AppConstants.primaryColor.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '$usage/$limit',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isSmallScreen ? 10 : 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат проверки лимитов
+  Widget _buildFloatingActionButton() {
+    final canCreate = _cachedCanCreate ?? false; // 🚨 ИСПРАВЛЕНО: используем кэшированный результат
+
+    return FloatingActionButton(
+      onPressed: canCreate ? _addNewNote : () => _showPremiumRequired(ContentType.fishingNotes), // 🚨 ИСПРАВЛЕНО: показываем PaywallScreen
+      backgroundColor: canCreate
+          ? AppConstants.primaryColor
+          : Colors.grey,
+      foregroundColor: AppConstants.textColor,
+      heroTag: "add_fishing_note",
+      child: Icon(
+        canCreate ? Icons.add : Icons.lock,
+        size: 28,
+      ),
+    );
+  }
+
+  // 🚨 ИСПРАВЛЕНО: Показываем PaywallScreen как в HomeScreen
+  void _showPremiumRequired(ContentType contentType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaywallScreen(
+          contentType: contentType.name,
+        ),
       ),
     );
   }
@@ -431,7 +467,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               child: ElevatedButton(
                 onPressed: () {
                   _animationController.reset();
-                  _loadNotes();
+                  _loadData(); // 🚨 ИСПРАВЛЕНО: Загружаем ВСЕ данные
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppConstants.primaryColor,
@@ -494,28 +530,16 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               ),
               SizedBox(height: ResponsiveConstants.spacingXL),
 
-              // Кнопка создания первой заметки с проверкой лимитов
-              SizedBox(
-                width: double.infinity,
-                child: PremiumCreateButton(
-                  contentType: ContentType.fishingNotes,
-                  onCreatePressed: _addNewNote,
-                  customText: localizations.translate('create_first_note'),
-                  customIcon: Icons.add,
-                  showUsageBadge: false, // В пустом состоянии не показываем бейдж
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  borderRadius: 24,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 20 : 24,
-                    vertical: 16,
-                  ),
+              // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат проверки лимитов
+              if (_subscriptionDataLoaded)
+                SizedBox(
+                  width: double.infinity,
+                  child: _buildCreateButton(localizations, isSmallScreen),
                 ),
-              ),
 
               // Индикатор лимитов под кнопкой
               SizedBox(height: ResponsiveConstants.spacingM),
-              _buildLimitIndicator(),
+              if (_subscriptionDataLoaded) _buildLimitIndicator(),
             ],
           ),
         ),
@@ -523,100 +547,131 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
   }
 
-  // Индикатор лимитов для пустого состояния
+  // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат проверки лимитов
+  Widget _buildCreateButton(AppLocalizations localizations, bool isSmallScreen) {
+    final canCreate = _cachedCanCreate ?? false; // 🚨 ИСПРАВЛЕНО: используем кэш
+
+    return ElevatedButton.icon(
+      onPressed: canCreate ? _addNewNote : () => _showPremiumRequired(ContentType.fishingNotes), // 🚨 ИСПРАВЛЕНО: PaywallScreen
+      style: ElevatedButton.styleFrom(
+        backgroundColor: canCreate
+            ? AppConstants.primaryColor
+            : Colors.grey,
+        foregroundColor: AppConstants.textColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 20 : 24,
+          vertical: 16,
+        ),
+      ),
+      icon: Icon(
+        canCreate ? Icons.add : Icons.lock,
+        size: isSmallScreen ? 20 : 24,
+      ),
+      label: Text(
+        canCreate
+            ? localizations.translate('create_first_note')
+            : localizations.translate('upgrade_to_premium'),
+        style: TextStyle(
+          fontSize: isSmallScreen ? 14 : 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // 🔥 ИСПРАВЛЕНО: Индикатор лимитов с ОБЩИМ использованием
   Widget _buildLimitIndicator() {
-    return StreamBuilder<SubscriptionStatus>(
-      stream: _subscriptionService.subscriptionStatusStream,
-      builder: (context, snapshot) {
-        final localizations = AppLocalizations.of(context);
-        final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+    final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
-        if (_subscriptionService.hasPremiumAccess()) {
-          return Container(
-            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.stars,
-                  color: Colors.white,
-                  size: isSmallScreen ? 16 : 20,
-                ),
-                SizedBox(width: ResponsiveConstants.spacingS),
-                Text(
-                  localizations.translate('premium_unlimited_notes'),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 14 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Используем синхронную версию
-        final currentUsage = _subscriptionService.getCurrentUsageSync(ContentType.fishingNotes);
-        final limit = _subscriptionService.getLimit(ContentType.fishingNotes);
-        final remaining = limit - currentUsage;
-
-        return Container(
-          padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-          decoration: BoxDecoration(
-            color: AppConstants.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppConstants.primaryColor.withOpacity(0.3),
-              width: 1,
-            ),
+    if (_cachedHasPremium == true) {
+      return Container(
+        padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: AppConstants.primaryColor,
-                    size: isSmallScreen ? 16 : 20,
-                  ),
-                  SizedBox(width: ResponsiveConstants.spacingS),
-                  Text(
-                    '${localizations.translate('you_can_create')} $remaining ${localizations.translate('more_notes')}',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: isSmallScreen ? 14 : 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.stars,
+              color: Colors.white,
+              size: isSmallScreen ? 16 : 20,
+            ),
+            SizedBox(width: ResponsiveConstants.spacingS),
+            Text(
+              localizations.translate('premium_unlimited_notes'),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 14 : 16,
+                fontWeight: FontWeight.bold,
               ),
-              SizedBox(height: ResponsiveConstants.spacingS),
-              // Прогресс-бар
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: limit > 0 ? (currentUsage / limit).clamp(0.0, 1.0) : 0.0,
-                  minHeight: 6,
-                  backgroundColor: Colors.grey.withOpacity(0.3),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    limit > 0 && (currentUsage / limit) >= 0.8
-                        ? Colors.orange
-                        : AppConstants.primaryColor,
-                  ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final usage = _cachedTotalUsage ?? 0; // 🚨 ИСПРАВЛЕНО: ОБЩЕЕ использование
+    final limit = _cachedLimit ?? 0;
+    final remaining = limit - usage;
+
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppConstants.primaryColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppConstants.primaryColor,
+                size: isSmallScreen ? 16 : 20,
+              ),
+              SizedBox(width: ResponsiveConstants.spacingS),
+              Text(
+                remaining > 0
+                    ? '${localizations.translate('you_can_create')} $remaining ${localizations.translate('more_notes')}'
+                    : localizations.translate('limit_reached'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: isSmallScreen ? 14 : 16,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-        );
-      },
+          SizedBox(height: ResponsiveConstants.spacingS),
+          // Прогресс-бар
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: limit > 0 ? (usage / limit).clamp(0.0, 1.0) : 0.0,
+              minHeight: 6,
+              backgroundColor: Colors.grey.withOpacity(0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                limit > 0 && (usage / limit) >= 0.8
+                    ? Colors.orange
+                    : AppConstants.primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

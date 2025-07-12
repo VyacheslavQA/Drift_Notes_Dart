@@ -10,6 +10,7 @@ import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/marker_map_model.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../repositories/fishing_note_repository.dart'; // 🚨 ДОБАВЛЕНО: используем Repository
 import '../../utils/date_formatter.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
@@ -37,6 +38,7 @@ class FishingNoteDetailScreen extends StatefulWidget {
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   final _firebaseService = FirebaseService();
   final _weatherSettings = WeatherSettingsService();
+  final _fishingNoteRepository = FishingNoteRepository(); // 🚨 ДОБАВЛЕНО: Repository
 
   FishingNoteModel? _note;
   bool _isLoading = true;
@@ -56,6 +58,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     _loadNote();
   }
 
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем Repository вместо прямого Firebase
   Future<void> _loadNote() async {
     setState(() {
       _isLoading = true;
@@ -63,96 +66,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     });
 
     try {
-      // Получаем все заметки пользователя
-      final querySnapshot = await _firebaseService.getUserFishingNotesNew();
+      debugPrint('🔍 FishingNoteDetailScreen: Загружаем заметку с ID: ${widget.noteId}');
 
-      // Ищем нужную заметку по ID
-      final noteDoc = querySnapshot.docs.firstWhere(
-            (doc) => doc.id == widget.noteId,
-        orElse: () => throw Exception('Заметка не найдена'),
-      );
+      // 🚨 ИСПРАВЛЕНО: Используем Repository, который работает с офлайн заметками
+      final note = await _fishingNoteRepository.getFishingNoteById(widget.noteId);
 
-      // Преобразуем данные в модель
-      final data = noteDoc.data() as Map<String, dynamic>;
-
-      // Обрабатываем timestamp поля
-      if (data['date'] is int) {
-        data['date'] = DateTime.fromMillisecondsSinceEpoch(data['date']);
-      }
-      if (data['endDate'] is int) {
-        data['endDate'] = DateTime.fromMillisecondsSinceEpoch(data['endDate']);
-      }
-
-      // Обрабатываем bite records
-      if (data['biteRecords'] is List) {
-        final biteRecordsList = data['biteRecords'] as List;
-        data['biteRecords'] = biteRecordsList.map((record) {
-          if (record is Map<String, dynamic>) {
-            if (record['time'] is int) {
-              record['time'] = DateTime.fromMillisecondsSinceEpoch(record['time']);
-            }
-          }
-          return record;
-        }).toList();
-      }
-
-      // Обрабатываем weather
-      if (data['weather'] is Map<String, dynamic>) {
-        final weatherData = data['weather'] as Map<String, dynamic>;
-        if (weatherData['observationTime'] is int) {
-          weatherData['observationTime'] = DateTime.fromMillisecondsSinceEpoch(weatherData['observationTime']);
-        }
-      }
-
-      // Создаем модель заметки через конструктор
-      final note = FishingNoteModel(
-        id: noteDoc.id,
-        userId: _firebaseService.currentUserId!, // Добавляем userId
-        title: data['title'] ?? '',
-        location: data['location'] ?? '',
-        date: data['date'] ?? DateTime.now(),
-        endDate: data['endDate'],
-        isMultiDay: data['isMultiDay'] ?? false,
-        fishingType: data['fishingType'] ?? 'river',
-        tackle: data['tackle'] ?? '',
-        notes: data['notes'] ?? '',
-        photoUrls: List<String>.from(data['photoUrls'] ?? []),
-        coverPhotoUrl: data['coverPhotoUrl'] ?? '',
-        coverCropSettings: data['coverCropSettings'] != null
-            ? Map<String, dynamic>.from(data['coverCropSettings'])
-            : null,
-        biteRecords: (data['biteRecords'] as List?)?.map((record) {
-          return BiteRecord(
-            id: record['id'] ?? '',
-            time: record['time'] ?? DateTime.now(),
-            fishType: record['fishType'] ?? '',
-            weight: (record['weight'] ?? 0).toDouble(),
-            length: (record['length'] ?? 0).toDouble(),
-            notes: record['notes'] ?? '',
-            photoUrls: List<String>.from(record['photoUrls'] ?? []),
-          );
-        }).toList() ?? [],
-        weather: data['weather'] != null
-            ? FishingWeather(
-          temperature: (data['weather']['temperature'] ?? 0).toDouble(),
-          feelsLike: (data['weather']['feelsLike'] ?? 0).toDouble(),
-          humidity: data['weather']['humidity'] ?? 0,
-          pressure: (data['weather']['pressure'] ?? 0).toDouble(),
-          windSpeed: (data['weather']['windSpeed'] ?? 0).toDouble(),
-          windDirection: data['weather']['windDirection'] ?? '',
-          cloudCover: data['weather']['cloudCover'] ?? 0,
-          sunrise: data['weather']['sunrise'] ?? '',
-          sunset: data['weather']['sunset'] ?? '',
-          isDay: data['weather']['isDay'] ?? true,
-          observationTime: data['weather']['observationTime'] ?? DateTime.now(),
-        )
-            : null,
-        latitude: (data['latitude'] ?? 0).toDouble(),
-        longitude: (data['longitude'] ?? 0).toDouble(),
-        aiPrediction: data['aiPrediction'] != null
-            ? Map<String, dynamic>.from(data['aiPrediction'])
-            : null,
-      );
+      debugPrint('✅ FishingNoteDetailScreen: Заметка загружена: ${note.id} - ${note.location}');
 
       if (mounted) {
         setState(() {
@@ -167,6 +86,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         _loadLinkedMarkerMaps();
       }
     } catch (e) {
+      debugPrint('❌ FishingNoteDetailScreen: Ошибка загрузки заметки: $e');
+
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         setState(() {
@@ -595,7 +516,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Обработчики для работы с записями о поклёвках
+  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
   Future<void> _addBiteRecord(BiteRecord record) async {
     if (_note == null) return;
 
@@ -609,11 +530,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       // Создаем обновленную модель заметки
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // Преобразуем модель в Map для сохранения
-      final noteData = _convertNoteToMap(updatedNote);
-
-      // Сохраняем в Firebase
-      await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
+      // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
 
       // Обновляем локальное состояние
       if (mounted) {
@@ -646,6 +564,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
   Future<void> _updateBiteRecord(BiteRecord record) async {
     if (_note == null) return;
 
@@ -662,11 +581,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         // Создаем обновленную модель заметки
         final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-        // Преобразуем модель в Map для сохранения
-        final noteData = _convertNoteToMap(updatedNote);
-
-        // Сохраняем в Firebase
-        await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
+        // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
+        await _fishingNoteRepository.updateFishingNote(updatedNote);
 
         // Обновляем локальное состояние
         if (mounted) {
@@ -711,6 +627,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
+  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
   Future<void> _deleteBiteRecord(String recordId) async {
     if (_note == null) return;
 
@@ -724,11 +641,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       // Создаем обновленную модель заметки
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // Преобразуем модель в Map для сохранения
-      final noteData = _convertNoteToMap(updatedNote);
-
-      // Сохраняем в Firebase
-      await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
+      // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
 
       // Обновляем локальное состояние
       if (mounted) {
@@ -832,7 +746,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Выбор обложки
+  // 🚨 ИСПРАВЛЕНО: Выбор обложки через Repository
   Future<void> _selectCoverPhoto() async {
     if (_note == null || _note!.photoUrls.isEmpty) {
       if (mounted) {
@@ -868,11 +782,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           coverCropSettings: result['cropSettings'],
         );
 
-        // Преобразуем модель в Map для сохранения
-        final noteData = _convertNoteToMap(updatedNote);
-
-        // Сохраняем в Firebase
-        await _firebaseService.updateFishingNoteNew(updatedNote.id, noteData);
+        // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
+        await _fishingNoteRepository.updateFishingNote(updatedNote);
 
         // Обновляем локальное состояние
         if (mounted) {
@@ -922,6 +833,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
+  // 🚨 ИСПРАВЛЕНО: Удаление заметки через Repository
   Future<void> _deleteNote() async {
     if (!mounted) return;
 
@@ -962,7 +874,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       try {
         setState(() => _isLoading = true);
 
-        await _firebaseService.deleteFishingNoteNew(widget.noteId);
+        // 🚨 ИСПРАВЛЕНО: Используем Repository для удаления
+        await _fishingNoteRepository.deleteFishingNote(widget.noteId);
 
         if (mounted) {
           final localizations = AppLocalizations.of(context);

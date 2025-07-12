@@ -9,6 +9,7 @@ import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../repositories/fishing_note_repository.dart'; // 🚨 ДОБАВЛЕНО: используем Repository
 import '../../services/weather/weather_service.dart';
 import '../../services/weather_settings_service.dart';
 import '../../utils/network_utils.dart';
@@ -40,6 +41,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   final _firebaseService = FirebaseService();
   final _weatherService = WeatherService();
   final _weatherSettings = WeatherSettingsService();
+  final _fishingNoteRepository = FishingNoteRepository(); // 🚨 ДОБАВЛЕНО: Repository
 
   late DateTime _startDate;
   late DateTime _endDate;
@@ -432,50 +434,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     }
   }
 
-  // ИСПРАВЛЕНО: Преобразование модели в Map для новой структуры Firebase
-  Map<String, dynamic> _convertNoteToMap(FishingNoteModel note) {
-    return {
-      'title': note.title,
-      'location': note.location,
-      'date': note.date.millisecondsSinceEpoch,
-      'endDate': note.endDate?.millisecondsSinceEpoch,
-      'isMultiDay': note.isMultiDay,
-      'fishingType': note.fishingType,
-      'tackle': note.tackle,
-      'notes': note.notes,
-      'photoUrls': note.photoUrls,
-      'coverPhotoUrl': note.coverPhotoUrl,
-      'coverCropSettings': note.coverCropSettings,
-      'biteRecords': note.biteRecords.map((record) => {
-        'id': record.id,
-        'time': record.time.millisecondsSinceEpoch,
-        'fishType': record.fishType,
-        'weight': record.weight,
-        'length': record.length,
-        'notes': record.notes,
-        'photoUrls': record.photoUrls,
-      }).toList(),
-      'weather': note.weather != null ? {
-        'temperature': note.weather!.temperature,
-        'feelsLike': note.weather!.feelsLike,
-        'humidity': note.weather!.humidity,
-        'pressure': note.weather!.pressure,
-        'windSpeed': note.weather!.windSpeed,
-        'windDirection': note.weather!.windDirection,
-        'cloudCover': note.weather!.cloudCover,
-        'sunrise': note.weather!.sunrise,
-        'sunset': note.weather!.sunset,
-        'isDay': note.weather!.isDay,
-        'observationTime': note.weather!.observationTime.millisecondsSinceEpoch,
-      } : null,
-      'latitude': note.latitude,
-      'longitude': note.longitude,
-      'aiPrediction': note.aiPrediction,
-      // ❌ userId НЕ включаем в данные - он теперь часть пути коллекции!
-    };
-  }
-
-  // ИСПРАВЛЕНО: Метод сохранения заметки с новой структурой Firebase
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем Repository вместо Firebase
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -563,45 +522,22 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         aiPrediction: aiPredictionMap,
       );
 
-      // Преобразуем модель в Map для Firebase (БЕЗ userId)
-      final noteData = _convertNoteToMap(updatedNote);
-      debugPrint('📝 Данные для сохранения подготовлены');
+      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем Repository для сохранения
+      debugPrint('🔄 Сохраняем заметку через Repository...');
+      await _fishingNoteRepository.updateFishingNote(updatedNote);
 
-      if (isOnline) {
-        // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ SUBCOLLECTIONS СТРУКТУРЫ
-        debugPrint('🔥 Обновляем заметку в Firebase через updateFishingNoteNew()');
-        debugPrint('📍 Путь: /users/{currentUserId}/fishing_notes/${widget.note.id}');
-
-        await _firebaseService.updateFishingNoteNew(widget.note.id, noteData);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                localizations.translate('note_updated_successfully'),
-              ),
-              backgroundColor: Colors.green,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              localizations.translate('note_updated_successfully'),
             ),
-          );
+            backgroundColor: Colors.green,
+          ),
+        );
 
-          debugPrint('✅ Заметка успешно обновлена в Firebase');
-          Navigator.pop(context, true); // Возвращаем true для обновления списка заметок
-        }
-      } else {
-        // Если нет интернета, показываем сообщение
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                localizations.translate('no_internet_changes_saved_locally'),
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-
-          debugPrint('⚠️ Нет интернета - изменения сохранены локально');
-          Navigator.pop(context, true);
-        }
+        debugPrint('✅ Заметка успешно обновлена через Repository');
+        Navigator.pop(context, true); // Возвращаем true для обновления списка заметок
       }
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении заметки: $e');

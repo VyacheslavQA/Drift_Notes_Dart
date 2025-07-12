@@ -9,6 +9,7 @@ import '../../constants/subscription_constants.dart';
 import '../../models/usage_limits_model.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../services/subscription/subscription_service.dart';
+import '../../services/offline/offline_storage_service.dart';
 import '../../utils/network_utils.dart';
 
 /// Сервис для отслеживания и управления лимитами использования
@@ -19,6 +20,9 @@ class UsageLimitsService {
 
   final FirebaseService _firebaseService = FirebaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // 🔥 НОВОЕ: Интеграция с офлайн сторажем
+  final OfflineStorageService _offlineStorage = OfflineStorageService();
 
   // Ссылка на SubscriptionService для проверки премиум статуса
   SubscriptionService? _subscriptionService;
@@ -66,15 +70,18 @@ class UsageLimitsService {
         debugPrint('🔄 Инициализация UsageLimitsService...');
       }
 
+      // 🔥 НОВОЕ: Инициализируем офлайн сторадж
+      await _offlineStorage.initialize();
+
       // Загружаем текущие лимиты
       await loadCurrentLimits();
 
-      // КРИТИЧЕСКИ ВАЖНО: Пересчитываем лимиты из реальных данных Firebase
-      await recalculateLimits();
+      // КРИТИЧЕСКИ ВАЖНО: Пересчитываем лимиты из реальных данных Firebase + офлайн
+      await recalculateLimitsWithOffline();
 
       _isInitialized = true;
       if (kDebugMode) {
-        debugPrint('✅ UsageLimitsService инициализирован с реальными данными');
+        debugPrint('✅ UsageLimitsService инициализирован с реальными данными + офлайн');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -139,13 +146,13 @@ class UsageLimitsService {
     return difference.inMinutes < 5;
   }
 
-  /// Получение текущего использования (основной метод для SubscriptionService)
+  /// 🔥 ИСПРАВЛЕНО: Получение текущего использования с учетом офлайн данных
   Future<UsageLimitsModel> getCurrentUsage() async {
     try {
       // Если кэш пустой или устаревший - загружаем и пересчитываем
       if (_cachedLimits == null || !_isDataRecent(_cachedLimits!.updatedAt)) {
         await loadCurrentLimits();
-        await recalculateLimits();
+        await recalculateLimitsWithOffline();
       }
 
       return _cachedLimits ?? UsageLimitsModel.defaultLimits(_firebaseService.currentUserId ?? '');
@@ -157,7 +164,32 @@ class UsageLimitsService {
     }
   }
 
-  /// Проверка возможности создания нового контента с учетом премиум статуса
+  /// 🔥 НОВЫЙ МЕТОД: Получение общего использования (серверное + офлайн)
+  Future<int> _getTotalUsageForType(ContentType contentType) async {
+    try {
+      // Получаем серверное использование
+      final limits = _cachedLimits ?? UsageLimitsModel.defaultLimits(_firebaseService.currentUserId ?? '');
+      final serverUsage = limits.getCountForType(contentType);
+
+      // Получаем офлайн использование
+      final offlineUsage = await _offlineStorage.getLocalUsageCount(contentType);
+
+      final totalUsage = serverUsage + offlineUsage;
+
+      if (kDebugMode) {
+        debugPrint('📊 Общее использование $contentType: сервер=$serverUsage, офлайн=$offlineUsage, всего=$totalUsage');
+      }
+
+      return totalUsage;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения общего использования для $contentType: $e');
+      }
+      return 0;
+    }
+  }
+
+  /// 🔥 КРИТИЧЕСКИ ИСПРАВЛЕНО: Проверка возможности создания нового контента с учетом офлайн лимитов
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
       // Проверяем премиум статус ПЕРВЫМ
@@ -176,8 +208,24 @@ class UsageLimitsService {
         return false;
       }
 
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем SubscriptionService для проверки офлайн лимитов
+      if (_subscriptionService != null) {
+        final canCreate = await _subscriptionService!.canCreateContentOffline(contentType);
+        if (kDebugMode) {
+          debugPrint('🔒 Проверка офлайн лимитов через SubscriptionService: $canCreate');
+        }
+        return canCreate;
+      }
+
+      // Fallback: проверка только серверных лимитов (не рекомендуется)
       final limits = await getCurrentUsage();
-      return limits.canCreateNew(contentType);
+      final canCreateServer = limits.canCreateNew(contentType);
+
+      if (kDebugMode) {
+        debugPrint('⚠️ Fallback: проверка только серверных лимитов: $canCreateServer');
+      }
+
+      return canCreateServer;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки возможности создания контента: $e');
@@ -186,7 +234,7 @@ class UsageLimitsService {
     }
   }
 
-  /// Проверка возможности создания с детализацией
+  /// 🔥 ИСПРАВЛЕНО: Проверка возможности создания с детализацией и учетом офлайн данных
   Future<ContentCreationResult> checkContentCreation(ContentType contentType) async {
     try {
       // Проверяем премиум статус ПЕРВЫМ
@@ -214,23 +262,29 @@ class UsageLimitsService {
         );
       }
 
-      final limits = await getCurrentUsage();
-      final canCreate = limits.canCreateNew(contentType);
-      final currentCount = limits.getCountForType(contentType);
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем общее использование (серверное + офлайн)
+      final totalUsage = await _getTotalUsageForType(contentType);
       final limit = SubscriptionConstants.getContentLimit(contentType);
-      final remaining = limits.getRemainingCount(contentType);
+      final maxAllowed = limit + SubscriptionConstants.offlineGraceLimit;
+
+      final canCreate = totalUsage < maxAllowed;
+      final remaining = maxAllowed - totalUsage;
 
       ContentCreationBlockReason? reason;
       if (!canCreate) {
         reason = ContentCreationBlockReason.limitReached;
       }
 
+      if (kDebugMode) {
+        debugPrint('🔒 Детальная проверка $contentType: $totalUsage < $maxAllowed = $canCreate (remaining: $remaining)');
+      }
+
       return ContentCreationResult(
         canCreate: canCreate,
         reason: reason,
-        currentCount: currentCount,
-        limit: limit,
-        remaining: remaining,
+        currentCount: totalUsage,
+        limit: maxAllowed,
+        remaining: remaining > 0 ? remaining : 0,
       );
     } catch (e) {
       if (kDebugMode) {
@@ -246,7 +300,7 @@ class UsageLimitsService {
     }
   }
 
-  /// Увеличение счетчика использования
+  /// 🔥 ИСПРАВЛЕНО: Увеличение счетчика использования с проверкой офлайн лимитов
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Если премиум - не увеличиваем счетчик
@@ -257,24 +311,35 @@ class UsageLimitsService {
         return true;
       }
 
-      final limits = await getCurrentUsage();
-
-      // Проверяем можно ли увеличить счетчик
-      if (!limits.canCreateNew(contentType)) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Достигнут лимит для типа: $contentType');
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем офлайн лимиты через SubscriptionService
+      if (_subscriptionService != null) {
+        final canCreate = await _subscriptionService!.canCreateContentOffline(contentType);
+        if (!canCreate) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Достигнут офлайн лимит для типа: $contentType');
+          }
+          return false;
         }
-        return false;
+      } else {
+        // Fallback: проверка только серверных лимитов
+        final limits = await getCurrentUsage();
+        if (!limits.canCreateNew(contentType)) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Достигнут серверный лимит для типа: $contentType');
+          }
+          return false;
+        }
       }
 
-      // Увеличиваем счетчик
+      // Увеличиваем серверный счетчик
+      final limits = await getCurrentUsage();
       final updatedLimits = limits.incrementCounter(contentType);
 
       // Сохраняем обновленные лимиты
       await _saveLimits(updatedLimits);
 
       if (kDebugMode) {
-        debugPrint('✅ Счетчик увеличен для $contentType: ${updatedLimits.getCountForType(contentType)}');
+        debugPrint('✅ Серверный счетчик увеличен для $contentType: ${updatedLimits.getCountForType(contentType)}');
       }
       return true;
     } catch (e) {
@@ -285,7 +350,7 @@ class UsageLimitsService {
     }
   }
 
-  /// Уменьшение счетчика использования (при удалении контента)
+  /// ОБНОВЛЕН: Уменьшение счетчика использования (при удалении контента)
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
       final limits = await getCurrentUsage();
@@ -308,11 +373,51 @@ class UsageLimitsService {
     }
   }
 
+  /// 🔥 НОВЫЙ МЕТОД: Пересчет лимитов с учетом офлайн данных
+  Future<void> recalculateLimitsWithOffline() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔄 Пересчет лимитов с учетом офлайн данных...');
+      }
+
+      // Сначала пересчитываем серверные данные
+      await recalculateLimits();
+
+      // Затем логируем информацию об офлайн счетчиках
+      final userId = _firebaseService.currentUserId;
+      if (userId != null) {
+        final offlineCounters = await _offlineStorage.getAllLocalUsageCounters();
+
+        if (kDebugMode) {
+          debugPrint('📊 Офлайн счетчики:');
+          for (final entry in offlineCounters.entries) {
+            debugPrint('   ${entry.key.name}: ${entry.value}');
+          }
+
+          // Показываем общую статистику
+          debugPrint('📊 Общее использование (серверное + офлайн):');
+          for (final contentType in ContentType.values) {
+            if (contentType != ContentType.depthChart) {
+              final totalUsage = await _getTotalUsageForType(contentType);
+              final limit = SubscriptionConstants.getContentLimit(contentType);
+              final graceLimit = limit + SubscriptionConstants.offlineGraceLimit;
+              debugPrint('   ${contentType.name}: $totalUsage/$graceLimit (лимит: $limit + grace: ${SubscriptionConstants.offlineGraceLimit})');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка пересчета лимитов с офлайн данными: $e');
+      }
+    }
+  }
+
   /// ИСПРАВЛЕНО: Пересчет лимитов на основе фактических данных из НОВОЙ структуры
   Future<void> recalculateLimits() async {
     try {
       if (kDebugMode) {
-        debugPrint('🔄 Пересчет лимитов использования из НОВОЙ структуры...');
+        debugPrint('🔄 Пересчет серверных лимитов из НОВОЙ структуры...');
       }
 
       final userId = _firebaseService.currentUserId;
@@ -452,7 +557,7 @@ class UsageLimitsService {
       await _saveLimits(updatedLimits);
 
       if (kDebugMode) {
-        debugPrint('✅ Лимиты пересчитаны из НОВОЙ структуры и сохранены:');
+        debugPrint('✅ Серверные лимиты пересчитаны из НОВОЙ структуры и сохранены:');
         debugPrint('   📝 Заметки: $actualNotesCount/${SubscriptionConstants.freeNotesLimit}');
         debugPrint('   🗺️ Карты: $actualMapsCount/${SubscriptionConstants.freeMarkerMapsLimit}');
         debugPrint('   💰 Поездки: $actualExpensesCount/${SubscriptionConstants.freeExpensesLimit}');
@@ -472,7 +577,7 @@ class UsageLimitsService {
       }
       _cachedLimits = null; // Очищаем кэш
       await loadCurrentLimits();
-      await recalculateLimits();
+      await recalculateLimitsWithOffline();
       if (kDebugMode) {
         debugPrint('✅ Принудительное обновление завершено');
       }
@@ -515,11 +620,32 @@ class UsageLimitsService {
     }
   }
 
-  /// Получение статистики использования
+  /// 🔥 ИСПРАВЛЕНО: Получение статистики использования с учетом офлайн данных
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
       final limits = await getCurrentUsage();
-      return limits.getUsageStats();
+      final baseStats = limits.getUsageStats();
+
+      // Добавляем офлайн статистику
+      final offlineCounters = await _offlineStorage.getAllLocalUsageCounters();
+
+      // Добавляем общую статистику
+      final totalStats = <String, dynamic>{};
+      for (final contentType in ContentType.values) {
+        if (contentType != ContentType.depthChart) {
+          final totalUsage = await _getTotalUsageForType(contentType);
+          totalStats['total_${contentType.name}'] = totalUsage;
+        }
+      }
+
+      return {
+        ...baseStats,
+        'offline_counters': {
+          for (final entry in offlineCounters.entries)
+            entry.key.name: entry.value
+        },
+        ...totalStats,
+      };
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения статистики: $e');
@@ -528,10 +654,9 @@ class UsageLimitsService {
     }
   }
 
-  /// Проверка нужно ли показать предупреждение о лимитах
+  /// 🔥 ИСПРАВЛЕНО: Проверка нужно ли показать предупреждение о лимитах с учетом офлайн данных
   Future<List<ContentTypeWarning>> checkForWarnings() async {
     try {
-      final limits = await getCurrentUsage();
       final warnings = <ContentTypeWarning>[];
 
       for (final contentType in [
@@ -539,13 +664,24 @@ class UsageLimitsService {
         ContentType.markerMaps,
         ContentType.expenses,
       ]) {
-        if (limits.shouldShowWarning(contentType)) {
+        // Получаем общее использование (серверное + офлайн)
+        final totalUsage = await _getTotalUsageForType(contentType);
+        final limit = SubscriptionConstants.getContentLimit(contentType);
+        final maxAllowed = limit + SubscriptionConstants.offlineGraceLimit;
+
+        // Проверяем нужно ли показывать предупреждение
+        final warningThreshold = (limit * 0.8).round(); // 80% от лимита
+
+        if (totalUsage >= warningThreshold) {
+          final remaining = maxAllowed - totalUsage;
+          final percentage = totalUsage / maxAllowed;
+
           warnings.add(ContentTypeWarning(
             contentType: contentType,
-            currentCount: limits.getCountForType(contentType),
-            limit: SubscriptionConstants.getContentLimit(contentType),
-            remaining: limits.getRemainingCount(contentType),
-            percentage: limits.getUsagePercentage(contentType),
+            currentCount: totalUsage,
+            limit: maxAllowed,
+            remaining: remaining > 0 ? remaining : 0,
+            percentage: percentage,
           ));
         }
       }
@@ -565,13 +701,52 @@ class UsageLimitsService {
       final limits = await getCurrentUsage();
       final resetLimits = limits.resetAllCounters();
       await _saveLimits(resetLimits);
+
+      // 🔥 НОВОЕ: Также сбрасываем офлайн счетчики
+      await _offlineStorage.resetLocalUsageCounters();
+
       if (kDebugMode) {
-        debugPrint('✅ Все лимиты сброшены');
+        debugPrint('✅ Все лимиты сброшены (серверные + офлайн)');
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка сброса лимитов: $e');
       }
+    }
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Получение общей статистики использования
+  Future<Map<String, dynamic>> getComprehensiveUsageStats() async {
+    try {
+      final Map<String, dynamic> stats = {};
+
+      for (final contentType in ContentType.values) {
+        if (contentType != ContentType.depthChart) {
+          final limits = _cachedLimits ?? UsageLimitsModel.defaultLimits(_firebaseService.currentUserId ?? '');
+          final serverUsage = limits.getCountForType(contentType);
+          final offlineUsage = await _offlineStorage.getLocalUsageCount(contentType);
+          final totalUsage = serverUsage + offlineUsage;
+          final limit = SubscriptionConstants.getContentLimit(contentType);
+          final maxAllowed = limit + SubscriptionConstants.offlineGraceLimit;
+
+          stats[contentType.name] = {
+            'server': serverUsage,
+            'offline': offlineUsage,
+            'total': totalUsage,
+            'limit': limit,
+            'maxAllowed': maxAllowed,
+            'remaining': maxAllowed - totalUsage,
+            'percentage': totalUsage / maxAllowed,
+          };
+        }
+      }
+
+      return stats;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка получения комплексной статистики: $e');
+      }
+      return {};
     }
   }
 

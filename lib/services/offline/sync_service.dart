@@ -418,7 +418,7 @@ class SyncService {
     }
   }
 
-  /// Синхронизировать заметки
+  /// 🔥 ИСПРАВЛЕНО: Синхронизировать заметки с НОВОЙ структурой Firebase
   Future<void> _syncNotes(String userId) async {
     const dataType = 'notes';
 
@@ -432,18 +432,20 @@ class SyncService {
       debugPrint('🔄 Начинаем синхронизацию заметок...');
       _lastSyncAttempt[dataType] = DateTime.now();
 
+      // 🔥 ИСПРАВЛЕНО: Работаем с НОВОЙ структурой users/$userId/fishing_notes
+      final userNotesRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_notes');
+
       // Проверяем флаг на удаление всех заметок
       final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(false);
       if (shouldDeleteAll) {
         debugPrint('⚠️ Обнаружен флаг на удаление всех заметок');
 
         try {
-          // Получаем все заметки пользователя и удаляем их
-          final snapshot =
-          await _firestore
-              .collection('fishing_notes')
-              .where('userId', isEqualTo: userId)
-              .get();
+          // 🔥 ИСПРАВЛЕНО: Получаем все заметки пользователя из НОВОЙ структуры и удаляем их
+          final snapshot = await userNotesRef.get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -474,8 +476,9 @@ class SyncService {
 
         for (var noteId in notesToDelete) {
           try {
-            await _firestore.collection('fishing_notes').doc(noteId).delete();
-            debugPrint('✅ Заметка $noteId удалена из Firestore');
+            // 🔥 ИСПРАВЛЕНО: Удаляем из НОВОЙ структуры
+            await userNotesRef.doc(noteId).delete();
+            debugPrint('✅ Заметка $noteId удалена из Firestore (новая структура)');
           } catch (e) {
             debugPrint(
               '❌ Ошибка при удалении заметки $noteId из Firestore: $e',
@@ -512,13 +515,10 @@ class SyncService {
             // Обрабатываем локальные URI файлов перед сохранением
             await _processLocalFileUrls(noteData, userId);
 
-            // Сохраняем обновления в Firestore
-            await _firestore
-                .collection('fishing_notes')
-                .doc(noteId)
-                .set(noteData, SetOptions(merge: true));
+            // 🔥 ИСПРАВЛЕНО: Сохраняем обновления в НОВОЙ структуре
+            await userNotesRef.doc(noteId).set(noteData, SetOptions(merge: true));
 
-            debugPrint('✅ Обновление заметки $noteId успешно синхронизировано');
+            debugPrint('✅ Обновление заметки $noteId успешно синхронизировано (новая структура)');
           } catch (e) {
             debugPrint('❌ Ошибка при синхронизации обновления заметки: $e');
             _incrementErrorCounter(dataType);
@@ -529,11 +529,11 @@ class SyncService {
         await _offlineStorage.clearUpdates(false);
       }
 
-      // Синхронизируем новые заметки
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Синхронизируем новые ОФЛАЙН заметки
       final offlineNotes = await _offlineStorage.getAllOfflineNotes();
       if (offlineNotes.isNotEmpty) {
         debugPrint(
-          '🔄 Синхронизация новых заметок (${offlineNotes.length} шт.)',
+          '🔄 Синхронизация новых ОФЛАЙН заметок (${offlineNotes.length} шт.) в НОВУЮ структуру',
         );
 
         for (var noteData in offlineNotes) {
@@ -551,9 +551,7 @@ class SyncService {
             }
 
             // Проверяем, есть ли фотографии для загрузки
-            final photoPaths = await _offlineStorage.getOfflinePhotoPaths(
-              noteId,
-            );
+            final photoPaths = await _offlineStorage.getOfflinePhotoPaths(noteId);
 
             // Обрабатываем локальные URI в данных заметки
             await _processLocalFileUrls(noteData, userId);
@@ -600,18 +598,15 @@ class SyncService {
               noteData['photoUrls'] = photoUrls;
             }
 
-            // Сохраняем или обновляем заметку в Firestore
-            await _firestore
-                .collection('fishing_notes')
-                .doc(noteId)
-                .set(noteData);
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем заметку в НОВОЙ структуре users/$userId/fishing_notes
+            await userNotesRef.doc(noteId).set(noteData);
 
             // Удаляем заметку из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineNote(noteId);
 
-            debugPrint('✅ Заметка $noteId успешно синхронизирована');
+            debugPrint('✅ ОФЛАЙН заметка $noteId успешно синхронизирована в НОВУЮ структуру');
           } catch (e) {
-            debugPrint('❌ Ошибка при синхронизации заметки: $e');
+            debugPrint('❌ Ошибка при синхронизации ОФЛАЙН заметки: $e');
             _incrementErrorCounter(dataType);
           }
         }
@@ -628,7 +623,7 @@ class SyncService {
     }
   }
 
-  /// Синхронизировать маркерные карты
+  /// 🔥 ИСПРАВЛЕНО: Синхронизировать маркерные карты с НОВОЙ структурой Firebase
   Future<void> _syncMarkerMaps(String userId) async {
     const dataType = 'marker_maps';
 
@@ -644,18 +639,20 @@ class SyncService {
       debugPrint('🔄 Начинаем синхронизацию маркерных карт...');
       _lastSyncAttempt[dataType] = DateTime.now();
 
+      // 🔥 ИСПРАВЛЕНО: Работаем с НОВОЙ структурой users/$userId/marker_maps
+      final userMapsRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('marker_maps');
+
       // Проверяем флаг на удаление всех маркерных карт
       final shouldDeleteAll = await _offlineStorage.shouldDeleteAll(true);
       if (shouldDeleteAll) {
         debugPrint('⚠️ Обнаружен флаг на удаление всех маркерных карт');
 
         try {
-          // Получаем все маркерные карты пользователя и удаляем их
-          final snapshot =
-          await _firestore
-              .collection('marker_maps')
-              .where('userId', isEqualTo: userId)
-              .get();
+          // 🔥 ИСПРАВЛЕНО: Получаем все маркерные карты пользователя из НОВОЙ структуры и удаляем их
+          final snapshot = await userMapsRef.get();
 
           // Создаем пакетную операцию для удаления
           final batch = _firestore.batch();
@@ -686,8 +683,9 @@ class SyncService {
 
         for (var mapId in mapsToDelete) {
           try {
-            await _firestore.collection('marker_maps').doc(mapId).delete();
-            debugPrint('✅ Маркерная карта $mapId удалена из Firestore');
+            // 🔥 ИСПРАВЛЕНО: Удаляем из НОВОЙ структуры
+            await userMapsRef.doc(mapId).delete();
+            debugPrint('✅ Маркерная карта $mapId удалена из Firestore (новая структура)');
           } catch (e) {
             debugPrint(
               '❌ Ошибка при удалении маркерной карты $mapId из Firestore: $e',
@@ -721,14 +719,11 @@ class SyncService {
               mapData['id'] = mapId;
             }
 
-            // Сохраняем обновления в Firestore
-            await _firestore
-                .collection('marker_maps')
-                .doc(mapId)
-                .set(mapData, SetOptions(merge: true));
+            // 🔥 ИСПРАВЛЕНО: Сохраняем обновления в НОВОЙ структуре
+            await userMapsRef.doc(mapId).set(mapData, SetOptions(merge: true));
 
             debugPrint(
-              '✅ Обновление маркерной карты $mapId успешно синхронизировано',
+              '✅ Обновление маркерной карты $mapId успешно синхронизировано (новая структура)',
             );
           } catch (e) {
             debugPrint(
@@ -742,11 +737,11 @@ class SyncService {
         await _offlineStorage.clearUpdates(true);
       }
 
-      // Синхронизируем новые маркерные карты
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Синхронизируем новые ОФЛАЙН маркерные карты
       final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
       if (offlineMaps.isNotEmpty) {
         debugPrint(
-          '🔄 Синхронизация новых маркерных карт (${offlineMaps.length} шт.)',
+          '🔄 Синхронизация новых ОФЛАЙН маркерных карт (${offlineMaps.length} шт.) в НОВУЮ структуру',
         );
 
         for (var mapData in offlineMaps) {
@@ -763,15 +758,15 @@ class SyncService {
               mapData['userId'] = userId;
             }
 
-            // Сохраняем маркерную карту в Firestore
-            await _firestore.collection('marker_maps').doc(mapId).set(mapData);
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем маркерную карту в НОВОЙ структуре users/$userId/marker_maps
+            await userMapsRef.doc(mapId).set(mapData);
 
             // Удаляем маркерную карту из локального хранилища после успешной синхронизации
             await _offlineStorage.removeOfflineMarkerMap(mapId);
 
-            debugPrint('✅ Маркерная карта $mapId успешно синхронизирована');
+            debugPrint('✅ ОФЛАЙН маркерная карта $mapId успешно синхронизирована в НОВУЮ структуру');
           } catch (e) {
-            debugPrint('❌ Ошибка при синхронизации маркерной карты: $e');
+            debugPrint('❌ Ошибка при синхронизации ОФЛАЙН маркерной карты: $e');
             _incrementErrorCounter(dataType);
           }
         }
