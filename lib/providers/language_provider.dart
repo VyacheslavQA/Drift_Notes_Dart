@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/countries_data.dart';
+import '../services/weather_notification_service.dart';
 
 class LanguageProvider extends ChangeNotifier {
   Locale _currentLocale = const Locale('ru', 'RU');
@@ -58,6 +59,9 @@ class LanguageProvider extends ChangeNotifier {
         }
       }
 
+      // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService при загрузке
+      await _syncWeatherServiceLanguage();
+
       // ИСПРАВЛЕНО: notifyListeners только если есть слушатели
       if (_isInitialized) {
         notifyListeners();
@@ -96,6 +100,9 @@ class LanguageProvider extends ChangeNotifier {
       debugPrint('❌ Ошибка при сохранении языка: $e');
     }
 
+    // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService
+    await _syncWeatherServiceLanguage();
+
     // Принудительно уведомляем всех слушателей об изменении
     notifyListeners();
 
@@ -120,7 +127,20 @@ class LanguageProvider extends ChangeNotifier {
       debugPrint('❌ Ошибка при установке системного языка: $e');
     }
 
+    // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService
+    await _syncWeatherServiceLanguage();
+
     notifyListeners();
+  }
+
+  // ДОБАВЛЕНО: Синхронизация языка с WeatherNotificationService
+  Future<void> _syncWeatherServiceLanguage() async {
+    try {
+      await WeatherNotificationService().updateLanguage(_currentLocale.languageCode);
+      debugPrint('🌤️ Язык синхронизирован с WeatherNotificationService: ${_currentLocale.languageCode}');
+    } catch (e) {
+      debugPrint('❌ Ошибка синхронизации языка с WeatherNotificationService: $e');
+    }
   }
 
   // Проверка, используется ли системный язык
@@ -196,6 +216,9 @@ class LanguageProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Ошибка при сбросе языка: $e');
     }
+
+    // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService при сбросе
+    await _syncWeatherServiceLanguage();
 
     notifyListeners();
   }

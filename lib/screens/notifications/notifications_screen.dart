@@ -172,62 +172,84 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildEmptyState(AppLocalizations localizations) {
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(ResponsiveConstants.spacingXL),
-              decoration: BoxDecoration(
-                color: AppConstants.surfaceColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.notifications_off,
-                color: AppConstants.textColor.withValues(alpha: 0.5),
-                size: isSmallScreen ? 48 : 64,
-              ),
-            ),
-            SizedBox(height: ResponsiveConstants.spacingXL),
-            Text(
-              localizations.translate('no_notifications'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: isSmallScreen ? 16 : 18,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            Text(
-              localizations.translate('notifications_description'),
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: ResponsiveConstants.spacingXXL),
-            SizedBox(
-              width: double.infinity,
-              height: ResponsiveConstants.minTouchTarget,
-              child: ElevatedButton.icon(
-                onPressed: _addTestNotification,
-                icon: const Icon(Icons.add_alert),
-                label: Text(localizations.translate('test_notification')), // ИСПРАВЛЕНО
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  foregroundColor: AppConstants.textColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
+    return Padding(
+      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(ResponsiveConstants.spacingXL),
+                    decoration: BoxDecoration(
+                      color: AppConstants.surfaceColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.notifications_off,
+                      color: AppConstants.textColor.withValues(alpha: 0.5),
+                      size: isSmallScreen ? 48 : 64,
+                    ),
                   ),
-                ),
+                  SizedBox(height: ResponsiveConstants.spacingXL),
+                  Text(
+                    localizations.translate('no_notifications'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: ResponsiveConstants.spacingS),
+                  Text(
+                    localizations.translate('notifications_description'),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: ResponsiveConstants.spacingXXL),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56, // Увеличиваем высоту
+                    child: ElevatedButton(
+                      onPressed: _addTestNotification,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: AppConstants.textColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12), // Добавляем вертикальные отступы
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center, // Центрируем по вертикали
+                        children: [
+                          const Icon(Icons.add_alert, size: 20), // Уменьшаем иконку
+                          SizedBox(width: ResponsiveConstants.spacingS),
+                          Text(
+                            localizations.translate('test_notification'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.0, // Убираем лишнюю высоту строки
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          SizedBox(height: ResponsiveConstants.spacingXL),
+        ],
       ),
     );
   }
