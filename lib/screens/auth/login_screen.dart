@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_hasInternet && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Подключение к интернету восстановлено'),
+          content: Text(AppLocalizations.of(context).translate('internet_connection_restored')),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -305,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
 
       if (!canOfflineAuth) {
-        throw Exception('Офлайн авторизация недоступна. Войдите в приложение при наличии интернета, чтобы кэшировать данные.');
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_unavailable'));
       }
 
       // Пытаемся выполнить офлайн авторизацию
@@ -316,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await _proceedToHomeScreen('offline_login_successful');
         debugPrint('✅ Офлайн авторизация успешна');
       } else {
-        throw Exception('Не удалось выполнить офлайн авторизацию. Проверьте подключение к интернету.');
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_failed'));
       }
 
     } catch (e) {
@@ -330,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       final localizations = AppLocalizations.of(context);
       final message = successMessageKey == 'offline_login_successful'
-          ? 'Вход выполнен в офлайн режиме'
+          ? localizations.translate('offline_login_successful')
           : localizations.translate('login_successful');
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -372,16 +372,16 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.wifi_off, color: Colors.orange),
             SizedBox(width: 8),
-            Text('Офлайн режим'),
+            Text(AppLocalizations.of(context).translate('offline_mode')),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Отсутствует подключение к интернету.'),
+            Text(AppLocalizations.of(context).translate('no_internet_connection')),
             SizedBox(height: 8),
-            Text('Вы можете войти в офлайн режиме, используя ранее сохраненные данные.'),
+            Text(AppLocalizations.of(context).translate('can_login_offline')),
             SizedBox(height: 16),
             Container(
               padding: EdgeInsets.all(12),
@@ -395,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'В офлайн режиме функции приложения ограничены.',
+                      AppLocalizations.of(context).translate('offline_mode_limited'),
                       style: TextStyle(fontSize: 13),
                     ),
                   ),
@@ -407,11 +407,11 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Отмена'),
+            child: Text(AppLocalizations.of(context).translate('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Войти офлайн'),
+            child: Text(AppLocalizations.of(context).translate('login_offline')),
           ),
         ],
       ),
@@ -434,25 +434,25 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.error_outline, color: Colors.red),
             SizedBox(width: 8),
-            Text('Офлайн авторизация недоступна'),
+            Text(AppLocalizations.of(context).translate('offline_auth_unavailable_title')),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Для использования офлайн режима необходимо:'),
+            Text(AppLocalizations.of(context).translate('offline_auth_requirements')),
             SizedBox(height: 8),
-            Text('• Войти в приложение при наличии интернета'),
-            Text('• Кэшировать данные пользователя'),
+            Text('• ${AppLocalizations.of(context).translate('login_with_internet_first')}'),
+            Text('• ${AppLocalizations.of(context).translate('cache_user_data')}'),
             SizedBox(height: 16),
-            Text('Подключитесь к интернету и попробуйте снова.'),
+            Text(AppLocalizations.of(context).translate('connect_internet_try_again')),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Понятно'),
+            child: Text(AppLocalizations.of(context).translate('ok')),
           ),
         ],
       ),
@@ -575,7 +575,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(width: 6),
             Text(
-              'Проверка подключения...',
+              AppLocalizations.of(context).translate('checking_connection'),
               style: TextStyle(
                 fontSize: isTablet ? 14 : 12,
                 color: AppConstants.textColor,
@@ -601,7 +601,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Icon(Icons.wifi_off, size: 16, color: Colors.orange),
               SizedBox(width: 6),
               Text(
-                'Нет подключения',
+                AppLocalizations.of(context).translate('no_connection'),
                 style: TextStyle(
                   fontSize: isTablet ? 14 : 12,
                   color: Colors.orange,
@@ -627,7 +627,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Icon(Icons.wifi, size: 16, color: Colors.green),
           SizedBox(width: 6),
           Text(
-            'Подключено',
+            AppLocalizations.of(context).translate('connected'),
             style: TextStyle(
               fontSize: isTablet ? 14 : 12,
               color: Colors.green,
@@ -672,8 +672,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Row(
                         children: [
                           Semantics(
-                            label: 'Вернуться назад',
-                            hint: 'Возврат к предыдущему экрану',
+                            label: localizations.translate('go_back'),
+                            hint: localizations.translate('return_to_previous_screen'),
                             button: true,
                             child: Container(
                               width: 48,
@@ -840,11 +840,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Кнопка входа (основная)
                       _buildSafeButton(
                         context: context,
-                        text: _hasInternet ? localizations.translate('login') : 'Войти онлайн',
+                        text: _hasInternet ? localizations.translate('login') : localizations.translate('login_online'),
                         onPressed: _isLoading ? null : _login,
                         isTablet: isTablet,
                         isLoading: _isLoading,
-                        semanticLabel: 'Войти в приложение',
+                        semanticLabel: localizations.translate('login_to_app'),
                       ),
 
                       // Кнопка офлайн входа (если нет интернета)
@@ -852,13 +852,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(height: isTablet ? 16 : 12),
                         _buildSafeButton(
                           context: context,
-                          text: 'Войти офлайн',
+                          text: localizations.translate('login_offline'),
                           onPressed: _canAuthenticateOffline && !_isLoading ? _showOfflineAuthDialog : null,
                           isTablet: isTablet,
                           backgroundColor: Colors.orange.withOpacity(0.1),
                           textColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
                           borderColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
-                          semanticLabel: 'Войти в офлайн режиме',
+                          semanticLabel: localizations.translate('login_offline_mode'),
                         ),
                       ],
 
@@ -1058,7 +1058,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Semantics(
       button: true,
-      label: 'Забыли пароль?',
+      label: localizations.translate('forgot_password'),
       child: Container(
         constraints: BoxConstraints(
           minHeight: 48,

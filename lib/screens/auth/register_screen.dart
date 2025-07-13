@@ -329,7 +329,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       Semantics(
                         button: true,
-                        label: 'Вернуться назад',
+                        label: localizations.translate('go_back'),
                         child: Container(
                           width: 48,
                           height: 48,
@@ -817,7 +817,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
-                                                  '8+ симв.',
+                                                  localizations.translate('password_min_chars'),
                                                   style: TextStyle(
                                                     color:
                                                     _hasMinLength
@@ -1038,7 +1038,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           // Чекбокс с пользовательским соглашением и политикой - увеличенный
                           Semantics(
-                            label: 'Согласие с пользовательским соглашением и политикой конфиденциальности',
+                            label: localizations.translate('agreement_consent_label'),
                             child: Container(
                               margin: EdgeInsets.symmetric(vertical: isTablet ? 16 : 12),
                               child: Row(
@@ -1081,7 +1081,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           ),
                                           const TextSpan(text: ' '),
                                           TextSpan(
-                                            text: 'Пользовательским соглашением',
+                                            text: localizations.translate('terms_of_service'),
                                             style: TextStyle(
                                               color: AppConstants.primaryColor,
                                               decoration: TextDecoration.underline,
@@ -1147,7 +1147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               // Кнопка регистрации
                               Semantics(
                                 button: true,
-                                label: 'Зарегистрироваться',
+                                label: localizations.translate('register'),
                                 child: Container(
                                   width: double.infinity,
                                   constraints: BoxConstraints(
@@ -1204,7 +1204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               // Ссылка на вход
                               Semantics(
-                                label: 'Войти в существующий аккаунт',
+                                label: localizations.translate('login_existing_account'),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [

@@ -712,7 +712,7 @@
   "min_8_characters": "At least 8 characters",
   "one_uppercase_letter": "At least 1 uppercase letter",
   "one_number": "At least 1 number",
-  "privacy_policy_agreement": "privacy policy",
+  "privacy_policy_agreement": "Privacy policy",
 
   "all_tournaments": "All tournaments",
   "upcoming": "Upcoming",
@@ -2259,6 +2259,35 @@
   "password_invalid_characters": "Password can only contain letters, numbers, and special characters: !@#$%^&*()_+-=[]{}|;:,.<>?",
   "recent_expenses": "Recent Expenses",
   "no_expenses_yet": "No expenses yet",
-  "add_first_expense_hint": "Press \"Add Expense\" to create your first record"
+  "add_first_expense_hint": "Press \"Add Expense\" to create your first record",
+
+  "internet_connection_restored": "Internet connection restored",
+  "offline_auth_unavailable": "Offline authorization is not available. Sign in to the app with an internet connection to cache data.",
+  "offline_auth_failed": "Failed to perform offline authorization. Check your internet connection.",
+  "offline_login_successful": "Logged in offline mode",
+  "offline_mode": "Offline mode",
+  "no_internet_connection": "No internet connection.",
+  "can_login_offline": "You can log in offline using previously saved data.",
+  "offline_mode_limited": "App features are limited in offline mode.",
+  "login_offline": "Login offline",
+  "offline_auth_unavailable_title": "Offline authorization unavailable",
+  "offline_auth_requirements": "To use offline mode you need to:",
+  "login_with_internet_first": "Log in to the app with internet connection",
+  "cache_user_data": "Cache user data",
+  "connect_internet_try_again": "Connect to the internet and try again.",
+  "checking_connection": "Checking connection...",
+  "no_connection": "No connection",
+  "connected": "Connected",
+  "go_back": "Go back",
+  "return_to_previous_screen": "Return to previous screen",
+  "login_online": "Login online",
+  "login_to_app": "Login to app",
+  "login_offline_mode": "Login in offline mode",
+
+  "password_min_chars": "8+ chars",
+  "agreement_consent_label": "Agreement with terms of service and privacy policy",
+  "terms_of_service": "Terms of Service",
+  "login_existing_account": "Login to existing account",
+  "privacy_policy": "Privacy Policy"
 
 }
