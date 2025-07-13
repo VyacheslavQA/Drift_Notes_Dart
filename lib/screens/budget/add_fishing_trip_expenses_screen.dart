@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// ✅ ДОБАВЛЕНО: Импорты для обновления SubscriptionProvider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
@@ -10,6 +13,7 @@ import '../../repositories/fishing_expense_repository.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../services/subscription/subscription_service.dart';
+import '../../services/firebase/firebase_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../screens/subscription/paywall_screen.dart';
 
@@ -35,6 +39,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
   final SubscriptionService _subscriptionService = SubscriptionService();
+  final FirebaseService _firebaseService = FirebaseService();
 
   // Общая информация о рыбалке
   DateTime _selectedDate = DateTime.now();
@@ -303,6 +308,75 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
+  /// 🔥 УНИФИКАЦИЯ: Приведение к единому стандарту с другими экранами
+  Future<bool> _checkLimitsBeforeCreating() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      debugPrint('🔍 Проверка лимитов через единую систему Firebase...');
+
+      // 🔥 УНИФИКАЦИЯ: Прямая проверка через новую Firebase систему как в других экранах
+      final limitCheck = await _firebaseService.canCreateItem('expensesCount');
+
+      final canCreate = limitCheck['canProceed'] ?? false;
+      final currentCount = limitCheck['currentCount'] ?? 0;
+      final maxLimit = limitCheck['maxLimit'] ?? 0;
+      final remaining = limitCheck['remaining'] ?? 0;
+
+      debugPrint('✅ Результат проверки лимитов: canCreate=$canCreate');
+      debugPrint('📊 Статистика: $currentCount/$maxLimit (осталось: $remaining)');
+
+      if (!canCreate) {
+        debugPrint('❌ Превышен лимит создания поездок');
+
+        // Показываем Paywall экран
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaywallScreen(
+              contentType: 'expenses',
+              blockedFeature: localizations.translate('fishing_expenses') ?? 'Расходы на рыбалку',
+            ),
+          ),
+        );
+
+        return false;
+      }
+
+      // Показываем предупреждение если близко к лимиту (осталось 2 или меньше)
+      if (remaining <= 2 && remaining > 0) {
+        debugPrint('⚠️ Предупреждение: осталось $remaining поездок');
+
+        final shouldContinue = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(localizations.translate('warning') ?? 'Предупреждение'),
+            content: Text('Осталось $remaining ${remaining == 1 ? 'поездка' : 'поездки'} из $maxLimit'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(localizations.translate('cancel') ?? 'Отмена'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(localizations.translate('continue') ?? 'Продолжить'),
+              ),
+            ],
+          ),
+        );
+
+        return shouldContinue ?? false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки лимитов: $e');
+
+      // В случае ошибки разрешаем создание (fallback)
+      return true;
+    }
+  }
+
   Future<void> _saveFishingTripExpenses() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -322,11 +396,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     try {
       if (widget.tripToEdit != null) {
-        // Редактируем существующую поездку
+        // Редактируем существующую поездку - проверка лимитов не нужна
         await _updateExistingTrip();
       } else {
+        // 🔥 УНИФИКАЦИЯ: Проверяем лимиты через единую систему ПЕРЕД созданием новой поездки
+        final canCreate = await _checkLimitsBeforeCreating();
+        if (!canCreate) {
+          return; // Пользователь отменил создание или превышен лимит
+        }
+
         // Создаем новую поездку
         await _createNewTrip();
+
+        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после создания поездки
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после создания поездки с расходами');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        }
       }
 
       if (mounted) {
@@ -348,8 +437,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      debugPrint('❌ Ошибка сохранения поездки: $e');
+
       if (mounted) {
-        if (e.toString().contains('subscription_limit_exceeded') || e.toString().contains('Превышен лимит')) {
+        // ✅ ИСПРАВЛЕНО: Улучшенная обработка ошибок лимитов
+        if (e.toString().contains('subscription_limit_exceeded') ||
+            e.toString().contains('Превышен лимит') ||
+            e.toString().contains('limit_exceeded')) {
+          debugPrint('🚫 Обнаружена ошибка превышения лимита');
+
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -409,6 +505,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final existingTrip = widget.tripToEdit!;
 
     try {
+      debugPrint('=== ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕЙ ПОЕЗДКИ ===');
+      debugPrint('ID поездки: ${existingTrip.id}');
+
       // Создаем обновленный список расходов
       final expenses = <FishingExpenseModel>[];
 
@@ -457,8 +556,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
       await _expenseRepository.updateTrip(updatedTrip);
 
+      debugPrint('✅ Поездка успешно обновлена');
+
     } catch (e) {
-      debugPrint('Ошибка обновления поездки: $e');
+      debugPrint('❌ Ошибка обновления поездки: $e');
       rethrow;
     }
   }

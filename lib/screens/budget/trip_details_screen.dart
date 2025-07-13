@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// ✅ ДОБАВЛЕНО: Импорты для обновления SubscriptionProvider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
@@ -80,7 +83,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  // ИСПРАВЛЕНО: Удаление поездки через новый репозиторий
+  // ✅ ИСПРАВЛЕНО: Удаление поездки через репозиторий с обновлением Provider
   Future<void> _deleteTrip() async {
     final localizations = AppLocalizations.of(context);
 
@@ -141,6 +144,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
         // Удаляем поездку со всеми расходами через репозиторий
         await _expenseRepository.deleteTrip(widget.trip.id);
+
+        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после удаления
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после удаления поездки');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        }
 
         debugPrint('✅ Поездка успешно удалена');
 

@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
-import '../../services/firebase/firebase_service.dart'; // ИЗМЕНЕНО: заменил repository на service
+import '../../services/firebase/firebase_service.dart';
 import '../../services/weather/weather_service.dart';
 import '../../utils/network_utils.dart';
 import '../../utils/date_formatter.dart';
@@ -19,10 +19,15 @@ import 'bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
-// ДОБАВЛЕНО: импорты для премиум системы
+// ИСПРАВЛЕНО: правильные импорты для премиум системы
 import '../../services/subscription/subscription_service.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../constants/subscription_constants.dart';
+import '../../models/offline_usage_result.dart';
+import '../subscription/paywall_screen.dart';
+// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -41,12 +46,12 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   final _tackleController = TextEditingController();
   final _notesController = TextEditingController();
 
-  final _firebaseService = FirebaseService(); // ИЗМЕНЕНО: заменил repository на service
+  final _firebaseService = FirebaseService();
   final _weatherService = WeatherService();
   final _aiService = AIBitePredictionService();
   final _weatherSettings = WeatherSettingsService();
 
-  // ДОБАВЛЕНО: сервисы для премиум системы
+  // ИСПРАВЛЕНО: правильные сервисы для премиум системы
   final _subscriptionService = SubscriptionService();
   final _offlineStorage = OfflineStorageService();
 
@@ -343,7 +348,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
             _isLoadingAI = false;
           });
 
-          // Показываем понятную ошибку для ИИ
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(localizations.translate('ai_analysis_failed')),
@@ -365,7 +369,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           _isLoadingAI = false;
         });
 
-        // Определяем тип ошибки и показываем понятное сообщение
         String errorMessage;
         if (e.toString().contains('SocketException') ||
             e.toString().contains('Failed host lookup') ||
@@ -422,7 +425,98 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ИСПРАВЛЕНО: добавлена проверка лимитов и офлайн сохранение
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная проверка лимитов перед созданием
+  Future<bool> _checkLimitsBeforeCreating() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      debugPrint('🔍 Проверяем лимиты перед созданием заметки...');
+
+      final usageResult = await _subscriptionService.checkOfflineUsage(ContentType.fishingNotes);
+      debugPrint('📊 Результат проверки лимитов: canCreate=${usageResult.canCreate}, shouldShowWarning=${usageResult.shouldShowWarning}');
+
+      if (!usageResult.canCreate) {
+        debugPrint('❌ Лимит достигнут - показываем Paywall');
+
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaywallScreen(
+                contentType: 'fishing_notes',
+                blockedFeature: 'Заметки рыбалки',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
+
+      if (usageResult.shouldShowWarning) {
+        debugPrint('⚠️ Показываем предупреждение о приближении к лимиту');
+
+        if (mounted) {
+          final shouldContinue = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: AppConstants.cardColor,
+                title: Text(
+                  'Приближение к лимиту',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: Text(
+                  'Вы приближаетесь к лимиту создания заметок. Рассмотрите возможность обновления до Premium.',
+                  style: TextStyle(color: AppConstants.textColor),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(
+                      localizations.translate('cancel'),
+                      style: TextStyle(color: AppConstants.textColor),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text(
+                      'Продолжить',
+                      style: TextStyle(color: AppConstants.primaryColor),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+
+          return shouldContinue ?? false;
+        }
+      }
+
+      debugPrint('✅ Проверка лимитов пройдена - можно создавать');
+      return true;
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке лимитов: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка проверки лимитов. Попробуйте еще раз.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      // При ошибке проверки лимитов - разрешаем создание (graceful fallback)
+      return true;
+    }
+  }
+
+  // ✅ ИСПРАВЛЕНО: Правильная интеграция с новой системой лимитов
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -442,24 +536,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       return;
     }
 
-    // ИСПРАВЛЕНО: проверка лимитов перед сохранением
-    try {
-      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
-      if (!canCreate) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Достигнут лимит создания заметок. Обновитесь до Premium для безлимитного доступа.'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
-    } catch (e) {
-      debugPrint('Ошибка при проверке лимитов: $e');
-      // Продолжаем сохранение при ошибке проверки лимитов
+    // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка лимитов перед созданием новой заметки
+    final canCreate = await _checkLimitsBeforeCreating();
+    if (!canCreate) {
+      debugPrint('❌ Создание заметки отменено - лимиты не пройдены');
+      return;
     }
 
     setState(() {
@@ -467,7 +548,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     });
 
     try {
-      // ИСПРАВЛЕНО: получаем userId в начале
+      // Получаем userId в начале
       final userId = _firebaseService.currentUserId;
       if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
@@ -475,7 +556,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
       // Проверка подключения к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
-      debugPrint('Статус сети: ${isOnline ? "онлайн" : "офлайн"}');
+      debugPrint('🌐 Статус сети: ${isOnline ? "онлайн" : "офлайн"}');
 
       // Подготовка данных для ИИ-предсказания
       Map<String, dynamic>? aiPredictionMap;
@@ -521,10 +602,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         'photoUrls': record.photoUrls,
       }).toList();
 
-      // ИСПРАВЛЕНО: добавляем userId в данные заметки
+      // Подготовка данных заметки
       final noteData = {
         'id': const Uuid().v4(),
-        'userId': userId, // ← ИСПРАВЛЕНО: добавлен userId!
+        'userId': userId,
         'location': _locationController.text.trim(),
         'latitude': _latitude,
         'longitude': _longitude,
@@ -543,12 +624,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       };
 
-      // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Переменная для отслеживания успеха =====
       bool saveSuccessful = false;
 
       if (isOnline) {
         // ОНЛАЙН СОХРАНЕНИЕ
-        debugPrint('Сохранение онлайн...');
+        debugPrint('💾 Сохранение заметки онлайн...');
 
         // Загружаем фотографии и обновляем URLs
         if (_selectedPhotos.isNotEmpty) {
@@ -564,6 +644,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
               final photoUrl = await _firebaseService.uploadImage(path, bytes);
               photoUrls.add(photoUrl);
             } catch (e) {
+              debugPrint('❌ Ошибка загрузки фото $i: $e');
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -578,31 +659,35 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           noteData['photoUrls'] = photoUrls;
         }
 
-        // Используем новый метод addFishingNoteNew()
+        // ✅ ИСПРАВЛЕНО: Используем новый метод для сохранения в новой структуре
         await _firebaseService.addFishingNoteNew(noteData);
 
-        // ИСПРАВЛЕНО: увеличиваем счетчик использования
-        await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем серверный счетчик в Firebase
+        try {
+          await _firebaseService.incrementUsageCount('notesCount');
+          debugPrint('✅ Серверный счетчик заметок увеличен в Firebase');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения серверного счетчика: $e');
+          // Продолжаем, заметка уже сохранена
+        }
 
-        debugPrint('Заметка сохранена онлайн');
-        saveSuccessful = true; // ← ИСПРАВЛЕНО: Отмечаем успех
+        debugPrint('✅ Заметка сохранена онлайн, серверный счетчик обновлен');
+        saveSuccessful = true;
 
       } else {
         // ОФЛАЙН СОХРАНЕНИЕ
-        debugPrint('Сохранение офлайн...');
+        debugPrint('📱 Сохранение заметки офлайн...');
 
-        // Сохраняем фотографии локально (упрощенный вариант)
+        // Сохраняем фотографии локально
         if (_selectedPhotos.isNotEmpty) {
           final List<String> localPhotoPaths = [];
 
           for (int i = 0; i < _selectedPhotos.length; i++) {
             final file = _selectedPhotos[i];
-
             try {
-              // Просто добавляем путь к файлу для офлайн использования
               localPhotoPaths.add(file.path);
             } catch (e) {
-              debugPrint('Ошибка подготовки фото офлайн $i: $e');
+              debugPrint('❌ Ошибка подготовки фото офлайн $i: $e');
             }
           }
 
@@ -613,15 +698,30 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         // Сохраняем заметку локально
         await _offlineStorage.saveOfflineFishingNote(noteData);
 
-        // ИСПРАВЛЕНО: увеличиваем офлайн счетчик
-        await _subscriptionService.incrementOfflineUsage(ContentType.fishingNotes);
+        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем локальный счетчик в Firebase
+        try {
+          await _firebaseService.incrementUsageCount('notesCount');
+          debugPrint('✅ Локальный счетчик заметок увеличен в Firebase');
+        } catch (e) {
+          debugPrint('❌ Ошибка увеличения локального счетчика: $e');
+          // Продолжаем, заметка уже сохранена
+        }
 
-        debugPrint('Заметка сохранена офлайн');
-        saveSuccessful = true; // ← ИСПРАВЛЕНО: Отмечаем успех
+        debugPrint('✅ Заметка сохранена офлайн, локальный счетчик обновлен');
+        saveSuccessful = true;
       }
 
-      // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Возврат результата только при успехе =====
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного создания
       if (mounted && saveSuccessful) {
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после создания заметки');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+          // Не прерываем выполнение, заметка уже создана
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -646,9 +746,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
         _hasUnsavedChanges = false;
 
-        // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ГАРАНТИРОВАННЫЙ возврат true =====
-        debugPrint('🎯 Возвращаем результат true - заметка успешно сохранена');
-        Navigator.pop(context, true); // ← Это ключевое исправление!
+        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Гарантированный возврат результата
+        debugPrint('🎯 Возвращаем результат true - заметка успешно создана');
+        Navigator.pop(context, true);
       }
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении заметки: $e');
@@ -826,7 +926,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    // ПРОСТАЯ АДАПТИВНОСТЬ: только базовые отступы
     final horizontalPadding = ResponsiveUtils.getHorizontalPadding(context);
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
@@ -890,7 +989,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
             child: Form(
               key: _formKey,
               child: ListView(
-                padding: EdgeInsets.all(horizontalPadding), // АДАПТИВНЫЕ ОТСТУПЫ
+                padding: EdgeInsets.all(horizontalPadding),
                 children: [
                   // Тип рыбалки
                   _buildSectionHeader(localizations.translate('fishing_type')),
@@ -927,7 +1026,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
-                              overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Icon(
@@ -974,9 +1073,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
                   const SizedBox(height: 20),
 
-                  // Даты рыбалки - ПРОСТАЯ АДАПТИВНОСТЬ
+                  // Даты рыбалки
                   _buildSectionHeader(localizations.translate('fishing_dates')),
-                  if (isSmallScreen) // НА МАЛЕНЬКИХ ЭКРАНАХ - ВЕРТИКАЛЬНО
+                  if (isSmallScreen)
                     Column(
                       children: [
                         _buildDateSelector(
@@ -992,7 +1091,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         ),
                       ],
                     )
-                  else // НА БОЛЬШИХ ЭКРАНАХ - ГОРИЗОНТАЛЬНО
+                  else
                     Row(
                       children: [
                         Expanded(
@@ -1047,7 +1146,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                           color: AppConstants.textColor.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
-                        overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                        overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),
                     ),
@@ -1150,9 +1249,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
                   const SizedBox(height: 20),
 
-                  // Фотографии - ПРОСТАЯ АДАПТИВНОСТЬ
+                  // Фотографии
                   _buildSectionHeader(localizations.translate('photos')),
-                  if (isSmallScreen) // НА МАЛЕНЬКИХ ЭКРАНАХ - ВЕРТИКАЛЬНО
+                  if (isSmallScreen)
                     Column(
                       children: [
                         _buildSimpleButton(
@@ -1170,7 +1269,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         ),
                       ],
                     )
-                  else // НА БОЛЬШИХ ЭКРАНАХ - ГОРИЗОНТАЛЬНО
+                  else
                     Row(
                       children: [
                         Expanded(
@@ -1215,8 +1314,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
                   const SizedBox(height: 40),
 
-                  // Кнопки внизу экрана - ПРОСТАЯ АДАПТИВНОСТЬ
-                  if (isSmallScreen) // НА МАЛЕНЬКИХ ЭКРАНАХ - ВЕРТИКАЛЬНО
+                  // Кнопки внизу экрана
+                  if (isSmallScreen)
                     Column(
                       children: [
                         _buildCancelButton(),
@@ -1224,7 +1323,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         _buildSaveButton(),
                       ],
                     )
-                  else // НА БОЛЬШИХ ЭКРАНАХ - ГОРИЗОНТАЛЬНО
+                  else
                     Row(
                       children: [
                         Expanded(child: _buildCancelButton()),
@@ -1289,7 +1388,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                   size: 18,
                 ),
                 const SizedBox(width: 8),
-                Flexible( // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                Flexible(
                   child: Text(
                     DateFormat('dd.MM.yyyy').format(date),
                     style: TextStyle(
@@ -1316,7 +1415,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   }) {
     return SizedBox(
       width: double.infinity,
-      // УБРАЛ фиксированную высоту - пусть кнопка подстраивается под текст
       child: ElevatedButton.icon(
         icon: Icon(icon, color: isPrimary ? AppConstants.textColor : AppConstants.textColor),
         label: Text(
@@ -1325,16 +1423,16 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
             color: isPrimary ? AppConstants.textColor : AppConstants.textColor,
             fontSize: 16,
           ),
-          textAlign: TextAlign.center, // ЦЕНТРИРУЕМ ТЕКСТ
+          textAlign: TextAlign.center,
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: isPrimary ? AppConstants.primaryColor : const Color(0xFF12332E),
           foregroundColor: AppConstants.textColor,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), // УВЕЛИЧИЛ ОТСТУПЫ
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          minimumSize: Size(double.infinity, 48), // МИНИМАЛЬНАЯ ВЫСОТА ДЛЯ TOUCH TARGET
+          minimumSize: const Size(double.infinity, 48),
         ),
         onPressed: onPressed,
       ),
@@ -1427,7 +1525,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         color: AppConstants.textColor.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
-                      overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -1435,7 +1533,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
             ],
           ),
           const SizedBox(height: 16),
-          // ПРОСТАЯ СЕТКА 2x3
           _buildSimpleWeatherGrid(localizations),
         ],
       ),
@@ -1530,7 +1627,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
               fontSize: 11,
             ),
             textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
@@ -1541,7 +1638,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+            overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
         ],
@@ -1585,7 +1682,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
-                      overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                      overflow: TextOverflow.ellipsis,
                       maxLines: 2,
                     ),
                     Text(
@@ -1595,7 +1692,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
-                      overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -1610,7 +1707,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
               fontSize: 14,
               height: 1.4,
             ),
-            overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+            overflow: TextOverflow.ellipsis,
             maxLines: 3,
           ),
         ],
@@ -1642,7 +1739,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                 color: AppConstants.textColor,
                 fontWeight: FontWeight.bold,
               ),
-              overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+              overflow: TextOverflow.ellipsis,
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1667,7 +1764,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                       color: AppConstants.textColor.withValues(alpha: 0.7),
                     ),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis, // ПРОСТАЯ ЗАЩИТА ОТ OVERFLOW
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
@@ -1691,7 +1788,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
     return SizedBox(
       width: double.infinity,
-      // УБРАЛ фиксированную высоту
       child: ElevatedButton(
         onPressed: () async {
           final shouldExit = await _onWillPop();
@@ -1702,14 +1798,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.redAccent,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16), // УВЕЛИЧИЛ ОТСТУПЫ
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          minimumSize: const Size(double.infinity, 48), // МИНИМАЛЬНАЯ ВЫСОТА
+          minimumSize: const Size(double.infinity, 48),
         ),
         child: Text(
           localizations.translate('cancel'),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center, // ЦЕНТРИРУЕМ ТЕКСТ
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -1720,16 +1816,15 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
     return SizedBox(
       width: double.infinity,
-      // УБРАЛ фиксированную высоту
       child: ElevatedButton(
         onPressed: _isSaving ? null : _saveNote,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppConstants.primaryColor,
           foregroundColor: AppConstants.textColor,
-          padding: const EdgeInsets.symmetric(vertical: 16), // УВЕЛИЧИЛ ОТСТУПЫ
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.5),
-          minimumSize: const Size(double.infinity, 48), // МИНИМАЛЬНАЯ ВЫСОТА
+          minimumSize: const Size(double.infinity, 48),
         ),
         child: _isSaving
             ? SizedBox(
@@ -1746,7 +1841,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
-          textAlign: TextAlign.center, // ЦЕНТРИРУЕМ ТЕКСТ
+          textAlign: TextAlign.center,
         ),
       ),
     );

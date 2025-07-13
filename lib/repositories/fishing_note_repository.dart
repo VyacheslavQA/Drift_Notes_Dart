@@ -50,20 +50,17 @@ class FishingNoteRepository {
       if (isOnline) {
         // === ОНЛАЙН РЕЖИМ: Загружаем ТОЛЬКО из новой структуры ===
         try {
-          debugPrint('☁️ Загружаем заметки из НОВОЙ структуры: users/$userId/fishing_notes');
+          debugPrint('☁️ Загружаем заметки из НОВОЙ структуры через FirebaseService');
 
-          final snapshot = await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .get();
+          // 🔥 ИСПРАВЛЕНО: Используем новый метод FirebaseService для получения заметок
+          final snapshot = await _firebaseService.getUserFishingNotesNew();
 
           // Преобразуем результаты в модели
           for (var doc in snapshot.docs) {
-            final data = doc.data();
-            if (data.isNotEmpty) {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data != null && data.isNotEmpty) {
               final note = FishingNoteModel.fromJson(
-                Map<String, dynamic>.from(data),
+                data,
                 id: doc.id,
               );
               onlineNotes.add(note);
@@ -171,6 +168,51 @@ class FishingNoteRepository {
     try {
       debugPrint('💾 Пытаемся получить кэшированные заметки из НОВОЙ структуры...');
 
+      // 🔥 ИСПРАВЛЕНО: Используем прямое обращение к Firestore для кэшированных данных
+      try {
+        // Получаем кэшированные данные из новой структуры
+        final snapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('fishing_notes')
+            .get(const GetOptions(source: Source.cache));
+
+        final List<FishingNoteModel> cachedNotes = [];
+
+        for (var doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null && data.isNotEmpty) {
+            try {
+              final note = FishingNoteModel.fromJson(
+                data,
+                id: doc.id,
+              );
+              cachedNotes.add(note);
+              debugPrint('💾 Кэшированная заметка: ${note.id} - ${note.location}');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка парсинга кэшированной заметки ${doc.id}: $e');
+            }
+          }
+        }
+
+        debugPrint('💾 Всего кэшированных заметок из НОВОЙ структуры: ${cachedNotes.length}');
+        return cachedNotes;
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при получении кэшированных заметок через FirebaseService: $e');
+        // Fallback к прямому обращению к Firestore кэшу
+        return await _getFallbackCachedNotes(userId);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Ошибка при получении кэшированных заметок из НОВОЙ структуры: $e');
+
+      // Если и кэш недоступен, пытаемся найти сохраненные заметки в оффлайн хранилище
+      return await _getSavedOnlineNotesFromOfflineStorage(userId);
+    }
+  }
+
+  // 🔥 НОВОЕ: Fallback метод для получения кэшированных заметок
+  Future<List<FishingNoteModel>> _getFallbackCachedNotes(String userId) async {
+    try {
       // Пытаемся получить заметки из локального кэша Firestore (новая структура)
       final snapshot = await _firestore
           .collection('users')
@@ -181,28 +223,26 @@ class FishingNoteRepository {
       final List<FishingNoteModel> cachedNotes = [];
 
       for (var doc in snapshot.docs) {
-        final data = doc.data();
-        if (data.isNotEmpty) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.isNotEmpty) {
           try {
             final note = FishingNoteModel.fromJson(
-              Map<String, dynamic>.from(data),
+              data,
               id: doc.id,
             );
             cachedNotes.add(note);
-            debugPrint('💾 Кэшированная заметка: ${note.id} - ${note.location}');
+            debugPrint('💾 Fallback кэшированная заметка: ${note.id} - ${note.location}');
           } catch (e) {
-            debugPrint('⚠️ Ошибка парсинга кэшированной заметки ${doc.id}: $e');
+            debugPrint('⚠️ Ошибка парсинга fallback кэшированной заметки ${doc.id}: $e');
           }
         }
       }
 
-      debugPrint('💾 Всего кэшированных заметок из НОВОЙ структуры: ${cachedNotes.length}');
+      debugPrint('💾 Всего fallback кэшированных заметок: ${cachedNotes.length}');
       return cachedNotes;
     } catch (e) {
-      debugPrint('⚠️ Ошибка при получении кэшированных заметок из НОВОЙ структуры: $e');
-
-      // Если и кэш недоступен, пытаемся найти сохраненные заметки в оффлайн хранилище
-      return await _getSavedOnlineNotesFromOfflineStorage(userId);
+      debugPrint('⚠️ Ошибка при fallback получении кэшированных заметок: $e');
+      return [];
     }
   }
 
@@ -341,7 +381,7 @@ class FishingNoteRepository {
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Добавление новой заметки ТОЛЬКО в новую структуру
+  // 🔥 ИСПРАВЛЕНО: Добавление новой заметки БЕЗ двойного увеличения счетчиков
   Future<String> addFishingNote(
       FishingNoteModel note,
       List<File>? photos,
@@ -351,6 +391,15 @@ class FishingNoteRepository {
       if (userId == null || userId.isEmpty) {
         debugPrint('⚠️ addFishingNote: Пользователь не авторизован');
         throw Exception('Пользователь не авторизован');
+      }
+
+      // ✅ КРИТИЧНО: Проверяем лимиты ДО создания заметки
+      final canCreate = await _subscriptionService.canCreateContentOffline(
+        ContentType.fishingNotes,
+      );
+
+      if (!canCreate) {
+        throw Exception('Достигнут лимит создания заметок');
       }
 
       // Генерируем ID, если его нет
@@ -388,16 +437,10 @@ class FishingNoteRepository {
         // Создаем копию заметки с URL фотографий
         final noteWithPhotos = noteToAdd.copyWith(photoUrls: photoUrls);
 
-        // 🔥 ДОБАВЛЯЕМ В НОВУЮ СТРУКТУРУ: users/$userId/fishing_notes
+        // 🔥 ИСПРАВЛЕНО: Добавляем в НОВУЮ структуру через FirebaseService
         try {
-          await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .doc(noteId)
-              .set(noteWithPhotos.toJson());
-
-          debugPrint('✅ Заметка $noteId добавлена в НОВУЮ структуру: users/$userId/fishing_notes');
+          await _firebaseService.addFishingNote(noteWithPhotos.toJson());
+          debugPrint('✅ Заметка $noteId добавлена в НОВУЮ структуру через FirebaseService');
 
           // Сохраняем копию в офлайн хранилище как синхронизированную
           final noteJson = noteWithPhotos.toJson();
@@ -407,18 +450,13 @@ class FishingNoteRepository {
           await _offlineStorage.saveOfflineNote(noteJson);
           debugPrint('💾 Синхронизированная заметка сохранена в кэше');
 
-          // Обновляем счетчики лимитов после успешного сохранения
+          // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик ТОЛЬКО ОДИН РАЗ - через Firebase
+          // (Firebase автоматически обновит локальные счетчики)
           try {
-            if (!_subscriptionService.hasPremiumAccess()) {
-              await _subscriptionService.incrementUsage(ContentType.fishingNotes);
-              debugPrint('✅ Счетчик лимитов увеличен для заметок');
-            }
-
-            // Принудительно обновляем лимиты
-            await _subscriptionService.refreshUsageLimits();
-            debugPrint('✅ Лимиты принудительно обновлены');
+            await _firebaseService.incrementUsageCount('notesCount');
+            debugPrint('✅ Счетчик заметок увеличен через Firebase (без дублирования)');
           } catch (e) {
-            debugPrint('⚠️ Ошибка обновления лимитов: $e');
+            debugPrint('⚠️ Ошибка увеличения счетчика Firebase: $e');
           }
 
           // Проверяем, есть ли офлайн заметки для отправки
@@ -431,14 +469,12 @@ class FishingNoteRepository {
           // Если ошибка при добавлении в новую структуру, сохраняем заметку локально
           await _saveOfflineNote(noteWithPhotos, photos);
 
-          // Обновляем лимиты даже для офлайн заметок
+          // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик ТОЛЬКО ОДИН РАЗ - через SubscriptionService
           try {
-            if (!_subscriptionService.hasPremiumAccess()) {
-              await _subscriptionService.incrementUsage(ContentType.fishingNotes);
-              debugPrint('✅ Счетчик лимитов увеличен для офлайн заметки');
-            }
+            await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+            debugPrint('✅ Счетчик заметок увеличен офлайн (без дублирования)');
           } catch (limitError) {
-            debugPrint('⚠️ Ошибка обновления лимитов для офлайн заметки: $limitError');
+            debugPrint('⚠️ Ошибка увеличения офлайн счетчика: $limitError');
           }
 
           return noteId;
@@ -459,14 +495,12 @@ class FishingNoteRepository {
         debugPrint('📱 Сохранение заметки в офлайн режиме');
         await _saveOfflineNote(noteWithLocalPhotos, photos);
 
-        // Обновляем лимиты для офлайн заметок
+        // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик ТОЛЬКО ОДИН РАЗ - через SubscriptionService
         try {
-          if (!_subscriptionService.hasPremiumAccess()) {
-            await _subscriptionService.incrementUsage(ContentType.fishingNotes);
-            debugPrint('✅ Счетчик лимитов увеличен для офлайн заметки');
-          }
+          await _subscriptionService.incrementUsage(ContentType.fishingNotes);
+          debugPrint('✅ Счетчик заметок увеличен офлайн (без дублирования)');
         } catch (e) {
-          debugPrint('⚠️ Ошибка обновления лимитов для офлайн заметки: $e');
+          debugPrint('⚠️ Ошибка увеличения офлайн счетчика: $e');
         }
 
         return noteId;
@@ -556,16 +590,10 @@ class FishingNoteRepository {
       debugPrint('📱 Заметка ${note.id} сохранена локально');
 
       if (isOnline) {
-        // 🔥 ОБНОВЛЯЕМ В НОВОЙ СТРУКТУРЕ: users/$userId/fishing_notes
+        // 🔥 ИСПРАВЛЕНО: Обновляем в НОВОЙ структуре через FirebaseService
         try {
-          await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .doc(note.id)
-              .update(note.toJson());
-
-          debugPrint('✅ Заметка ${note.id} обновлена в НОВОЙ структуре: users/$userId/fishing_notes');
+          await _firebaseService.updateFishingNoteNew(note.id, note.toJson());
+          debugPrint('✅ Заметка ${note.id} обновлена в НОВОЙ структуре через FirebaseService');
         } catch (e) {
           debugPrint('⚠️ Ошибка при обновлении заметки в НОВОЙ структуре: $e');
         }
@@ -605,7 +633,7 @@ class FishingNoteRepository {
       debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
-        // 🔥 ПОЛУЧАЕМ ИЗ НОВОЙ СТРУКТУРЫ: users/$userId/fishing_notes
+        // 🔥 ИСПРАВЛЕНО: Получаем из НОВОЙ структуры напрямую
         try {
           final doc = await _firestore
               .collection('users')
@@ -662,7 +690,7 @@ class FishingNoteRepository {
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Удаление заметки ТОЛЬКО из новой структуры
+  // 🔥 ИСПРАВЛЕНО: Удаление заметки БЕЗ двойного уменьшения счетчиков
   Future<void> deleteFishingNote(String noteId) async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -699,29 +727,18 @@ class FishingNoteRepository {
       }
 
       if (isOnline) {
-        // 🔥 УДАЛЯЕМ ИЗ НОВОЙ СТРУКТУРЫ: users/$userId/fishing_notes
+        // 🔥 ИСПРАВЛЕНО: Удаляем из НОВОЙ структуры через FirebaseService
         try {
-          await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .doc(noteId)
-              .delete();
+          await _firebaseService.deleteFishingNoteNew(noteId);
+          debugPrint('✅ Заметка $noteId удалена из НОВОЙ структуры через FirebaseService');
 
-          debugPrint('✅ Заметка $noteId удалена из НОВОЙ структуры: users/$userId/fishing_notes');
-
-          // Обновляем счетчики лимитов после успешного удаления
+          // ✅ ИСПРАВЛЕНО: Уменьшаем счетчик ТОЛЬКО ОДИН РАЗ - через Firebase
+          // (Firebase автоматически обновит локальные счетчики)
           try {
-            if (!_subscriptionService.hasPremiumAccess()) {
-              await _subscriptionService.decrementUsage(ContentType.fishingNotes);
-              debugPrint('✅ Счетчик лимитов уменьшен для заметок');
-            }
-
-            // Принудительно обновляем лимиты
-            await _subscriptionService.refreshUsageLimits();
-            debugPrint('✅ Лимиты принудительно обновлены после удаления');
+            await _firebaseService.incrementUsageCount('notesCount', increment: -1);
+            debugPrint('✅ Счетчик заметок уменьшен через Firebase (без дублирования)');
           } catch (e) {
-            debugPrint('⚠️ Ошибка обновления лимитов при удалении: $e');
+            debugPrint('⚠️ Ошибка уменьшения счетчика Firebase: $e');
           }
 
           // Удаляем локальную копию
@@ -738,14 +755,12 @@ class FishingNoteRepository {
           await _offlineStorage.markForDeletion(noteId, false);
           debugPrint('📱 Заметка $noteId отмечена для удаления');
 
-          // Обновляем лимиты даже если удаление из новой структуры не удалось
+          // ✅ ИСПРАВЛЕНО: Уменьшаем счетчик ТОЛЬКО ОДИН РАЗ - через SubscriptionService
           try {
-            if (!_subscriptionService.hasPremiumAccess()) {
-              await _subscriptionService.decrementUsage(ContentType.fishingNotes);
-              debugPrint('✅ Счетчик лимитов уменьшен (офлайн удаление)');
-            }
+            await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+            debugPrint('✅ Счетчик заметок уменьшен офлайн (без дублирования)');
           } catch (limitError) {
-            debugPrint('⚠️ Ошибка обновления лимитов при офлайн удалении: $limitError');
+            debugPrint('⚠️ Ошибка уменьшения офлайн счетчика: $limitError');
           }
 
           // Удаляем локальную копию
@@ -761,14 +776,12 @@ class FishingNoteRepository {
         await _offlineStorage.markForDeletion(noteId, false);
         debugPrint('📱 Заметка $noteId отмечена для удаления (офлайн)');
 
-        // Обновляем лимиты при офлайн удалении
+        // ✅ ИСПРАВЛЕНО: Уменьшаем счетчик ТОЛЬКО ОДИН РАЗ - через SubscriptionService
         try {
-          if (!_subscriptionService.hasPremiumAccess()) {
-            await _subscriptionService.decrementUsage(ContentType.fishingNotes);
-            debugPrint('✅ Счетчик лимитов уменьшен (полный офлайн)');
-          }
+          await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+          debugPrint('✅ Счетчик заметок уменьшен офлайн (без дублирования)');
         } catch (e) {
-          debugPrint('⚠️ Ошибка обновления лимитов при полном офлайн удалении: $e');
+          debugPrint('⚠️ Ошибка уменьшения офлайн счетчика: $e');
         }
 
         // Удаляем локальную копию

@@ -181,11 +181,18 @@ class SubscriptionConstants {
   static const String cachedCurrencyKey = 'cached_user_currency';
 
   // ========================================
-  // FIREBASE КОНФИГУРАЦИЯ
+  // 🔥 FIREBASE КОНФИГУРАЦИЯ - ОБНОВЛЕНО ДЛЯ НОВОЙ СТРУКТУРЫ
   // ========================================
 
   static const String subscriptionCollection = 'subscriptions';
-  static const String usageLimitsCollection = 'usage_limits';
+
+  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Убираем старую константу usage_limits!
+  // static const String usageLimitsCollection = 'usage_limits'; // ❌ УДАЛЕНО - СТАРАЯ СТРУКТУРА
+
+  // 🔥 НОВЫЕ КОНСТАНТЫ для новой структуры users/{userId}/usage_limits/current
+  static const String usersCollection = 'users';
+  static const String userUsageLimitsSubcollection = 'usage_limits';
+  static const String currentUsageLimitsDocument = 'current';
 
   static const String subscriptionStatusField = 'status';
   static const String subscriptionPlanField = 'plan';
@@ -204,6 +211,35 @@ class SubscriptionConstants {
   static const String iosPlatform = 'ios';
 
   static const Duration limitResetPeriod = Duration(days: 30);
+
+  // 🔥 НОВЫЕ КОНСТАНТЫ для Firebase операций
+  static const String userIdField = 'userId';
+  static const String updatedAtField = 'updatedAt';
+  static const String createdAtField = 'createdAt';
+
+  // ========================================
+  // 🔥 НОВЫЕ МЕТОДЫ для построения путей Firebase
+  // ========================================
+
+  /// Получить путь к документу лимитов пользователя в новой структуре
+  static String getUserUsageLimitsPath(String userId) {
+    return '$usersCollection/$userId/$userUsageLimitsSubcollection/$currentUsageLimitsDocument';
+  }
+
+  /// Получить референс коллекции users
+  static String getUsersCollectionPath() {
+    return usersCollection;
+  }
+
+  /// Получить путь к subcollection лимитов пользователя
+  static String getUserUsageLimitsSubcollectionPath(String userId) {
+    return '$usersCollection/$userId/$userUsageLimitsSubcollection';
+  }
+
+  /// Получить путь к документу пользователя
+  static String getUserDocumentPath(String userId) {
+    return '$usersCollection/$userId';
+  }
 
   // ========================================
   // 🔥 НОВЫЕ МЕТОДЫ для офлайн режима

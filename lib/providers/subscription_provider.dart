@@ -17,7 +17,8 @@ class SubscriptionProvider extends ChangeNotifier {
 
   // Состояние подписки
   SubscriptionModel? _subscription;
-  UsageLimitsModel? _usageLimits;
+  // 🔥 ИСПРАВЛЕНО: Изменили тип с UsageLimitsModel на Map
+  Map<String, dynamic>? _usageLimits;
 
   // Состояние продуктов
   List<ProductDetails> _availableProducts = [];
@@ -36,11 +37,13 @@ class SubscriptionProvider extends ChangeNotifier {
 
   // Стримы для прослушивания изменений
   StreamSubscription<SubscriptionModel>? _subscriptionSubscription;
-  StreamSubscription<UsageLimitsModel>? _limitsSubscription;
+  // 🔥 ИСПРАВЛЕНО: Изменили тип стрима
+  StreamSubscription<Map<String, dynamic>>? _limitsSubscription;
 
   // Геттеры для состояния
   SubscriptionModel? get subscription => _subscription;
-  UsageLimitsModel? get usageLimits => _usageLimits;
+  // 🔥 ИСПРАВЛЕНО: Адаптер для совместимости
+  UsageLimitsModel? get usageLimits => _convertMapToUsageLimits(_usageLimits);
   List<ProductDetails> get availableProducts => _availableProducts;
   bool get isLoadingProducts => _isLoadingProducts;
   bool get isPurchasing => _isPurchasing;
@@ -54,6 +57,21 @@ class SubscriptionProvider extends ChangeNotifier {
   bool get isExpiringSoon => _subscription?.isExpiringSoon ?? false;
   int? get daysUntilExpiration => _subscription?.daysUntilExpiration;
   String get planDisplayName => _subscription?.planDisplayName ?? 'Free';
+
+  /// 🔥 НОВЫЙ МЕТОД: Конвертация Map в UsageLimitsModel для совместимости
+  UsageLimitsModel? _convertMapToUsageLimits(Map<String, dynamic>? data) {
+    if (data == null || !data.containsKey('notesCount')) return null;
+
+    // Создаем UsageLimitsModel из данных новой Firebase системы
+    return UsageLimitsModel(
+      userId: _subscription?.userId ?? '',
+      notesCount: data['notesCount'] ?? 0,
+      markerMapsCount: data['markerMapsCount'] ?? 0,
+      expensesCount: data['expensesCount'] ?? 0,
+      lastResetDate: DateTime.now(), // Приблизительно
+      updatedAt: DateTime.now(),
+    );
+  }
 
   /// Инициализация провайдера
   Future<void> initialize() async {
@@ -84,6 +102,7 @@ class SubscriptionProvider extends ChangeNotifier {
         onError: _onSubscriptionError,
       );
 
+      // 🔥 ИСПРАВЛЕНО: Обновленный обработчик для нового типа стрима
       _limitsSubscription = _usageLimitsService.limitsStream.listen(
         _onLimitsChanged,
         onError: _onLimitsError,
@@ -104,7 +123,7 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// Загрузка начальных данных
+  /// 🔥 ИСПРАВЛЕНО: Загрузка начальных данных через новую систему
   Future<void> _loadInitialData() async {
     try {
       // Загружаем подписку и лимиты параллельно
@@ -114,7 +133,8 @@ class SubscriptionProvider extends ChangeNotifier {
       ]);
 
       _subscription = results[0] as SubscriptionModel;
-      _usageLimits = results[1] as UsageLimitsModel;
+      // 🔥 ИСПРАВЛЕНО: Теперь получаем Map вместо UsageLimitsModel
+      _usageLimits = results[1] as Map<String, dynamic>;
 
       // Загружаем локализованные цены
       await _loadLocalizedPrices();
@@ -252,7 +272,7 @@ class SubscriptionProvider extends ChangeNotifier {
       return ContentCreationResult(
         canCreate: true,
         reason: null,
-        currentCount: _usageLimits?.getCountForType(contentType) ?? 0,
+        currentCount: _getUsageCountFromMap(contentType),
         limit: -1, // Безлимитно
         remaining: -1, // Безлимитно
       );
@@ -260,6 +280,22 @@ class SubscriptionProvider extends ChangeNotifier {
 
     // Проверяем через сервис лимитов
     return await _usageLimitsService.checkContentCreation(contentType);
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Получение счетчика из Map данных
+  int _getUsageCountFromMap(ContentType contentType) {
+    if (_usageLimits == null) return 0;
+
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return _usageLimits!['notesCount'] ?? 0;
+      case ContentType.markerMaps:
+        return _usageLimits!['markerMapsCount'] ?? 0;
+      case ContentType.expenses:
+        return _usageLimits!['expensesCount'] ?? 0;
+      case ContentType.depthChart:
+        return 0; // Только премиум
+    }
   }
 
   /// Увеличение счетчика использования
@@ -432,9 +468,9 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// Получение количества использования для типа контента
+  /// 🔥 ИСПРАВЛЕНО: Получение количества использования для типа контента
   int getUsageCount(ContentType contentType) {
-    return _usageLimits?.getCountForType(contentType) ?? 0;
+    return _getUsageCountFromMap(contentType);
   }
 
   /// Получение лимита для типа контента
@@ -442,16 +478,25 @@ class SubscriptionProvider extends ChangeNotifier {
     return SubscriptionConstants.getContentLimit(contentType);
   }
 
-  /// Получение оставшегося количества для типа контента
+  /// 🔥 ИСПРАВЛЕНО: Получение оставшегося количества для типа контента
   int getRemainingCount(ContentType contentType) {
     if (isPremium) return -1; // Безлимитно
-    return _usageLimits?.getRemainingCount(contentType) ?? 0;
+
+    final current = _getUsageCountFromMap(contentType);
+    final limit = getUsageLimit(contentType);
+
+    return (limit - current).clamp(0, limit);
   }
 
-  /// Получение процента использования
+  /// 🔥 ИСПРАВЛЕНО: Получение процента использования
   double getUsagePercentage(ContentType contentType) {
     if (isPremium) return 0.0; // Нет лимитов
-    return _usageLimits?.getUsagePercentage(contentType) ?? 0.0;
+
+    final current = _getUsageCountFromMap(contentType);
+    final limit = getUsageLimit(contentType);
+
+    if (limit <= 0) return 0.0;
+    return (current / limit).clamp(0.0, 1.0);
   }
 
   /// Получение информации о валюте пользователя
@@ -479,9 +524,10 @@ class SubscriptionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Обработчик изменений лимитов
-  void _onLimitsChanged(UsageLimitsModel limits) {
-    debugPrint('🔄 Лимиты изменены: ${limits.totalContentCount} элементов');
+  /// 🔥 ИСПРАВЛЕНО: Обработчик изменений лимитов (теперь принимает Map)
+  void _onLimitsChanged(Map<String, dynamic> limits) {
+    debugPrint('🔄 Лимиты изменены через новую Firebase систему');
+    debugPrint('🔄 Данные: $limits');
     _usageLimits = limits;
     notifyListeners();
   }
@@ -512,6 +558,106 @@ class SubscriptionProvider extends ChangeNotifier {
   void clearError() {
     _lastError = null;
     notifyListeners();
+  }
+
+  // 🔥 НОВЫЕ МЕТОДЫ для исправления реактивности счетчиков
+
+  /// Принудительное обновление данных с уведомлением слушателей
+  Future<void> refreshUsageData() async {
+    try {
+      debugPrint('🔄 SubscriptionProvider: Принудительное обновление данных...');
+
+      // Загружаем актуальную подписку
+      await _subscriptionService.loadCurrentSubscription();
+
+      // Загружаем актуальные лимиты
+      await _usageLimitsService.loadCurrentLimits();
+
+      // 🚨 КРИТИЧЕСКИ ВАЖНО: Уведомляем всех слушателей об изменениях
+      notifyListeners();
+
+      debugPrint('✅ SubscriptionProvider: Данные обновлены и слушатели уведомлены');
+    } catch (e) {
+      debugPrint('❌ SubscriptionProvider: Ошибка обновления данных: $e');
+      _lastError = e.toString();
+      notifyListeners(); // Уведомляем даже при ошибке
+    }
+  }
+
+  /// Синхронная проверка премиум доступа
+  bool get hasPremiumAccess => _subscription?.isPremium ?? false;
+
+  /// Синхронное получение использования для типа контента
+  int? getUsage(ContentType contentType) {
+    if (_usageLimits == null) return null;
+
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return _usageLimits!['notesCount'] ?? 0;
+      case ContentType.markerMaps:
+        return _usageLimits!['markerMapsCount'] ?? 0;
+      case ContentType.expenses:
+        return _usageLimits!['expensesCount'] ?? 0;
+      case ContentType.depthChart:
+        return 0; // Только премиум
+    }
+  }
+
+  /// Синхронное получение лимита для типа контента
+  int? getLimit(ContentType contentType) {
+    if (hasPremiumAccess) {
+      return SubscriptionConstants.unlimitedValue; // Безлимитно для премиум
+    }
+
+    return SubscriptionConstants.getContentLimit(contentType);
+  }
+
+  /// Синхронная проверка возможности создания контента
+  bool canCreateContentSync(ContentType contentType) {
+    // Если премиум - разрешаем все
+    if (hasPremiumAccess) {
+      return true;
+    }
+
+    // Для графика глубин - только премиум
+    if (contentType == ContentType.depthChart) {
+      return false;
+    }
+
+    final currentUsage = getUsage(contentType) ?? 0;
+    final limit = getLimit(contentType) ?? 0;
+
+    return currentUsage < limit;
+  }
+
+  /// Получение цвета индикатора по проценту использования
+  Color getUsageIndicatorColor(ContentType contentType) {
+    final currentUsage = getUsage(contentType) ?? 0;
+    final limit = getLimit(contentType) ?? 0;
+
+    if (limit <= 0) return const Color(0xFF2E7D32);
+
+    final percentage = currentUsage / limit;
+
+    if (percentage >= 0.9) {
+      return const Color(0xFFFF4444); // Красный - лимит
+    } else if (percentage >= 0.7) {
+      return const Color(0xFFFFA500); // Оранжевый - предупреждение
+    } else {
+      return const Color(0xFF2E7D32); // Зеленый - норма
+    }
+  }
+
+  /// Получение текста использования
+  String getUsageText(ContentType contentType) {
+    if (hasPremiumAccess) {
+      return '∞'; // Безлимитно
+    }
+
+    final currentUsage = getUsage(contentType) ?? 0;
+    final limit = getLimit(contentType) ?? 0;
+
+    return '$currentUsage/$limit';
   }
 
   @override

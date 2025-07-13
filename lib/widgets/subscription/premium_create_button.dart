@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import '../../models/subscription_model.dart';
 import '../../constants/subscription_constants.dart';
 import '../../services/subscription/subscription_service.dart';
+import '../../services/firebase/firebase_service.dart';
 import '../../screens/subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
 import '../../constants/app_constants.dart';
 import 'usage_badge.dart';
 
 /// Кнопка создания контента с автоматической проверкой лимитов
-class PremiumCreateButton extends StatelessWidget {
+class PremiumCreateButton extends StatefulWidget {
   final ContentType contentType;
   final VoidCallback onCreatePressed;
   final String? customText;
@@ -37,75 +38,176 @@ class PremiumCreateButton extends StatelessWidget {
   });
 
   @override
+  State<PremiumCreateButton> createState() => _PremiumCreateButtonState();
+}
+
+class _PremiumCreateButtonState extends State<PremiumCreateButton> {
+  final SubscriptionService _subscriptionService = SubscriptionService();
+  final FirebaseService _firebaseService = FirebaseService();
+
+  bool _canCreate = false;
+  bool _isLoading = true;
+  int _currentUsage = 0;
+  int _limit = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLimits();
+  }
+
+  /// 🔥 ИСПРАВЛЕНО: Проверка лимитов через новую Firebase систему
+  Future<void> _checkLimits() async {
+    try {
+      // 1. Проверяем премиум доступ
+      if (_subscriptionService.hasPremiumAccess()) {
+        if (mounted) {
+          setState(() {
+            _canCreate = true;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // 2. Для графика глубин - только премиум
+      if (widget.contentType == ContentType.depthChart) {
+        if (mounted) {
+          setState(() {
+            _canCreate = false;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // 3. 🔥 ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
+      final limitCheck = await _firebaseService.canCreateItem(_getFirebaseKey(widget.contentType));
+
+      final canCreate = limitCheck['canProceed'] ?? false;
+      final currentUsage = limitCheck['currentCount'] ?? 0;
+      final maxLimit = limitCheck['maxLimit'] ?? 0;
+
+      if (mounted) {
+        setState(() {
+          _canCreate = canCreate;
+          _currentUsage = currentUsage;
+          _limit = maxLimit;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ PremiumCreateButton: Ошибка проверки лимитов: $e');
+
+      if (mounted) {
+        setState(() {
+          _canCreate = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Преобразование ContentType в ключ Firebase
+  String _getFirebaseKey(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return 'notesCount';
+      case ContentType.markerMaps:
+        return 'markerMapsCount';
+      case ContentType.expenses:
+        return 'expensesCount';
+      case ContentType.depthChart:
+        return 'depthChartCount';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<SubscriptionModel>(
-      stream: SubscriptionService().subscriptionStream,
+      stream: _subscriptionService.subscriptionStream,
       builder: (context, snapshot) {
-        final subscriptionService = SubscriptionService();
         final localizations = AppLocalizations.of(context);
 
-        // ИСПРАВЛЕНО: используем FutureBuilder для асинхронной проверки
-        return FutureBuilder<bool>(
-          future: subscriptionService.canCreateContent(contentType),
-          builder: (context, futureSnapshot) {
-            final canCreate = futureSnapshot.data ?? false; // По умолчанию запрещаем
+        if (_isLoading) {
+          return _buildLoadingButton(context, localizations);
+        }
 
-            if (isFloatingActionButton) {
-              return _buildFloatingActionButton(
-                context,
-                canCreate,
-                localizations,
-                subscriptionService,
-              );
-            }
+        if (widget.isFloatingActionButton) {
+          return _buildFloatingActionButton(
+            context,
+            localizations,
+          );
+        }
 
-            return _buildRegularButton(
-              context,
-              canCreate,
-              localizations,
-              subscriptionService,
-            );
-          },
+        return _buildRegularButton(
+          context,
+          localizations,
         );
       },
     );
   }
 
+  Widget _buildLoadingButton(BuildContext context, AppLocalizations localizations) {
+    if (widget.isFloatingActionButton) {
+      return FloatingActionButton(
+        onPressed: null,
+        backgroundColor: Colors.grey,
+        child: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        ),
+      );
+    }
+
+    return ElevatedButton(
+      onPressed: null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey,
+        minimumSize: const Size(double.infinity, 56),
+      ),
+      child: const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      ),
+    );
+  }
+
   Widget _buildFloatingActionButton(
       BuildContext context,
-      bool canCreate,
       AppLocalizations localizations,
-      SubscriptionService subscriptionService,
       ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (showUsageBadge && !subscriptionService.hasPremiumAccess()) ...[
+        if (widget.showUsageBadge && !_subscriptionService.hasPremiumAccess()) ...[
           CompactUsageBadge(
-            contentType: contentType,
+            contentType: widget.contentType,
             showOnlyWhenNearLimit: true,
           ),
           const SizedBox(height: 8),
         ],
         FloatingActionButton(
-          onPressed: canCreate
-              ? () => _handleCreatePress(context, subscriptionService)
+          onPressed: _canCreate
+              ? () => _handleCreatePress(context)
               : () => _showPaywall(context),
-          backgroundColor: canCreate
-              ? (backgroundColor ?? AppConstants.primaryColor)
+          backgroundColor: _canCreate
+              ? (widget.backgroundColor ?? AppConstants.primaryColor)
               : Colors.grey.withOpacity(0.7),
-          foregroundColor: canCreate
-              ? (foregroundColor ?? Colors.white)
+          foregroundColor: _canCreate
+              ? (widget.foregroundColor ?? Colors.white)
               : Colors.white70,
           child: Stack(
             children: [
               Icon(
-                canCreate
-                    ? (customIcon ?? Icons.add)
+                _canCreate
+                    ? (widget.customIcon ?? Icons.add)
                     : Icons.lock,
                 size: 28,
               ),
-              if (!canCreate)
+              if (!_canCreate)
                 Positioned(
                   top: 0,
                   right: 0,
@@ -132,19 +234,17 @@ class PremiumCreateButton extends StatelessWidget {
 
   Widget _buildRegularButton(
       BuildContext context,
-      bool canCreate,
       AppLocalizations localizations,
-      SubscriptionService subscriptionService,
       ) {
-    final buttonText = _getButtonText(localizations, canCreate);
-    final buttonIcon = _getButtonIcon(canCreate);
+    final buttonText = _getButtonText(localizations, _canCreate);
+    final buttonIcon = _getButtonIcon(_canCreate);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton.icon(
-          onPressed: canCreate
-              ? () => _handleCreatePress(context, subscriptionService)
+          onPressed: _canCreate
+              ? () => _handleCreatePress(context)
               : () => _showPaywall(context),
           icon: Icon(buttonIcon),
           label: Row(
@@ -159,37 +259,37 @@ class PremiumCreateButton extends StatelessWidget {
                   ),
                 ),
               ),
-              if (showUsageBadge)
+              if (widget.showUsageBadge)
                 UsageBadge(
-                  contentType: contentType,
+                  contentType: widget.contentType,
                   fontSize: 11,
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 ),
             ],
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: canCreate
-                ? (backgroundColor ?? AppConstants.primaryColor)
+            backgroundColor: _canCreate
+                ? (widget.backgroundColor ?? AppConstants.primaryColor)
                 : Colors.grey.withOpacity(0.5),
-            foregroundColor: canCreate
-                ? (foregroundColor ?? Colors.white)
+            foregroundColor: _canCreate
+                ? (widget.foregroundColor ?? Colors.white)
                 : Colors.white70,
-            padding: padding ?? const EdgeInsets.symmetric(
+            padding: widget.padding ?? const EdgeInsets.symmetric(
               vertical: 16,
               horizontal: 20,
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(borderRadius ?? 12),
-              side: !canCreate
+              borderRadius: BorderRadius.circular(widget.borderRadius ?? 12),
+              side: !_canCreate
                   ? const BorderSide(color: Colors.orange, width: 2)
                   : BorderSide.none,
             ),
             minimumSize: const Size(double.infinity, 56),
           ),
         ),
-        if (!canCreate) ...[
+        if (!_canCreate) ...[
           const SizedBox(height: 8),
-          _buildLimitWarning(context, localizations, subscriptionService),
+          _buildLimitWarning(context, localizations),
         ],
       ],
     );
@@ -198,11 +298,7 @@ class PremiumCreateButton extends StatelessWidget {
   Widget _buildLimitWarning(
       BuildContext context,
       AppLocalizations localizations,
-      SubscriptionService subscriptionService,
       ) {
-    final currentUsage = subscriptionService.getCurrentUsage(contentType);
-    final limit = subscriptionService.getLimit(contentType);
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -220,7 +316,7 @@ class PremiumCreateButton extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${localizations.translate('limit_reached_description')} ($currentUsage/$limit)',
+              '${localizations.translate('limit_reached_description') ?? 'Достигнут лимит'} ($_currentUsage/$_limit)',
               style: TextStyle(
                 color: Colors.orange[700],
                 fontSize: 14,
@@ -235,7 +331,7 @@ class PremiumCreateButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
             child: Text(
-              localizations.translate('upgrade_now'),
+              localizations.translate('upgrade_now') ?? 'Обновить',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
@@ -247,50 +343,38 @@ class PremiumCreateButton extends StatelessWidget {
     );
   }
 
-  // ДОБАВЛЕНО: Обработчик нажатия с увеличением счетчика использования
-  Future<void> _handleCreatePress(
-      BuildContext context,
-      SubscriptionService subscriptionService,
-      ) async {
-    // Увеличиваем счетчик использования (если не премиум)
-    if (!subscriptionService.hasPremiumAccess()) {
-      final success = await subscriptionService.incrementUsage(contentType);
-      if (!success) {
-        // Если не удалось увеличить (превышен лимит), показываем paywall
-        _showPaywall(context);
-        return;
-      }
-    }
-
-    // Вызываем оригинальный колбэк
-    onCreatePressed();
+  /// 🔥 ИСПРАВЛЕНО: Обработчик нажатия
+  Future<void> _handleCreatePress(BuildContext context) async {
+    // Просто вызываем оригинальный колбэк
+    // Увеличение счетчика происходит в самих экранах создания
+    widget.onCreatePressed();
   }
 
   String _getButtonText(AppLocalizations localizations, bool canCreate) {
-    if (customText != null) return customText!;
+    if (widget.customText != null) return widget.customText!;
 
     if (!canCreate) {
-      return localizations.translate('limit_reached_short');
+      return localizations.translate('limit_reached_short') ?? 'Лимит достигнут';
     }
 
-    switch (contentType) {
+    switch (widget.contentType) {
       case ContentType.fishingNotes:
-        return localizations.translate('create_fishing_note');
+        return localizations.translate('create_fishing_note') ?? 'Создать заметку';
       case ContentType.markerMaps:
-        return localizations.translate('create_marker_map');
+        return localizations.translate('create_marker_map') ?? 'Создать карту';
       case ContentType.expenses:
-        return localizations.translate('add_expense');
+        return localizations.translate('add_expense') ?? 'Добавить расход';
       case ContentType.depthChart:
-        return localizations.translate('view_depth_chart');
+        return localizations.translate('view_depth_chart') ?? 'График глубин';
     }
   }
 
   IconData _getButtonIcon(bool canCreate) {
-    if (customIcon != null) return customIcon!;
+    if (widget.customIcon != null) return widget.customIcon!;
 
     if (!canCreate) return Icons.lock;
 
-    switch (contentType) {
+    switch (widget.contentType) {
       case ContentType.fishingNotes:
         return Icons.note_add;
       case ContentType.markerMaps:
@@ -307,7 +391,7 @@ class PremiumCreateButton extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => PaywallScreen(
-          contentType: contentType.name,
+          contentType: widget.contentType.name,
         ),
       ),
     );
@@ -381,6 +465,7 @@ class NavigationHelper {
     String? blockedFeature,
   }) async {
     final subscriptionService = SubscriptionService();
+    final firebaseService = FirebaseService();
 
     // Проверка премиум функций
     if (blockedFeature != null) {
@@ -397,10 +482,46 @@ class NavigationHelper {
       }
     }
 
-    // Проверка лимитов контента
-    final canCreate = await subscriptionService.canCreateContent(contentType);
+    // 🔥 ИСПРАВЛЕНО: Проверка лимитов через новую Firebase систему
+    try {
+      String firebaseKey;
+      switch (contentType) {
+        case ContentType.fishingNotes:
+          firebaseKey = 'notesCount';
+          break;
+        case ContentType.markerMaps:
+          firebaseKey = 'markerMapsCount';
+          break;
+        case ContentType.expenses:
+          firebaseKey = 'expensesCount';
+          break;
+        case ContentType.depthChart:
+          firebaseKey = 'depthChartCount';
+          break;
+      }
 
-    if (!canCreate) {
+      final limitCheck = await firebaseService.canCreateItem(firebaseKey);
+      final canCreate = limitCheck['canProceed'] ?? false;
+
+      if (!canCreate) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaywallScreen(
+              contentType: contentType.name,
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Навигация разрешена
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => destination),
+      );
+    } catch (e) {
+      // При ошибке показываем paywall
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -409,14 +530,7 @@ class NavigationHelper {
           ),
         ),
       );
-      return;
     }
-
-    // Навигация разрешена
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => destination),
-    );
   }
 }
 
@@ -443,6 +557,12 @@ class _AnimatedCreateButtonState extends State<AnimatedCreateButton>
   late Animation<double> _scaleAnimation;
   late Animation<Color?> _colorAnimation;
 
+  final SubscriptionService _subscriptionService = SubscriptionService();
+  final FirebaseService _firebaseService = FirebaseService();
+
+  bool _canCreate = false;
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -466,6 +586,61 @@ class _AnimatedCreateButtonState extends State<AnimatedCreateButton>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
+
+    _checkLimits();
+  }
+
+  Future<void> _checkLimits() async {
+    try {
+      if (_subscriptionService.hasPremiumAccess()) {
+        setState(() {
+          _canCreate = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      if (widget.contentType == ContentType.depthChart) {
+        setState(() {
+          _canCreate = false;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      String firebaseKey;
+      switch (widget.contentType) {
+        case ContentType.fishingNotes:
+          firebaseKey = 'notesCount';
+          break;
+        case ContentType.markerMaps:
+          firebaseKey = 'markerMapsCount';
+          break;
+        case ContentType.expenses:
+          firebaseKey = 'expensesCount';
+          break;
+        case ContentType.depthChart:
+          firebaseKey = 'depthChartCount';
+          break;
+      }
+
+      final limitCheck = await _firebaseService.canCreateItem(firebaseKey);
+      final canCreate = limitCheck['canProceed'] ?? false;
+
+      if (mounted) {
+        setState(() {
+          _canCreate = canCreate;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _canCreate = false;
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -476,65 +651,46 @@ class _AnimatedCreateButtonState extends State<AnimatedCreateButton>
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<SubscriptionModel>(
-      stream: SubscriptionService().subscriptionStream,
-      builder: (context, snapshot) {
-        final subscriptionService = SubscriptionService();
+    if (_isLoading) {
+      return FloatingActionButton(
+        onPressed: null,
+        backgroundColor: Colors.grey,
+        child: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        ),
+      );
+    }
 
-        return FutureBuilder<bool>(
-          future: subscriptionService.canCreateContent(widget.contentType),
-          builder: (context, futureSnapshot) {
-            final canCreate = futureSnapshot.data ?? false;
+    if (!_canCreate) {
+      _animationController.repeat(reverse: true);
+    } else {
+      _animationController.stop();
+      _animationController.reset();
+    }
 
-            if (!canCreate) {
-              _animationController.repeat(reverse: true);
-            } else {
-              _animationController.stop();
-              _animationController.reset();
-            }
-
-            return AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: canCreate ? 1.0 : _scaleAnimation.value,
-                  child: FloatingActionButton(
-                    onPressed: canCreate
-                        ? () => _handleCreatePress(context, subscriptionService)
-                        : () => _showPaywall(context),
-                    backgroundColor: canCreate
-                        ? AppConstants.primaryColor
-                        : _colorAnimation.value,
-                    child: Icon(
-                      canCreate ? Icons.add : Icons.lock,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _canCreate ? 1.0 : _scaleAnimation.value,
+          child: FloatingActionButton(
+            onPressed: _canCreate
+                ? widget.onPressed
+                : () => _showPaywall(context),
+            backgroundColor: _canCreate
+                ? AppConstants.primaryColor
+                : _colorAnimation.value,
+            child: Icon(
+              _canCreate ? Icons.add : Icons.lock,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
         );
       },
     );
-  }
-
-  // ДОБАВЛЕНО: Обработчик нажатия с увеличением счетчика
-  Future<void> _handleCreatePress(
-      BuildContext context,
-      SubscriptionService subscriptionService,
-      ) async {
-    // Увеличиваем счетчик использования (если не премиум)
-    if (!subscriptionService.hasPremiumAccess()) {
-      final success = await subscriptionService.incrementUsage(widget.contentType);
-      if (!success) {
-        _showPaywall(context);
-        return;
-      }
-    }
-
-    widget.onPressed();
   }
 
   void _showPaywall(BuildContext context) {

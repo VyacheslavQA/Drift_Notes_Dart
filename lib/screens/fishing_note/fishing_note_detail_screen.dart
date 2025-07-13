@@ -24,6 +24,9 @@ import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
+// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;
@@ -877,7 +880,17 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         // 🚨 ИСПРАВЛЕНО: Используем Repository для удаления
         await _fishingNoteRepository.deleteFishingNote(widget.noteId);
 
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного удаления
         if (mounted) {
+          try {
+            final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+            await subscriptionProvider.refreshUsageData();
+            debugPrint('✅ SubscriptionProvider обновлен после удаления заметки');
+          } catch (e) {
+            debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+            // Не прерываем выполнение, заметка уже удалена
+          }
+
           final localizations = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

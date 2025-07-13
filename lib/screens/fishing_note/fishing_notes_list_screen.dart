@@ -18,6 +18,9 @@ import '../../localization/app_localizations.dart';
 import '../subscription/paywall_screen.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
+// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({super.key});
@@ -210,6 +213,16 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
 
     if (result == true && mounted) {
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после создания заметки
+      try {
+        final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+        await subscriptionProvider.refreshUsageData();
+        debugPrint('✅ SubscriptionProvider обновлен после создания заметки в списке');
+      } catch (e) {
+        debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        // Не прерываем выполнение, заметка уже создана
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

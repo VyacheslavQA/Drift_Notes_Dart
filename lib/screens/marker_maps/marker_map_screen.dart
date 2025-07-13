@@ -7,18 +7,16 @@ import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
 import '../../models/fishing_note_model.dart';
-// ИСПРАВЛЕНО: Заменяем репозитории на FirebaseService
 import '../../services/firebase/firebase_service.dart';
 import '../../widgets/loading_overlay.dart';
-// Необходимые импорты для функций
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
 import 'depth_chart_screen.dart';
-// ДОБАВЛЕНО: Импорты для проверки лимитов
+// ✅ ИСПРАВЛЕНО: Правильные импорты для премиум системы
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
-// ДОБАВЛЕНО: Импорт PaywallScreen
+import '../../models/offline_usage_result.dart';
 import '../subscription/paywall_screen.dart';
 
 class MarkerMapScreen extends StatefulWidget {
@@ -31,11 +29,13 @@ class MarkerMapScreen extends StatefulWidget {
 }
 
 class MarkerMapScreenState extends State<MarkerMapScreen> {
-  // ИСПРАВЛЕНО: Используем FirebaseService вместо репозиториев
   final _firebaseService = FirebaseService();
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
   final _distanceController = TextEditingController();
+
+  // ✅ ДОБАВЛЕНО: Сервис для проверки лимитов
+  final _subscriptionService = SubscriptionService();
 
   late MarkerMapModel _markerMap;
   List<FishingNoteModel> _availableNotes = [];
@@ -120,7 +120,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     super.dispose();
   }
 
-  // ИСПРАВЛЕНО: Загрузка доступных заметок через новую структуру Firebase с защитой от null
+  // Загрузка доступных заметок через новую структуру Firebase с защитой от null
   Future<void> _loadAvailableNotes() async {
     try {
       debugPrint('📝 Загружаем доступные заметки для привязки...');
@@ -134,7 +134,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         try {
           final data = doc.data() as Map<String, dynamic>;
 
-          // ИСПРАВЛЕНО: Добавляем проверки на null для всех полей
+          // Добавляем проверки на null для всех полей
           final String title = data['title']?.toString() ?? '';
           final String location = data['location']?.toString() ?? '';
           final String notesText = data['notes']?.toString() ?? '';
@@ -705,9 +705,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     return _bottomTypeIcons[newType] ?? Icons.terrain;
   }
 
-  // Диалог добавления нового маркера
-  void _showAddMarkerDialog() {
+  // ✅ ИСПРАВЛЕНО: Диалог добавления нового маркера БЕЗ проверки лимитов
+  Future<void> _showAddMarkerDialog() async {
     final localizations = AppLocalizations.of(context);
+
+    debugPrint('✅ Открываем диалог добавления маркера БЕЗ проверки лимитов');
+
     // Сбрасываем поля формы
     _depthController.text = '';
     _notesController.text = '';
@@ -920,7 +923,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: AppConstants.textColor,
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1003,7 +1006,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                       ),
                     );
 
-                    debugPrint('✅ Добавлен новый маркер: ${newMarker['id']}');
+                    debugPrint('✅ Добавлен новый маркер БЕЗ проверки лимитов: ${newMarker['id']}');
 
                     // Обновляем UI чтобы кнопка сохранения стала активной
                     Future.microtask(() => this.setState(() {}));
@@ -1418,36 +1421,42 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     Future.microtask(() => setState(() {}));
   }
 
-  // ИСПРАВЛЕНО: Переход к экрану графиков глубин с проверкой премиума
+  // ✅ ИСПРАВЛЕНО: Переход к экрану графиков глубин с правильной проверкой подписки
   Future<void> _showDepthCharts() async {
     try {
       final localizations = AppLocalizations.of(context);
 
-      // ДОБАВЛЕНО: Проверка доступа к графику глубины
-      final subscriptionService = SubscriptionService();
-      final canAccessDepthChart = await subscriptionService.canCreateContent(ContentType.depthChart);
+      debugPrint('📊 Проверяем доступ к графикам глубины...');
 
-      if (!canAccessDepthChart) {
-        // ИСПРАВЛЕНО: Используем PaywallScreen вместо самодельного диалога
+      // ✅ ИСПРАВЛЕНО: Проверяем подписку через правильный getter
+      final hasActiveSubscription = _subscriptionService.isPremium;
+
+      debugPrint('📊 Результат проверки подписки: $hasActiveSubscription');
+
+      if (hasActiveSubscription) {
+        debugPrint('✅ Есть активная подписка - открываем графики глубины');
+
+        // Есть подписка - открываем графики
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DepthChartScreen(markerMap: _markerMap),
+          ),
+        );
+      } else {
+        debugPrint('❌ Нет активной подписки - показываем Paywall');
+
+        // Нет подписки - показываем Paywall
         _showPremiumRequired(ContentType.depthChart);
-        return;
       }
-
-      // Если доступ разрешен - переходим к графику
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DepthChartScreen(markerMap: _markerMap),
-        ),
-      );
     } catch (e) {
       debugPrint('❌ Ошибка при проверке доступа к графику глубины: $e');
-      // В случае ошибки показываем диалог премиума (безопасный подход)
+      // При ошибке показываем Paywall (безопасный подход)
       _showPremiumRequired(ContentType.depthChart);
     }
   }
 
-  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
+  // Единый метод для показа PaywallScreen
   void _showPremiumRequired(ContentType contentType) {
     Navigator.push(
       context,
@@ -1459,7 +1468,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  /// ✅ ИСПРАВЛЕНО: Полное сохранение всей маркерной карты с всеми полями
+  /// Полное сохранение всей маркерной карты с всеми полями
   Future<void> _saveChanges() async {
     final localizations = AppLocalizations.of(context);
     if (!mounted) return;
@@ -1471,7 +1480,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
       debugPrint('💾 Сохраняем изменения в маркерной карте...');
 
-      // ✅ ИСПРАВЛЕНО: Создаем полную копию модели карты для сохранения
+      // Создаем полную копию модели карты для сохранения
       final markerMapToSave = _markerMap.copyWith(
         // Очищаем временные поля с объектами Offset из маркеров
         markers: _markerMap.markers.map((marker) {
@@ -1484,20 +1493,19 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         }).toList(),
       );
 
-      // ✅ ИСПРАВЛЕНО: Сохраняем ВСЕ поля карты, включая все обязательные поля
+      // Сохраняем ВСЕ поля карты, включая все обязательные поля
       final mapData = {
-        'name': markerMapToSave.name,                    // ✅ Название карты
-        'date': markerMapToSave.date.millisecondsSinceEpoch, // ✅ Дата создания
-        'sector': markerMapToSave.sector,                // ✅ Сектор
-        'noteIds': markerMapToSave.noteIds,              // ✅ ID привязанных заметок
-        'noteNames': markerMapToSave.noteNames,          // ✅ Названия привязанных заметок
-        'markers': markerMapToSave.markers,              // ✅ Список маркеров
-        'userId': markerMapToSave.userId,                // ✅ ID пользователя (для совместимости)
-        'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // ✅ Время создания
-        'updatedAt': DateTime.now().millisecondsSinceEpoch, // ✅ Время обновления
+        'name': markerMapToSave.name,                    // Название карты
+        'date': markerMapToSave.date.millisecondsSinceEpoch, // Дата создания
+        'sector': markerMapToSave.sector,                // Сектор
+        'noteIds': markerMapToSave.noteIds,              // ID привязанных заметок
+        'noteNames': markerMapToSave.noteNames,          // Названия привязанных заметок
+        'markers': markerMapToSave.markers,              // Список маркеров
+        'userId': markerMapToSave.userId,                // ID пользователя (для совместимости)
+        'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // Время создания
+        'updatedAt': DateTime.now().millisecondsSinceEpoch, // Время обновления
       };
 
-      // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД ДЛЯ SUBCOLLECTIONS СТРУКТУРЫ
       debugPrint('🔥 Обновляем маркерную карту через updateMarkerMap()');
       debugPrint('📍 Путь: /users/{currentUserId}/marker_maps/${markerMapToSave.id}');
       debugPrint('📋 Данные для сохранения: $mapData');

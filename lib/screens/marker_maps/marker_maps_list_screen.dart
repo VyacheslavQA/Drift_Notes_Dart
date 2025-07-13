@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+// ✅ ДОБАВЛЕНО: Импорты для обновления SubscriptionProvider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
@@ -608,7 +611,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Подтверждение удаления через Repository
+  // ✅ ИСПРАВЛЕНО: Подтверждение удаления через Repository с обновлением Provider
   Future<void> _confirmDeleteMap(MarkerMapModel map) async {
     final localizations = AppLocalizations.of(context);
 
@@ -648,8 +651,17 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // ✅ ИСПРАВЛЕНО: Удаляем через Repository (счетчики обрабатываются автоматически)
+        // ✅ ИСПРАВЛЕНО: Удаляем через Repository
         await _markerMapRepository.deleteMarkerMap(map.id);
+
+        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после удаления
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после удаления маркерной карты');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -681,7 +693,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Создание карты через Repository
+  // ✅ ИСПРАВЛЕНО: Создание карты через Repository с обновлением Provider
   Future<void> _showCreateMapDialog() async {
     final localizations = AppLocalizations.of(context);
     final nameController = TextEditingController();
@@ -1024,8 +1036,17 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // ✅ ИСПРАВЛЕНО: Создаем карту через Repository (лимиты и счетчики обрабатываются автоматически)
+        // ✅ ИСПРАВЛЕНО: Создаем карту через Repository
         final mapId = await _markerMapRepository.addMarkerMap(result);
+
+        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после создания
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после создания маркерной карты');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        }
 
         // Открываем экран редактирования карты
         if (mounted) {

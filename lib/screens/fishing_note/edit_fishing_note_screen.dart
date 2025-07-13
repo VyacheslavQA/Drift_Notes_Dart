@@ -21,6 +21,9 @@ import 'bite_record_screen.dart';
 import 'edit_bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
+// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 
 class EditFishingNoteScreen extends StatefulWidget {
   final FishingNoteModel note;
@@ -526,7 +529,17 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       debugPrint('🔄 Сохраняем заметку через Repository...');
       await _fishingNoteRepository.updateFishingNote(updatedNote);
 
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного редактирования
       if (mounted) {
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после редактирования заметки');
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+          // Не прерываем выполнение, заметка уже обновлена
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

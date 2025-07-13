@@ -43,8 +43,7 @@ class SubscriptionService {
   // Кэш текущей подписки
   SubscriptionModel? _cachedSubscription;
 
-  // Кэш для подсчета использования (чтобы не обращаться к Firebase каждый раз)
-  Map<ContentType, int> _usageCache = {};
+  // 🔥 ИСПРАВЛЕНО: Убираем старый кэш - теперь используем новую систему Firebase
   DateTime? _lastUsageCacheUpdate;
   static const Duration _cacheValidDuration = Duration(minutes: 5);
 
@@ -167,8 +166,8 @@ class SubscriptionService {
       // Восстанавливаем покупки при инициализации
       await restorePurchases();
 
-      // Загружаем данные использования
-      await _refreshUsageCache();
+      // 🔥 ИСПРАВЛЕНО: Инициализируем систему лимитов в новой Firebase структуре
+      await _initializeUsageLimits();
 
       if (kDebugMode) {
         debugPrint('✅ SubscriptionService инициализирован');
@@ -180,9 +179,32 @@ class SubscriptionService {
     }
   }
 
-  // 🔥 ИСПРАВЛЕННЫЕ МЕТОДЫ для офлайн режима и маркерных карт
+  // 🔥 НОВЫЙ МЕТОД: Инициализация системы лимитов через новую Firebase структуру
+  Future<void> _initializeUsageLimits() async {
+    try {
+      debugPrint('🔄 Инициализация системы лимитов через новую Firebase структуру...');
 
-  /// ✅ ИСПРАВЛЕНО: Основной метод проверки возможности создания контента офлайн (БЕЗ grace period для маркерных карт)
+      // Проверяем существует ли документ usage_limits для пользователя
+      final usageLimitsDoc = await firebaseService.getUserUsageLimits();
+
+      if (!usageLimitsDoc.exists) {
+        debugPrint('📊 Создаем начальные лимиты для нового пользователя');
+        // Автоматически создастся через getUserUsageLimits()
+      } else {
+        debugPrint('📊 Лимиты пользователя уже существуют');
+        final data = usageLimitsDoc.data() as Map<String, dynamic>;
+        debugPrint('📊 Текущие лимиты: $data');
+      }
+
+      debugPrint('✅ Система лимитов инициализирована через новую Firebase структуру');
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации системы лимитов: $e');
+    }
+  }
+
+  // 🔥 ИСПРАВЛЕННЫЕ МЕТОДЫ для работы с новой системой Firebase
+
+  /// ✅ ИСПРАВЛЕНО: Основной метод проверки возможности создания контента с использованием новой Firebase системы
   Future<bool> canCreateContentOffline(ContentType contentType) async {
     try {
       // 1. Проверка тестового аккаунта - безлимитный доступ
@@ -205,33 +227,16 @@ class SubscriptionService {
         }
       }
 
-      // 3. Получаем текущее использование с учетом локальных счетчиков
-      final currentUsage = await getCurrentOfflineUsage(contentType);
-      final limit = getLimit(contentType);
-
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: УБИРАЕМ grace period для маркерных карт
-      if (contentType == ContentType.markerMaps) {
-        // Для маркерных карт - СТРОГИЙ лимит без grace period
-        if (currentUsage >= limit) {
-          if (kDebugMode) {
-            debugPrint('❌ Превышен СТРОГИЙ лимит для маркерных карт: $currentUsage >= $limit');
-          }
-          return false; // Блокировка
-        }
-      } else {
-        // Для остальных типов контента можно использовать grace period
-        if (currentUsage >= limit + SubscriptionConstants.offlineGraceLimit) {
-          if (kDebugMode) {
-            debugPrint('❌ Превышен лимит с grace period для $contentType: $currentUsage >= ${limit + SubscriptionConstants.offlineGraceLimit}');
-          }
-          return false; // Блокировка
-        }
-      }
+      // 3. 🔥 ИСПРАВЛЕНО: Используем новую систему Firebase для проверки лимитов
+      final canCreate = await firebaseService.canCreateItem(_getFirebaseItemType(contentType));
 
       if (kDebugMode) {
-        debugPrint('✅ Разрешено создание $contentType: использование=$currentUsage, лимит=$limit');
+        debugPrint('🔥 Проверка через новую Firebase систему: $contentType -> ${canCreate['canProceed']}');
+        debugPrint('🔥 Детали: ${canCreate['currentCount']}/${canCreate['maxLimit']} (осталось: ${canCreate['remaining']})');
       }
-      return true;
+
+      return canCreate['canProceed'] ?? false;
+
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки офлайн создания контента: $e');
@@ -241,38 +246,30 @@ class SubscriptionService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение детальной информации о статусе офлайн использования для маркерных карт
+  /// ✅ ИСПРАВЛЕНО: Получение детальной информации о статусе использования через новую Firebase систему
   Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
     try {
-      final currentUsage = await getCurrentOfflineUsage(contentType);
-      final limit = getLimit(contentType);
-      final canCreate = await canCreateContentOffline(contentType);
+      // 🔥 ИСПРАВЛЕНО: Используем новую систему Firebase
+      final limitCheck = await firebaseService.canCreateItem(_getFirebaseItemType(contentType));
 
-      // 🔥 ИСПРАВЛЕНО: Разная логика предупреждений для маркерных карт
+      final canCreate = limitCheck['canProceed'] ?? false;
+      final currentUsage = limitCheck['currentCount'] ?? 0;
+      final maxLimit = limitCheck['maxLimit'] ?? 0;
+      final remaining = limitCheck['remaining'] ?? 0;
+
+      // Определяем тип предупреждения
       OfflineLimitWarningType warningType;
       String message;
-      int remaining;
 
-      if (contentType == ContentType.markerMaps) {
-        // Для маркерных карт - строгие предупреждения без grace period
-        if (currentUsage >= limit) {
-          warningType = OfflineLimitWarningType.blocked;
-          message = 'Достигнут лимит маркерных карт ($limit)';
-          remaining = 0;
-        } else if (currentUsage >= limit - 2) {
-          warningType = OfflineLimitWarningType.approaching;
-          message = 'Осталось ${limit - currentUsage} маркерных карт';
-          remaining = limit - currentUsage;
-        } else {
-          warningType = OfflineLimitWarningType.normal;
-          message = 'Доступно ${limit - currentUsage} маркерных карт';
-          remaining = limit - currentUsage;
-        }
+      if (!canCreate) {
+        warningType = OfflineLimitWarningType.blocked;
+        message = 'Достигнут лимит ${_getContentTypeName(contentType)} ($maxLimit)';
+      } else if (remaining <= 2) {
+        warningType = OfflineLimitWarningType.approaching;
+        message = 'Осталось $remaining ${_getContentTypeName(contentType)}';
       } else {
-        // Для остальных типов - с grace period
-        warningType = SubscriptionConstants.getWarningType(currentUsage, limit);
-        message = SubscriptionConstants.getLimitStatusMessage(currentUsage, limit, contentType);
-        remaining = SubscriptionConstants.getRemainingGraceElements(currentUsage, limit);
+        warningType = OfflineLimitWarningType.normal;
+        message = 'Доступно $remaining ${_getContentTypeName(contentType)}';
       }
 
       return OfflineUsageResult(
@@ -280,7 +277,7 @@ class SubscriptionService {
         warningType: warningType,
         message: message,
         currentUsage: currentUsage,
-        limit: limit,
+        limit: maxLimit,
         remaining: remaining,
         contentType: contentType,
       );
@@ -301,22 +298,48 @@ class SubscriptionService {
     }
   }
 
-  /// 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Публичный метод получения текущего использования с учетом локальных счетчиков
+  /// 🔥 НОВЫЙ МЕТОД: Преобразование ContentType в строку для новой Firebase системы
+  String _getFirebaseItemType(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return 'notesCount';
+      case ContentType.markerMaps:
+        return 'markerMapsCount';
+      case ContentType.expenses:
+        return 'expensesCount';
+      case ContentType.depthChart:
+        return 'depthChartCount';
+    }
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Получение читаемого названия типа контента
+  String _getContentTypeName(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return 'заметок';
+      case ContentType.markerMaps:
+        return 'карт';
+      case ContentType.expenses:
+        return 'поездок';
+      case ContentType.depthChart:
+        return 'графиков глубин';
+    }
+  }
+
+  /// ✅ ИСПРАВЛЕНО: Получение текущего использования через новую Firebase систему
   Future<int> getCurrentOfflineUsage(ContentType contentType) async {
     try {
-      // Получаем серверное использование (из кэша)
-      final serverUsage = await getCurrentUsage(contentType);
+      // 🔥 ИСПРАВЛЕНО: Используем новую систему Firebase для получения статистики
+      final stats = await firebaseService.getUsageStatistics();
 
-      // Получаем локальные счетчики
-      final localUsage = await _offlineStorage.getLocalUsageCount(contentType);
-
-      final totalUsage = serverUsage + localUsage;
+      final String firebaseKey = _getFirebaseItemType(contentType);
+      final currentUsage = stats[firebaseKey] ?? 0;
 
       if (kDebugMode) {
-        debugPrint('📊 Использование $contentType: сервер=$serverUsage, локально=$localUsage, всего=$totalUsage');
+        debugPrint('📊 Использование $contentType через новую Firebase систему: $currentUsage');
       }
 
-      return totalUsage;
+      return currentUsage;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения офлайн использования: $e');
@@ -346,9 +369,9 @@ class SubscriptionService {
       // Кэшируем подписку
       await _offlineStorage.cacheSubscriptionStatus(subscription);
 
-      // Кэшируем лимиты (если есть UsageLimitsModel)
+      // 🔥 ИСПРАВЛЕНО: Кэшируем лимиты через новую систему Firebase
       try {
-        final usageLimits = await _loadUsageLimits();
+        final usageLimits = await _loadUsageLimitsFromNewSystem();
         if (usageLimits != null) {
           await _offlineStorage.cacheUsageLimits(usageLimits);
         }
@@ -375,8 +398,8 @@ class SubscriptionService {
         debugPrint('🔄 Принудительное обновление офлайн кэша...');
       }
 
-      // Обновляем кэш использования
-      await _refreshUsageCache();
+      // 🔥 ИСПРАВЛЕНО: Обновляем через новую систему Firebase
+      await _refreshUsageCacheFromNewSystem();
 
       // Кэшируем данные подписки если есть сеть
       await cacheSubscriptionDataOnline();
@@ -391,27 +414,32 @@ class SubscriptionService {
     }
   }
 
-  /// Увеличение офлайн счетчика использования
+  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования через новую Firebase систему
   Future<void> incrementOfflineUsage(ContentType contentType) async {
     try {
-      // Увеличиваем локальный счетчик
-      await _offlineStorage.incrementLocalUsage(contentType);
+      // 🔥 ИСПРАВЛЕНО: Используем новую систему Firebase для увеличения счетчика
+      final success = await firebaseService.incrementUsageCount(_getFirebaseItemType(contentType));
 
       if (kDebugMode) {
-        final localCount = await _offlineStorage.getLocalUsageCount(contentType);
-        debugPrint('📈 Увеличен офлайн счетчик $contentType: локально=$localCount');
+        if (success) {
+          debugPrint('📈 Увеличен счетчик $contentType через новую Firebase систему');
+        } else {
+          debugPrint('❌ Не удалось увеличить счетчик $contentType');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка увеличения офлайн счетчика: $e');
+        debugPrint('❌ Ошибка увеличения счетчика: $e');
       }
     }
   }
 
-  /// Уменьшение офлайн счетчика использования
+  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика использования через новую Firebase систему
   Future<void> decrementOfflineUsage(ContentType contentType) async {
     try {
-      // Уменьшаем локальный счетчик
+      // 🔥 ИСПРАВЛЕНО: Используем новую систему Firebase для уменьшения счетчика
+      // Пока что новая система не имеет метода уменьшения, нужно будет добавить
+      // Временно используем старый механизм офлайн стоража
       await _offlineStorage.decrementLocalUsage(contentType);
 
       if (kDebugMode) {
@@ -425,60 +453,44 @@ class SubscriptionService {
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Получение UsageLimitsModel для кэширования с учетом офлайн данных
-  Future<UsageLimitsModel?> _loadUsageLimits() async {
+  /// 🔥 ИСПРАВЛЕНО: Получение UsageLimitsModel из новой системы Firebase
+  Future<UsageLimitsModel?> _loadUsageLimitsFromNewSystem() async {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) return null;
 
-      // 🔥 ИСПРАВЛЕНО: Создаем UsageLimitsModel с учетом офлайн данных
-      final fishingNotes = await getCurrentOfflineUsage(ContentType.fishingNotes);
-      final markerMaps = await getCurrentOfflineUsage(ContentType.markerMaps);
-      final expenses = await getCurrentOfflineUsage(ContentType.expenses);
+      // 🔥 ИСПРАВЛЕНО: Получаем статистику из новой системы Firebase
+      final stats = await firebaseService.getUsageStatistics();
 
       return UsageLimitsModel(
         userId: userId,
-        notesCount: fishingNotes,
-        markerMapsCount: markerMaps,
-        expensesCount: expenses,
+        notesCount: stats['notesCount'] ?? 0,
+        markerMapsCount: stats['markerMapsCount'] ?? 0,
+        expensesCount: stats['expensesCount'] ?? 0,
         lastResetDate: DateTime.now(),
         updatedAt: DateTime.now(),
       );
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка загрузки лимитов использования: $e');
+        debugPrint('❌ Ошибка загрузки лимитов из новой системы: $e');
       }
       return null;
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Получение статистики офлайн использования
+  /// 🔥 ИСПРАВЛЕНО: Получение статистики использования через новую Firebase систему
   Future<Map<String, dynamic>> getOfflineUsageStatistics() async {
     try {
-      final allLocalCounters = await _offlineStorage.getAllLocalUsageCounters();
-      final resetTime = await _offlineStorage.getLocalCountersResetTime();
+      // Получаем статистику из новой системы Firebase
+      final stats = await firebaseService.getUsageStatistics();
 
-      Map<String, dynamic> stats = {
-        'localCounters': {},
-        'totalUsage': {},
-        'lastReset': resetTime?.toIso8601String(),
+      return {
+        'newSystem': stats,
+        'exists': stats['exists'] ?? false,
       };
-
-      // Локальные счетчики
-      for (final entry in allLocalCounters.entries) {
-        stats['localCounters'][entry.key.name] = entry.value;
-      }
-
-      // 🔥 ИСПРАВЛЕНО: Общее использование с учетом офлайн счетчиков
-      for (final contentType in ContentType.values) {
-        final total = await getCurrentOfflineUsage(contentType);
-        stats['totalUsage'][contentType.name] = total;
-      }
-
-      return stats;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка получения статистики офлайн использования: $e');
+        debugPrint('❌ Ошибка получения статистики через новую систему: $e');
       }
       return {};
     }
@@ -574,7 +586,7 @@ class SubscriptionService {
       final serverUsage = getCurrentUsageSync(contentType);
       final limit = getLimit(contentType);
 
-      // Проверяем только базовый лимит (без учета локальных счетчиков)
+      // Проверяем только базовый лимит
       return serverUsage < limit;
     } catch (e) {
       if (kDebugMode) {
@@ -584,76 +596,24 @@ class SubscriptionService {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Обновление кэша использования из новой структуры Firebase с правильным подсчетом маркерных карт
-  Future<void> _refreshUsageCache() async {
+  // ✅ ИСПРАВЛЕНО: Обновление кэша использования из новой структуры Firebase
+  Future<void> _refreshUsageCacheFromNewSystem() async {
     try {
-      final userId = firebaseService.currentUserId;
-      if (userId == null) {
-        _usageCache.clear();
-        return;
-      }
-
       if (kDebugMode) {
-        debugPrint('🔄 Обновление кэша использования для userId: $userId');
+        debugPrint('🔄 Обновление кэша использования из новой Firebase системы...');
       }
 
-      final Map<ContentType, int> newCache = {};
-
-      // ИСПРАВЛЕНО: Подсчитываем из новой структуры subcollections
-      try {
-        final fishingNotesSnapshot = await firebaseService.getUserFishingNotesNew();
-        newCache[ContentType.fishingNotes] = fishingNotesSnapshot.docs.length;
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('❌ Ошибка подсчета fishing_notes: $e');
-        }
-        newCache[ContentType.fishingNotes] = 0;
-      }
-
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильный подсчет маркерных карт
-      try {
-        final markerMapsSnapshot = await FirebaseFirestore.instance
-            .collection('marker_maps')
-            .where('userId', isEqualTo: userId)
-            .get();
-        newCache[ContentType.markerMaps] = markerMapsSnapshot.docs.length;
-
-        if (kDebugMode) {
-          debugPrint('✅ Подсчитано маркерных карт: ${markerMapsSnapshot.docs.length}');
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('❌ Ошибка подсчета marker_maps: $e');
-        }
-        newCache[ContentType.markerMaps] = 0;
-      }
-
-      // ИСПРАВЛЕНО: Подсчитываем поездки из новой структуры
-      try {
-        final fishingTripsSnapshot = await firebaseService.getUserFishingTrips();
-        newCache[ContentType.expenses] = fishingTripsSnapshot.docs.length;
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('❌ Ошибка подсчета fishing_trips: $e');
-        }
-        newCache[ContentType.expenses] = 0;
-      }
-
-      // depth_chart - пока только премиум, считаем 0 для бесплатных
-      newCache[ContentType.depthChart] = 0;
-
-      _usageCache = newCache;
+      // Просто обновляем время кэша, так как новая система работает напрямую с Firebase
       _lastUsageCacheUpdate = DateTime.now();
 
       if (kDebugMode) {
-        debugPrint('✅ Кэш использования обновлен из новой структуры:');
-        for (final entry in _usageCache.entries) {
-          debugPrint('   ${entry.key.name}: ${entry.value}');
-        }
+        // Логируем текущую статистику для отладки
+        final stats = await firebaseService.getUsageStatistics();
+        debugPrint('✅ Статистика использования из новой системы: $stats');
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка обновления кэша использования: $e');
+        debugPrint('❌ Ошибка обновления кэша из новой системы: $e');
       }
     }
   }
@@ -664,46 +624,7 @@ class SubscriptionService {
     return DateTime.now().difference(_lastUsageCacheUpdate!) < _cacheValidDuration;
   }
 
-  /// ✅ ИСПРАВЛЕНО: Прямой подсчет использования из новой структуры Firebase для маркерных карт
-  Future<int> _getDirectUsageCount(ContentType contentType) async {
-    try {
-      final userId = firebaseService.currentUserId;
-      if (userId == null) return 0;
-
-      QuerySnapshot snapshot;
-
-      switch (contentType) {
-        case ContentType.fishingNotes:
-          snapshot = await firebaseService.getUserFishingNotesNew();
-          break;
-
-        case ContentType.markerMaps:
-        // 🔥 ИСПРАВЛЕНО: Правильный запрос для маркерных карт
-          snapshot = await FirebaseFirestore.instance
-              .collection('marker_maps')
-              .where('userId', isEqualTo: userId)
-              .get();
-          break;
-
-        case ContentType.expenses:
-          snapshot = await firebaseService.getUserFishingTrips();
-          break;
-
-        case ContentType.depthChart:
-        // Пока depth_chart только премиум, возвращаем 0
-          return 0;
-      }
-
-      return snapshot.docs.length;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка прямого подсчета $contentType: $e');
-      }
-      return 0;
-    }
-  }
-
-  /// 🔥 ИСПРАВЛЕНО: Проверка возможности создания контента с учетом офлайн лимитов
+  /// 🔥 ИСПРАВЛЕНО: Проверка возможности создания контента с использованием новой Firebase системы
   Future<bool> canCreateContent(ContentType contentType) async {
     try {
       // Если пользователь имеет премиум - разрешаем всё
@@ -716,7 +637,7 @@ class SubscriptionService {
         return false;
       }
 
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем офлайн проверку лимитов
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем новую Firebase систему
       return await canCreateContentOffline(contentType);
     } catch (e) {
       if (kDebugMode) {
@@ -740,17 +661,10 @@ class SubscriptionService {
     return _cachedSubscription?.isPremium ?? false;
   }
 
-  /// ОБНОВЛЕН: Получение текущего использования по типу контента (асинхронно)
+  /// ✅ ИСПРАВЛЕНО: Получение текущего использования через новую Firebase систему
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
-      // Если кэш актуален - используем его
-      if (_isUsageCacheValid() && _usageCache.containsKey(contentType)) {
-        return _usageCache[contentType] ?? 0;
-      }
-
-      // Иначе обновляем кэш
-      await _refreshUsageCache();
-      return _usageCache[contentType] ?? 0;
+      return await getCurrentOfflineUsage(contentType);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения текущего использования: $e');
@@ -762,24 +676,9 @@ class SubscriptionService {
   /// ОБНОВЛЕН: Синхронная версия для совместимости с существующим кодом
   int getCurrentUsageSync(ContentType contentType) {
     try {
-      // Если кэш актуален - используем его
-      if (_isUsageCacheValid() && _usageCache.containsKey(contentType)) {
-        return _usageCache[contentType] ?? 0;
-      }
-
-      // Если кэш не актуален, возвращаем последнее известное значение
-      // и запускаем обновление в фоне
-      if (_usageCache.containsKey(contentType)) {
-        // Обновляем кэш асинхронно
-        _refreshUsageCache().catchError((e) {
-          if (kDebugMode) {
-            debugPrint('❌ Ошибка фонового обновления кэша: $e');
-          }
-        });
-        return _usageCache[contentType] ?? 0;
-      }
-
-      return 0;
+      // Для синхронной версии возвращаем приблизительные данные
+      // В будущем можно добавить кэширование
+      return 0; // Временно, так как новая система асинхронная
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения текущего использования (sync): $e');
@@ -806,28 +705,22 @@ class SubscriptionService {
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Увеличение счетчика использования с проверкой офлайн лимитов
+  /// 🔥 ИСПРАВЛЕНО: Увеличение счетчика использования через новую Firebase систему
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
-      // Если премиум (включая тестовые аккаунты) - не увеличиваем счетчик
-      if (hasPremiumAccess()) {
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Тестовые аккаунты Google Play - безлимитный доступ БЕЗ счетчиков
+      if (_isTestAccount()) {
+        if (kDebugMode) {
+          debugPrint('🧪 Тестовый аккаунт Google Play - пропускаем увеличение счетчика для $contentType');
+        }
         return true;
       }
 
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем возможность создания контента с учетом офлайн лимитов
-      if (!await canCreateContentOffline(contentType)) {
-        if (kDebugMode) {
-          debugPrint('❌ Блокировка создания $contentType - превышен лимит с учетом офлайн данных');
-        }
-        return false;
-      }
-
-      // Увеличиваем счетчик в кэше
-      final currentCount = _usageCache[contentType] ?? 0;
-      _usageCache[contentType] = currentCount + 1;
+      // 🔥 ИСПРАВЛЕНО: Для ВСЕХ остальных пользователей (включая обычных премиум) - ВСЕГДА увеличиваем счетчики
+      await incrementOfflineUsage(contentType);
 
       if (kDebugMode) {
-        debugPrint('✅ Увеличен серверный счетчик $contentType: ${currentCount + 1}');
+        debugPrint('📈 Счетчик увеличен для $contentType');
       }
 
       return true;
@@ -839,19 +732,10 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Уменьшение счетчика (при удалении контента) с обновлением кэша
+  /// ОБНОВЛЕН: Уменьшение счетчика (при удалении контента)
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
-      // Уменьшаем счетчик в кэше
-      final currentCount = _usageCache[contentType] ?? 0;
-      if (currentCount > 0) {
-        _usageCache[contentType] = currentCount - 1;
-
-        if (kDebugMode) {
-          debugPrint('✅ Уменьшен счетчик $contentType: ${currentCount - 1}');
-        }
-      }
-
+      await decrementOfflineUsage(contentType);
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -864,9 +748,10 @@ class SubscriptionService {
   /// ОБНОВЛЕН: Сброс использования по типу (для админских целей)
   Future<void> resetUsage(ContentType contentType) async {
     try {
-      _usageCache[contentType] = 0;
+      // 🔥 ИСПРАВЛЕНО: Используем новую Firebase систему для сброса
+      await firebaseService.resetUserUsageLimits(resetReason: 'admin_reset_${contentType.name}');
       if (kDebugMode) {
-        debugPrint('✅ Сброшен счетчик $contentType');
+        debugPrint('✅ Сброшен счетчик для типа: $contentType');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -875,15 +760,13 @@ class SubscriptionService {
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Получение информации об использовании для UI (асинхронно) с учетом офлайн данных
+  /// 🔥 ИСПРАВЛЕНО: Получение информации об использовании через новую Firebase систему
   Future<Map<ContentType, Map<String, int>>> getUsageInfo() async {
     try {
       final result = <ContentType, Map<String, int>>{};
 
       for (final contentType in ContentType.values) {
-        // 🔥 ИСПРАВЛЕНО: Получаем общее использование (серверное + офлайн)
         final totalUsage = await getCurrentOfflineUsage(contentType);
-
         result[contentType] = {
           'current': totalUsage,
           'limit': getLimit(contentType),
@@ -920,19 +803,10 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Получение статистики использования
+  /// ✅ ИСПРАВЛЕНО: Получение статистики использования через новую Firebase систему
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
-      await _refreshUsageCache();
-
-      return {
-        'fishingNotes': _usageCache[ContentType.fishingNotes] ?? 0,
-        'markerMaps': _usageCache[ContentType.markerMaps] ?? 0,
-        'expenses': _usageCache[ContentType.expenses] ?? 0,
-        'depthChart': _usageCache[ContentType.depthChart] ?? 0,
-        'lastUpdated': _lastUsageCacheUpdate?.toIso8601String(),
-        'cacheValid': _isUsageCacheValid(),
-      };
+      return await firebaseService.getUsageStatistics();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения статистики: $e');
@@ -941,10 +815,10 @@ class SubscriptionService {
     }
   }
 
-  /// ОБНОВЛЕН: Принудительное обновление данных лимитов
+  /// ✅ ИСПРАВЛЕНО: Принудительное обновление данных лимитов через новую Firebase систему
   Future<void> refreshUsageLimits() async {
     try {
-      await _refreshUsageCache();
+      await _refreshUsageCacheFromNewSystem();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка обновления лимитов: $e');
@@ -1018,6 +892,9 @@ class SubscriptionService {
       return _cachedSubscription!;
     }
   }
+
+  // === ОСТАЛЬНЫЕ МЕТОДЫ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ ===
+  // (методы покупок, обработки платежей и т.д.)
 
   /// Получение доступных продуктов подписки
   Future<List<ProductDetails>> getAvailableProducts() async {
@@ -1429,6 +1306,5 @@ class SubscriptionService {
     _purchaseSubscription?.cancel();
     _subscriptionController.close();
     _subscriptionStatusController.close();
-    _usageCache.clear();
   }
 }

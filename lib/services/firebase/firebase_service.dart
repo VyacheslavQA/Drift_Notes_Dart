@@ -1305,8 +1305,8 @@ class FirebaseService {
 
   // === МЕТОДЫ ДЛЯ МАРКЕРНЫХ КАРТ ===
 
-  /// Добавление маркерной карты
-  Future<DocumentReference> addMarkerMap(Map<String, dynamic> mapData) async {
+  /// 🔥 ИСПРАВЛЕНО: Добавление маркерной карты с возвратом правильного ID
+  Future<String> addMarkerMap(Map<String, dynamic> mapData) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
@@ -1329,7 +1329,8 @@ class FirebaseService {
       debugPrint('🔥 Полный путь: users/$userId/marker_maps/${docRef.id}');
       debugPrint('🔥 === КОНЕЦ ДОБАВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
 
-      return docRef;
+      // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Возвращаем РЕАЛЬНЫЙ ID от Firebase
+      return docRef.id;
     } catch (e) {
       debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
       rethrow;
@@ -2020,6 +2021,638 @@ class FirebaseService {
     } catch (e) {
       debugPrint('❌ Ошибка при проверке активности подписки: $e');
       return false;
+    }
+  }
+
+  // === МЕТОДЫ ДЛЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ (USAGE LIMITS) ===
+
+  /// Получение лимитов использования пользователя
+  Future<DocumentSnapshot> getUserUsageLimits() async {
+    final userId = currentUserId;
+
+    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при получении лимитов!');
+      throw Exception('Пользователь не авторизован');
+    }
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current');
+
+      debugPrint('🔍 Полный путь для получения лимитов: users/$userId/usage_limits/current');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final doc = await docRef.get();
+
+      debugPrint('🔍 Документ лимитов существует: ${doc.exists}');
+      if (doc.exists) {
+        debugPrint('🔍 Данные лимитов из Firebase: ${doc.data()}');
+      } else {
+        debugPrint('⚠️ Документ лимитов не найден в Firebase - создаем начальные лимиты');
+        // Если документа нет, создаем его с начальными значениями
+        await _createInitialUsageLimits();
+        return await docRef.get();
+      }
+
+      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+      return doc;
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при получении лимитов использования: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// ✅ ИСПРАВЛЕНО: Создание начальных лимитов с подсчетом существующих данных
+  Future<void> _createInitialUsageLimits() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 === СОЗДАНИЕ НАЧАЛЬНЫХ ЛИМИТОВ С ПОДСЧЕТОМ СУЩЕСТВУЮЩИХ ДАННЫХ ===');
+      debugPrint('🔍 userId: $userId');
+
+      // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Подсчитываем ВСЕ существующие данные пользователя
+
+      // 1. Подсчитываем заметки рыбалки
+      int notesCount = 0;
+      try {
+        final notesSnapshot = await getUserFishingNotesNew();
+        notesCount = notesSnapshot.docs.length;
+        debugPrint('📝 Найдено заметок рыбалки: $notesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете заметок рыбалки: $e');
+        // Продолжаем с 0
+      }
+
+      // 2. Подсчитываем маркерные карты
+      int markerMapsCount = 0;
+      try {
+        final mapsSnapshot = await getUserMarkerMaps();
+        markerMapsCount = mapsSnapshot.docs.length;
+        debugPrint('🗺️ Найдено маркерных карт: $markerMapsCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете маркерных карт: $e');
+        // Продолжаем с 0
+      }
+
+      // 3. Подсчитываем поездки на рыбалку
+      int tripsCount = 0;
+      try {
+        final tripsSnapshot = await getUserFishingTrips();
+        tripsCount = tripsSnapshot.docs.length;
+        debugPrint('🚗 Найдено поездок: $tripsCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете поездок: $e');
+        // Продолжаем с 0
+      }
+
+      // 4. Подсчитываем общее количество расходов
+      int expensesCount = 0;
+      try {
+        final allExpenses = await getAllUserExpenses();
+        expensesCount = allExpenses.length;
+        debugPrint('💰 Найдено расходов: $expensesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете расходов: $e');
+        // Продолжаем с 0
+      }
+
+      // 5. Подсчитываем заметки бюджета
+      int budgetNotesCount = 0;
+      try {
+        final budgetSnapshot = await getUserBudgetNotes();
+        budgetNotesCount = budgetSnapshot.docs.length;
+        debugPrint('📊 Найдено заметок бюджета: $budgetNotesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете заметок бюджета: $e');
+        // Продолжаем с 0
+      }
+
+      // ✅ СОЗДАЕМ ЛИМИТЫ С РЕАЛЬНЫМИ ЗНАЧЕНИЯМИ
+      final initialLimits = {
+        'notesCount': notesCount,           // ✅ Реальное количество заметок
+        'markerMapsCount': markerMapsCount, // ✅ Реальное количество карт
+        'expensesCount': expensesCount,     // ✅ Реальное количество расходов
+        'tripsCount': tripsCount,           // ✅ Реальное количество поездок
+        'budgetNotesCount': budgetNotesCount, // ✅ Реальное количество заметок бюджета
+        'lastResetDate': DateTime.now().toIso8601String(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'initializedWith': 'existing_data_count', // Флаг что лимиты инициализированы правильно
+      };
+
+      debugPrint('🔍 === ИТОГОВЫЕ ПОДСЧИТАННЫЕ ЛИМИТЫ ===');
+      debugPrint('📝 Заметки рыбалки: $notesCount');
+      debugPrint('🗺️ Маркерные карты: $markerMapsCount');
+      debugPrint('🚗 Поездки: $tripsCount');
+      debugPrint('💰 Расходы: $expensesCount');
+      debugPrint('📊 Заметки бюджета: $budgetNotesCount');
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current')
+          .set(initialLimits);
+
+      debugPrint('✅ Начальные лимиты созданы с реальными данными для пользователя: $userId');
+      debugPrint('🔍 === КОНЕЦ СОЗДАНИЯ НАЧАЛЬНЫХ ЛИМИТОВ ===');
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при создании начальных лимитов: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+
+      // ✅ FALLBACK: Если произошла ошибка подсчета, создаем с нулевыми значениями
+      debugPrint('⚠️ Создаем лимиты с нулевыми значениями из-за ошибки');
+
+      final fallbackLimits = {
+        'notesCount': 0,
+        'markerMapsCount': 0,
+        'expensesCount': 0,
+        'tripsCount': 0,
+        'budgetNotesCount': 0,
+        'lastResetDate': DateTime.now().toIso8601String(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'initializedWith': 'fallback_zero_values',
+        'initializationError': e.toString(),
+      };
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current')
+          .set(fallbackLimits);
+
+      debugPrint('✅ Fallback лимиты созданы для пользователя: $userId');
+    }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Принудительный пересчет и обновление лимитов использования
+  Future<void> forceRecalculateUsageLimits() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔄 === ПРИНУДИТЕЛЬНЫЙ ПЕРЕСЧЕТ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+      debugPrint('🔄 userId: $userId');
+
+      // ✅ ПОДСЧИТЫВАЕМ ВСЕ существующие данные пользователя
+
+      // 1. Подсчитываем заметки рыбалки
+      int notesCount = 0;
+      try {
+        final notesSnapshot = await getUserFishingNotesNew();
+        notesCount = notesSnapshot.docs.length;
+        debugPrint('📝 Найдено заметок рыбалки: $notesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете заметок рыбалки: $e');
+        // Продолжаем с 0
+      }
+
+      // 2. Подсчитываем маркерные карты
+      int markerMapsCount = 0;
+      try {
+        final mapsSnapshot = await getUserMarkerMaps();
+        markerMapsCount = mapsSnapshot.docs.length;
+        debugPrint('🗺️ Найдено маркерных карт: $markerMapsCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете маркерных карт: $e');
+        // Продолжаем с 0
+      }
+
+      // 3. Подсчитываем поездки на рыбалку
+      int tripsCount = 0;
+      try {
+        final tripsSnapshot = await getUserFishingTrips();
+        tripsCount = tripsSnapshot.docs.length;
+        debugPrint('🚗 Найдено поездок: $tripsCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете поездок: $e');
+        // Продолжаем с 0
+      }
+
+      // 4. Подсчитываем общее количество расходов
+      int expensesCount = 0;
+      try {
+        final allExpenses = await getAllUserExpenses();
+        expensesCount = allExpenses.length;
+        debugPrint('💰 Найдено расходов: $expensesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете расходов: $e');
+        // Продолжаем с 0
+      }
+
+      // 5. Подсчитываем заметки бюджета
+      int budgetNotesCount = 0;
+      try {
+        final budgetSnapshot = await getUserBudgetNotes();
+        budgetNotesCount = budgetSnapshot.docs.length;
+        debugPrint('📊 Найдено заметок бюджета: $budgetNotesCount');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при подсчете заметок бюджета: $e');
+        // Продолжаем с 0
+      }
+
+      // ✅ ОБНОВЛЯЕМ ЛИМИТЫ С РЕАЛЬНЫМИ ЗНАЧЕНИЯМИ
+      final updatedLimits = {
+        'notesCount': notesCount,           // ✅ Реальное количество заметок
+        'markerMapsCount': markerMapsCount, // ✅ Реальное количество карт
+        'expensesCount': expensesCount,     // ✅ Реальное количество расходов
+        'tripsCount': tripsCount,           // ✅ Реальное количество поездок
+        'budgetNotesCount': budgetNotesCount, // ✅ Реальное количество заметок бюджета
+        'lastResetDate': DateTime.now().toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'recalculatedAt': DateTime.now().toIso8601String(),
+        'recalculationType': 'force_recalculate', // Флаг что это был принудительный пересчет
+      };
+
+      debugPrint('🔄 === ИТОГОВЫЕ ПЕРЕСЧИТАННЫЕ ЛИМИТЫ ===');
+      debugPrint('📝 Заметки рыбалки: $notesCount');
+      debugPrint('🗺️ Маркерные карты: $markerMapsCount');
+      debugPrint('🚗 Поездки: $tripsCount');
+      debugPrint('💰 Расходы: $expensesCount');
+      debugPrint('📊 Заметки бюджета: $budgetNotesCount');
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current')
+          .update(updatedLimits);
+
+      debugPrint('✅ Лимиты принудительно пересчитаны и обновлены для пользователя: $userId');
+      debugPrint('🔄 === КОНЕЦ ПРИНУДИТЕЛЬНОГО ПЕРЕСЧЕТА ЛИМИТОВ ===');
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при принудительном пересчете лимитов: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Обновление лимитов использования пользователя
+  Future<void> updateUserUsageLimits(Map<String, dynamic> limitsData) async {
+    final userId = currentUserId;
+
+    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+    debugPrint('🔍 userId: $userId');
+    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
+    debugPrint('🔍 limitsData: $limitsData');
+
+    if (userId == null) {
+      debugPrint('❌ userId is null при обновлении лимитов!');
+      throw Exception('Пользователь не авторизован');
+    }
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current');
+
+      debugPrint('🔍 Полный путь лимитов: users/$userId/usage_limits/current');
+      debugPrint('🔍 DocumentReference: ${docRef.path}');
+
+      final dataToSave = {
+        ...limitsData,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'debug_userId': userId,
+        'debug_timestamp': DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('🔍 Данные лимитов для сохранения: $dataToSave');
+
+      await docRef.set(dataToSave, SetOptions(merge: true));
+
+      debugPrint('✅ Лимиты использования успешно сохранены в Firebase!');
+
+      // Проверяем что данные действительно сохранились
+      final savedDoc = await docRef.get();
+      debugPrint('🔍 Проверка сохранения лимитов: exists=${savedDoc.exists}');
+      if (savedDoc.exists) {
+        debugPrint('🔍 Сохраненные данные лимитов: ${savedDoc.data()}');
+      }
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при сохранении лимитов использования: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      rethrow;
+    }
+
+    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+  }
+
+  /// Увеличение счетчика использования определенного типа
+  Future<bool> incrementUsageCount(String countType, {int increment = 1}) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 === УВЕЛИЧЕНИЕ СЧЕТЧИКА ИСПОЛЬЗОВАНИЯ ===');
+      debugPrint('🔍 userId: $userId');
+      debugPrint('🔍 countType: $countType');
+      debugPrint('🔍 increment: $increment');
+
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('usage_limits')
+          .doc('current');
+
+      // Получаем текущие лимиты
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        debugPrint('⚠️ Документ лимитов не существует - создаем начальные лимиты');
+        await _createInitialUsageLimits();
+      }
+
+      // Увеличиваем счетчик
+      await docRef.update({
+        countType: FieldValue.increment(increment),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ Счетчик $countType увеличен на $increment');
+
+      // Проверяем новое значение
+      final updatedDoc = await docRef.get();
+      if (updatedDoc.exists) {
+        final data = updatedDoc.data() as Map<String, dynamic>;
+        final newCount = data[countType] ?? 0;
+        debugPrint('🔍 Новое значение $countType: $newCount');
+      }
+
+      return true;
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при увеличении счетчика использования: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      return false;
+    }
+  }
+
+  /// Проверка лимита использования для определенного типа
+  Future<Map<String, dynamic>> checkUsageLimit(String countType, int maxLimit) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 === ПРОВЕРКА ЛИМИТА ИСПОЛЬЗОВАНИЯ ===');
+      debugPrint('🔍 userId: $userId');
+      debugPrint('🔍 countType: $countType');
+      debugPrint('🔍 maxLimit: $maxLimit');
+
+      final doc = await getUserUsageLimits();
+
+      if (!doc.exists) {
+        debugPrint('⚠️ Лимиты не найдены - возвращаем что лимит не превышен');
+        return {
+          'canProceed': true,
+          'currentCount': 0,
+          'maxLimit': maxLimit,
+          'remaining': maxLimit,
+        };
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      final currentCount = data[countType] ?? 0;
+      final remaining = maxLimit - currentCount;
+
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Изменяем < на <=
+      // ❌ СТАРЫЙ КОД (НЕПРАВИЛЬНО): final canProceed = currentCount < maxLimit;
+      // ✅ НОВЫЙ КОД (ПРАВИЛЬНО):
+      final canProceed = currentCount < maxLimit;
+
+      debugPrint('🔍 Текущий счетчик $countType: $currentCount');
+      debugPrint('🔍 Максимальный лимит: $maxLimit');
+      debugPrint('🔍 Осталось: $remaining');
+      debugPrint('🔍 Можно продолжить: $canProceed');
+
+      return {
+        'canProceed': canProceed,
+        'currentCount': currentCount,
+        'maxLimit': maxLimit,
+        'remaining': remaining,
+      };
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка при проверке лимита использования: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
+      // В случае ошибки разрешаем действие
+      return {
+        'canProceed': true,
+        'currentCount': 0,
+        'maxLimit': maxLimit,
+        'remaining': maxLimit,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  /// Сброс лимитов использования (обычно ежемесячно)
+  Future<void> resetUserUsageLimits({String? resetReason}) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('🔍 === СБРОС ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
+      debugPrint('🔍 userId: $userId');
+      debugPrint('🔍 resetReason: $resetReason');
+
+      final resetData = {
+        'notesCount': 0,
+        'markerMapsCount': 0,
+        'expensesCount': 0,
+        'tripsCount': 0,
+        'budgetNotesCount': 0,
+        'lastResetDate': DateTime.now().toIso8601String(),
+        'resetReason': resetReason ?? 'manual_reset',
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await updateUserUsageLimits(resetData);
+
+      debugPrint('✅ Лимиты использования сброшены для пользователя: $userId');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при сбросе лимитов использования: $e');
+      rethrow;
+    }
+  }
+
+  /// Проверка нужен ли автоматический сброс лимитов (например, ежемесячно)
+  Future<bool> shouldResetUsageLimits() async {
+    try {
+      final doc = await getUserUsageLimits();
+
+      if (!doc.exists) {
+        return false; // Если документа нет, сброс не нужен
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      final lastResetDateString = data['lastResetDate'] as String?;
+
+      if (lastResetDateString == null) {
+        return true; // Если дата сброса не установлена, нужен сброс
+      }
+
+      final lastResetDate = DateTime.parse(lastResetDateString);
+      final now = DateTime.now();
+
+      // Проверяем прошел ли месяц с последнего сброса
+      final monthsSinceReset = now.difference(lastResetDate).inDays ~/ 30;
+      final shouldReset = monthsSinceReset >= 1;
+
+      debugPrint('🔍 Последний сброс лимитов: ${lastResetDate.toIso8601String()}');
+      debugPrint('🔍 Месяцев с последнего сброса: $monthsSinceReset');
+      debugPrint('🔍 Нужен сброс: $shouldReset');
+
+      return shouldReset;
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке необходимости сброса лимитов: $e');
+      return false;
+    }
+  }
+
+  /// Получение полной статистики использования
+  Future<Map<String, dynamic>> getUsageStatistics() async {
+    try {
+      final doc = await getUserUsageLimits();
+
+      if (!doc.exists) {
+        return {
+          'notesCount': 0,
+          'markerMapsCount': 0,
+          'expensesCount': 0,
+          'tripsCount': 0,
+          'budgetNotesCount': 0,
+          'lastResetDate': null,
+          'exists': false,
+        };
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+
+      return {
+        'notesCount': data['notesCount'] ?? 0,
+        'markerMapsCount': data['markerMapsCount'] ?? 0,
+        'expensesCount': data['expensesCount'] ?? 0,
+        'tripsCount': data['tripsCount'] ?? 0,
+        'budgetNotesCount': data['budgetNotesCount'] ?? 0,
+        'lastResetDate': data['lastResetDate'],
+        'updatedAt': data['updatedAt'],
+        'exists': true,
+      };
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении статистики использования: $e');
+      return {'exists': false, 'error': e.toString()};
+    }
+  }
+
+  /// Вспомогательный метод для получения лимитов в зависимости от типа подписки
+  Map<String, int> getSubscriptionLimits(String subscriptionType) {
+    switch (subscriptionType.toLowerCase()) {
+      case 'free':
+      case 'none':
+        return {
+          'notesCount': 3,
+          'markerMapsCount': 3,
+          'expensesCount': 3,
+          'tripsCount': 3,
+          'budgetNotesCount': 3,
+        };
+
+      case 'premium':
+      case 'pro':
+        return {
+          'notesCount': 100,
+          'markerMapsCount': 50,
+          'expensesCount': 500,
+          'tripsCount': 50,
+          'budgetNotesCount': 100,
+        };
+
+      case 'unlimited':
+      case 'enterprise':
+        return {
+          'notesCount': 999999,
+          'markerMapsCount': 999999,
+          'expensesCount': 999999,
+          'tripsCount': 999999,
+          'budgetNotesCount': 999999,
+        };
+
+      default:
+      // По умолчанию возвращаем бесплатные лимиты
+        return {
+          'notesCount': 5,
+          'markerMapsCount': 2,
+          'expensesCount': 10,
+          'tripsCount': 2,
+          'budgetNotesCount': 3,
+        };
+    }
+  }
+
+  /// Проверка может ли пользователь создать новый элемент определенного типа
+  Future<Map<String, dynamic>> canCreateItem(String itemType) async {
+    try {
+      // Получаем тип подписки пользователя
+      final subscriptionDoc = await getUserSubscription();
+      String subscriptionType = 'free';
+
+      if (subscriptionDoc.exists) {
+        final subscriptionData = subscriptionDoc.data() as Map<String, dynamic>;
+        final isActive = subscriptionData['isActive'] ?? false;
+        final status = subscriptionData['status'] ?? 'none';
+
+        if (isActive && status == 'active') {
+          subscriptionType = subscriptionData['type'] ?? 'free';
+        }
+      }
+
+      debugPrint('🔍 Тип подписки пользователя: $subscriptionType');
+
+      // Получаем лимиты для этого типа подписки
+      final limits = getSubscriptionLimits(subscriptionType);
+      final maxLimit = limits[itemType] ?? 0;
+
+      debugPrint('🔍 Максимальный лимит для $itemType: $maxLimit');
+
+      // Проверяем текущий лимит
+      final limitCheck = await checkUsageLimit(itemType, maxLimit);
+
+      return {
+        ...limitCheck,
+        'subscriptionType': subscriptionType,
+        'itemType': itemType,
+      };
+
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке возможности создания элемента: $e');
+      // В случае ошибки разрешаем создание
+      return {
+        'canProceed': true,
+        'currentCount': 0,
+        'maxLimit': 999999,
+        'remaining': 999999,
+        'error': e.toString(),
+      };
     }
   }
 }

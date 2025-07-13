@@ -1,7 +1,8 @@
 // Путь: lib/screens/home_screen.dart
-// ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ с решением критической уязвимости лимитов
+// ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ с реактивностью счетчиков
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 🔥 ДОБАВЛЕНО для реактивности
 import 'package:url_launcher/url_launcher.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
@@ -20,6 +21,7 @@ import '../constants/subscription_constants.dart';
 import '../widgets/user_agreements_dialog.dart';
 import '../widgets/subscription/usage_badge.dart';
 import '../widgets/subscription/premium_create_button.dart';
+import '../providers/subscription_provider.dart'; // 🔥 ДОБАВЛЕНО для реактивности
 // ДОБАВЛЕНО: Импорт PaywallScreen
 import 'subscription/paywall_screen.dart';
 import 'timer/timers_screen.dart';
@@ -126,6 +128,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // Когда пользователь возвращается в приложение, обновляем заметки
       debugPrint('🔄 Приложение вернулось в фокус - обновляем заметки');
       _loadFishingNotes();
+
+      // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем данные Provider при возврате в приложение
+      _refreshProviderData();
+    }
+  }
+
+  // 🔥 НОВЫЙ МЕТОД: Обновление данных Provider
+  Future<void> _refreshProviderData() async {
+    try {
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      await subscriptionProvider.refreshUsageData();
+      debugPrint('✅ HomeScreen: Provider обновлен при возврате в приложение');
+    } catch (e) {
+      debugPrint('❌ HomeScreen: Ошибка обновления Provider: $e');
     }
   }
 
@@ -344,6 +360,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           // Перезагружаем данные подписки
           await _loadSubscriptionDataWithOfflineCheck();
+
+          // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем Provider при восстановлении сети
+          await _refreshProviderData();
 
           if (mounted) {
             final localizations = AppLocalizations.of(context);
@@ -705,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Навигация с проверкой офлайн лимитов
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Навигация с проверкой офлайн лимитов и обновлением Provider
   Future<void> _navigateToAddNote() async {
     // 🚨 ИСПРАВЛЕНО: Проверяем политику
     if (!(_policyRestrictions?.canCreateContent ?? true)) {
@@ -726,6 +745,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => const FishingTypeSelectionScreen(),
       ),
     );
+
+    // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем данные Provider'а после возврата
+    try {
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      await subscriptionProvider.refreshUsageData();
+      debugPrint('✅ HomeScreen: Данные Provider обновлены после создания заметки');
+    } catch (e) {
+      debugPrint('❌ HomeScreen: Ошибка обновления Provider: $e');
+    }
 
     // ИСПРАВЛЕНИЕ: ВСЕГДА обновляем заметки после возврата с экрана создания
     debugPrint('🔄 Возврат с экрана создания заметки, обновляем список...');
@@ -948,72 +976,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ИСПРАВЛЕНО: Элемент быстрого действия с проверкой офлайн лимитов БЕЗ стримов
-  Widget _buildQuickActionItemWithLimits({
-    required IconData icon,
-    required String label,
-    required ContentType contentType,
-    required Widget destination,
-  }) {
-    // 🚨 ИСПРАВЛЕНИЕ: Используем офлайн проверку лимитов вместо FutureBuilder
-    return FutureBuilder<bool>(
-      future: _subscriptionService.canCreateContentOffline(contentType),
-      builder: (context, futureSnapshot) {
-        final canCreate = futureSnapshot.data ?? false;
-
-        return Stack(
-          children: [
-            _buildQuickActionItem(
-              icon: icon,
-              label: label,
-              onTap: canCreate ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => destination),
-                );
-              } : () {
-                _showLimitReachedMessage(contentType);
-              },
-            ),
-            // Показываем индикатор лимитов
-            if (!canCreate)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.lock,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ),
-            // Показываем мини-бейдж использования
-            if (canCreate && !_hasPremiumAccess)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: CompactUsageBadge(
-                  contentType: contentType,
-                  showOnlyWhenNearLimit: true,
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ИСПРАВЛЕНО: Показ сообщения о достижении лимита через PaywallScreen
-  void _showLimitReachedMessage(ContentType contentType) {
-    _showPremiumRequired(contentType);
-  }
-
   // ИСПРАВЛЕНО: Элемент быстрого действия с адаптивным текстом
   Widget _buildQuickActionItem({
     required IconData icon,
@@ -1176,175 +1138,189 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ИСПРАВЛЕНИЕ: Карточка статуса подписки с кэшированными данными БЕЗ StreamBuilder
+  // 🚨 ПОЛНОСТЬЮ ЗАМЕНЕНО: Карточка статуса подписки с Consumer для реактивности
   Widget _buildSubscriptionStatusCard() {
     final localizations = AppLocalizations.of(context);
 
-    // Если данные подписки еще не загружены, показываем загрузку
-    if (!_subscriptionDataLoaded) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: EdgeInsets.all(cardPadding),
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+    return Consumer<SubscriptionProvider>(
+      builder: (context, subscriptionProvider, child) {
+        // Если данные подписки еще не загружены, показываем загрузку
+        if (subscriptionProvider.isLoading) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: EdgeInsets.all(cardPadding),
+            decoration: BoxDecoration(
+              color: AppConstants.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
-    if (_hasPremiumAccess) {
-      return const SizedBox.shrink();
-    }
+        // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
+        if (subscriptionProvider.hasPremiumAccess) {
+          return const SizedBox.shrink();
+        }
 
-    // Показываем лимиты только для бесплатных пользователей
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(cardPadding),
-      decoration: BoxDecoration(
-        color: AppConstants.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppConstants.primaryColor.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.info_outline,
-                  color: AppConstants.primaryColor,
-                  size: iconSize,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localizations.translate('free_plan'),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      localizations.translate('limited_access'),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
-                        fontSize: fontSize - 2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        // Показываем лимиты только для бесплатных пользователей
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.all(cardPadding),
+          decoration: BoxDecoration(
+            color: AppConstants.surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppConstants.primaryColor.withOpacity(0.3),
+              width: 1,
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // 🚨 ИСПРАВЛЕНО: Показываем ОБЩЕЕ использование (серверное + офлайн)
-          if (_cachedTotalUsage != null && _cachedLimit != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        localizations.translate('fishing_notes'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: fontSize - 2,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '$_cachedTotalUsage/$_cachedLimit',
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: fontSize - 2,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.info_outline,
+                      color: AppConstants.primaryColor,
+                      size: iconSize,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: _cachedLimit! > 0 ? (_cachedTotalUsage! / _cachedLimit!).clamp(0.0, 1.0) : 0.0,
-                      minHeight: 6,
-                      backgroundColor: Colors.grey.withOpacity(0.3),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _cachedLimit! > 0 && (_cachedTotalUsage! / _cachedLimit!) >= 0.8
-                            ? Colors.orange
-                            : AppConstants.primaryColor,
-                      ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localizations.translate('free_plan'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          localizations.translate('limited_access'),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withOpacity(0.7),
+                            fontSize: fontSize - 2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-          ],
+              const SizedBox(height: 16),
 
-          // Прогресс-бары для других типов контента
-          UsageProgressBar(
-            contentType: ContentType.markerMaps,
-            height: 8,
-            showText: true,
-          ),
-          const SizedBox(height: 12),
-          UsageProgressBar(
-            contentType: ContentType.expenses,
-            height: 8,
-            showText: true,
-          ),
-          const SizedBox(height: 24), // УВЕЛИЧЕНО: было 20, стало 24
-          SizedBox(
-            width: double.infinity,
-            height: buttonHeight + 4, // УВЕЛИЧЕНО: +4 к высоте кнопки
-            child: ElevatedButton(
-              onPressed: () {
-                // ИСПРАВЛЕНО: Навигация к PaywallScreen
-                _showPremiumRequired(ContentType.fishingNotes);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              // 🔥 ИСПРАВЛЕНО: Реактивные прогресс-бары с данными Provider
+              _buildUsageProgressBar(
+                subscriptionProvider,
+                ContentType.fishingNotes,
+                localizations.translate('fishing_notes'),
+              ),
+              const SizedBox(height: 12),
+              _buildUsageProgressBar(
+                subscriptionProvider,
+                ContentType.markerMaps,
+                localizations.translate('marker_maps'),
+              ),
+              const SizedBox(height: 12),
+              _buildUsageProgressBar(
+                subscriptionProvider,
+                ContentType.expenses,
+                localizations.translate('fishing_budget'),
+              ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: buttonHeight + 4,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _showPremiumRequired(ContentType.fishingNotes);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    localizations.translate('upgrade_to_premium'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                localizations.translate('upgrade_to_premium'),
-                style: const TextStyle(
-                  color: Colors.white,
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 🔥 НОВЫЙ МЕТОД: Прогресс-бар использования с реактивными данными Provider
+  Widget _buildUsageProgressBar(
+      SubscriptionProvider provider,
+      ContentType contentType,
+      String label,
+      ) {
+    final currentUsage = provider.getUsage(contentType) ?? 0;
+    final limit = provider.getLimit(contentType) ?? 0;
+    final progress = limit > 0 ? (currentUsage / limit).clamp(0.0, 1.0) : 0.0;
+    final color = provider.getUsageIndicatorColor(contentType);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: fontSize - 2,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                provider.getUsageText(contentType),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: fontSize - 2,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: Colors.grey.withOpacity(0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const SizedBox(height: 12), // УВЕЛИЧЕНО: было 4, стало 12
         ],
       ),
     );
@@ -1563,75 +1539,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         key: _scaffoldKey,
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          // 🚨 ИСПРАВЛЕНИЕ: Заголовок с кэшированными данными БЕЗ StreamBuilder
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Drift Notes',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: _appBarTitleSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              // ===== НОВОЕ: Индикатор офлайн режима =====
-              if (_isOfflineMode || !_hasNetworkConnection)
-                Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _isOfflineMode ? Colors.blue : Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
-                        color: Colors.white,
-                        size: 12,
+          // 🚨 ИСПРАВЛЕНИЕ: Заголовок с реактивными данными через Consumer
+          title: Consumer<SubscriptionProvider>(
+            builder: (context, subscriptionProvider, child) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Drift Notes',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: _appBarTitleSize,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _isOfflineMode ? 'OFF' : 'NO NET',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              // 🚨 ИСПРАВЛЕНИЕ: Компактный бейдж статуса подписки с кэшированными данными
-              if (_subscriptionDataLoaded && _hasPremiumAccess)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.stars, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
-                      Text(
-                        'PRO',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  // ===== НОВОЕ: Индикатор офлайн режима =====
+                  if (_isOfflineMode || !_hasNetworkConnection)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _isOfflineMode ? Colors.blue : Colors.orange,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
-                  ),
-                ),
-            ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _isOfflineMode ? 'OFF' : 'NO NET',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // 🚨 ИСПРАВЛЕНИЕ: Реактивный бейдж статуса подписки
+                  if (subscriptionProvider.hasPremiumAccess)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.stars, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'PRO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
@@ -1680,11 +1660,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         drawer: _buildDrawer(),
         body: RefreshIndicator(
           onRefresh: () async {
-            // ===== ОБНОВЛЕНО: Обновление с проверкой подключения =====
+            // ===== ОБНОВЛЕНО: Обновление с проверкой подключения и Provider =====
             await _refreshConnection();
             await _checkPolicyCompliance();
-            await _loadSubscriptionDataWithOfflineCheck(); // 🚨 ИСПРАВЛЕНО: Обновляем данные подписки с офлайн проверкой
+            await _loadSubscriptionDataWithOfflineCheck();
             await _loadFishingNotes();
+
+            // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем Provider при pull-to-refresh
+            await _refreshProviderData();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -1828,7 +1811,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу БЕЗ StreamBuilder
+  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу и реактивными данными
   Widget _buildDrawer() {
     final localizations = AppLocalizations.of(context);
     final user = _firebaseService.currentUser;
@@ -1966,9 +1949,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   context,
                   MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
                 ).then((value) {
-                  if (value == true) {
-                    _loadFishingNotes();
-                  }
+                  // ✅ ИСПРАВЛЕНО: Всегда обновляем при возврате из списка заметок
+                  _loadFishingNotes();
+                  _refreshProviderData();
                 });
               },
             ),
@@ -2005,7 +1988,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
-                );
+                ).then((_) {
+                  // ✅ ИСПРАВЛЕНО: Обновляем Provider при возврате из маркерных карт
+                  _refreshProviderData();
+                });
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.account_balance_wallet,
+              title: localizations.translate('fishing_budget'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FishingBudgetScreen()),
+                ).then((_) {
+                  // ✅ ДОБАВЛЕНО: Обновляем Provider при возврате из бюджета
+                  _refreshProviderData();
+                });
               },
             ),
 
@@ -2082,7 +2083,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНО: Нижняя навигация с кэшированной проверкой лимитов БЕЗ StreamBuilder
+  // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНО: Нижняя навигация с реактивной центральной кнопкой
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -2128,7 +2129,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
 
-          // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНА: Центральная кнопка с кэшированными данными БЕЗ StreamBuilder
+          // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНА: Центральная кнопка с реактивными данными через Consumer
           Positioned(
             top: 0,
             left: 0,
@@ -2136,111 +2137,112 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: GestureDetector(
               onTap: () => _onItemTapped(2),
               child: Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: _centerButtonSize,
-                      height: _centerButtonSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/app_logo.png',
-                        width: _centerButtonSize,
-                        height: _centerButtonSize,
-                      ),
-                    ),
-                    // Индикатор политики (красный замок)
-                    if (!(_policyRestrictions?.canCreateContent ?? true))
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 22.0,
-                          height: 22.0,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.lock,
-                            color: Colors.white,
-                            size: 14.0,
-                          ),
-                        ),
-                      ),
-                    // 🚨 ИСПРАВЛЕНО: Индикатор лимитов с кэшированными данными (оранжевый замок) - только если политика разрешает
-                    if ((_policyRestrictions?.canCreateContent ?? true) &&
-                        _subscriptionDataLoaded &&
-                        !(_cachedCanCreateContent ?? false))
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 22.0,
-                          height: 22.0,
-                          decoration: const BoxDecoration(
-                            color: Colors.orange,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.lock,
-                            color: Colors.white,
-                            size: 14.0,
-                          ),
-                        ),
-                      ),
-                    // 🚨 ИСПРАВЛЕНО: Мини-бейдж использования с кэшированными данными - только если можно создавать и не премиум
-                    if ((_cachedCanCreateContent ?? false) && _subscriptionDataLoaded && !_hasPremiumAccess &&
-                        _cachedTotalUsage != null && _cachedLimit != null)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Consumer<SubscriptionProvider>(
+                  builder: (context, subscriptionProvider, child) {
+                    return Stack(
+                      children: [
+                        Container(
+                          width: _centerButtonSize,
+                          height: _centerButtonSize,
                           decoration: BoxDecoration(
-                            color: _cachedLimit! > 0 && (_cachedTotalUsage! / _cachedLimit!) >= 0.8
-                                ? Colors.orange
-                                : AppConstants.primaryColor,
-                            borderRadius: BorderRadius.circular(8),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            '$_cachedTotalUsage/$_cachedLimit',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                          child: Image.asset(
+                            'assets/images/app_logo.png',
+                            width: _centerButtonSize,
+                            height: _centerButtonSize,
+                          ),
+                        ),
+                        // Индикатор политики (красный замок)
+                        if (!(_policyRestrictions?.canCreateContent ?? true))
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 22.0,
+                              height: 22.0,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock,
+                                color: Colors.white,
+                                size: 14.0,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
-                    if (_isOfflineMode || !_hasNetworkConnection)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          width: 20.0,
-                          height: 20.0,
-                          decoration: BoxDecoration(
-                            color: _isOfflineMode ? Colors.blue : Colors.orange,
-                            shape: BoxShape.circle,
+                        // 🚨 ИСПРАВЛЕНО: Реактивный индикатор лимитов (оранжевый замок)
+                        if ((_policyRestrictions?.canCreateContent ?? true) &&
+                            !subscriptionProvider.canCreateContentSync(ContentType.fishingNotes))
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 22.0,
+                              height: 22.0,
+                              decoration: const BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock,
+                                color: Colors.white,
+                                size: 14.0,
+                              ),
+                            ),
                           ),
-                          child: Icon(
-                            _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
-                            color: Colors.white,
-                            size: 12.0,
+                        // 🚨 ИСПРАВЛЕНО: Реактивный мини-бейдж использования
+                        if (subscriptionProvider.canCreateContentSync(ContentType.fishingNotes) &&
+                            !subscriptionProvider.hasPremiumAccess)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: subscriptionProvider.getUsageIndicatorColor(ContentType.fishingNotes),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                subscriptionProvider.getUsageText(ContentType.fishingNotes),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                  ],
+                        // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
+                        if (_isOfflineMode || !_hasNetworkConnection)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            child: Container(
+                              width: 20.0,
+                              height: 20.0,
+                              decoration: BoxDecoration(
+                                color: _isOfflineMode ? Colors.blue : Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isOfflineMode ? Icons.offline_bolt : Icons.wifi_off,
+                                color: Colors.white,
+                                size: 12.0,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

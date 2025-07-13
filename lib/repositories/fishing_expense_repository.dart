@@ -314,11 +314,14 @@ class FishingExpenseRepository {
           currency: currency,
         ).copyWith(id: tripId).markAsSynced().withExpenses(syncedExpenses);
 
-        // ✅ Увеличиваем счетчик использования после успешного сохранения
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем счетчик ТОЛЬКО через Firebase
         try {
-          await _subscriptionService.incrementUsage(ContentType.expenses);
-          await _subscriptionService.incrementOfflineUsage(ContentType.expenses);
-          debugPrint('✅ Счетчик поездок увеличен');
+          final success = await _firebaseService.incrementUsageCount('expensesCount');
+          if (success) {
+            debugPrint('✅ Счетчик поездок увеличен через Firebase');
+          } else {
+            debugPrint('❌ Не удалось увеличить счетчик поездок через Firebase');
+          }
         } catch (e) {
           debugPrint('❌ Ошибка увеличения счетчика поездок: $e');
         }
@@ -339,11 +342,10 @@ class FishingExpenseRepository {
 
         await _saveTripOffline(trip);
 
-        // ✅ Увеличиваем счетчик использования после успешного сохранения
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем счетчик ТОЛЬКО через incrementUsage
         try {
           await _subscriptionService.incrementUsage(ContentType.expenses);
-          await _subscriptionService.incrementOfflineUsage(ContentType.expenses);
-          debugPrint('✅ Счетчик поездок увеличен');
+          debugPrint('✅ Счетчик поездок увеличен офлайн');
         } catch (e) {
           debugPrint('❌ Ошибка увеличения счетчика поездок: $e');
         }
