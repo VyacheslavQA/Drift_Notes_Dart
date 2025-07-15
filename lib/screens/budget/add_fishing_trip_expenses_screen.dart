@@ -9,7 +9,7 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart';
+import '../../repositories/budget_notes_repository.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../services/subscription/subscription_service.dart';
@@ -37,7 +37,7 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository();
+  final BudgetNotesRepository _expenseRepository = BudgetNotesRepository();
   final SubscriptionService _subscriptionService = SubscriptionService();
   final FirebaseService _firebaseService = FirebaseService();
 

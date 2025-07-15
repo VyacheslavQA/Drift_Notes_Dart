@@ -6,7 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
+import '../../repositories/budget_notes_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
@@ -32,7 +32,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
+  final BudgetNotesRepository _expenseRepository = BudgetNotesRepository(); // ИСПРАВЛЕНО: Используем репозиторий
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   List<FishingTripModel> _trips = [];
@@ -159,13 +159,13 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     debugPrint('➕ Попытка создания новой поездки...');
 
     // Проверяем лимиты перед созданием
-    final canCreate = await _subscriptionService.canCreateContent(ContentType.expenses);
+    final canCreate = await _subscriptionService.canCreateContent(ContentType.budgetNotes);
 
     debugPrint('   Можно создать: $canCreate');
 
     if (!canCreate) {
       debugPrint('🚫 Превышен лимит, показываем PaywallScreen');
-      _showPremiumRequired(ContentType.expenses);
+      _showPremiumRequired(ContentType.budgetNotes);
       return;
     }
 
@@ -227,7 +227,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
             ),
             const SizedBox(width: 8),
             UsageBadge(
-              contentType: ContentType.expenses,
+              contentType: ContentType.budgetNotes,
               fontSize: ResponsiveUtils.isTablet(context) ? 14 : 12,
               padding: EdgeInsets.symmetric(
                 horizontal: ResponsiveUtils.isTablet(context) ? 10 : 8,

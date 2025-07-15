@@ -9,9 +9,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
+import '../../services/user_consent_service.dart';
 import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 import '../../utils/network_utils.dart';
+import '../../widgets/user_agreements_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -27,13 +29,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _firebaseService = FirebaseService();
+  final _userConsentService = UserConsentService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _rememberMe = false;
   String _errorMessage = '';
 
-  // Новые переменные для офлайн режима
+  // Офлайн режим
   bool _isOfflineMode = false;
   bool _hasInternet = true;
   bool _canAuthenticateOffline = false;
@@ -65,10 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Проверяем подключение к интернету
       final hasInternet = await NetworkUtils.isNetworkAvailable();
-
-      // Проверяем возможность офлайн авторизации
       final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
 
       setState(() {
@@ -79,7 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       debugPrint('🌐 Сетевой статус: ${hasInternet ? 'Онлайн' : 'Офлайн'}');
       debugPrint('📱 Офлайн авторизация: ${canOfflineAuth ? 'Доступна' : 'Недоступна'}');
-
     } catch (e) {
       debugPrint('❌ Ошибка проверки сетевого статуса: $e');
       setState(() {
@@ -108,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Загрузка сохраненных данных при открытии экрана
+  /// Загрузка сохраненных данных при открытии экрана
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -120,9 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (savedEmail.isNotEmpty && savedPasswordHash.isNotEmpty) {
           try {
-            final decodedPassword = utf8.decode(
-              base64Decode(savedPasswordHash),
-            );
+            final decodedPassword = utf8.decode(base64Decode(savedPasswordHash));
 
             setState(() {
               _emailController.text = savedEmail;
@@ -140,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Сохранение данных для входа
+  /// Сохранение данных для входа
   Future<void> _saveCredentials(String email, String password) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -159,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Очистка сохраненных данных
+  /// Очистка сохраненных данных
   Future<void> _clearSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -172,46 +169,77 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // НОВАЯ СТРУКТУРА: Проверка и создание профиля пользователя
+  /// ✅ ИСПРАВЛЕНО: Проверка и создание профиля пользователя БЕЗ автоматических согласий
   Future<void> _ensureUserProfileExists(String email, String? displayName) async {
     try {
-      // Проверяем, существует ли профиль пользователя
       final existingProfile = await _firebaseService.getUserProfile();
 
       if (!existingProfile.exists) {
-        // === СОЗДАЕМ ПРОФИЛЬ ДЛЯ СУЩЕСТВУЮЩЕГО ПОЛЬЗОВАТЕЛЯ ===
+        // Создаем профиль БЕЗ автоматических согласий
         await _firebaseService.createUserProfile({
           'email': email,
           'displayName': displayName ?? '',
           'photoUrl': '',
           'authProvider': 'email',
-          // Дефолтные значения для профиля
           'country': '',
           'city': '',
           'experience': 'beginner',
           'fishingTypes': ['Обычная рыбалка'],
         });
 
-        // === СОХРАНЯЕМ БАЗОВЫЕ СОГЛАСИЯ ===
-        await _firebaseService.updateUserConsents({
-          'privacyPolicyAccepted': true, // Предполагаем, что существующие пользователи согласились
-          'termsOfServiceAccepted': true,
-          'consentDate': FieldValue.serverTimestamp(),
-          'appVersion': '1.0.0',
-          'authProvider': 'email',
-          'migrationNote': 'Профиль создан автоматически при входе после миграции',
-          'deviceInfo': {
-            'platform': Theme.of(context).platform.name,
-          },
-        });
-
-        debugPrint('✅ Создан профиль для существующего пользователя: $email');
+        debugPrint('✅ Создан профиль для пользователя: $email');
       } else {
         debugPrint('✅ Профиль пользователя уже существует: $email');
       }
     } catch (e) {
       debugPrint('❌ Ошибка при проверке/создании профиля пользователя: $e');
-      // Не прерываем вход, если не удалось создать профиль
+    }
+  }
+
+  /// ✅ ИСПРАВЛЕНО: Проверка согласий через UserConsentService
+  Future<bool> _checkUserConsents() async {
+    try {
+      final result = await _userConsentService.checkUserConsents();
+
+      debugPrint('🔍 Проверка согласий: ${result.toString()}');
+
+      // Если все согласия действительны - возвращаем true
+      return result.allValid;
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке согласий: $e');
+      // При ошибке считаем что согласия НЕ приняты
+      return false;
+    }
+  }
+
+  /// ✅ ИСПРАВЛЕНО: Показ диалога согласий с правильной обработкой
+  Future<bool> _showAgreementsDialog() async {
+    try {
+      bool agreementsAccepted = false;
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false, // Нельзя закрыть нажатием вне диалога
+        builder: (BuildContext context) {
+          return UserAgreementsDialog(
+            onAgreementsAccepted: () {
+              // Пользователь принял соглашения
+              agreementsAccepted = true;
+              debugPrint('✅ Пользователь принял соглашения');
+            },
+            onCancel: () {
+              // Пользователь отклонил соглашения
+              agreementsAccepted = false;
+              debugPrint('❌ Пользователь отклонил соглашения');
+            },
+          );
+        },
+      );
+
+      return agreementsAccepted;
+    } catch (e) {
+      debugPrint('❌ Ошибка при показе диалога согласий: $e');
+      return false;
     }
   }
 
@@ -240,7 +268,6 @@ class _LoginScreenState extends State<LoginScreen> {
         // ОФЛАЙН АВТОРИЗАЦИЯ
         await _performOfflineLogin(email, password);
       }
-
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -256,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Онлайн авторизация через Firebase
+  /// ✅ ИСПРАВЛЕНО: Онлайн авторизация с правильной проверкой согласий
   Future<void> _performOnlineLogin(String email, String password) async {
     debugPrint('🌐 Выполняем онлайн авторизацию');
 
@@ -268,12 +295,38 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
       );
 
-      // === НОВАЯ СТРУКТУРА: Проверяем и создаем профиль ===
       if (userCredential.user != null) {
+        // Создаем профиль БЕЗ автоматических согласий
         await _ensureUserProfileExists(
           email,
           userCredential.user!.displayName,
         );
+
+        // ✅ НОВАЯ ЛОГИКА: Проверяем согласия ПОСЛЕ создания профиля
+        final hasValidConsents = await _checkUserConsents();
+
+        if (!hasValidConsents) {
+          debugPrint('⚠️ Согласия НЕ приняты - показываем диалог');
+
+          // Показываем ОБЯЗАТЕЛЬНЫЙ диалог согласий
+          final agreementsAccepted = await _showAgreementsDialog();
+
+          if (!agreementsAccepted) {
+            // Пользователь отклонил согласия - выходим из аккаунта
+            debugPrint('❌ Пользователь отклонил согласия - выход из аккаунта');
+            await _firebaseService.signOut();
+
+            if (mounted) {
+              setState(() {
+                _errorMessage = AppLocalizations.of(context).translate('agreements_required')
+                    ?? 'Для использования приложения необходимо принять соглашения';
+              });
+            }
+            return; // Прерываем процесс входа
+          }
+        }
+
+        debugPrint('✅ Согласия проверены - продолжаем вход');
 
         // Кэшируем данные пользователя для офлайн режима
         await _firebaseService.cacheUserDataForOffline(userCredential.user!);
@@ -282,7 +335,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await _saveCredentials(email, password);
       await _proceedToHomeScreen('login_successful');
-
     } catch (e) {
       debugPrint('❌ Ошибка онлайн авторизации: $e');
 
@@ -296,12 +348,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Офлайн авторизация через кэшированные данные
+  /// ✅ ИСПРАВЛЕНО: Офлайн авторизация БЕЗ проверки согласий
   Future<void> _performOfflineLogin(String email, String password) async {
     debugPrint('📱 Выполняем офлайн авторизацию');
 
     try {
-      // Проверяем возможность офлайн авторизации
       final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
 
       if (!canOfflineAuth) {
@@ -312,13 +363,16 @@ class _LoginScreenState extends State<LoginScreen> {
       final success = await _firebaseService.tryOfflineAuthentication();
 
       if (success) {
+        // ✅ ИСПРАВЛЕНО: Офлайн авторизация БЕЗ проверки согласий
+        // В офлайн режиме полагаемся на ранее принятые согласия
+        // (проверка согласий требует онлайн подключения)
+
         await _saveCredentials(email, password);
         await _proceedToHomeScreen('offline_login_successful');
         debugPrint('✅ Офлайн авторизация успешна');
       } else {
         throw Exception(AppLocalizations.of(context).translate('offline_auth_failed'));
       }
-
     } catch (e) {
       debugPrint('❌ Ошибка офлайн авторизации: $e');
       rethrow;
@@ -473,7 +527,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final textScaler = MediaQuery.of(context).textScaler;
     final scale = textScaler.scale(1.0);
 
-    // ВАЖНО: ограничиваем масштабирование (из гайда)
     final adaptiveScale = scale > 1.3 ? 1.3 / scale : 1.0;
     final fontSize = (isTablet ? baseFontSize * 1.2 : baseFontSize) * adaptiveScale;
 
@@ -640,7 +693,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ БЕЗОПАСНАЯ ФОРМУЛА ЭКРАНА из гайда
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -695,7 +747,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const Spacer(),
-                          // Индикатор статуса сети
                           _buildNetworkStatusIndicator(isTablet),
                         ],
                       ),
@@ -877,7 +928,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Безопасное поле ввода с убранной логикой автовыделения
+  /// Безопасное поле ввода
   Widget _buildInputField({
     required BuildContext context,
     required TextEditingController controller,
@@ -898,37 +949,6 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextFormField(
         controller: controller,
         onTap: () {
-          // Множественные попытки сбросить автовыделение для старых устройств
-          Future.microtask(() {
-            if (controller.selection.start == 0 &&
-                controller.selection.end == controller.text.length) {
-              controller.selection = TextSelection.collapsed(
-                offset: controller.text.length,
-              );
-            }
-          });
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (controller.selection.start == 0 &&
-                controller.selection.end == controller.text.length) {
-              controller.selection = TextSelection.collapsed(
-                offset: controller.text.length,
-              );
-            }
-          });
-
-          // Дополнительная проверка через небольшую задержку
-          Future.delayed(Duration(milliseconds: 10), () {
-            if (controller.selection.start == 0 &&
-                controller.selection.end == controller.text.length) {
-              controller.selection = TextSelection.collapsed(
-                offset: controller.text.length,
-              );
-            }
-          });
-        },
-        onChanged: (value) {
-          // Сбрасываем автовыделение при вводе символов (особенно @ и других спецсимволов)
           Future.microtask(() {
             if (controller.selection.start == 0 &&
                 controller.selection.end == controller.text.length) {
@@ -998,7 +1018,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Чекбокс "Запомнить меня"
+  /// Чекбокс "Запомнить меня"
   Widget _buildRememberMeCheckbox(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
 
@@ -1052,7 +1072,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Кнопка "Забыли пароль?"
+  /// Кнопка "Забыли пароль?"
   Widget _buildForgotPasswordButton(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
 
@@ -1088,7 +1108,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Ссылка на регистрацию
+  /// Ссылка на регистрацию
   Widget _buildRegistrationLink(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
     final registrationText = localizations.translate('no_account_register');

@@ -18,7 +18,7 @@ class MarkerMapRepository {
   final SyncService _syncService = SyncService();
   final SubscriptionService _subscriptionService = SubscriptionService();
 
-  // 🔥 ИСПРАВЛЕНО: Получить все маркерные карты пользователя из НОВОЙ структуры
+  // ✅ ИСПРАВЛЕНО: Получить все маркерные карты пользователя из НОВОЙ структуры
   Future<List<MarkerMapModel>> getUserMarkerMaps() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -34,7 +34,7 @@ class MarkerMapRepository {
       if (isOnline) {
         debugPrint('📍 Загружаем карты из НОВОЙ структуры Firebase...');
 
-        // 🔥 ИСПРАВЛЕНО: Используем НОВУЮ структуру через FirebaseService
+        // ✅ ИСПРАВЛЕНО: Используем НОВУЮ структуру через FirebaseService
         final snapshot = await _firebaseService.getUserMarkerMaps();
         debugPrint('📍 Получено ${snapshot.docs.length} карт из Firebase');
 
@@ -83,12 +83,7 @@ class MarkerMapRepository {
         // Запускаем синхронизацию в фоне
         _syncService.syncAll();
 
-        // Обновляем лимиты после загрузки карт
-        try {
-          await _subscriptionService.refreshUsageLimits();
-        } catch (e) {
-          debugPrint('Ошибка обновления лимитов после загрузки карт: $e');
-        }
+        // ✅ ИСПРАВЛЕНО: УДАЛЕН вызов refreshUsageLimits() - метода не существует
 
         return result;
       } else {
@@ -176,7 +171,7 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // 🔥 ИСПРАВЛЕНО: Используем FirebaseService для добавления в НОВУЮ структуру
+        // ✅ ИСПРАВЛЕНО: Используем FirebaseService для добавления в НОВУЮ структуру
         try {
           await _firebaseService.addMarkerMap(mapToAdd.toJson());
           debugPrint('✅ Маркерная карта добавлена в НОВУЮ структуру: $mapId');
@@ -242,7 +237,7 @@ class MarkerMapRepository {
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Обновление маркерной карты в НОВОЙ структуре
+  // ✅ ИСПРАВЛЕНО: Обновление маркерной карты в НОВОЙ структуре
   Future<void> updateMarkerMap(MarkerMapModel map) async {
     try {
       if (map.id.isEmpty) {
@@ -263,7 +258,7 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // 🔥 ИСПРАВЛЕНО: Используем FirebaseService для обновления в НОВОЙ структуре
+        // ✅ ИСПРАВЛЕНО: Используем FirebaseService для обновления в НОВОЙ структуре
         try {
           await _firebaseService.updateMarkerMap(map.id, mapToUpdate.toJson());
           debugPrint('✅ Маркерная карта обновлена в НОВОЙ структуре: ${map.id}');
@@ -302,7 +297,7 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // 🔥 ИСПРАВЛЕНО: Используем FirebaseService для удаления из НОВОЙ структуры
+        // ✅ ИСПРАВЛЕНО: Используем FirebaseService для удаления из НОВОЙ структуры
         try {
           await _firebaseService.deleteMarkerMap(mapId);
           debugPrint('✅ Маркерная карта удалена из НОВОЙ структуры: $mapId');
@@ -367,7 +362,7 @@ class MarkerMapRepository {
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Получение маркерной карты по ID из НОВОЙ структуры
+  // ✅ ИСПРАВЛЕНО: Получение маркерной карты по ID из НОВОЙ структуры
   Future<MarkerMapModel> getMarkerMapById(String mapId) async {
     try {
       if (mapId.isEmpty) {
@@ -385,7 +380,7 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // 🔥 ИСПРАВЛЕНО: Получаем из НОВОЙ структуры через FirebaseService
+        // ✅ ИСПРАВЛЕНО: Получаем из НОВОЙ структуры через FirebaseService
         try {
           final doc = await _firestore
               .collection('users')
@@ -443,7 +438,7 @@ class MarkerMapRepository {
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Удаление всех маркерных карт пользователя из НОВОЙ структуры
+  // ✅ ИСПРАВЛЕНО: Удаление всех маркерных карт пользователя из НОВОЙ структуры
   Future<void> clearAllMarkerMaps() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -457,7 +452,7 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // 🔥 ИСПРАВЛЕНО: Получаем и удаляем все карты из НОВОЙ структуры
+        // ✅ ИСПРАВЛЕНО: Получаем и удаляем все карты из НОВОЙ структуры
         final snapshot = await _firebaseService.getUserMarkerMaps();
 
         // Создаем пакетную операцию для удаления
@@ -515,10 +510,11 @@ class MarkerMapRepository {
     }
   }
 
-  // Получение текущего использования маркерных карт
+  // ✅ ИСПРАВЛЕНО: Получение текущего использования маркерных карт
   Future<int> getCurrentUsage() async {
     try {
-      return await _subscriptionService.getCurrentOfflineUsage(
+      // ✅ ИСПРАВЛЕНО: getCurrentOfflineUsage → getCurrentUsage
+      return await _subscriptionService.getCurrentUsage(
         ContentType.markerMaps,
       );
     } catch (e) {

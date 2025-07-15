@@ -6,15 +6,13 @@ import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../repositories/fishing_expense_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
+import '../../repositories/budget_notes_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../widgets/responsive/responsive_button.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 
-// ИСПРАВЛЕНО: Импортируем CategoryExpenseSummary из репозитория
-export '../../repositories/fishing_expense_repository.dart' show CategoryExpenseSummary;
 
 /// Экран списка суммированных расходов по категориям
 class ExpenseListScreen extends StatefulWidget {
@@ -31,7 +29,7 @@ class ExpenseListScreen extends StatefulWidget {
 }
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
-  final FishingExpenseRepository _expenseRepository = FishingExpenseRepository(); // ИСПРАВЛЕНО: Используем репозиторий
+  final BudgetNotesRepository _expenseRepository = BudgetNotesRepository(); // ИСПРАВЛЕНО: Используем репозиторий
 
   Map<FishingExpenseCategory, CategoryExpenseSummary> _categorySummaries = {};
   List<CategoryExpenseSummary> _filteredSummaries = [];

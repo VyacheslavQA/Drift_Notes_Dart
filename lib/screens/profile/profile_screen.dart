@@ -375,8 +375,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     try {
-      // Удаляем аккаунт через FirebaseService
-      await _firebaseService.deleteAccount(context);
+      // ✅ ИСПРАВЛЕНО: Удаляем аккаунт через UserRepository вместо FirebaseService
+      await _userRepository.deleteAccount();
 
       // Закрываем диалог загрузки
       if (mounted) {

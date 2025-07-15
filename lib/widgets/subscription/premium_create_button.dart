@@ -8,9 +8,9 @@ import '../../services/firebase/firebase_service.dart';
 import '../../screens/subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
 import '../../constants/app_constants.dart';
-import 'usage_badge.dart';
+import 'usage_badge.dart' as badge_widgets; // ✅ ИСПРАВЛЕНО: Используем alias для избежания конфликта
 
-/// Кнопка создания контента с автоматической проверкой лимитов
+/// ✅ УПРОЩЕННАЯ универсальная кнопка создания контента с автоматической проверкой лимитов
 class PremiumCreateButton extends StatefulWidget {
   final ContentType contentType;
   final VoidCallback onCreatePressed;
@@ -21,7 +21,7 @@ class PremiumCreateButton extends StatefulWidget {
   final Color? foregroundColor;
   final double? borderRadius;
   final EdgeInsets? padding;
-  final bool isFloatingActionButton;
+  final ButtonVariant variant;
 
   const PremiumCreateButton({
     super.key,
@@ -34,7 +34,7 @@ class PremiumCreateButton extends StatefulWidget {
     this.foregroundColor,
     this.borderRadius = 12,
     this.padding,
-    this.isFloatingActionButton = false,
+    this.variant = ButtonVariant.regular,
   });
 
   @override
@@ -56,7 +56,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
     _checkLimits();
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Проверка лимитов через новую Firebase систему
+  /// ✅ ИСПРАВЛЕНО: Проверка лимитов через новую Firebase систему
   Future<void> _checkLimits() async {
     try {
       // 1. Проверяем премиум доступ
@@ -81,7 +81,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return;
       }
 
-      // 3. 🔥 ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
+      // 3. ✅ ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
       final limitCheck = await _firebaseService.canCreateItem(_getFirebaseKey(widget.contentType));
 
       final canCreate = limitCheck['canProceed'] ?? false;
@@ -108,15 +108,15 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
     }
   }
 
-  /// 🔥 НОВЫЙ МЕТОД: Преобразование ContentType в ключ Firebase
+  /// ✅ ИСПРАВЛЕНО: Преобразование ContentType в ключ Firebase
   String _getFirebaseKey(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
         return 'notesCount';
       case ContentType.markerMaps:
         return 'markerMapsCount';
-      case ContentType.expenses:
-        return 'expensesCount';
+      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+        return 'budgetNotesCount';
       case ContentType.depthChart:
         return 'depthChartCount';
     }
@@ -133,46 +133,57 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
           return _buildLoadingButton(context, localizations);
         }
 
-        if (widget.isFloatingActionButton) {
-          return _buildFloatingActionButton(
-            context,
-            localizations,
-          );
+        switch (widget.variant) {
+          case ButtonVariant.regular:
+            return _buildRegularButton(context, localizations);
+          case ButtonVariant.compact:
+            return _buildCompactButton(context, localizations);
+          case ButtonVariant.fab:
+            return _buildFloatingActionButton(context, localizations);
         }
-
-        return _buildRegularButton(
-          context,
-          localizations,
-        );
       },
     );
   }
 
   Widget _buildLoadingButton(BuildContext context, AppLocalizations localizations) {
-    if (widget.isFloatingActionButton) {
-      return FloatingActionButton(
-        onPressed: null,
-        backgroundColor: Colors.grey,
-        child: const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        ),
-      );
+    switch (widget.variant) {
+      case ButtonVariant.fab:
+        return FloatingActionButton(
+          onPressed: null,
+          backgroundColor: Colors.grey,
+          child: const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+        );
+      case ButtonVariant.compact:
+        return ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          ),
+          child: const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+        );
+      case ButtonVariant.regular:
+        return ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey,
+            minimumSize: const Size(double.infinity, 56),
+          ),
+          child: const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+        );
     }
-
-    return ElevatedButton(
-      onPressed: null,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey,
-        minimumSize: const Size(double.infinity, 56),
-      ),
-      child: const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-      ),
-    );
   }
 
   Widget _buildFloatingActionButton(
@@ -183,9 +194,10 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.showUsageBadge && !_subscriptionService.hasPremiumAccess()) ...[
-          CompactUsageBadge(
+          // ✅ ИСПРАВЛЕНО: Используем alias и правильный BadgeVariant
+          badge_widgets.UsageBadge(
             contentType: widget.contentType,
-            showOnlyWhenNearLimit: true,
+            variant: badge_widgets.BadgeVariant.compact,
           ),
           const SizedBox(height: 8),
         ],
@@ -260,10 +272,10 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
                 ),
               ),
               if (widget.showUsageBadge)
-                UsageBadge(
+              // ✅ ИСПРАВЛЕНО: Используем alias и правильный BadgeVariant
+                badge_widgets.UsageBadge(
                   contentType: widget.contentType,
-                  fontSize: 11,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  variant: badge_widgets.BadgeVariant.compact,
                 ),
             ],
           ),
@@ -292,6 +304,43 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
           _buildLimitWarning(context, localizations),
         ],
       ],
+    );
+  }
+
+  Widget _buildCompactButton(
+      BuildContext context,
+      AppLocalizations localizations,
+      ) {
+    final buttonText = _getButtonText(localizations, _canCreate);
+    final buttonIcon = _getButtonIcon(_canCreate);
+
+    return ElevatedButton.icon(
+      onPressed: _canCreate
+          ? () => _handleCreatePress(context)
+          : () => _showPaywall(context),
+      icon: Icon(buttonIcon, size: 20),
+      label: Text(
+        buttonText,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _canCreate
+            ? (widget.backgroundColor ?? AppConstants.primaryColor)
+            : Colors.grey.withOpacity(0.5),
+        foregroundColor: _canCreate
+            ? (widget.foregroundColor ?? Colors.white)
+            : Colors.white70,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: !_canCreate
+              ? const BorderSide(color: Colors.orange, width: 1)
+              : BorderSide.none,
+        ),
+      ),
     );
   }
 
@@ -343,7 +392,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
     );
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Обработчик нажатия
+  /// Обработчик нажатия
   Future<void> _handleCreatePress(BuildContext context) async {
     // Просто вызываем оригинальный колбэк
     // Увеличение счетчика происходит в самих экранах создания
@@ -362,8 +411,8 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return localizations.translate('create_fishing_note') ?? 'Создать заметку';
       case ContentType.markerMaps:
         return localizations.translate('create_marker_map') ?? 'Создать карту';
-      case ContentType.expenses:
-        return localizations.translate('add_expense') ?? 'Добавить расход';
+      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+        return localizations.translate('add_budget_note') ?? 'Добавить заметку бюджета';
       case ContentType.depthChart:
         return localizations.translate('view_depth_chart') ?? 'График глубин';
     }
@@ -379,8 +428,8 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return Icons.note_add;
       case ContentType.markerMaps:
         return Icons.add_location;
-      case ContentType.expenses:
-        return Icons.add_shopping_cart;
+      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+        return Icons.account_balance_wallet;
       case ContentType.depthChart:
         return Icons.trending_up;
     }
@@ -398,7 +447,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
   }
 }
 
-/// Специализированная кнопка FAB для создания контента
+/// ✅ УПРОЩЕННАЯ специализированная кнопка FAB для создания контента
 class PremiumFloatingActionButton extends StatelessWidget {
   final ContentType contentType;
   final VoidCallback onPressed;
@@ -420,7 +469,7 @@ class PremiumFloatingActionButton extends StatelessWidget {
     return PremiumCreateButton(
       contentType: contentType,
       onCreatePressed: onPressed,
-      isFloatingActionButton: true,
+      variant: ButtonVariant.fab,
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       showUsageBadge: true,
@@ -428,279 +477,9 @@ class PremiumFloatingActionButton extends StatelessWidget {
   }
 }
 
-/// Компактная кнопка создания для использования в списках
-class CompactCreateButton extends StatelessWidget {
-  final ContentType contentType;
-  final VoidCallback onPressed;
-  final EdgeInsets? margin;
-
-  const CompactCreateButton({
-    super.key,
-    required this.contentType,
-    required this.onPressed,
-    this.margin,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      child: PremiumCreateButton(
-        contentType: contentType,
-        onCreatePressed: onPressed,
-        showUsageBadge: false,
-        borderRadius: 8,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      ),
-    );
-  }
-}
-
-/// Помощник для навигации с проверкой лимитов
-class NavigationHelper {
-  static Future<void> navigateWithLimitCheck({
-    required BuildContext context,
-    required ContentType contentType,
-    required Widget destination,
-    String? blockedFeature,
-  }) async {
-    final subscriptionService = SubscriptionService();
-    final firebaseService = FirebaseService();
-
-    // Проверка премиум функций
-    if (blockedFeature != null) {
-      if (!subscriptionService.hasPremiumAccess()) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaywallScreen(
-              blockedFeature: blockedFeature,
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    // 🔥 ИСПРАВЛЕНО: Проверка лимитов через новую Firebase систему
-    try {
-      String firebaseKey;
-      switch (contentType) {
-        case ContentType.fishingNotes:
-          firebaseKey = 'notesCount';
-          break;
-        case ContentType.markerMaps:
-          firebaseKey = 'markerMapsCount';
-          break;
-        case ContentType.expenses:
-          firebaseKey = 'expensesCount';
-          break;
-        case ContentType.depthChart:
-          firebaseKey = 'depthChartCount';
-          break;
-      }
-
-      final limitCheck = await firebaseService.canCreateItem(firebaseKey);
-      final canCreate = limitCheck['canProceed'] ?? false;
-
-      if (!canCreate) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaywallScreen(
-              contentType: contentType.name,
-            ),
-          ),
-        );
-        return;
-      }
-
-      // Навигация разрешена
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => destination),
-      );
-    } catch (e) {
-      // При ошибке показываем paywall
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaywallScreen(
-            contentType: contentType.name,
-          ),
-        ),
-      );
-    }
-  }
-}
-
-/// Виджет кнопки "+" с анимацией для индикации состояния лимитов
-class AnimatedCreateButton extends StatefulWidget {
-  final ContentType contentType;
-  final VoidCallback onPressed;
-  final double size;
-
-  const AnimatedCreateButton({
-    super.key,
-    required this.contentType,
-    required this.onPressed,
-    this.size = 56,
-  });
-
-  @override
-  State<AnimatedCreateButton> createState() => _AnimatedCreateButtonState();
-}
-
-class _AnimatedCreateButtonState extends State<AnimatedCreateButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<Color?> _colorAnimation;
-
-  final SubscriptionService _subscriptionService = SubscriptionService();
-  final FirebaseService _firebaseService = FirebaseService();
-
-  bool _canCreate = false;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
-    _colorAnimation = ColorTween(
-      begin: AppConstants.primaryColor,
-      end: Colors.orange,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
-    _checkLimits();
-  }
-
-  Future<void> _checkLimits() async {
-    try {
-      if (_subscriptionService.hasPremiumAccess()) {
-        setState(() {
-          _canCreate = true;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      if (widget.contentType == ContentType.depthChart) {
-        setState(() {
-          _canCreate = false;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      String firebaseKey;
-      switch (widget.contentType) {
-        case ContentType.fishingNotes:
-          firebaseKey = 'notesCount';
-          break;
-        case ContentType.markerMaps:
-          firebaseKey = 'markerMapsCount';
-          break;
-        case ContentType.expenses:
-          firebaseKey = 'expensesCount';
-          break;
-        case ContentType.depthChart:
-          firebaseKey = 'depthChartCount';
-          break;
-      }
-
-      final limitCheck = await _firebaseService.canCreateItem(firebaseKey);
-      final canCreate = limitCheck['canProceed'] ?? false;
-
-      if (mounted) {
-        setState(() {
-          _canCreate = canCreate;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _canCreate = false;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return FloatingActionButton(
-        onPressed: null,
-        backgroundColor: Colors.grey,
-        child: const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        ),
-      );
-    }
-
-    if (!_canCreate) {
-      _animationController.repeat(reverse: true);
-    } else {
-      _animationController.stop();
-      _animationController.reset();
-    }
-
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _canCreate ? 1.0 : _scaleAnimation.value,
-          child: FloatingActionButton(
-            onPressed: _canCreate
-                ? widget.onPressed
-                : () => _showPaywall(context),
-            backgroundColor: _canCreate
-                ? AppConstants.primaryColor
-                : _colorAnimation.value,
-            child: Icon(
-              _canCreate ? Icons.add : Icons.lock,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showPaywall(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaywallScreen(
-          contentType: widget.contentType.name,
-        ),
-      ),
-    );
-  }
+/// ✅ ИСПРАВЛЕНО: Переименованные варианты кнопок во избежание конфликта
+enum ButtonVariant {
+  regular,    // обычная кнопка
+  compact,    // компактная для списков
+  fab,        // floating action button
 }

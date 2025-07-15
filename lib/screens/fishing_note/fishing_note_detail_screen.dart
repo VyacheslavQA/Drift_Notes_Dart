@@ -10,7 +10,7 @@ import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../models/marker_map_model.dart';
 import '../../services/firebase/firebase_service.dart';
-import '../../repositories/fishing_note_repository.dart'; // 🚨 ДОБАВЛЕНО: используем Repository
+import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
@@ -24,7 +24,6 @@ import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
-// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 
@@ -41,7 +40,7 @@ class FishingNoteDetailScreen extends StatefulWidget {
 class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   final _firebaseService = FirebaseService();
   final _weatherSettings = WeatherSettingsService();
-  final _fishingNoteRepository = FishingNoteRepository(); // 🚨 ДОБАВЛЕНО: Repository
+  final _fishingNoteRepository = FishingNoteRepository();
 
   FishingNoteModel? _note;
   bool _isLoading = true;
@@ -61,7 +60,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     _loadNote();
   }
 
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем Repository вместо прямого Firebase
+  // 🔥 УПРОЩЕНО: Загрузка заметки без сложных проверок
   Future<void> _loadNote() async {
     setState(() {
       _isLoading = true;
@@ -69,12 +68,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     });
 
     try {
-      debugPrint('🔍 FishingNoteDetailScreen: Загружаем заметку с ID: ${widget.noteId}');
+      debugPrint('🔍 Загружаем заметку с ID: ${widget.noteId}');
 
-      // 🚨 ИСПРАВЛЕНО: Используем Repository, который работает с офлайн заметками
+      // Простая загрузка через Repository
       final note = await _fishingNoteRepository.getFishingNoteById(widget.noteId);
 
-      debugPrint('✅ FishingNoteDetailScreen: Заметка загружена: ${note.id} - ${note.location}');
+      debugPrint('✅ Заметка загружена: ${note.id} - ${note.location}');
 
       if (mounted) {
         setState(() {
@@ -82,14 +81,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           _isLoading = false;
         });
 
-        // Загружаем ИИ-анализ из заметки, если он есть
+        // Загружаем ИИ-анализ и маркерные карты
         _loadAIFromNote();
-
-        // После загрузки заметки загружаем связанные маркерные карты
         _loadLinkedMarkerMaps();
       }
     } catch (e) {
-      debugPrint('❌ FishingNoteDetailScreen: Ошибка загрузки заметки: $e');
+      debugPrint('❌ Ошибка загрузки заметки: $e');
 
       if (mounted) {
         final localizations = AppLocalizations.of(context);
@@ -101,14 +98,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // НОВЫЙ МЕТОД: Загрузка ИИ-анализа из сохраненных данных
+  // Загрузка ИИ-анализа из сохраненных данных
   void _loadAIFromNote() {
     if (_note?.aiPrediction == null) return;
 
     try {
       final aiMap = _note!.aiPrediction!;
-      final activityLevelString =
-          aiMap['activityLevel'] as String? ?? 'moderate';
+      final activityLevelString = aiMap['activityLevel'] as String? ?? 'moderate';
       ActivityLevel activityLevel = ActivityLevel.moderate;
 
       switch (activityLevelString.split('.').last) {
@@ -138,15 +134,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         fishingType: aiMap['fishingType'] as String? ?? _note!.fishingType,
       );
 
-      debugPrint(
-        '🧠 ИИ-анализ загружен из заметки: ${_aiPrediction!.overallScore} баллов',
-      );
+      debugPrint('🧠 ИИ-анализ загружен: ${_aiPrediction!.overallScore} баллов');
     } catch (e) {
       debugPrint('❌ Ошибка загрузки ИИ-анализа: $e');
     }
   }
 
-  // Метод для загрузки связанных маркерных карт
+  // 🔥 УПРОЩЕНО: Загрузка связанных маркерных карт
   Future<void> _loadLinkedMarkerMaps() async {
     if (_note == null) return;
 
@@ -155,24 +149,19 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     });
 
     try {
-      // Получаем все маркерные карты пользователя
       final querySnapshot = await _firebaseService.getUserMarkerMaps();
-
-      // Преобразуем QuerySnapshot в List<MarkerMapModel>
       final allMaps = <MarkerMapModel>[];
 
       for (var doc in querySnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
 
-        // Обрабатываем timestamp поля
         if (data['date'] is int) {
           data['date'] = DateTime.fromMillisecondsSinceEpoch(data['date']);
         }
 
-        // Создаем модель через конструктор
         final map = MarkerMapModel(
           id: doc.id,
-          userId: _firebaseService.currentUserId!, // Добавляем userId
+          userId: _firebaseService.currentUserId!,
           name: data['name'] ?? '',
           date: data['date'] ?? DateTime.now(),
           markers: (data['markers'] as List?)?.map((marker) {
@@ -196,7 +185,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         allMaps.add(map);
       }
 
-      // Фильтруем только те, которые привязаны к текущей заметке
       final linkedMaps = allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
 
       if (mounted) {
@@ -206,7 +194,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Ошибка при загрузке маркерных карт: $e');
+      debugPrint('❌ Ошибка при загрузке маркерных карт: $e');
       if (mounted) {
         setState(() {
           _isLoadingMarkerMaps = false;
@@ -215,7 +203,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // НОВЫЙ МЕТОД: Открытие карты с местом рыбалки
+  // Открытие карты с местом рыбалки
   Future<void> _showLocationOnMap() async {
     if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
       final localizations = AppLocalizations.of(context);
@@ -228,7 +216,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       return;
     }
 
-    // Открываем карту с координатами места рыбалки
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -238,10 +225,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
       ),
     );
-    // После возврата с карты ничего не делаем - просто остаемся в заметке
   }
 
-  // НОВЫЙ МЕТОД: Построение маршрута до места рыбалки
+  // Построение маршрута до места рыбалки
   Future<void> _navigateToLocation() async {
     if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
       final localizations = AppLocalizations.of(context);
@@ -256,7 +242,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
     final localizations = AppLocalizations.of(context);
 
-    // Показываем выбор навигационных приложений
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.backgroundColor,
@@ -267,7 +252,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: BottomSheet с выбором навигационных приложений
+  // BottomSheet с выбором навигационных приложений
   Widget _buildNavigationOptionsSheet() {
     final localizations = AppLocalizations.of(context);
 
@@ -277,7 +262,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Заголовок
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -295,20 +279,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Google Maps
           _buildNavigationOption(
             title: 'Google Maps',
             subtitle: localizations.translate('universal_navigation'),
             icon: Icons.map,
             onTap: () => _openGoogleMaps(),
           ),
-
           const SizedBox(height: 12),
-
-          // Apple Maps (только для iOS)
           if (Platform.isIOS)
             _buildNavigationOption(
               title: 'Apple Maps',
@@ -316,34 +294,26 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               icon: Icons.map_outlined,
               onTap: () => _openAppleMaps(),
             ),
-
           if (Platform.isIOS) const SizedBox(height: 12),
-
-          // Яндекс.Карты
           _buildNavigationOption(
             title: localizations.translate('yandex_maps'),
             subtitle: localizations.translate('detailed_russian_maps'),
             icon: Icons.alt_route,
             onTap: () => _openYandexMaps(),
           ),
-
           const SizedBox(height: 12),
-
-          // 2GIS
           _buildNavigationOption(
             title: '2GIS',
             subtitle: localizations.translate('detailed_city_maps'),
             icon: Icons.location_city,
             onTap: () => _open2GIS(),
           ),
-
           const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  // НОВЫЙ МЕТОД: Построение опции навигации
   Widget _buildNavigationOption({
     required String title,
     required String subtitle,
@@ -371,11 +341,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                 color: AppConstants.primaryColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: AppConstants.primaryColor,
-                size: 24,
-              ),
+              child: Icon(icon, color: AppConstants.primaryColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -412,7 +378,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // НОВЫЕ МЕТОДЫ: Открытие различных навигационных приложений
+  // Открытие различных навигационных приложений
   Future<void> _openGoogleMaps() async {
     Navigator.pop(context);
     final url = 'https://www.google.com/maps/dir/?api=1&destination=${_note!.latitude},${_note!.longitude}';
@@ -437,7 +403,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     await _launchURL(url, '2GIS');
   }
 
-  // НОВЫЙ МЕТОД: Универсальный запуск URL
+  // Универсальный запуск URL
   Future<void> _launchURL(String url, String appName) async {
     final localizations = AppLocalizations.of(context);
 
@@ -445,18 +411,12 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       final uri = Uri.parse(url);
 
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        // Если приложение не установлено, показываем сообщение
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '${localizations.translate('app_not_installed')}: $appName',
-              ),
+              content: Text('${localizations.translate('app_not_installed')}: $appName'),
               backgroundColor: Colors.orange,
               action: SnackBarAction(
                 label: localizations.translate('install'),
@@ -471,9 +431,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_opening_app')}: $appName',
-            ),
+            content: Text('${localizations.translate('error_opening_app')}: $appName'),
             backgroundColor: Colors.red,
           ),
         );
@@ -481,7 +439,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // НОВЫЙ МЕТОД: Открытие магазина приложений
+  // Открытие магазина приложений
   Future<void> _openAppStore(String appName) async {
     String storeUrl = '';
 
@@ -519,24 +477,18 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
+  // 🔥 УПРОЩЕНО: Добавление записи о поклевке
   Future<void> _addBiteRecord(BiteRecord record) async {
     if (_note == null) return;
 
     setState(() => _isSaving = true);
 
     try {
-      // Создаем копию списка и добавляем новую запись
-      final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)
-        ..add(record);
-
-      // Создаем обновленную модель заметки
+      final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)..add(record);
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
       await _fishingNoteRepository.updateFishingNote(updatedNote);
 
-      // Обновляем локальное состояние
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         setState(() {
@@ -557,9 +509,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_adding_bite')}: $e',
-            ),
+            content: Text('${localizations.translate('error_adding_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -567,27 +517,22 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
+  // 🔥 УПРОЩЕНО: Обновление записи о поклевке
   Future<void> _updateBiteRecord(BiteRecord record) async {
     if (_note == null) return;
 
     setState(() => _isSaving = true);
 
     try {
-      // Создаем копию списка и обновляем запись
       final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords);
       final index = updatedBiteRecords.indexWhere((r) => r.id == record.id);
 
       if (index != -1) {
         updatedBiteRecords[index] = record;
-
-        // Создаем обновленную модель заметки
         final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-        // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
         await _fishingNoteRepository.updateFishingNote(updatedNote);
 
-        // Обновляем локальное состояние
         if (mounted) {
           final localizations = AppLocalizations.of(context);
           setState(() {
@@ -602,17 +547,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             ),
           );
         }
-      } else {
-        if (mounted) {
-          final localizations = AppLocalizations.of(context);
-          setState(() => _isSaving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations.translate('bite_not_found')),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -620,9 +554,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_updating_bite')}: $e',
-            ),
+            content: Text('${localizations.translate('error_updating_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -630,24 +562,20 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления заметки
+  // 🔥 УПРОЩЕНО: Удаление записи о поклевке
   Future<void> _deleteBiteRecord(String recordId) async {
     if (_note == null) return;
 
     setState(() => _isSaving = true);
 
     try {
-      // Создаем копию списка и удаляем запись
       final updatedBiteRecords = List<BiteRecord>.from(_note!.biteRecords)
         ..removeWhere((r) => r.id == recordId);
 
-      // Создаем обновленную модель заметки
       final updatedNote = _note!.copyWith(biteRecords: updatedBiteRecords);
 
-      // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
       await _fishingNoteRepository.updateFishingNote(updatedNote);
 
-      // Обновляем локальное состояние
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         setState(() {
@@ -668,9 +596,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_deleting_bite')}: $e',
-            ),
+            content: Text('${localizations.translate('error_deleting_bite')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -678,61 +604,17 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Вспомогательный метод для преобразования модели в Map
-  Map<String, dynamic> _convertNoteToMap(FishingNoteModel note) {
-    return {
-      'title': note.title,
-      'location': note.location,
-      'date': note.date.millisecondsSinceEpoch,
-      'endDate': note.endDate?.millisecondsSinceEpoch,
-      'isMultiDay': note.isMultiDay,
-      'fishingType': note.fishingType,
-      'tackle': note.tackle,
-      'notes': note.notes,
-      'photoUrls': note.photoUrls,
-      'coverPhotoUrl': note.coverPhotoUrl,
-      'coverCropSettings': note.coverCropSettings,
-      'biteRecords': note.biteRecords.map((record) => {
-        'id': record.id,
-        'time': record.time.millisecondsSinceEpoch,
-        'fishType': record.fishType,
-        'weight': record.weight,
-        'length': record.length,
-        'notes': record.notes,
-        'photoUrls': record.photoUrls,
-      }).toList(),
-      'weather': note.weather != null ? {
-        'temperature': note.weather!.temperature,
-        'feelsLike': note.weather!.feelsLike,
-        'humidity': note.weather!.humidity,
-        'pressure': note.weather!.pressure,
-        'windSpeed': note.weather!.windSpeed,
-        'windDirection': note.weather!.windDirection,
-        'cloudCover': note.weather!.cloudCover,
-        'sunrise': note.weather!.sunrise,
-        'sunset': note.weather!.sunset,
-        'isDay': note.weather!.isDay,
-        'observationTime': note.weather!.observationTime.millisecondsSinceEpoch,
-      } : null,
-      'latitude': note.latitude,
-      'longitude': note.longitude,
-      'aiPrediction': note.aiPrediction,
-      // userId НЕ включаем в данные для сохранения, так как он определяется по структуре subcollection
-    };
-  }
-
-  // Метод для перехода к просмотру маркерной карты
+  // Переход к просмотру маркерной карты
   void _viewMarkerMap(MarkerMapModel map) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => MarkerMapScreen(markerMap: map)),
     ).then((_) {
-      // Обновляем список маркерных карт после возвращения
       _loadLinkedMarkerMaps();
     });
   }
 
-  // Метод для перехода к редактированию заметки
+  // Переход к редактированию заметки
   Future<void> _editNote() async {
     if (_note == null) return;
 
@@ -744,12 +626,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
 
     if (result == true) {
-      // Перезагружаем заметку, чтобы отобразить изменения
       _loadNote();
     }
   }
 
-  // 🚨 ИСПРАВЛЕНО: Выбор обложки через Repository
+  // 🔥 УПРОЩЕНО: Выбор обложки
   Future<void> _selectCoverPhoto() async {
     if (_note == null || _note!.photoUrls.isEmpty) {
       if (mounted) {
@@ -779,16 +660,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       setState(() => _isSaving = true);
 
       try {
-        // Создаем обновленную модель заметки с новой обложкой
         final updatedNote = _note!.copyWith(
           coverPhotoUrl: result['coverPhotoUrl'],
           coverCropSettings: result['cropSettings'],
         );
 
-        // 🚨 ИСПРАВЛЕНО: Используем Repository для обновления
         await _fishingNoteRepository.updateFishingNote(updatedNote);
 
-        // Обновляем локальное состояние
         if (mounted) {
           final localizations = AppLocalizations.of(context);
           setState(() {
@@ -798,9 +676,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                localizations.translate('cover_updated_successfully'),
-              ),
+              content: Text(localizations.translate('cover_updated_successfully')),
               backgroundColor: Colors.green,
             ),
           );
@@ -811,9 +687,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           setState(() => _isSaving = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '${localizations.translate('error_updating_cover')}: $e',
-              ),
+              content: Text('${localizations.translate('error_updating_cover')}: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -836,7 +710,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // 🚨 ИСПРАВЛЕНО: Удаление заметки через Repository
+  // 🔥 КРИТИЧЕСКИ УПРОЩЕНО: Удаление заметки БЕЗ двойного обновления SubscriptionProvider
   Future<void> _deleteNote() async {
     if (!mounted) return;
 
@@ -877,31 +751,19 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       try {
         setState(() => _isLoading = true);
 
-        // 🚨 ИСПРАВЛЕНО: Используем Repository для удаления
+        // 🔥 УПРОЩЕНО: Простое удаление через Repository
         await _fishingNoteRepository.deleteFishingNote(widget.noteId);
 
-        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного удаления
         if (mounted) {
-          try {
-            final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
-            await subscriptionProvider.refreshUsageData();
-            debugPrint('✅ SubscriptionProvider обновлен после удаления заметки');
-          } catch (e) {
-            debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
-            // Не прерываем выполнение, заметка уже удалена
-          }
-
           final localizations = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                localizations.translate('note_deleted_successfully'),
-              ),
+              content: Text(localizations.translate('note_deleted_successfully')),
               backgroundColor: Colors.green,
             ),
           );
 
-          Navigator.pop(context, true); // true для обновления списка заметок
+          Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {
@@ -910,9 +772,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '${localizations.translate('error_deleting_note')}: $e',
-              ),
+              content: Text('${localizations.translate('error_deleting_note')}: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -921,7 +781,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Метод для форматирования температуры согласно настройкам
+  // Методы для форматирования данных согласно настройкам
   String _formatTemperature(double celsius) {
     final unit = _weatherSettings.temperatureUnit;
     switch (unit) {
@@ -933,7 +793,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Метод для форматирования скорости ветра согласно настройкам
   String _formatWindSpeed(double meterPerSecond) {
     final unit = _weatherSettings.windSpeedUnit;
     switch (unit) {
@@ -948,12 +807,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Метод для форматирования давления согласно настройкам
   String _formatPressure(double hpa) {
     final unit = _weatherSettings.pressureUnit;
     final calibration = _weatherSettings.barometerCalibration;
 
-    // Применяем калибровку (калибровка хранится в гПа)
     final calibratedHpa = hpa + calibration;
 
     switch (unit) {
@@ -978,10 +835,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   }
 
   // Получение текста уровня активности
-  String _getActivityLevelText(
-      ActivityLevel level,
-      AppLocalizations localizations,
-      ) {
+  String _getActivityLevelText(ActivityLevel level, AppLocalizations localizations) {
     switch (level) {
       case ActivityLevel.excellent:
         return localizations.translate('excellent_activity');
@@ -1021,19 +875,16 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
         actions: [
           if (!_isLoading && _note != null) ...[
-            // Кнопка редактирования
             IconButton(
               icon: Icon(Icons.edit, color: AppConstants.textColor),
               tooltip: localizations.translate('edit'),
               onPressed: _editNote,
             ),
-            // Кнопка для выбора обложки
             IconButton(
               icon: const Icon(Icons.image),
               tooltip: localizations.translate('select_cover'),
               onPressed: _selectCoverPhoto,
             ),
-            // Кнопка удаления
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               tooltip: localizations.translate('delete_note'),
@@ -1056,10 +907,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: AppConstants.textColor, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -1074,10 +922,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             ? Center(
           child: Text(
             localizations.translate('bite_not_found'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 18,
-            ),
+            style: TextStyle(color: AppConstants.textColor, fontSize: 18),
           ),
         )
             : _buildNoteDetails(),
@@ -1090,7 +935,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
     final localizations = AppLocalizations.of(context);
 
-    // Подсчет пойманных рыб и нереализованных поклевок
     final caughtFishCount = _note!.biteRecords
         .where((record) => record.fishType.isNotEmpty && record.weight > 0)
         .length;
@@ -1135,13 +979,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           const SizedBox(height: 20),
 
-          // Если есть погода, показываем её
+          // Погода
           if (_note!.weather != null) ...[
             _buildWeatherCard(),
             const SizedBox(height: 20),
           ],
 
-          // НОВОЕ: Отображение ИИ-анализа
+          // ИИ-анализ
           if (_aiPrediction != null) ...[
             _buildAIAnalysisCard(),
             const SizedBox(height: 20),
@@ -1183,7 +1027,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: Построение карточки ИИ-анализа
+  // Построение карточки ИИ-анализа
   Widget _buildAIAnalysisCard() {
     final localizations = AppLocalizations.of(context);
 
@@ -1445,7 +1289,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           )
               : Row(
             children: [
-              // Иконка маркерной карты
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -1458,10 +1301,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   size: 24,
                 ),
               ),
-
               const SizedBox(width: 12),
-
-              // Название и дата
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1509,8 +1349,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                   ],
                 ),
               ),
-
-              // Количество маркеров
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
@@ -1537,7 +1375,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Метод для правильного склонения слова "маркер"
   String _getMarkerText(int count) {
     final localizations = AppLocalizations.of(context);
 
@@ -1547,7 +1384,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           : localizations.translate('markers');
     }
 
-    // Русская логика склонений
     if (count % 10 == 1 && count % 100 != 11) {
       return localizations.translate('marker');
     } else if ((count % 10 >= 2 && count % 10 <= 4) &&
@@ -1579,7 +1415,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final localizations = AppLocalizations.of(context);
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
-    // Получение самой крупной рыбы
     final biggestFish = _note!.biggestFish;
 
     return Card(
@@ -1676,7 +1511,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
             const SizedBox(height: 10),
 
-            /// Пойманные рыбы
+            // Пойманные рыбы
             Row(
               children: [
                 Icon(Icons.set_meal, color: Colors.green, size: 16),
@@ -1757,7 +1592,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ],
             ),
 
-            // Самая крупная рыба, если есть
+            // Самая крупная рыба
             if (biggestFish != null) ...[
               const SizedBox(height: 10),
               Row(
@@ -1821,15 +1656,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
 
-            // ЗАМЕНЕНО: Кнопки навигации - адаптивный layout
+            // Кнопки навигации
             if (_note!.latitude != 0 && _note!.longitude != 0) ...[
               const SizedBox(height: 16),
 
-              // На маленьких экранах - вертикально, на больших - горизонтально
               isSmallScreen
                   ? Column(
                 children: [
-                  // Первая кнопка - Показать на карте
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -1853,10 +1686,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // Вторая кнопка - Построить маршрут
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -1884,7 +1714,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               )
                   : Row(
                 children: [
-                  // Первая кнопка - Показать на карте
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _showLocationOnMap,
@@ -1907,10 +1736,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Вторая кнопка - Построить маршрут
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _navigateToLocation,
@@ -1942,7 +1768,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Метод для правильного склонения слова "поклевка"
   String _getBiteText(int count) {
     final localizations = AppLocalizations.of(context);
 
@@ -1961,7 +1786,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // ИСПРАВЛЕННЫЙ МЕТОД: Построение карточки погоды в современном стиле
+  // Построение карточки погоды
   Widget _buildWeatherCard() {
     final localizations = AppLocalizations.of(context);
     final weather = _note!.weather;
@@ -1980,7 +1805,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ВЕРХНЯЯ ЧАСТЬ: температура и ощущается как
+              // Температура и ощущается как
               Row(
                 children: [
                   Container(
@@ -2024,7 +1849,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // НИЖНЯЯ ЧАСТЬ: сетка с остальными данными
+              // Сетка с остальными данными
               _buildWeatherGrid(localizations, weather),
             ],
           ),
@@ -2033,15 +1858,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Новый метод для построения сетки погоды
+  // Построение сетки погоды
   Widget _buildWeatherGrid(AppLocalizations localizations, FishingWeather weather) {
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
-    // На маленьких экранах делаем 2 колонки, на больших - 3
     if (isSmallScreen) {
       return Column(
         children: [
-          // Первая строка
           Row(
             children: [
               Expanded(
@@ -2061,10 +1884,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Вторая строка
           Row(
             children: [
               Expanded(
@@ -2084,10 +1904,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Третья строка
           Row(
             children: [
               Expanded(
@@ -2111,10 +1928,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       );
     }
 
-    // На больших экранах оставляем 3 колонки
+    // На больших экранах
     return Column(
       children: [
-        // Первая строка
         Row(
           children: [
             Expanded(
@@ -2142,10 +1958,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             ),
           ],
         ),
-
         const SizedBox(height: 12),
-
-        // Вторая строка
         Row(
           children: [
             Expanded(

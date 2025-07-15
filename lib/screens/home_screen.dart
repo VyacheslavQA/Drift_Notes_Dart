@@ -2,7 +2,7 @@
 // ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ с реактивностью счетчиков
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 🔥 ДОБАВЛЕНО для реактивности
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/firebase/firebase_service.dart';
 import '../repositories/fishing_note_repository.dart';
@@ -21,8 +21,7 @@ import '../constants/subscription_constants.dart';
 import '../widgets/user_agreements_dialog.dart';
 import '../widgets/subscription/usage_badge.dart';
 import '../widgets/subscription/premium_create_button.dart';
-import '../providers/subscription_provider.dart'; // 🔥 ДОБАВЛЕНО для реактивности
-// ДОБАВЛЕНО: Импорт PaywallScreen
+import '../providers/subscription_provider.dart';
 import 'subscription/paywall_screen.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
@@ -56,40 +55,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<FishingNoteModel> _fishingNotes = [];
   bool _hasNewNotifications = true;
 
-  // Переменные для системы принудительного принятия политики
-  ConsentRestrictionResult? _policyRestrictions;
+  // ✅ ИСПРАВЛЕНО: Упрощенные переменные для системы согласий
   bool _hasPolicyBeenChecked = false;
+  bool _policyAccepted = true; // По умолчанию считаем что политика принята
 
-  // ===== НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ОФЛАЙН РЕЖИМА =====
+  // Переменные для офлайн режима
   bool _isOfflineMode = false;
   bool _isInitialized = false;
-  Map<String, dynamic>? _offlineAuthStatus;
   bool _hasNetworkConnection = true;
   String? _offlineStatusMessage;
 
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Переменные для кэширования состояния подписки с ОФЛАЙН проверкой
+  // Переменные для кэширования состояния подписки
   SubscriptionStatus _cachedSubscriptionStatus = SubscriptionStatus.none;
   bool _hasPremiumAccess = false;
   bool _subscriptionDataLoaded = false;
-  bool? _cachedCanCreateContent; // 🚨 НОВОЕ: Кэшируем результат офлайн проверки лимитов
-  int? _cachedTotalUsage; // 🚨 НОВОЕ: Кэшируем общее использование (серверное + офлайн)
-  int? _cachedLimit; // 🚨 НОВОЕ: Кэшируем лимит
+  bool? _cachedCanCreateContent;
+  int? _cachedTotalUsage;
+  int? _cachedLimit;
 
   int _selectedIndex = 2; // Центральная кнопка (рыбка) по умолчанию выбрана
 
-  // ХАРДКОР: Фиксированные размеры навигации (не зависят от адаптивности)
-  static const double _navBarHeight = 60.0; // Всегда 60px
-  static const double _centerButtonSize = 80.0; // УВЕЛИЧЕНО: 80px вместо 70px
-  static const double _navIconSize = 22.0; // УМЕНЬШЕНО: 22px вместо 24px
-  static const double _navTextSize = 10.0; // УМЕНЬШЕНО: 10px вместо 11px
-  static const double _navItemMinTouchTarget = 48.0; // Минимум для accessibility
+  // Фиксированные размеры навигации
+  static const double _navBarHeight = 60.0;
+  static const double _centerButtonSize = 80.0;
+  static const double _navIconSize = 22.0;
+  static const double _navTextSize = 10.0;
+  static const double _navItemMinTouchTarget = 48.0;
 
-  // ХАРДКОР: Фиксированные размеры AppBar
-  static const double _appBarHeight = kToolbarHeight; // 56px стандарт
-  static const double _appBarTitleSize = 24.0; // Всегда 24px
-  static const double _appBarIconSize = 26.0; // Всегда 26px
+  // Фиксированные размеры AppBar
+  static const double _appBarHeight = kToolbarHeight;
+  static const double _appBarTitleSize = 24.0;
+  static const double _appBarIconSize = 26.0;
 
-  // Простые адаптивные утилиты (БЕЗ навигации и AppBar)
+  // Адаптивные утилиты
   bool get isTablet => MediaQuery.of(context).size.width >= 768;
   double get screenWidth => MediaQuery.of(context).size.width;
   double get horizontalPadding => isTablet ? 32.0 : 16.0;
@@ -99,10 +97,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double get buttonHeight => isTablet ? 56.0 : 48.0;
   int get gridColumns => isTablet ? 4 : 2;
 
-  // ДОБАВЛЕНО: Вычисление адаптивного отступа для Drawer
   double get _drawerBottomPadding {
     final bottomSafeArea = MediaQuery.of(context).padding.bottom;
-    // Используем только высоту навигации + безопасная зона + минимальный буфер
     return _navBarHeight + bottomSafeArea + 8.0;
   }
 
@@ -110,7 +106,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // ===== НОВОЕ: Инициализация с поддержкой офлайн режима =====
     _initializeOfflineMode();
   }
 
@@ -120,21 +115,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // ===== НОВОЕ: Отслеживание когда приложение возвращается в фокус =====
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // Когда пользователь возвращается в приложение, обновляем заметки
       debugPrint('🔄 Приложение вернулось в фокус - обновляем заметки');
       _loadFishingNotes();
-
-      // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем данные Provider при возврате в приложение
       _refreshProviderData();
     }
   }
 
-  // 🔥 НОВЫЙ МЕТОД: Обновление данных Provider
   Future<void> _refreshProviderData() async {
     try {
       final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
@@ -145,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Инициализация офлайн режима =====
+  // ✅ ИСПРАВЛЕНО: Инициализация офлайн режима без отсутствующих методов
   Future<void> _initializeOfflineMode() async {
     try {
       debugPrint('🚀 Инициализация HomeScreen с поддержкой офлайн режима...');
@@ -155,18 +145,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('🌐 Состояние сети: ${_hasNetworkConnection ? "онлайн" : "офлайн"}');
 
       if (_hasNetworkConnection) {
-        // Онлайн режим
         await _initializeOnlineMode();
       } else {
-        // Офлайн режим
         await _initializeOfflineOnly();
       }
 
-      // Получаем статус офлайн авторизации
-      _offlineAuthStatus = await _firebaseService.getOfflineAuthStatus();
+      // ✅ ИСПРАВЛЕНО: Убрано обращение к несуществующему методу getOfflineAuthStatus
       _isOfflineMode = _firebaseService.isOfflineMode;
 
-      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загружаем данные подписки ОДИН РАЗ с офлайн проверкой
+      // Загружаем данные подписки с офлайн проверкой
       await _loadSubscriptionDataWithOfflineCheck();
 
       // Загружаем данные с fallback на кэш
@@ -190,7 +177,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('❌ Ошибка при инициализации: $e');
 
-      // Fallback: пытаемся загрузить хотя бы кэшированные данные
       await _loadDataWithFallback();
       await _loadFishingNotes();
 
@@ -201,23 +187,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Загрузка данных подписки с офлайн проверкой лимитов
+  // ✅ ИСПРАВЛЕНО: Загрузка данных подписки без getCurrentOfflineUsage
   Future<void> _loadSubscriptionDataWithOfflineCheck() async {
     try {
       debugPrint('🔄 Загрузка данных подписки с офлайн проверкой...');
 
-      // Загружаем текущую подписку
       final subscription = await _subscriptionService.loadCurrentSubscription();
 
-      // Обновляем кэшированные данные
       _cachedSubscriptionStatus = subscription.status;
       _hasPremiumAccess = _subscriptionService.hasPremiumAccess();
 
-      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получаем ОБЩЕЕ использование (серверное + офлайн)
-      _cachedTotalUsage = await _subscriptionService.getCurrentOfflineUsage(ContentType.fishingNotes);
+      // ✅ ИСПРАВЛЕНО: Используем существующий метод getCurrentUsage
+      _cachedTotalUsage = await _subscriptionService.getCurrentUsage(ContentType.fishingNotes);
       _cachedLimit = _subscriptionService.getLimit(ContentType.fishingNotes);
 
-      // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем возможность создания с учетом офлайн лимитов
       _cachedCanCreateContent = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
 
       _subscriptionDataLoaded = true;
@@ -230,19 +213,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('❌ Ошибка загрузки данных подписки: $e');
-      _subscriptionDataLoaded = true; // Отмечаем как загруженные даже при ошибке
+      _subscriptionDataLoaded = true;
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Инициализация онлайн режима =====
   Future<void> _initializeOnlineMode() async {
     try {
       debugPrint('🌐 Инициализация онлайн режима...');
 
-      // Кэшируем данные подписки при онлайн режиме
       await _subscriptionService.cacheSubscriptionDataOnline();
 
-      // Переключаемся в онлайн режим если были офлайн
       if (_firebaseService.isOfflineMode) {
         await _firebaseService.switchToOnlineMode();
       }
@@ -251,22 +231,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     } catch (e) {
       debugPrint('❌ Ошибка при инициализации онлайн режима: $e');
-      // Продолжаем работу с кэшированными данными
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Инициализация только офлайн режима =====
+  // ✅ ИСПРАВЛЕНО: Инициализация офлайн режима без initializeWithOfflineSupport
   Future<void> _initializeOfflineOnly() async {
     try {
       debugPrint('📱 Инициализация офлайн режима...');
 
-      // Пытаемся инициализировать приложение с поддержкой офлайн
-      final initialized = await _firebaseService.initializeWithOfflineSupport();
+      // ✅ ИСПРАВЛЕНО: Проверяем офлайн режим через существующие методы
+      final canAuthOffline = await _firebaseService.canAuthenticateOffline();
 
-      if (initialized) {
-        _isOfflineMode = true;
-        _offlineStatusMessage = 'Работаете в офлайн режиме';
-        debugPrint('✅ Офлайн режим активирован');
+      if (canAuthOffline) {
+        final offlineSuccess = await _firebaseService.tryOfflineAuthentication();
+
+        if (offlineSuccess) {
+          _isOfflineMode = true;
+          _offlineStatusMessage = 'Работаете в офлайн режиме';
+          debugPrint('✅ Офлайн режим активирован');
+        } else {
+          _offlineStatusMessage = 'Офлайн авторизация недоступна';
+          debugPrint('⚠️ Офлайн авторизация не удалась');
+        }
       } else {
         _offlineStatusMessage = 'Нет подключения к интернету';
         debugPrint('⚠️ Офлайн режим недоступен');
@@ -278,36 +264,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Загрузка данных с fallback на кэш =====
   Future<void> _loadDataWithFallback() async {
     try {
       debugPrint('📊 Загрузка данных с fallback на кэш...');
 
       if (_hasNetworkConnection) {
-        // Онлайн: загружаем с сервера и кэшируем
         debugPrint('🌐 Загрузка данных с сервера...');
-        // Здесь можно добавить загрузку других данных профиля если нужно
-
       } else {
-        // Офлайн: загружаем из кэша
         debugPrint('💾 Загрузка данных из кэша...');
-        // Данные пользователя уже загружены через FirebaseService
       }
 
       debugPrint('✅ Данные загружены успешно');
 
     } catch (e) {
       debugPrint('❌ Ошибка при загрузке данных: $e');
-      // Продолжаем работу с доступными данными
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Показ статуса офлайн режима =====
   void _showOfflineStatusIfNeeded() {
     if (!_hasNetworkConnection || _isOfflineMode) {
       final localizations = AppLocalizations.of(context);
 
-      // Показываем снэкбар только один раз при инициализации
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +320,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Обновление подключения =====
   Future<void> _refreshConnection() async {
     try {
       debugPrint('🔄 Проверка подключения...');
@@ -354,14 +330,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _hasNetworkConnection = hasConnection;
 
         if (_hasNetworkConnection) {
-          // Восстановлено подключение
           debugPrint('🌐 Подключение восстановлено');
           await _initializeOnlineMode();
-
-          // Перезагружаем данные подписки
           await _loadSubscriptionDataWithOfflineCheck();
-
-          // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем Provider при восстановлении сети
           await _refreshProviderData();
 
           if (mounted) {
@@ -407,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // Проверяет соблюдение политики конфиденциальности
+  // ✅ ИСПРАВЛЕНО: Проверка политики через упрощенные методы
   Future<void> _checkPolicyCompliance() async {
     try {
       if (!mounted) return;
@@ -421,27 +392,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         debugPrint('⚠️ Локализация недоступна, используем русский язык');
       }
 
-      final consentResult = await UserConsentService().checkUserConsents(
-        languageCode,
-      );
+      // ✅ ИСПРАВЛЕНО: Используем упрощенный метод checkUserConsents
+      final consentResult = await UserConsentService().checkUserConsents(languageCode);
 
       if (!consentResult.allValid) {
         debugPrint('🚫 Политика не принята - показываем принудительный диалог');
+        _policyAccepted = false;
         if (mounted) {
           await _showPolicyUpdateDialog();
         }
+      } else {
+        _policyAccepted = true;
+        debugPrint('✅ Политика принята');
       }
 
-      _policyRestrictions = await UserConsentService().getConsentRestrictions(
-        languageCode,
-      );
-
-      if (mounted && _policyRestrictions!.hasRestrictions) {
-        debugPrint('⚠️ Действуют ограничения: ${_policyRestrictions!.level}');
-        _showPolicyRestrictionBanner();
+      if (mounted) {
+        setState(() {});
       }
     } catch (e) {
       debugPrint('❌ Ошибка при проверке политики: $e');
+      _policyAccepted = false;
     }
   }
 
@@ -452,17 +422,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => false,
+        return PopScope(
+          canPop: false,
           child: UserAgreementsDialog(
+            isRegistration: false, // ✅ ИСПРАВЛЕНО: добавлен обязательный параметр
             onAgreementsAccepted: () async {
               debugPrint('✅ Политика принята пользователем');
+              _policyAccepted = true;
               await _refreshPolicyStatus();
             },
             onCancel: () async {
               debugPrint('❌ Пользователь отказался от принятия политики');
-              await UserConsentService().recordPolicyRejection();
-              await _refreshPolicyStatus();
+              _policyAccepted = false;
+              // ✅ ИСПРАВЛЕНО: Убран вызов несуществующего метода recordPolicyRejection
+              // Выходим из аккаунта при отказе
+              await _firebaseService.signOut();
+              if (mounted && Navigator.canPop(context)) {
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
             },
           ),
         );
@@ -482,105 +459,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('⚠️ Локализация недоступна при обновлении статуса');
     }
 
-    _policyRestrictions = await UserConsentService().getConsentRestrictions(
-      languageCode,
-    );
-
-    if (mounted && _policyRestrictions!.hasRestrictions) {
-      _showPolicyRestrictionBanner();
-    }
+    // ✅ ИСПРАВЛЕНО: Убрано обращение к несуществующему getConsentRestrictions
+    final consentResult = await UserConsentService().checkUserConsents(languageCode);
+    _policyAccepted = consentResult.allValid;
 
     if (mounted) {
       setState(() {});
     }
   }
 
-  void _showPolicyRestrictionBanner() {
-    if (!mounted || _policyRestrictions == null) return;
-
-    final localizations = AppLocalizations.of(context);
-    final restrictions = _policyRestrictions!;
-
-    Color bannerColor;
-    IconData bannerIcon;
-
-    switch (restrictions.level) {
-      case ConsentRestrictionLevel.soft:
-        bannerColor = Colors.orange;
-        bannerIcon = Icons.warning_amber;
-        break;
-      case ConsentRestrictionLevel.hard:
-        bannerColor = Colors.red;
-        bannerIcon = Icons.warning;
-        break;
-      case ConsentRestrictionLevel.final_:
-        bannerColor = Colors.red[800]!;
-        bannerIcon = Icons.error;
-        break;
-      case ConsentRestrictionLevel.deletion:
-        bannerColor = Colors.red[900]!;
-        bannerIcon = Icons.delete_forever;
-        break;
-      default:
-        return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(bannerIcon, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        localizations.translate('policy_restrictions_title') ??
-                            'Ограничения доступа',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        restrictions.restrictionMessage,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: bannerColor,
-            duration: const Duration(seconds: 8),
-            action: SnackBarAction(
-              label: localizations.translate('accept_policy') ?? 'Принять политику',
-              textColor: Colors.white,
-              onPressed: () => _showPolicyUpdateDialog(),
-            ),
-          ),
-        );
-      }
-    });
-  }
-
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка возможности создания контента с кэшированными данными
+  // ✅ ИСПРАВЛЕНО: Упрощенная проверка возможности создания контента
   bool _canCreateContentCached() {
     // Проверяем политику
-    final policyAllows = _policyRestrictions?.canCreateContent ?? true;
-    if (!policyAllows) {
+    if (!_policyAccepted) {
       return false;
     }
 
-    // 🚨 ИСПРАВЛЕНО: Используем кэшированный результат офлайн проверки
+    // Используем кэшированный результат офлайн проверки
     return _cachedCanCreateContent ?? false;
   }
 
-  // ИСПРАВЛЕНО: Единый метод для показа PaywallScreen
   void _showPremiumRequired(ContentType contentType) {
     Navigator.push(
       context,
@@ -592,12 +490,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ИСПРАВЛЕНО: Показ сообщений о блокировке с правильными диалогами
+  // ✅ ИСПРАВЛЕНО: Упрощенные сообщения о блокировке
   Future<void> _showContentCreationBlocked() async {
     final localizations = AppLocalizations.of(context);
 
     // Сначала проверяем политику
-    if (_policyRestrictions?.canCreateContent != true) {
+    if (!_policyAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -615,14 +513,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // 🚨 ИСПРАВЛЕНО: Затем проверяем лимиты и показываем PaywallScreen
+    // Затем проверяем лимиты и показываем PaywallScreen
     final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
     if (!canCreate) {
       _showPremiumRequired(ContentType.fishingNotes);
     }
   }
 
-  // ===== КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Перезагрузка заметок после создания =====
   Future<void> _loadFishingNotes() async {
     try {
       debugPrint('📝 Загрузка заметок о рыбалке...');
@@ -724,15 +621,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Навигация с проверкой офлайн лимитов и обновлением Provider
   Future<void> _navigateToAddNote() async {
-    // 🚨 ИСПРАВЛЕНО: Проверяем политику
-    if (!(_policyRestrictions?.canCreateContent ?? true)) {
+    // Проверяем политику
+    if (!_policyAccepted) {
       await _showContentCreationBlocked();
       return;
     }
 
-    // 🚨 ИСПРАВЛЕНО: Проверяем офлайн лимиты перед навигацией
+    // Проверяем офлайн лимиты перед навигацией
     final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
     if (!canCreate) {
       _showPremiumRequired(ContentType.fishingNotes);
@@ -746,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
 
-    // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем данные Provider'а после возврата
+    // Обновляем данные Provider'а после возврата
     try {
       final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
       await subscriptionProvider.refreshUsageData();
@@ -755,7 +651,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('❌ HomeScreen: Ошибка обновления Provider: $e');
     }
 
-    // ИСПРАВЛЕНИЕ: ВСЕГДА обновляем заметки после возврата с экрана создания
+    // Всегда обновляем заметки после возврата с экрана создания
     debugPrint('🔄 Возврат с экрана создания заметки, обновляем список...');
     await _loadFishingNotes();
 
@@ -917,7 +813,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return stats;
   }
 
-  // ИСПРАВЛЕНО: АДАПТИВНАЯ сетка быстрых действий без обрезания + НОВЫЕ КНОПКИ
   Widget _buildQuickActionsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -930,7 +825,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       childAspectRatio: isTablet ? 1.1 : 1.0,
       children: [
-        // ИСПРАВЛЕНО: Маркерные карты БЕЗ проверки лимитов - всегда доступны для просмотра
         _buildQuickActionItem(
           icon: Icons.map_outlined,
           label: localizations.translate('marker_map'),
@@ -941,7 +835,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             );
           },
         ),
-        // ИСПРАВЛЕНО: Бюджет БЕЗ проверки лимитов - всегда доступен для просмотра
         _buildQuickActionItem(
           icon: Icons.account_balance_wallet_outlined,
           label: localizations.translate('fishing_budget'),
@@ -976,7 +869,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ИСПРАВЛЕНО: Элемент быстрого действия с адаптивным текстом
   Widget _buildQuickActionItem({
     required IconData icon,
     required String label,
@@ -994,7 +886,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ИСПРАВЛЕНО: УВЕЛИЧЕНЫ иконки
             Container(
               height: isTablet ? 70 : 60,
               child: Icon(
@@ -1004,7 +895,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             const SizedBox(height: 8),
-            // ИСПРАВЛЕНО: Адаптивный контейнер для текста
             Expanded(
               child: Center(
                 child: Text(
@@ -1026,7 +916,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ИСПРАВЛЕНО: Метод статистики БЕЗ карточки подписки (она перемещена выше)
   Widget _buildStatsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -1039,7 +928,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Column(
       children: [
-        // УДАЛЕНО: Карточки политики и подписки перемещены выше
         if (stats['biggestFish'] != null) ...[
           _buildStatCard(
             icon: Icons.emoji_events,
@@ -1138,13 +1026,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ПОЛНОСТЬЮ ЗАМЕНЕНО: Карточка статуса подписки с Consumer для реактивности
   Widget _buildSubscriptionStatusCard() {
     final localizations = AppLocalizations.of(context);
 
     return Consumer<SubscriptionProvider>(
       builder: (context, subscriptionProvider, child) {
-        // Если данные подписки еще не загружены, показываем загрузку
         if (subscriptionProvider.isLoading) {
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
@@ -1159,12 +1045,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         }
 
-        // ИСПРАВЛЕНО: Скрываем карточку для премиум пользователей
         if (subscriptionProvider.hasPremiumAccess) {
           return const SizedBox.shrink();
         }
 
-        // Показываем лимиты только для бесплатных пользователей
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: EdgeInsets.all(cardPadding),
@@ -1221,7 +1105,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 16),
 
-              // 🔥 ИСПРАВЛЕНО: Реактивные прогресс-бары с данными Provider
               _buildUsageProgressBar(
                 subscriptionProvider,
                 ContentType.fishingNotes,
@@ -1234,9 +1117,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 localizations.translate('marker_maps'),
               ),
               const SizedBox(height: 12),
+              // ✅ ИСПРАВЛЕНО: ContentType.expenses → ContentType.budgetNotes
               _buildUsageProgressBar(
                 subscriptionProvider,
-                ContentType.expenses,
+                ContentType.budgetNotes,
                 localizations.translate('fishing_budget'),
               ),
               const SizedBox(height: 24),
@@ -1271,7 +1155,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🔥 НОВЫЙ МЕТОД: Прогресс-бар использования с реактивными данными Provider
   Widget _buildUsageProgressBar(
       SubscriptionProvider provider,
       ContentType contentType,
@@ -1326,50 +1209,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // ✅ ИСПРАВЛЕНО: Упрощенная карточка политики без удаленных классов
   Widget _buildPolicyRestrictionCard() {
-    if (_policyRestrictions == null || !_policyRestrictions!.hasRestrictions) {
+    if (_policyAccepted) {
       return const SizedBox.shrink();
     }
 
     final localizations = AppLocalizations.of(context);
-    final restrictions = _policyRestrictions!;
-
-    Color cardColor;
-    IconData cardIcon;
-    String title;
-
-    switch (restrictions.level) {
-      case ConsentRestrictionLevel.soft:
-        cardColor = Colors.orange;
-        cardIcon = Icons.warning_amber;
-        title = localizations.translate('soft_restrictions_title') ?? 'Мягкие ограничения';
-        break;
-      case ConsentRestrictionLevel.hard:
-        cardColor = Colors.red;
-        cardIcon = Icons.warning;
-        title = localizations.translate('hard_restrictions_title') ?? 'Жесткие ограничения';
-        break;
-      case ConsentRestrictionLevel.final_:
-        cardColor = Colors.red[800]!;
-        cardIcon = Icons.error;
-        title = localizations.translate('final_warning_title') ?? 'Финальное предупреждение';
-        break;
-      case ConsentRestrictionLevel.deletion:
-        cardColor = Colors.red[900]!;
-        cardIcon = Icons.delete_forever;
-        title = localizations.translate('deletion_warning_title') ?? 'Запланировано удаление';
-        break;
-      default:
-        return const SizedBox.shrink();
-    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
-        color: cardColor.withOpacity(0.1),
+        color: Colors.orange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cardColor, width: 2),
+        border: Border.all(color: Colors.orange, width: 2),
       ),
       child: Column(
         children: [
@@ -1378,10 +1232,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: cardColor.withOpacity(0.2),
+                  color: Colors.orange.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(cardIcon, color: cardColor, size: iconSize),
+                child: Icon(Icons.warning_amber, color: Colors.orange, size: iconSize),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1389,16 +1243,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      localizations.translate('policy_required') ?? 'Требуется принятие политики',
                       style: TextStyle(
-                        color: cardColor,
+                        color: Colors.orange,
                         fontSize: fontSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      restrictions.restrictionMessage,
+                      localizations.translate('accept_policy_to_continue') ?? 'Примите политику конфиденциальности для продолжения работы',
                       style: TextStyle(
                         color: AppConstants.textColor.withOpacity(0.8),
                         fontSize: fontSize - 2,
@@ -1416,7 +1270,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: ElevatedButton(
               onPressed: () => _showPolicyUpdateDialog(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: cardColor,
+                backgroundColor: Colors.orange,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1435,7 +1289,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ===== НОВЫЙ ВИДЖЕТ: Индикатор офлайн статуса =====
   Widget _buildOfflineStatusIndicator() {
     if (!_isInitialized) {
       return const SizedBox.shrink();
@@ -1443,7 +1296,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final localizations = AppLocalizations.of(context);
 
-    // Показываем только если есть проблемы с подключением или активен офлайн режим
     if (_hasNetworkConnection && !_isOfflineMode) {
       return const SizedBox.shrink();
     }
@@ -1498,21 +1350,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     fontSize: fontSize - 2,
                   ),
                 ),
-                // Показываем информацию о сроке действия офлайн режима
-                if (_isOfflineMode && _offlineAuthStatus != null && _offlineAuthStatus!['daysUntilExpiry'] != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Действует ${_offlineAuthStatus!['daysUntilExpiry']} дней',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.7),
-                      fontSize: fontSize - 3,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-          // Кнопка обновления подключения
           if (!_hasNetworkConnection)
             IconButton(
               onPressed: _refreshConnection,
@@ -1539,7 +1379,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         key: _scaffoldKey,
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(
-          // 🚨 ИСПРАВЛЕНИЕ: Заголовок с реактивными данными через Consumer
           title: Consumer<SubscriptionProvider>(
             builder: (context, subscriptionProvider, child) {
               return Row(
@@ -1554,7 +1393,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                  // ===== НОВОЕ: Индикатор офлайн режима =====
                   if (_isOfflineMode || !_hasNetworkConnection)
                     Container(
                       margin: const EdgeInsets.only(right: 8),
@@ -1583,7 +1421,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ],
                       ),
                     ),
-                  // 🚨 ИСПРАВЛЕНИЕ: Реактивный бейдж статуса подписки
                   if (subscriptionProvider.hasPremiumAccess)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1660,13 +1497,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         drawer: _buildDrawer(),
         body: RefreshIndicator(
           onRefresh: () async {
-            // ===== ОБНОВЛЕНО: Обновление с проверкой подключения и Provider =====
             await _refreshConnection();
             await _checkPolicyCompliance();
             await _loadSubscriptionDataWithOfflineCheck();
             await _loadFishingNotes();
-
-            // 🔥 КРИТИЧЕСКИ ВАЖНО: Обновляем Provider при pull-to-refresh
             await _refreshProviderData();
           },
           child: SingleChildScrollView(
@@ -1682,11 +1516,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _buildQuickActionsGrid(),
                   const SizedBox(height: 24),
 
-                  // ===== НОВОЕ: Индикатор офлайн статуса =====
                   _buildOfflineStatusIndicator(),
-
-                  // ДОБАВЛЕНО: Карточки ограничений и подписки НАД статистикой
-                  if (_policyRestrictions?.hasRestrictions == true)
+                  if (!_policyAccepted)
                     _buildPolicyRestrictionCard(),
                   _buildSubscriptionStatusCard(),
 
@@ -1713,7 +1544,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ИСПРАВЛЕНО: YouTube карточка БЕЗ текста
   Widget _buildYoutubePromoCard() {
     return GestureDetector(
       onTap: () => _launchUrl('https://www.youtube.com/@Carpediem_hunting_fishing'),
@@ -1811,7 +1641,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ИСПРАВЛЕНО: Drawer с адаптивным отступом снизу и реактивными данными
   Widget _buildDrawer() {
     final localizations = AppLocalizations.of(context);
     final user = _firebaseService.currentUser;
@@ -1821,7 +1650,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Drawer(
       child: Container(
         color: AppConstants.backgroundColor,
-        // ИСПРАВЛЕНО: Используем адаптивный отступ вместо фиксированного
         padding: EdgeInsets.only(bottom: _drawerBottomPadding),
         child: ListView(
           padding: EdgeInsets.zero,
@@ -1835,7 +1663,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // ===== НОВОЕ: Индикатор офлайн режима в drawer =====
                       if (_isOfflineMode || !_hasNetworkConnection)
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -1904,7 +1731,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               title: localizations.translate('profile'),
               onTap: () {
                 Navigator.pop(context);
-                if (_policyRestrictions?.canEditProfile != true) {
+                // ✅ ИСПРАВЛЕНО: Упрощенная проверка политики
+                if (!_policyAccepted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -1949,7 +1777,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   context,
                   MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
                 ).then((value) {
-                  // ✅ ИСПРАВЛЕНО: Всегда обновляем при возврате из списка заметок
                   _loadFishingNotes();
                   _refreshProviderData();
                 });
@@ -1989,7 +1816,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   context,
                   MaterialPageRoute(builder: (context) => const MarkerMapsListScreen()),
                 ).then((_) {
-                  // ✅ ИСПРАВЛЕНО: Обновляем Provider при возврате из маркерных карт
                   _refreshProviderData();
                 });
               },
@@ -2004,7 +1830,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   context,
                   MaterialPageRoute(builder: (context) => const FishingBudgetScreen()),
                 ).then((_) {
-                  // ✅ ДОБАВЛЕНО: Обновляем Provider при возврате из бюджета
                   _refreshProviderData();
                 });
               },
@@ -2083,7 +1908,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНО: Нижняя навигация с реактивной центральной кнопкой
   Widget _buildBottomNavigationBar() {
     final localizations = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -2129,7 +1953,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
 
-          // 🚨 ПОЛНОСТЬЮ ИСПРАВЛЕНА: Центральная кнопка с реактивными данными через Consumer
+          // Центральная кнопка с реактивными данными через Consumer
           Positioned(
             top: 0,
             left: 0,
@@ -2161,7 +1985,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ),
                         ),
                         // Индикатор политики (красный замок)
-                        if (!(_policyRestrictions?.canCreateContent ?? true))
+                        if (!_policyAccepted)
                           Positioned(
                             top: 0,
                             right: 0,
@@ -2179,8 +2003,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
-                        // 🚨 ИСПРАВЛЕНО: Реактивный индикатор лимитов (оранжевый замок)
-                        if ((_policyRestrictions?.canCreateContent ?? true) &&
+                        // Реактивный индикатор лимитов (оранжевый замок)
+                        if (_policyAccepted &&
                             !subscriptionProvider.canCreateContentSync(ContentType.fishingNotes))
                           Positioned(
                             top: 0,
@@ -2199,7 +2023,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
-                        // 🚨 ИСПРАВЛЕНО: Реактивный мини-бейдж использования
+                        // Реактивный мини-бейдж использования
                         if (subscriptionProvider.canCreateContentSync(ContentType.fishingNotes) &&
                             !subscriptionProvider.hasPremiumAccess)
                           Positioned(
@@ -2221,7 +2045,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
-                        // ===== НОВОЕ: Индикатор офлайн режима на центральной кнопке =====
+                        // Индикатор офлайн режима на центральной кнопке
                         if (_isOfflineMode || !_hasNetworkConnection)
                           Positioned(
                             top: 0,

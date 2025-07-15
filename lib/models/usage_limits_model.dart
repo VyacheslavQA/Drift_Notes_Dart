@@ -2,12 +2,13 @@
 
 import '../constants/subscription_constants.dart';
 
-/// Модель для отслеживания использования лимитов пользователем
+/// ✅ ИСПРАВЛЕННАЯ модель для отслеживания использования лимитов пользователем
+/// expenses → budgetNotes везде в коде
 class UsageLimitsModel {
   final String userId;
   final int notesCount;
   final int markerMapsCount;
-  final int expensesCount;
+  final int budgetNotesCount;  // ✅ ИСПРАВЛЕНО! Было expensesCount
   final DateTime lastResetDate;
   final DateTime updatedAt;
 
@@ -15,7 +16,7 @@ class UsageLimitsModel {
     required this.userId,
     required this.notesCount,
     required this.markerMapsCount,
-    required this.expensesCount,
+    required this.budgetNotesCount,  // ✅ ИСПРАВЛЕНО! Было expensesCount
     required this.lastResetDate,
     required this.updatedAt,
   });
@@ -27,41 +28,41 @@ class UsageLimitsModel {
       userId: userId,
       notesCount: 0,
       markerMapsCount: 0,
-      expensesCount: 0,
+      budgetNotesCount: 0,  // ✅ ИСПРАВЛЕНО! Было expensesCount
       lastResetDate: now,
       updatedAt: now,
     );
   }
 
-  /// Создание из Map (для Firebase)
+  /// ✅ ИСПРАВЛЕНО: Создание из Map с правильными константами
   factory UsageLimitsModel.fromMap(Map<String, dynamic> map, String userId) {
     return UsageLimitsModel(
       userId: userId,
       notesCount: (map[SubscriptionConstants.notesCountField] as num?)?.toInt() ?? 0,
       markerMapsCount: (map[SubscriptionConstants.markerMapsCountField] as num?)?.toInt() ?? 0,
-      expensesCount: (map[SubscriptionConstants.expensesCountField] as num?)?.toInt() ?? 0,
+      budgetNotesCount: (map[SubscriptionConstants.budgetNotesCountField] as num?)?.toInt() ?? 0,  // ✅ ИСПРАВЛЕНО!
       lastResetDate: _parseDateTime(map[SubscriptionConstants.lastResetDateField]) ?? DateTime.now(),
-      updatedAt: _parseDateTime(map['updatedAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map[SubscriptionConstants.updatedAtField]) ?? DateTime.now(),
     );
   }
 
-  /// Преобразование в Map (для Firebase)
+  /// ✅ ИСПРАВЛЕНО: Преобразование в Map с правильными константами
   Map<String, dynamic> toMap() {
     return {
       SubscriptionConstants.notesCountField: notesCount,
       SubscriptionConstants.markerMapsCountField: markerMapsCount,
-      SubscriptionConstants.expensesCountField: expensesCount,
+      SubscriptionConstants.budgetNotesCountField: budgetNotesCount,  // ✅ ИСПРАВЛЕНО!
       SubscriptionConstants.lastResetDateField: lastResetDate.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      SubscriptionConstants.updatedAtField: updatedAt.toIso8601String(),
     };
   }
 
-  /// Копирование с изменениями
+  /// ✅ ИСПРАВЛЕНО: Копирование с новым полем budgetNotesCount
   UsageLimitsModel copyWith({
     String? userId,
     int? notesCount,
     int? markerMapsCount,
-    int? expensesCount,
+    int? budgetNotesCount,  // ✅ ИСПРАВЛЕНО! Было expensesCount
     DateTime? lastResetDate,
     DateTime? updatedAt,
   }) {
@@ -69,13 +70,13 @@ class UsageLimitsModel {
       userId: userId ?? this.userId,
       notesCount: notesCount ?? this.notesCount,
       markerMapsCount: markerMapsCount ?? this.markerMapsCount,
-      expensesCount: expensesCount ?? this.expensesCount,
+      budgetNotesCount: budgetNotesCount ?? this.budgetNotesCount,  // ✅ ИСПРАВЛЕНО!
       lastResetDate: lastResetDate ?? this.lastResetDate,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
-  /// Увеличение счетчика для определенного типа контента
+  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика с правильным ContentType
   UsageLimitsModel incrementCounter(ContentType contentType) {
     final now = DateTime.now();
 
@@ -90,9 +91,9 @@ class UsageLimitsModel {
           markerMapsCount: markerMapsCount + 1,
           updatedAt: now,
         );
-      case ContentType.expenses:
+      case ContentType.budgetNotes:  // ✅ ИСПРАВЛЕНО! Было expenses
         return copyWith(
-          expensesCount: expensesCount + 1,
+          budgetNotesCount: budgetNotesCount + 1,  // ✅ ИСПРАВЛЕНО!
           updatedAt: now,
         );
       case ContentType.depthChart:
@@ -101,7 +102,7 @@ class UsageLimitsModel {
     }
   }
 
-  /// Уменьшение счетчика для определенного типа контента (при удалении)
+  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика с правильным ContentType
   UsageLimitsModel decrementCounter(ContentType contentType) {
     final now = DateTime.now();
 
@@ -116,9 +117,9 @@ class UsageLimitsModel {
           markerMapsCount: (markerMapsCount - 1).clamp(0, double.infinity).toInt(),
           updatedAt: now,
         );
-      case ContentType.expenses:
+      case ContentType.budgetNotes:  // ✅ ИСПРАВЛЕНО! Было expenses
         return copyWith(
-          expensesCount: (expensesCount - 1).clamp(0, double.infinity).toInt(),
+          budgetNotesCount: (budgetNotesCount - 1).clamp(0, double.infinity).toInt(),  // ✅ ИСПРАВЛЕНО!
           updatedAt: now,
         );
       case ContentType.depthChart:
@@ -127,15 +128,15 @@ class UsageLimitsModel {
     }
   }
 
-  /// Получение текущего значения счетчика для типа контента
+  /// ✅ ИСПРАВЛЕНО: Получение счетчика с правильным ContentType
   int getCountForType(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
         return notesCount;
       case ContentType.markerMaps:
         return markerMapsCount;
-      case ContentType.expenses:
-        return expensesCount;
+      case ContentType.budgetNotes:  // ✅ ИСПРАВЛЕНО! Было expenses
+        return budgetNotesCount;  // ✅ ИСПРАВЛЕНО!
       case ContentType.depthChart:
         return 0; // График глубин не имеет счетчика
     }
@@ -184,25 +185,25 @@ class UsageLimitsModel {
     return percentage >= 0.8 && percentage < 1.0;
   }
 
-  /// Сброс всех счетчиков (для тестирования или админских функций)
+  /// ✅ ИСПРАВЛЕНО: Сброс всех счетчиков с правильным полем
   UsageLimitsModel resetAllCounters() {
     final now = DateTime.now();
     return copyWith(
       notesCount: 0,
       markerMapsCount: 0,
-      expensesCount: 0,
+      budgetNotesCount: 0,  // ✅ ИСПРАВЛЕНО! Было expensesCount
       lastResetDate: now,
       updatedAt: now,
     );
   }
 
-  /// Общее количество созданного контента
-  int get totalContentCount => notesCount + markerMapsCount + expensesCount;
+  /// ✅ ИСПРАВЛЕНО: Общее количество с правильным полем
+  int get totalContentCount => notesCount + markerMapsCount + budgetNotesCount;  // ✅ ИСПРАВЛЕНО!
 
   /// Проверка есть ли хотя бы один созданный элемент
   bool get hasAnyContent => totalContentCount > 0;
 
-  /// Получение краткой статистики
+  /// ✅ ИСПРАВЛЕНО: Статистика с правильными названиями и константами
   Map<String, dynamic> getUsageStats() {
     return {
       'notes': {
@@ -217,17 +218,63 @@ class UsageLimitsModel {
         'remaining': getRemainingCount(ContentType.markerMaps),
         'percentage': getUsagePercentage(ContentType.markerMaps),
       },
-      'expenses': {
-        'current': expensesCount,
-        'limit': SubscriptionConstants.freeExpensesLimit,
-        'remaining': getRemainingCount(ContentType.expenses),
-        'percentage': getUsagePercentage(ContentType.expenses),
+      'budgetNotes': {  // ✅ ИСПРАВЛЕНО! Было 'expenses'
+        'current': budgetNotesCount,  // ✅ ИСПРАВЛЕНО!
+        'limit': SubscriptionConstants.freeBudgetNotesLimit,  // ✅ ИСПРАВЛЕНО!
+        'remaining': getRemainingCount(ContentType.budgetNotes),  // ✅ ИСПРАВЛЕНО!
+        'percentage': getUsagePercentage(ContentType.budgetNotes),  // ✅ ИСПРАВЛЕНО!
       },
       'total': totalContentCount,
     };
   }
 
-  // Приватные методы
+  /// ✅ НОВЫЙ: Получение статистики для конкретного типа контента
+  Map<String, dynamic> getStatsForType(ContentType contentType) {
+    return {
+      'current': getCountForType(contentType),
+      'limit': SubscriptionConstants.getContentLimit(contentType),
+      'remaining': getRemainingCount(contentType),
+      'percentage': getUsagePercentage(contentType),
+      'canCreate': canCreateNew(contentType),
+      'shouldWarn': shouldShowWarning(contentType),
+      'typeName': SubscriptionConstants.getContentTypeName(contentType),
+    };
+  }
+
+  /// ✅ НОВЫЙ: Проверка есть ли достигнутые лимиты
+  bool get hasAnyLimitReached {
+    return hasReachedLimit(ContentType.fishingNotes) ||
+        hasReachedLimit(ContentType.markerMaps) ||
+        hasReachedLimit(ContentType.budgetNotes);
+  }
+
+  /// ✅ НОВЫЙ: Получение списка достигнутых лимитов
+  List<ContentType> get reachedLimits {
+    final List<ContentType> reached = [];
+
+    if (hasReachedLimit(ContentType.fishingNotes)) {
+      reached.add(ContentType.fishingNotes);
+    }
+    if (hasReachedLimit(ContentType.markerMaps)) {
+      reached.add(ContentType.markerMaps);
+    }
+    if (hasReachedLimit(ContentType.budgetNotes)) {
+      reached.add(ContentType.budgetNotes);
+    }
+
+    return reached;
+  }
+
+  /// ✅ НОВЫЙ: Быстрая проверка может ли пользователь создавать что-либо
+  bool get canCreateAnyContent {
+    return canCreateNew(ContentType.fishingNotes) ||
+        canCreateNew(ContentType.markerMaps) ||
+        canCreateNew(ContentType.budgetNotes);
+  }
+
+  // ========================================
+  // ПРИВАТНЫЕ МЕТОДЫ
+  // ========================================
 
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
@@ -237,8 +284,8 @@ class UsageLimitsModel {
         return DateTime.parse(value);
       }
       // Для Firestore Timestamp
-      if (value.toString().contains('Timestamp')) {
-        return value.toDate();
+      if (value.runtimeType.toString().contains('Timestamp')) {
+        return (value as dynamic).toDate() as DateTime;
       }
       return null;
     } catch (e) {
@@ -252,7 +299,7 @@ class UsageLimitsModel {
         'userId: $userId, '
         'notes: $notesCount/${SubscriptionConstants.freeNotesLimit}, '
         'maps: $markerMapsCount/${SubscriptionConstants.freeMarkerMapsLimit}, '
-        'expenses: $expensesCount/${SubscriptionConstants.freeExpensesLimit}, '
+        'budgetNotes: $budgetNotesCount/${SubscriptionConstants.freeBudgetNotesLimit}, '  // ✅ ИСПРАВЛЕНО!
         'total: $totalContentCount'
         ')';
   }
@@ -265,7 +312,7 @@ class UsageLimitsModel {
         other.userId == userId &&
         other.notesCount == notesCount &&
         other.markerMapsCount == markerMapsCount &&
-        other.expensesCount == expensesCount &&
+        other.budgetNotesCount == budgetNotesCount &&  // ✅ ИСПРАВЛЕНО!
         other.lastResetDate == lastResetDate;
   }
 
@@ -275,7 +322,7 @@ class UsageLimitsModel {
       userId,
       notesCount,
       markerMapsCount,
-      expensesCount,
+      budgetNotesCount,  // ✅ ИСПРАВЛЕНО!
       lastResetDate,
     );
   }

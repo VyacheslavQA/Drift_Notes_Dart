@@ -8,7 +8,7 @@ import '../../services/firebase/firebase_service.dart';
 import '../../screens/subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
 
-/// Виджет для проверки лимитов контента перед показом экрана создания
+/// ✅ УПРОЩЕННЫЙ виджет для проверки лимитов контента перед показом экрана создания
 class LimitChecker extends StatefulWidget {
   final ContentType contentType;
   final Widget child;
@@ -40,7 +40,7 @@ class _LimitCheckerState extends State<LimitChecker> {
     _checkAccess();
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Проверка доступа через новую Firebase систему
+  /// ✅ ИСПРАВЛЕНО: Проверка доступа через новую Firebase систему
   Future<void> _checkAccess() async {
     try {
       // Если это премиум функция - проверяем наличие премиума
@@ -78,8 +78,9 @@ class _LimitCheckerState extends State<LimitChecker> {
         return;
       }
 
-      // 🔥 ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
-      final limitCheck = await _firebaseService.canCreateItem(_getFirebaseKey(widget.contentType));
+      // ✅ ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
+      final firebaseKey = SubscriptionConstants.getFirebaseCountField(widget.contentType);
+      final limitCheck = await _firebaseService.canCreateItem(firebaseKey);
       final canCreate = limitCheck['canProceed'] ?? false;
 
       if (mounted) {
@@ -97,20 +98,6 @@ class _LimitCheckerState extends State<LimitChecker> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  /// 🔥 НОВЫЙ МЕТОД: Преобразование ContentType в ключ Firebase
-  String _getFirebaseKey(ContentType contentType) {
-    switch (contentType) {
-      case ContentType.fishingNotes:
-        return 'notesCount';
-      case ContentType.markerMaps:
-        return 'markerMapsCount';
-      case ContentType.expenses:
-        return 'expensesCount';
-      case ContentType.depthChart:
-        return 'depthChartCount';
     }
   }
 
@@ -294,7 +281,7 @@ class _LimitCheckerState extends State<LimitChecker> {
   }
 }
 
-/// 🔥 ИСПРАВЛЕНО: Функция-помощник для проверки лимитов перед навигацией
+/// ✅ ИСПРАВЛЕНО: Функция-помощник для проверки лимитов перед навигацией
 Future<bool> checkLimitBeforeNavigation(
     BuildContext context,
     ContentType contentType,
@@ -314,23 +301,8 @@ Future<bool> checkLimitBeforeNavigation(
       return false;
     }
 
-    // 🔥 ИСПРАВЛЕНО: Проверяем лимиты через новую Firebase систему
-    String firebaseKey;
-    switch (contentType) {
-      case ContentType.fishingNotes:
-        firebaseKey = 'notesCount';
-        break;
-      case ContentType.markerMaps:
-        firebaseKey = 'markerMapsCount';
-        break;
-      case ContentType.expenses:
-        firebaseKey = 'expensesCount';
-        break;
-      case ContentType.depthChart:
-        firebaseKey = 'depthChartCount';
-        break;
-    }
-
+    // ✅ ИСПРАВЛЕНО: Используем константу для получения Firebase ключа
+    final firebaseKey = SubscriptionConstants.getFirebaseCountField(contentType);
     final limitCheck = await firebaseService.canCreateItem(firebaseKey);
     final canCreate = limitCheck['canProceed'] ?? false;
 
@@ -350,7 +322,7 @@ Future<bool> checkLimitBeforeNavigation(
   }
 }
 
-/// 🔥 ИСПРАВЛЕНО: Функция для проверки премиум доступа к функции
+/// ✅ УПРОЩЕНО: Функция для проверки премиум доступа к функции
 Future<bool> checkPremiumFeatureAccess(
     BuildContext context,
     String featureName,

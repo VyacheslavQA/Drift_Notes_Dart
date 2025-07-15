@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../offline/offline_storage_service.dart';
 import '../../utils/network_utils.dart';
 import '../../localization/app_localizations.dart';
-import '../auth/google_sign_in_service.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/subscription_constants.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -24,199 +24,122 @@ class FirebaseService {
   static const String _authUserIdKey = 'auth_user_id';
   static const String _authUserDisplayNameKey = 'auth_user_display_name';
 
-  // ===== НОВЫЕ КЛЮЧИ ДЛЯ ОФЛАЙН АВТОРИЗАЦИИ =====
+  // Офлайн авторизация
   static const String _offlineAuthEnabledKey = 'offline_auth_enabled';
   static const String _lastOnlineAuthKey = 'last_online_auth_timestamp';
   static const String _offlineUserDataKey = 'offline_cached_user_data';
   static const String _offlineAuthExpiryKey = 'offline_auth_expiry_date';
 
-  // Константы для офлайн авторизации
   static const int _offlineAuthValidityDays = 30;
-  static const int _offlineAuthWarningDays = 7;
 
-  // Кэшированные данные для быстрого доступа
+  // Кэшированные данные
   static String? _cachedUserId;
   static bool _isOfflineMode = false;
 
-  // Получение текущего пользователя
+  // ========================================
+  // БАЗОВЫЕ СВОЙСТВА
+  // ========================================
+
+  /// Получение текущего пользователя
   User? get currentUser => _auth.currentUser;
 
-  // Проверка авторизации пользователя (с учетом офлайн режима)
+  /// Проверка авторизации пользователя
   bool get isUserLoggedIn => _auth.currentUser != null || _isOfflineMode;
 
-  // Проверка офлайн режима
+  /// Проверка офлайн режима
   bool get isOfflineMode => _isOfflineMode;
 
-  // Получение ID текущего пользователя
+  /// Получение ID текущего пользователя
   String? get currentUserId {
     if (_auth.currentUser != null) {
       return _auth.currentUser!.uid;
     } else if (_isOfflineMode) {
-      // В офлайн режиме возвращаем кэшированный ID
       return _cachedUserId;
     } else {
-      // Если пользователь не авторизован, пытаемся получить ID из кэша
       return _getCachedUserId();
     }
   }
 
-  // Получение ID пользователя из кэша
+  /// Получение ID пользователя из кэша
   String? _getCachedUserId() {
-    // Используем статическую переменную для кэширования userId
     if (_cachedUserId != null) {
       return _cachedUserId;
     }
-
-    // Если у нас нет закэшированного ID, возвращаем null
-    // А затем асинхронно пытаемся загрузить его из SharedPreferences
     _loadCachedUserIdAsync();
     return null;
   }
 
-  // Асинхронная загрузка userId из SharedPreferences
+  /// Асинхронная загрузка userId из SharedPreferences
   Future<void> _loadCachedUserIdAsync() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _cachedUserId = prefs.getString(_authUserIdKey);
-      if (kDebugMode) {
-        debugPrint('Загружен кэшированный ID пользователя: $_cachedUserId');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
-      }
+      debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
     }
   }
 
-  // ===== НОВЫЕ МЕТОДЫ ДЛЯ ОФЛАЙН АВТОРИЗАЦИИ =====
+  // ========================================
+  // ОФЛАЙН АВТОРИЗАЦИЯ
+  // ========================================
 
   /// Проверка возможности офлайн авторизации
   Future<bool> canAuthenticateOffline() async {
     try {
-      debugPrint('🔥 FirebaseService.canAuthenticateOffline() - проверяем офлайн кэш...');
-
-      // Используем OfflineStorageService для проверки
       final isValid = await _offlineStorage.isOfflineAuthValid();
-      debugPrint('🔥 OfflineStorageService.isOfflineAuthValid() = $isValid');
-
-      if (!isValid) {
-        debugPrint('🔒 Офлайн авторизация невозможна - нет валидного кэша');
-        return false;
-      }
-
-      // 🔥 ИСПРАВЛЕНИЕ: Убираем дополнительную проверку SharedPreferences
-      // Если OfflineStorageService говорит что данные валидны, доверяем ему
-      debugPrint('✅ Офлайн авторизация возможна (данные валидны)');
-      return true;
-
+      debugPrint('Офлайн авторизация: ${isValid ? 'доступна' : 'недоступна'}');
+      return isValid;
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке офлайн авторизации: $e');
+      debugPrint('Ошибка при проверке офлайн авторизации: $e');
       return false;
     }
   }
 
-  /// Получение кэшированного пользователя для офлайн режима
-  Future<User?> getOfflineCachedUser() async {
-    try {
-      debugPrint('🔥 FirebaseService.getOfflineCachedUser() - получаем кэшированные данные...');
-
-      final cachedData = await _offlineStorage.getCachedUserData();
-
-      if (cachedData != null) {
-        debugPrint('📱 Загружены кэшированные данные пользователя для офлайн режима');
-        debugPrint('📱 Данные: $cachedData');
-        // Возвращаем null, так как Firebase User нельзя создать вручную
-        // Вместо этого используем флаг _isOfflineMode
-        return null;
-      }
-
-      debugPrint('🔒 Нет кэшированных данных пользователя');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении кэшированного пользователя: $e');
-      return null;
-    }
-  }
-
-  /// Кэширование данных пользователя для офлайн режима (ИСПРАВЛЕНО)
+  /// Кэширование данных пользователя для офлайн режима
   Future<void> cacheUserDataForOffline(User user) async {
     try {
-      debugPrint('🔥 FirebaseService.cacheUserDataForOffline() ВЫЗВАН');
-      debugPrint('🔥 Пользователь: ${user.email} (${user.uid})');
+      debugPrint('Кэширование данных для офлайн режима: ${user.email}');
 
-      // ===== ИСПРАВЛЕНИЕ: Используем новый OfflineStorageService =====
+      // Используем OfflineStorageService
       await _offlineStorage.saveOfflineUserData(user);
-      debugPrint('✅ OfflineStorageService.saveOfflineUserData() завершен');
 
       // Дополнительно сохраняем в старом формате для совместимости
       final prefs = await SharedPreferences.getInstance();
-
-      // Кэшируем основные данные пользователя
-      final userData = {
-        'uid': user.uid,
-        'email': user.email ?? '',
-        'displayName': user.displayName ?? '',
-        'photoURL': user.photoURL ?? '',
-        'emailVerified': user.emailVerified,
-        'isAnonymous': user.isAnonymous,
-        'metadata': {
-          'creationTime': user.metadata.creationTime?.toIso8601String(),
-          'lastSignInTime': user.metadata.lastSignInTime?.toIso8601String(),
-        }
-      };
-
-      // Сохраняем данные пользователя в старом формате
-      await prefs.setString(_offlineUserDataKey, userData.toString());
-
-      // Включаем офлайн авторизацию
       await prefs.setBool(_offlineAuthEnabledKey, true);
-
-      // Устанавливаем время последней онлайн авторизации
       await prefs.setInt(_lastOnlineAuthKey, DateTime.now().millisecondsSinceEpoch);
 
-      // Устанавливаем срок действия офлайн авторизации
       final expiryDate = DateTime.now().add(Duration(days: _offlineAuthValidityDays));
       await prefs.setInt(_offlineAuthExpiryKey, expiryDate.millisecondsSinceEpoch);
 
-      debugPrint('✅ Данные пользователя кэшированы для офлайн режима');
-      debugPrint('📅 Офлайн авторизация действительна до: ${expiryDate.toIso8601String()}');
-      debugPrint('✅ FirebaseService завершил кэширование');
-
+      debugPrint('Данные пользователя кэшированы для офлайн режима');
     } catch (e) {
-      debugPrint('❌ Ошибка при кэшировании данных пользователя: $e');
+      debugPrint('Ошибка при кэшировании данных пользователя: $e');
     }
   }
 
   /// Попытка офлайн авторизации
   Future<bool> tryOfflineAuthentication() async {
     try {
-      debugPrint('🔄 Попытка офлайн авторизации...');
+      debugPrint('Попытка офлайн авторизации...');
 
-      // Проверяем возможность офлайн авторизации
       final canAuth = await canAuthenticateOffline();
       if (!canAuth) {
-        debugPrint('🔒 Офлайн авторизация невозможна');
         return false;
       }
 
-      // Загружаем кэшированные данные через OfflineStorageService
       final cachedData = await _offlineStorage.getCachedUserData();
       if (cachedData == null) {
-        debugPrint('❌ Нет кэшированных данных пользователя');
         return false;
       }
 
       final cachedUserId = cachedData['uid'] as String?;
       if (cachedUserId == null) {
-        debugPrint('❌ Нет кэшированного ID пользователя');
         return false;
       }
 
-      // Устанавливаем офлайн режим
       _isOfflineMode = true;
       _cachedUserId = cachedUserId;
 
-      // Сохраняем данные пользователя в офлайн сервис
       await _offlineStorage.saveUserData({
         'uid': cachedUserId,
         'email': cachedData['email'] ?? '',
@@ -225,162 +148,58 @@ class FirebaseService {
         'offlineAuthTimestamp': DateTime.now().toIso8601String(),
       });
 
-      debugPrint('✅ Офлайн авторизация успешна');
-      debugPrint('👤 Пользователь: ${cachedData['email']} ($cachedUserId)');
-
-      // Проверяем срок действия и показываем предупреждение если нужно
-      await _checkOfflineAuthExpiry();
-
+      debugPrint('Офлайн авторизация успешна: ${cachedData['email']}');
       return true;
-
     } catch (e) {
-      debugPrint('❌ Ошибка при офлайн авторизации: $e');
+      debugPrint('Ошибка при офлайн авторизации: $e');
       _isOfflineMode = false;
       _cachedUserId = null;
       return false;
     }
   }
 
-  /// Проверка срока действия офлайн авторизации
-  Future<void> _checkOfflineAuthExpiry() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final expiryTimestamp = prefs.getInt(_offlineAuthExpiryKey) ?? 0;
-      final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
-      final now = DateTime.now();
-
-      final daysUntilExpiry = expiryDate.difference(now).inDays;
-
-      if (daysUntilExpiry <= _offlineAuthWarningDays) {
-        debugPrint('⚠️ Офлайн авторизация истекает через $daysUntilExpiry дней');
-        // Здесь можно добавить уведомление пользователю
-      }
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при проверке срока офлайн авторизации: $e');
-    }
-  }
-
-  /// Инициализация приложения с учетом офлайн режима
-  Future<bool> initializeWithOfflineSupport() async {
-    try {
-      debugPrint('🚀 Инициализация приложения с поддержкой офлайн режима...');
-
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        debugPrint('🌐 Интернет доступен - обычная авторизация');
-
-        // Если есть текущий пользователь, кэшируем его данные
-        if (_auth.currentUser != null) {
-          await cacheUserDataForOffline(_auth.currentUser!);
-          _isOfflineMode = false;
-          return true;
-        }
-
-        // Если нет текущего пользователя, но есть офлайн кэш, не активируем офлайн режим
-        return false;
-
-      } else {
-        debugPrint('📱 Интернет недоступен - попытка офлайн авторизации');
-
-        // Пытаемся авторизоваться офлайн
-        return await tryOfflineAuthentication();
-      }
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при инициализации приложения: $e');
-      return false;
-    }
-  }
-
-  /// Переключение в онлайн режим (при восстановлении сети)
+  /// Переключение в онлайн режим
   Future<void> switchToOnlineMode() async {
     try {
-      debugPrint('🌐 Переключение в онлайн режим...');
-
       if (_isOfflineMode && _auth.currentUser != null) {
-        // Если у нас есть активный пользователь Firebase, отключаем офлайн режим
         _isOfflineMode = false;
-        debugPrint('✅ Переключен в онлайн режим');
-
-        // Обновляем кэш с актуальными данными
         await cacheUserDataForOffline(_auth.currentUser!);
+        debugPrint('Переключен в онлайн режим');
       }
-
     } catch (e) {
-      debugPrint('❌ Ошибка при переключении в онлайн режим: $e');
+      debugPrint('Ошибка при переключении в онлайн режим: $e');
     }
   }
 
   /// Отключение офлайн режима
   Future<void> disableOfflineMode() async {
     try {
-      debugPrint('🔒 Отключение офлайн режима...');
-
       _isOfflineMode = false;
       _cachedUserId = null;
 
-      // Очищаем через OfflineStorageService
       await _offlineStorage.clearOfflineAuthData();
 
-      // Дополнительно очищаем старые ключи
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_offlineAuthEnabledKey, false);
       await prefs.remove(_offlineUserDataKey);
       await prefs.remove(_offlineAuthExpiryKey);
 
-      debugPrint('✅ Офлайн режим отключен');
-
+      debugPrint('Офлайн режим отключен');
     } catch (e) {
-      debugPrint('❌ Ошибка при отключении офлайн режима: $e');
+      debugPrint('Ошибка при отключении офлайн режима: $e');
     }
   }
 
-  /// Получение статуса офлайн авторизации
-  Future<Map<String, dynamic>> getOfflineAuthStatus() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
+  // ========================================
+  // АУТЕНТИФИКАЦИЯ
+  // ========================================
 
-      final isEnabled = prefs.getBool(_offlineAuthEnabledKey) ?? false;
-      final lastOnlineAuth = prefs.getInt(_lastOnlineAuthKey) ?? 0;
-      final expiryTimestamp = prefs.getInt(_offlineAuthExpiryKey) ?? 0;
-
-      final lastOnlineDate = DateTime.fromMillisecondsSinceEpoch(lastOnlineAuth);
-      final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
-      final now = DateTime.now();
-
-      return {
-        'isEnabled': isEnabled,
-        'isCurrentlyOffline': _isOfflineMode,
-        'lastOnlineAuth': lastOnlineDate.toIso8601String(),
-        'expiryDate': expiryDate.toIso8601String(),
-        'daysUntilExpiry': expiryDate.difference(now).inDays,
-        'isExpired': now.isAfter(expiryDate),
-        'cachedUserId': _cachedUserId,
-      };
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении статуса офлайн авторизации: $e');
-      return {'isEnabled': false, 'isCurrentlyOffline': false};
-    }
-  }
-
-  // ===== МОДИФИЦИРОВАННЫЕ СУЩЕСТВУЮЩИЕ МЕТОДЫ =====
-
-  Future<SharedPreferences> getSharedPreferences() async {
-    return await SharedPreferences.getInstance();
-  }
-
-  // Проверка валидности email перед отправкой
+  /// Проверка валидности email
   bool _isValidEmail(String email) {
-    return RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    ).hasMatch(email);
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
   }
 
-  // Регистрация нового пользователя с email и паролем
+  /// Регистрация нового пользователя
   Future<UserCredential> registerWithEmailAndPassword(
       String email,
       String password, [
@@ -392,29 +211,25 @@ class FirebaseService {
         password: password,
       );
 
-      // Сохраняем данные пользователя в кэш
       await _cacheUserData(userCredential.user);
 
-      // ===== НОВОЕ: Кэшируем для офлайн режима =====
       if (userCredential.user != null) {
         await cacheUserDataForOffline(userCredential.user!);
       }
 
       return userCredential;
     } catch (e) {
-      // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
       throw _handleAuthException(e, context);
     }
   }
 
-  // Вход пользователя с email и паролем
+  /// Вход пользователя
   Future<UserCredential> signInWithEmailAndPassword(
       String email,
       String password, [
         BuildContext? context,
       ]) async {
     try {
-      // Проверяем формат email перед отправкой
       if (!_isValidEmail(email)) {
         throw Exception(
           context != null
@@ -428,23 +243,20 @@ class FirebaseService {
         password: password,
       );
 
-      // Сохраняем данные пользователя в кэш
       await _cacheUserData(userCredential.user);
 
-      // ===== НОВОЕ: Кэшируем для офлайн режима =====
       if (userCredential.user != null) {
         await cacheUserDataForOffline(userCredential.user!);
-        _isOfflineMode = false; // Отключаем офлайн режим при успешном входе
+        _isOfflineMode = false;
       }
 
       return userCredential;
     } catch (e) {
-      // Обработка ошибок Firebase и преобразование их в понятные пользователю сообщения
       throw _handleAuthException(e, context);
     }
   }
 
-  // Сохранение данных пользователя в кэш
+  /// Сохранение данных пользователя в кэш
   Future<void> _cacheUserData(User? user) async {
     if (user == null) return;
 
@@ -454,27 +266,19 @@ class FirebaseService {
       await prefs.setString(_authUserIdKey, user.uid);
       await prefs.setString(_authUserDisplayNameKey, user.displayName ?? '');
 
-      // Обновляем статический кэш
       _cachedUserId = user.uid;
 
-      // Также сохраняем в сервисе офлайн хранилища
       await _offlineStorage.saveUserData({
         'uid': user.uid,
         'email': user.email ?? '',
         'displayName': user.displayName ?? '',
       });
-
-      if (kDebugMode) {
-        debugPrint('Данные пользователя сохранены в кэш');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при сохранении данных пользователя в кэш: $e');
-      }
+      debugPrint('Ошибка при сохранении данных пользователя в кэш: $e');
     }
   }
 
-  // Обработка ошибок аутентификации Firebase
+  /// Обработка ошибок аутентификации
   String _handleAuthException(dynamic e, [BuildContext? context]) {
     String errorMessage = context != null
         ? AppLocalizations.of(context).translate('unknown_error')
@@ -493,14 +297,8 @@ class FirebaseService {
           case 'invalid-email':
             errorMessage = localizations.translate('invalid_email');
             break;
-          case 'user-disabled':
-            errorMessage = localizations.translate('user_disabled');
-            break;
           case 'email-already-in-use':
             errorMessage = localizations.translate('email_already_in_use');
-            break;
-          case 'operation-not-allowed':
-            errorMessage = localizations.translate('operation_not_allowed');
             break;
           case 'weak-password':
             errorMessage = localizations.translate('weak_password');
@@ -508,24 +306,13 @@ class FirebaseService {
           case 'network-request-failed':
             errorMessage = localizations.translate('network_request_failed');
             break;
-          case 'too-many-requests':
-            errorMessage = localizations.translate('too_many_requests');
-            break;
           case 'invalid-credential':
-          // Для invalid-credential показываем универсальное сообщение
             errorMessage = localizations.translate('invalid_credentials');
-            break;
-          case 'user-token-expired':
-            errorMessage = localizations.translate('session_expired');
-            break;
-          case 'requires-recent-login':
-            errorMessage = localizations.translate('requires_recent_login');
             break;
           default:
             errorMessage = localizations.translate('auth_error_general');
         }
       } else {
-        // Fallback для русского
         switch (e.code) {
           case 'user-not-found':
             errorMessage = 'Пользователь с таким email не найден';
@@ -536,14 +323,8 @@ class FirebaseService {
           case 'invalid-email':
             errorMessage = 'Неверный формат email';
             break;
-          case 'user-disabled':
-            errorMessage = 'Учетная запись отключена';
-            break;
           case 'email-already-in-use':
             errorMessage = 'Email уже используется другим аккаунтом';
-            break;
-          case 'operation-not-allowed':
-            errorMessage = 'Операция не разрешена';
             break;
           case 'weak-password':
             errorMessage = 'Слишком простой пароль';
@@ -551,17 +332,8 @@ class FirebaseService {
           case 'network-request-failed':
             errorMessage = 'Проверьте подключение к интернету';
             break;
-          case 'too-many-requests':
-            errorMessage = 'Слишком много попыток входа. Попробуйте позже';
-            break;
           case 'invalid-credential':
             errorMessage = 'Неверный email или пароль';
-            break;
-          case 'user-token-expired':
-            errorMessage = 'Сессия истекла. Войдите заново';
-            break;
-          case 'requires-recent-login':
-            errorMessage = 'Требуется повторная авторизация';
             break;
           default:
             errorMessage = 'Ошибка входа. Проверьте данные и попробуйте снова';
@@ -569,50 +341,38 @@ class FirebaseService {
       }
     }
 
-    if (kDebugMode) {
-      debugPrint('Firebase Auth Error: $e');
-    }
+    debugPrint('Firebase Auth Error: $e');
     return errorMessage;
   }
 
-  /// Кэширование данных пользователя из UserCredential (для Google Sign-In)
+  /// Кэширование данных пользователя из UserCredential
   Future<void> cacheUserDataFromCredential(UserCredential userCredential) async {
     await _cacheUserData(userCredential.user);
 
-    // ===== НОВОЕ: Кэшируем для офлайн режима =====
     if (userCredential.user != null) {
       await cacheUserDataForOffline(userCredential.user!);
-      _isOfflineMode = false; // Отключаем офлайн режим при успешном входе
+      _isOfflineMode = false;
     }
   }
 
-  // Выход пользователя
+  /// Выход пользователя
   Future<void> signOut() async {
-    // Удаляем кэшированные данные пользователя
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_authUserEmailKey);
       await prefs.remove(_authUserIdKey);
       await prefs.remove(_authUserDisplayNameKey);
 
-      // Очищаем статический кэш
       _cachedUserId = null;
-
-      // ===== НОВОЕ: Отключаем офлайн режим =====
       _isOfflineMode = false;
-      // Можно оставить офлайн кэш для будущих входов или очистить его
-      // await disableOfflineMode(); // Раскомментировать для полной очистки
 
+      await _auth.signOut();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении кэшированных данных пользователя: $e');
-      }
+      debugPrint('Ошибка при выходе: $e');
     }
-
-    await _auth.signOut();
   }
 
-  // Отправка письма для сброса пароля
+  /// Отправка письма для сброса пароля
   Future<void> sendPasswordResetEmail(String email, [BuildContext? context]) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -621,7 +381,7 @@ class FirebaseService {
     }
   }
 
-  // Смена пароля пользователя
+  /// Смена пароля пользователя
   Future<void> changePassword(
       String currentPassword,
       String newPassword, [
@@ -637,422 +397,21 @@ class FirebaseService {
         );
       }
 
-      // Создаем учетные данные для повторной аутентификации
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: currentPassword,
       );
 
-      // Повторно аутентифицируем пользователя
       await user.reauthenticateWithCredential(credential);
-
-      // Меняем пароль
       await user.updatePassword(newPassword);
-
-      if (kDebugMode) {
-        debugPrint('Пароль успешно изменен');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при смене пароля: $e');
-      }
       throw _handleAuthException(e, context);
     }
   }
 
-  // Обновление данных пользователя в Firestore
-  Future<void> updateUserData(String userId, Map<String, dynamic> data) async {
-    try {
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        // Если есть интернет, обновляем данные в Firestore
-        await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
-      }
-
-      // В любом случае, сохраняем данные локально
-      await _offlineStorage.saveUserData(data);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении данных пользователя: $e');
-      }
-
-      // В случае ошибки, сохраняем данные локально
-      try {
-        await _offlineStorage.saveUserData(data);
-      } catch (_) {
-        rethrow;
-      }
-    }
-  }
-
-  // Получение данных пользователя из Firestore
-  Future<DocumentSnapshot> getUserData(String userId) async {
-    try {
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        // Если есть интернет, получаем данные из Firestore
-        return await _firestore.collection('users').doc(userId).get();
-      } else {
-        // Если нет интернета, возвращаем исключение
-        throw Exception('Нет подключения к интернету');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении данных пользователя: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // === СТАРЫЕ МЕТОДЫ (СОХРАНЕНЫ ДЛЯ СОВМЕСТИМОСТИ) ===
-
-  // Добавление заметки о рыбалке (старый метод)
-  Future<DocumentReference> addFishingNote(Map<String, dynamic> noteData) async {
-    try {
-      return await _firestore.collection('fishing_notes').add(noteData);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении заметки: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Обновление заметки о рыбалке (старый метод)
-  Future<void> updateFishingNote(String noteId, Map<String, dynamic> noteData) async {
-    try {
-      await _firestore.collection('fishing_notes').doc(noteId).update(noteData);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении заметки: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Получение заметок пользователя (старый метод)
-  Future<QuerySnapshot> getUserFishingNotes(String userId) async {
-    try {
-      return await _firestore
-          .collection('fishing_notes')
-          .where('userId', isEqualTo: userId)
-          .orderBy('date', descending: true)
-          .get();
-    } catch (e) {
-      // Если ошибка связана с индексом, пытаемся выполнить запрос без сортировки
-      if (e.toString().contains('index')) {
-        if (kDebugMode) {
-          debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
-        }
-        return await _firestore
-            .collection('fishing_notes')
-            .where('userId', isEqualTo: userId)
-            .get();
-      }
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении заметок пользователя: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Загрузка изображения в Firebase Storage
-  Future<String> uploadImage(String path, List<int> imageBytes) async {
-    try {
-      final ref = _storage.ref().child(path);
-      // Преобразуем List<int> в Uint8List
-      final Uint8List uint8List = Uint8List.fromList(imageBytes);
-      final uploadTask = ref.putData(uint8List);
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при загрузке изображения: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Удаление аккаунта пользователя
-  Future<void> deleteAccount([BuildContext? context]) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception(
-          context != null
-              ? AppLocalizations.of(context).translate('user_not_authorized')
-              : 'Пользователь не авторизован',
-        );
-      }
-
-      final String userId = user.uid;
-
-      // Проверяем, требуется ли повторная аутентификация
-      try {
-        // Пытаемся удалить аккаунт сразу
-        await user.delete();
-
-        // Если удаление прошло успешно, удаляем данные
-        await _deleteUserDataFromFirestore(userId);
-        await _clearUserCache();
-
-        if (kDebugMode) {
-          debugPrint('Аккаунт успешно удален: $userId');
-        }
-      } catch (e) {
-        if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
-          // Требуется повторная аутентификация
-          await _reauthenticateAndDelete(user, userId, context);
-        } else {
-          rethrow;
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении аккаунта: $e');
-      }
-      throw _handleAuthException(e, context);
-    }
-  }
-
-  // Повторная аутентификация и удаление аккаунта
-  Future<void> _reauthenticateAndDelete(User user, String userId, [BuildContext? context]) async {
-    try {
-      // Получаем методы аутентификации пользователя
-      final providerData = user.providerData;
-
-      if (providerData.isNotEmpty) {
-        final providerId = providerData.first.providerId;
-
-        if (providerId == 'password') {
-          // Если пользователь вошел через email/пароль
-          await _reauthenticateWithPassword(user, context);
-        } else if (providerId == 'google.com') {
-          // Если пользователь вошел через Google
-          await _reauthenticateWithGoogle(user, context);
-        } else {
-          // Для других провайдеров показываем сообщение
-          throw Exception(
-            context != null
-                ? 'Для удаления аккаунта требуется повторный вход. Пожалуйста, выйдите и войдите снова.'
-                : 'Требуется повторный вход для удаления аккаунта',
-          );
-        }
-      }
-
-      // После успешной реаутентификации удаляем аккаунт
-      await user.delete();
-
-      // Удаляем данные из Firestore и кэш
-      await _deleteUserDataFromFirestore(userId);
-      await _clearUserCache();
-
-      if (kDebugMode) {
-        debugPrint('Аккаунт успешно удален после реаутентификации: $userId');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при реаутентификации и удалении: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Повторная аутентификация с паролем
-  Future<void> _reauthenticateWithPassword(User user, [BuildContext? context]) async {
-    if (context == null) {
-      throw Exception('Требуется повторная аутентификация');
-    }
-
-    final localizations = AppLocalizations.of(context);
-
-    // Показываем диалог для ввода пароля
-    final password = await _showPasswordDialog(context, localizations);
-
-    if (password == null || password.isEmpty) {
-      throw Exception(localizations.translate('account_deletion_canceled'));
-    }
-
-    // Создаем учетные данные для повторной аутентификации
-    final credential = EmailAuthProvider.credential(
-      email: user.email!,
-      password: password,
-    );
-
-    // Повторно аутентифицируем пользователя
-    await user.reauthenticateWithCredential(credential);
-  }
-
-  // Повторная аутентификация через Google
-  Future<void> _reauthenticateWithGoogle(User user, [BuildContext? context]) async {
-    try {
-      // Импортируем Google Sign-In Service
-      final GoogleSignInService googleService = GoogleSignInService();
-
-      // Выполняем повторный вход через Google
-      final userCredential = await googleService.signInWithGoogle(context);
-
-      if (userCredential == null) {
-        throw Exception(
-          context != null
-              ? AppLocalizations.of(context).translate('account_deletion_canceled')
-              : 'Отменено пользователем',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при повторной аутентификации через Google: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // Диалог для ввода пароля
-  Future<String?> _showPasswordDialog(BuildContext context, AppLocalizations localizations) async {
-    final passwordController = TextEditingController();
-
-    return await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppConstants.surfaceColor,
-          title: Text(
-            localizations.translate('password_confirmation_title'),
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                localizations.translate('enter_password_to_delete'),
-                style: TextStyle(color: AppConstants.textColor, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: localizations.translate('password'),
-                  prefixIcon: const Icon(Icons.lock),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                style: TextStyle(color: AppConstants.textColor),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(null);
-              },
-              child: Text(
-                localizations.translate('cancel'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(passwordController.text);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
-              ),
-              child: Text(
-                localizations.translate('confirm'),
-                style: TextStyle(color: AppConstants.textColor),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Удаление всех данных пользователя из Firestore
-  Future<void> _deleteUserDataFromFirestore(String userId) async {
-    try {
-      final batch = _firestore.batch();
-
-      // Удаляем документ профиля пользователя
-      final userDoc = _firestore.collection('users').doc(userId);
-      batch.delete(userDoc);
-
-      // Удаляем все заметки пользователя (старая структура)
-      final notesQuery = await _firestore
-          .collection('fishing_notes')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      for (var doc in notesQuery.docs) {
-        batch.delete(doc.reference);
-      }
-
-      // Удаляем все маркерные карты пользователя (старая структура)
-      final mapsQuery = await _firestore
-          .collection('marker_maps')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      for (var doc in mapsQuery.docs) {
-        batch.delete(doc.reference);
-      }
-
-      // Выполняем пакетное удаление
-      await batch.commit();
-
-      if (kDebugMode) {
-        debugPrint('Данные пользователя удалены из Firestore: $userId');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении данных пользователя из Firestore: $e');
-      }
-      throw e;
-    }
-  }
-
-  // Очистка кэшированных данных пользователя
-  Future<void> _clearUserCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_authUserEmailKey);
-      await prefs.remove(_authUserIdKey);
-      await prefs.remove(_authUserDisplayNameKey);
-
-      // Очищаем статический кэш
-      _cachedUserId = null;
-
-      // ===== НОВОЕ: Очищаем офлайн данные =====
-      _isOfflineMode = false;
-      await disableOfflineMode();
-
-      if (kDebugMode) {
-        debugPrint('Кэшированные данные пользователя очищены');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при очистке кэша пользователя: $e');
-      }
-    }
-  }
-
-  // ========================================================================
-  // === НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С SUBCOLLECTIONS (СТРУКТУРА "ПО ПОЛОЧКАМ") ===
-  // ========================================================================
-
-  // === МЕТОДЫ ДЛЯ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ===
+  // ========================================
+  // ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
+  // ========================================
 
   /// Создание или обновление профиля пользователя
   Future<void> createUserProfile(Map<String, dynamic> profileData) async {
@@ -1067,13 +426,9 @@ class FirebaseService {
         ...profileData,
       }, SetOptions(merge: true));
 
-      if (kDebugMode) {
-        debugPrint('Профиль пользователя создан/обновлен: $userId');
-      }
+      debugPrint('Профиль пользователя создан/обновлен: $userId');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при создании профиля пользователя: $e');
-      }
+      debugPrint('Ошибка при создании профиля пользователя: $e');
       rethrow;
     }
   }
@@ -1086,9 +441,7 @@ class FirebaseService {
     try {
       return await _firestore.collection('users').doc(userId).get();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении профиля пользователя: $e');
-      }
+      debugPrint('Ошибка при получении профиля пользователя: $e');
       rethrow;
     }
   }
@@ -1104,20 +457,18 @@ class FirebaseService {
         ...profileData,
       });
 
-      if (kDebugMode) {
-        debugPrint('Профиль пользователя обновлен: $userId');
-      }
+      debugPrint('Профиль пользователя обновлен: $userId');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении профиля пользователя: $e');
-      }
+      debugPrint('Ошибка при обновлении профиля пользователя: $e');
       rethrow;
     }
   }
 
-  // === МЕТОДЫ ДЛЯ ЗАМЕТОК О РЫБАЛКЕ (НОВАЯ СТРУКТУРА) ===
+  // ========================================
+  // ЗАМЕТКИ РЫБАЛКИ (НОВАЯ СТРУКТУРА)
+  // ========================================
 
-  /// Добавление заметки о рыбалке (новая структура)
+  /// Добавление заметки о рыбалке
   Future<DocumentReference> addFishingNoteNew(Map<String, dynamic> noteData) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
@@ -1126,21 +477,19 @@ class FirebaseService {
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('fishing_notes')
+          .collection(SubscriptionConstants.fishingNotesSubcollection)
           .add({
         ...noteData,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении заметки о рыбалке: $e');
-      }
+      debugPrint('Ошибка при добавлении заметки о рыбалке: $e');
       rethrow;
     }
   }
 
-  /// Обновление заметки о рыбалке (новая структура)
+  /// Обновление заметки о рыбалке
   Future<void> updateFishingNoteNew(String noteId, Map<String, dynamic> noteData) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
@@ -1149,53 +498,44 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('fishing_notes')
+          .collection(SubscriptionConstants.fishingNotesSubcollection)
           .doc(noteId)
           .update({
         ...noteData,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении заметки о рыбалке: $e');
-      }
+      debugPrint('Ошибка при обновлении заметки о рыбалке: $e');
       rethrow;
     }
   }
 
-  /// Получение заметок о рыбалке пользователя (новая структура) - ИСПРАВЛЕНО с защитой от null
+  /// Получение заметок о рыбалке пользователя
   Future<QuerySnapshot> getUserFishingNotesNew() async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      // Сортируем по 'date' (это поле точно есть в заметках)
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('fishing_notes')
+          .collection(SubscriptionConstants.fishingNotesSubcollection)
           .orderBy('date', descending: true)
           .get();
     } catch (e) {
-      // Если ошибка связана с индексом, пытаемся выполнить запрос без сортировки
       if (e.toString().contains('index')) {
-        if (kDebugMode) {
-          debugPrint('Ошибка индекса в Firestore, выполняем запрос без сортировки');
-        }
         return await _firestore
             .collection('users')
             .doc(userId)
-            .collection('fishing_notes')
+            .collection(SubscriptionConstants.fishingNotesSubcollection)
             .get();
       }
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении заметок о рыбалке: $e');
-      }
+      debugPrint('Ошибка при получении заметок о рыбалке: $e');
       rethrow;
     }
   }
 
-  /// Удаление заметки о рыбалке (новая структура)
+  /// Удаление заметки о рыбалке
   Future<void> deleteFishingNoteNew(String noteId) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
@@ -1204,192 +544,62 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('fishing_notes')
+          .collection(SubscriptionConstants.fishingNotesSubcollection)
           .doc(noteId)
           .delete();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении заметки о рыбалке: $e');
-      }
+      debugPrint('Ошибка при удалении заметки о рыбалке: $e');
       rethrow;
     }
   }
 
-  // === МЕТОДЫ ДЛЯ ПОЕЗДОК НА РЫБАЛКУ ===
+  // ========================================
+  // МАРКЕРНЫЕ КАРТЫ
+  // ========================================
 
-  /// Добавление поездки на рыбалку
-  Future<DocumentReference> addFishingTrip(Map<String, dynamic> tripData) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      return await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .add({
-        ...tripData,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении поездки на рыбалку: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Обновление поездки на рыбалку
-  Future<void> updateFishingTrip(String tripId, Map<String, dynamic> tripData) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .update({
-        ...tripData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении поездки на рыбалку: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Получение поездок на рыбалку пользователя
-  Future<QuerySnapshot> getUserFishingTrips() async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      return await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .orderBy('createdAt', descending: true)
-          .get();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении поездок на рыбалку: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Удаление поездки на рыбалку
-  Future<void> deleteFishingTrip(String tripId) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .delete();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении поездки на рыбалку: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // === МЕТОДЫ ДЛЯ МАРКЕРНЫХ КАРТ ===
-
-  /// 🔥 ИСПРАВЛЕНО: Добавление маркерной карты с возвратом правильного ID
+  /// Добавление маркерной карты
   Future<String> addMarkerMap(Map<String, dynamic> mapData) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      debugPrint('🔥 === НАЧАЛО ДОБАВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
-      debugPrint('🔥 userId: $userId');
-      debugPrint('🔥 mapData: $mapData');
-
       final docRef = await _firestore
           .collection('users')
           .doc(userId)
-          .collection('marker_maps')
+          .collection(SubscriptionConstants.markerMapsSubcollection)
           .add({
         ...mapData,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('🔥 Маркерная карта добавлена с ID: ${docRef.id}');
-      debugPrint('🔥 Полный путь: users/$userId/marker_maps/${docRef.id}');
-      debugPrint('🔥 === КОНЕЦ ДОБАВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
-
-      // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Возвращаем РЕАЛЬНЫЙ ID от Firebase
+      debugPrint('Маркерная карта добавлена с ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
+      debugPrint('Ошибка при добавлении маркерной карты: $e');
       rethrow;
     }
   }
 
-  /// Обновление маркерной карты (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  /// Обновление маркерной карты
   Future<void> updateMarkerMap(String mapId, Map<String, dynamic> mapData) async {
     final userId = currentUserId;
-
-    debugPrint('🔥 === НАЧАЛО ОБНОВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
-    debugPrint('🔥 userId: $userId');
-    debugPrint('🔥 mapId: $mapId');
-    debugPrint('🔥 isUserLoggedIn: $isUserLoggedIn');
-    debugPrint('🔥 currentUser: ${_auth.currentUser?.uid}');
-    debugPrint('🔥 mapData: $mapData');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при обновлении маркерной карты!');
-      throw Exception('Пользователь не авторизован');
-    }
+    if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      final docRef = _firestore
+      await _firestore
           .collection('users')
           .doc(userId)
-          .collection('marker_maps')
-          .doc(mapId);
-
-      debugPrint('🔥 Полный путь: users/$userId/marker_maps/$mapId');
-      debugPrint('🔥 DocumentReference: ${docRef.path}');
-
-      final dataToSave = {
+          .collection(SubscriptionConstants.markerMapsSubcollection)
+          .doc(mapId)
+          .update({
         ...mapData,
         'updatedAt': FieldValue.serverTimestamp(),
-        'debug_userId': userId,
-        'debug_timestamp': DateTime.now().toIso8601String(),
-      };
-
-      debugPrint('🔥 Данные для сохранения: $dataToSave');
-
-      await docRef.update(dataToSave);
-
-      debugPrint('✅ Маркерная карта успешно обновлена в Firebase!');
-
-      // Проверяем что данные действительно сохранились
-      final savedDoc = await docRef.get();
-      debugPrint('🔥 Проверка сохранения: exists=${savedDoc.exists}');
-      if (savedDoc.exists) {
-        debugPrint('🔥 Сохраненные данные: ${savedDoc.data()}');
-      }
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+      });
+    } catch (e) {
+      debugPrint('Ошибка при обновлении маркерной карты: $e');
       rethrow;
     }
-
-    debugPrint('🔥 === КОНЕЦ ОБНОВЛЕНИЯ МАРКЕРНОЙ КАРТЫ ===');
   }
 
   /// Получение маркерных карт пользователя
@@ -1401,13 +611,11 @@ class FirebaseService {
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('marker_maps')
+          .collection(SubscriptionConstants.markerMapsSubcollection)
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении маркерных карт: $e');
-      }
+      debugPrint('Ошибка при получении маркерных карт: $e');
       rethrow;
     }
   }
@@ -1421,18 +629,18 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('marker_maps')
+          .collection(SubscriptionConstants.markerMapsSubcollection)
           .doc(mapId)
           .delete();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении маркерной карты: $e');
-      }
+      debugPrint('Ошибка при удалении маркерной карты: $e');
       rethrow;
     }
   }
 
-  // === МЕТОДЫ ДЛЯ БЮДЖЕТА ===
+  // ========================================
+  // ЗАМЕТКИ БЮДЖЕТА
+  // ========================================
 
   /// Добавление заметки о бюджете
   Future<DocumentReference> addBudgetNote(Map<String, dynamic> budgetData) async {
@@ -1443,16 +651,14 @@ class FirebaseService {
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('budget_notes')
+          .collection(SubscriptionConstants.budgetNotesSubcollection)
           .add({
         ...budgetData,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении заметки о бюджете: $e');
-      }
+      debugPrint('Ошибка при добавлении заметки о бюджете: $e');
       rethrow;
     }
   }
@@ -1466,16 +672,14 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('budget_notes')
+          .collection(SubscriptionConstants.budgetNotesSubcollection)
           .doc(noteId)
           .update({
         ...budgetData,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении заметки о бюджете: $e');
-      }
+      debugPrint('Ошибка при обновлении заметки о бюджете: $e');
       rethrow;
     }
   }
@@ -1489,13 +693,11 @@ class FirebaseService {
       return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('budget_notes')
+          .collection(SubscriptionConstants.budgetNotesSubcollection)
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении заметок о бюджете: $e');
-      }
+      debugPrint('Ошибка при получении заметок о бюджете: $e');
       rethrow;
     }
   }
@@ -1509,488 +711,101 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('budget_notes')
+          .collection(SubscriptionConstants.budgetNotesSubcollection)
           .doc(noteId)
           .delete();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении заметки о бюджете: $e');
-      }
+      debugPrint('Ошибка при удалении заметки о бюджете: $e');
       rethrow;
     }
   }
 
-  // === МЕТОДЫ ДЛЯ СОГЛАСИЙ ПОЛЬЗОВАТЕЛЯ (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ) ===
+  // ========================================
+  // СОГЛАСИЯ ПОЛЬЗОВАТЕЛЯ
+  // ========================================
 
-  /// Обновление согласий пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  /// Обновление согласий пользователя
   Future<void> updateUserConsents(Map<String, dynamic> consentsData) async {
     final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ СОГЛАСИЙ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
-    debugPrint('🔍 consentsData: $consentsData');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null!');
-      throw Exception('Пользователь не авторизован');
-    }
+    if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      final docRef = _firestore
+      await _firestore
           .collection('users')
           .doc(userId)
           .collection('user_consents')
-          .doc('consents');
-
-      debugPrint('🔍 Полный путь: users/$userId/user_consents/consents');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
-
-      final dataToSave = {
+          .doc('consents')
+          .set({
         ...consentsData,
         'updatedAt': FieldValue.serverTimestamp(),
-        'debug_userId': userId,
-        'debug_timestamp': DateTime.now().toIso8601String(),
-      };
+      }, SetOptions(merge: true));
 
-      debugPrint('🔍 Данные для сохранения: $dataToSave');
-
-      await docRef.set(dataToSave, SetOptions(merge: true));
-
-      debugPrint('✅ Согласия успешно сохранены в Firebase!');
-
-      // Проверяем что данные действительно сохранились
-      final savedDoc = await docRef.get();
-      debugPrint('🔍 Проверка сохранения: exists=${savedDoc.exists}');
-      if (savedDoc.exists) {
-        debugPrint('🔍 Сохраненные данные: ${savedDoc.data()}');
-      }
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при сохранении согласий: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+      debugPrint('Согласия успешно сохранены');
+    } catch (e) {
+      debugPrint('Ошибка при сохранении согласий: $e');
       rethrow;
     }
-
-    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ СОГЛАСИЙ ===');
   }
 
-  /// Получение согласий пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  /// Получение согласий пользователя
   Future<DocumentSnapshot> getUserConsents() async {
     final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ СОГЛАСИЙ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при получении согласий!');
-      throw Exception('Пользователь не авторизован');
-    }
+    if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      final docRef = _firestore
+      return await _firestore
           .collection('users')
           .doc(userId)
           .collection('user_consents')
-          .doc('consents');
-
-      debugPrint('🔍 Полный путь для получения: users/$userId/user_consents/consents');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
-
-      final doc = await docRef.get();
-
-      debugPrint('🔍 Документ существует: ${doc.exists}');
-      if (doc.exists) {
-        debugPrint('🔍 Данные из Firebase: ${doc.data()}');
-      } else {
-        debugPrint('⚠️ Документ согласий не найден в Firebase');
-      }
-
-      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ СОГЛАСИЙ ===');
-      return doc;
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при получении согласий: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
-      rethrow;
-    }
-  }
-
-  // === МЕТОДЫ ДЛЯ РАСХОДОВ РЫБАЛКИ (SUBCOLLECTIONS) ===
-
-  /// Добавление расхода к поездке
-  Future<DocumentReference> addFishingExpense(String tripId, Map<String, dynamic> expenseData) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      return await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .collection('expenses')
-          .add({
-        ...expenseData,
-        'tripId': tripId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при добавлении расхода к поездке: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Получение всех расходов поездки
-  Future<QuerySnapshot> getFishingTripExpenses(String tripId) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      return await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .collection('expenses')
-          .orderBy('createdAt', descending: false)
+          .doc('consents')
           .get();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении расходов поездки: $e');
-      }
+      debugPrint('Ошибка при получении согласий: $e');
       rethrow;
     }
   }
 
-  /// Обновление расхода
-  Future<void> updateFishingExpense(String tripId, String expenseId, Map<String, dynamic> expenseData) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
+  // ========================================
+  // ПОДПИСКА ПОЛЬЗОВАТЕЛЯ
+  // ========================================
 
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .collection('expenses')
-          .doc(expenseId)
-          .update({
-        ...expenseData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обновлении расхода: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Удаление расхода
-  Future<void> deleteFishingExpense(String tripId, String expenseId) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .collection('expenses')
-          .doc(expenseId)
-          .delete();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении расхода: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Получение поездки с расходами
-  Future<Map<String, dynamic>?> getFishingTripWithExpenses(String tripId) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      // Получаем основную поездку
-      final tripDoc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId)
-          .get();
-
-      if (!tripDoc.exists) return null;
-
-      // Получаем расходы поездки
-      final expensesSnapshot = await getFishingTripExpenses(tripId);
-
-      final tripData = tripDoc.data() as Map<String, dynamic>;
-      tripData['id'] = tripDoc.id;
-
-      // Добавляем расходы в данные поездки
-      final expenses = expensesSnapshot.docs.map((doc) {
-        final expenseData = doc.data() as Map<String, dynamic>;
-        expenseData['id'] = doc.id;
-        return expenseData;
-      }).toList();
-
-      tripData['expenses'] = expenses;
-
-      return tripData;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении поездки с расходами: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Получение всех расходов пользователя (для аналитики)
-  Future<List<Map<String, dynamic>>> getAllUserExpenses() async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      final allExpenses = <Map<String, dynamic>>[];
-
-      // Получаем все поездки пользователя
-      final tripsSnapshot = await getUserFishingTrips();
-
-      // Для каждой поездки получаем расходы
-      for (var tripDoc in tripsSnapshot.docs) {
-        final tripId = tripDoc.id;
-        final expensesSnapshot = await getFishingTripExpenses(tripId);
-
-        for (var expenseDoc in expensesSnapshot.docs) {
-          final expenseData = expenseDoc.data() as Map<String, dynamic>;
-          expenseData['id'] = expenseDoc.id;
-          expenseData['tripId'] = tripId;
-          allExpenses.add(expenseData);
-        }
-      }
-
-      return allExpenses;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при получении всех расходов пользователя: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Создание поездки с расходами (пакетная операция)
-  Future<String> createFishingTripWithExpenses({
-    required Map<String, dynamic> tripData,
-    required List<Map<String, dynamic>> expenses,
-  }) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      // Создаем поездку
-      final tripRef = await addFishingTrip(tripData);
-      final tripId = tripRef.id;
-
-      // Добавляем расходы к поездке
-      for (final expenseData in expenses) {
-        await addFishingExpense(tripId, expenseData);
-      }
-
-      return tripId;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при создании поездки с расходами: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Удаление поездки со всеми расходами
-  Future<void> deleteFishingTripWithExpenses(String tripId) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      // Удаляем все расходы поездки
-      final expensesSnapshot = await getFishingTripExpenses(tripId);
-      final batch = _firestore.batch();
-
-      for (var expenseDoc in expensesSnapshot.docs) {
-        batch.delete(expenseDoc.reference);
-      }
-
-      // Удаляем саму поездку
-      final tripRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fishing_trips')
-          .doc(tripId);
-
-      batch.delete(tripRef);
-
-      // Выполняем пакетное удаление
-      await batch.commit();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при удалении поездки с расходами: $e');
-      }
-      rethrow;
-    }
-  }
-
-  // === МЕТОДЫ ДЛЯ ПОДПИСКИ ПОЛЬЗОВАТЕЛЯ (НОВАЯ СТРУКТУРА) ===
-
-  /// Обновление подписки пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  /// Обновление подписки пользователя
   Future<void> updateUserSubscription(Map<String, dynamic> subscriptionData) async {
     final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ ПОДПИСКИ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
-    debugPrint('🔍 subscriptionData: $subscriptionData');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при обновлении подписки!');
-      throw Exception('Пользователь не авторизован');
-    }
+    if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      final docRef = _firestore
+      await _firestore
           .collection('users')
           .doc(userId)
-          .collection('subscription')
-          .doc('current');
-
-      debugPrint('🔍 Полный путь подписки: users/$userId/subscription/current');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
-
-      final dataToSave = {
+          .collection(SubscriptionConstants.subscriptionSubcollection)
+          .doc('current')
+          .set({
         ...subscriptionData,
         'updatedAt': FieldValue.serverTimestamp(),
-        'debug_userId': userId,
-        'debug_timestamp': DateTime.now().toIso8601String(),
-      };
+      }, SetOptions(merge: true));
 
-      debugPrint('🔍 Данные подписки для сохранения: $dataToSave');
-
-      await docRef.set(dataToSave, SetOptions(merge: true));
-
-      debugPrint('✅ Подписка успешно сохранена в Firebase!');
-
-      // Проверяем что данные действительно сохранились
-      final savedDoc = await docRef.get();
-      debugPrint('🔍 Проверка сохранения подписки: exists=${savedDoc.exists}');
-      if (savedDoc.exists) {
-        debugPrint('🔍 Сохраненные данные подписки: ${savedDoc.data()}');
-      }
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при сохранении подписки: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+      debugPrint('Подписка успешно сохранена');
+    } catch (e) {
+      debugPrint('Ошибка при сохранении подписки: $e');
       rethrow;
     }
-
-    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ ПОДПИСКИ ===');
   }
 
-  /// Получение подписки пользователя (С ДЕТАЛЬНЫМ ЛОГИРОВАНИЕМ)
+  /// Получение подписки пользователя
   Future<DocumentSnapshot> getUserSubscription() async {
     final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ ПОДПИСКИ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при получении подписки!');
-      throw Exception('Пользователь не авторизован');
-    }
-
-    try {
-      final docRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('subscription')
-          .doc('current');
-
-      debugPrint('🔍 Полный путь для получения подписки: users/$userId/subscription/current');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
-
-      final doc = await docRef.get();
-
-      debugPrint('🔍 Документ подписки существует: ${doc.exists}');
-      if (doc.exists) {
-        debugPrint('🔍 Данные подписки из Firebase: ${doc.data()}');
-      } else {
-        debugPrint('⚠️ Документ подписки не найден в Firebase');
-      }
-
-      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ ПОДПИСКИ ===');
-      return doc;
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при получении подписки: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
-      rethrow;
-    }
-  }
-
-  /// Отмена подписки пользователя
-  Future<void> cancelUserSubscription() async {
-    final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      debugPrint('🔍 Отмена подписки для пользователя: $userId');
-
-      await _firestore
+      return await _firestore
           .collection('users')
           .doc(userId)
-          .collection('subscription')
+          .collection(SubscriptionConstants.subscriptionSubcollection)
           .doc('current')
-          .update({
-        'status': 'canceled',
-        'isActive': false,
-        'canceledAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      debugPrint('✅ Подписка отменена: $userId');
+          .get();
     } catch (e) {
-      debugPrint('❌ Ошибка при отмене подписки: $e');
-      rethrow;
-    }
-  }
-
-  /// Удаление подписки пользователя (полное удаление документа)
-  Future<void> deleteUserSubscription() async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      debugPrint('🔍 Удаление подписки для пользователя: $userId');
-
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('subscription')
-          .doc('current')
-          .delete();
-
-      debugPrint('✅ Подписка удалена: $userId');
-    } catch (e) {
-      debugPrint('❌ Ошибка при удалении подписки: $e');
+      debugPrint('Ошибка при получении подписки: $e');
       rethrow;
     }
   }
@@ -2005,420 +820,143 @@ class FirebaseService {
       final isActive = data['isActive'] ?? false;
       final status = data['status'] ?? 'none';
 
-      // Проверяем дату истечения если есть
       if (data['expirationDate'] != null) {
         final expirationDate = (data['expirationDate'] as Timestamp).toDate();
         final isNotExpired = DateTime.now().isBefore(expirationDate);
-
-        debugPrint('🔍 Проверка подписки: active=$isActive, status=$status, expires=${expirationDate.toIso8601String()}, notExpired=$isNotExpired');
-
         return isActive && status == 'active' && isNotExpired;
       }
 
-      debugPrint('🔍 Проверка подписки: active=$isActive, status=$status');
       return isActive && status == 'active';
-
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке активности подписки: $e');
+      debugPrint('Ошибка при проверке активности подписки: $e');
       return false;
     }
   }
 
-  // === МЕТОДЫ ДЛЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ (USAGE LIMITS) ===
+  // ========================================
+  // ЛИМИТЫ ИСПОЛЬЗОВАНИЯ
+  // ========================================
 
   /// Получение лимитов использования пользователя
   Future<DocumentSnapshot> getUserUsageLimits() async {
     final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО ПОЛУЧЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при получении лимитов!');
-      throw Exception('Пользователь не авторизован');
-    }
+    if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
       final docRef = _firestore
           .collection('users')
           .doc(userId)
-          .collection('usage_limits')
-          .doc('current');
-
-      debugPrint('🔍 Полный путь для получения лимитов: users/$userId/usage_limits/current');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
+          .collection(SubscriptionConstants.userUsageLimitsSubcollection)
+          .doc(SubscriptionConstants.currentUsageLimitsDocument);
 
       final doc = await docRef.get();
 
-      debugPrint('🔍 Документ лимитов существует: ${doc.exists}');
-      if (doc.exists) {
-        debugPrint('🔍 Данные лимитов из Firebase: ${doc.data()}');
-      } else {
-        debugPrint('⚠️ Документ лимитов не найден в Firebase - создаем начальные лимиты');
-        // Если документа нет, создаем его с начальными значениями
+      if (!doc.exists) {
         await _createInitialUsageLimits();
         return await docRef.get();
       }
 
-      debugPrint('🔍 === КОНЕЦ ПОЛУЧЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
       return doc;
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при получении лимитов использования: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+    } catch (e) {
+      debugPrint('Ошибка при получении лимитов использования: $e');
       rethrow;
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Создание начальных лимитов с подсчетом существующих данных
+  /// Создание начальных лимитов с подсчетом существующих данных
   Future<void> _createInitialUsageLimits() async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      debugPrint('🔍 === СОЗДАНИЕ НАЧАЛЬНЫХ ЛИМИТОВ С ПОДСЧЕТОМ СУЩЕСТВУЮЩИХ ДАННЫХ ===');
-      debugPrint('🔍 userId: $userId');
-
-      // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Подсчитываем ВСЕ существующие данные пользователя
-
-      // 1. Подсчитываем заметки рыбалки
-      int notesCount = 0;
-      try {
-        final notesSnapshot = await getUserFishingNotesNew();
-        notesCount = notesSnapshot.docs.length;
-        debugPrint('📝 Найдено заметок рыбалки: $notesCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете заметок рыбалки: $e');
-        // Продолжаем с 0
-      }
-
-      // 2. Подсчитываем маркерные карты
+      // Подсчитываем существующие данные
+      int fishingNotesCount = 0;
       int markerMapsCount = 0;
-      try {
-        final mapsSnapshot = await getUserMarkerMaps();
-        markerMapsCount = mapsSnapshot.docs.length;
-        debugPrint('🗺️ Найдено маркерных карт: $markerMapsCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете маркерных карт: $e');
-        // Продолжаем с 0
-      }
-
-      // 3. Подсчитываем поездки на рыбалку
-      int tripsCount = 0;
-      try {
-        final tripsSnapshot = await getUserFishingTrips();
-        tripsCount = tripsSnapshot.docs.length;
-        debugPrint('🚗 Найдено поездок: $tripsCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете поездок: $e');
-        // Продолжаем с 0
-      }
-
-      // 4. Подсчитываем общее количество расходов
-      int expensesCount = 0;
-      try {
-        final allExpenses = await getAllUserExpenses();
-        expensesCount = allExpenses.length;
-        debugPrint('💰 Найдено расходов: $expensesCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете расходов: $e');
-        // Продолжаем с 0
-      }
-
-      // 5. Подсчитываем заметки бюджета
       int budgetNotesCount = 0;
+
       try {
-        final budgetSnapshot = await getUserBudgetNotes();
-        budgetNotesCount = budgetSnapshot.docs.length;
-        debugPrint('📊 Найдено заметок бюджета: $budgetNotesCount');
+        final fishingNotesSnapshot = await getUserFishingNotesNew();
+        fishingNotesCount = fishingNotesSnapshot.docs.length;
       } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете заметок бюджета: $e');
-        // Продолжаем с 0
+        debugPrint('Ошибка при подсчете заметок рыбалки: $e');
       }
 
-      // ✅ СОЗДАЕМ ЛИМИТЫ С РЕАЛЬНЫМИ ЗНАЧЕНИЯМИ
+      try {
+        final markerMapsSnapshot = await getUserMarkerMaps();
+        markerMapsCount = markerMapsSnapshot.docs.length;
+      } catch (e) {
+        debugPrint('Ошибка при подсчете маркерных карт: $e');
+      }
+
+      try {
+        final budgetNotesSnapshot = await getUserBudgetNotes();
+        budgetNotesCount = budgetNotesSnapshot.docs.length;
+      } catch (e) {
+        debugPrint('Ошибка при подсчете заметок бюджета: $e');
+      }
+
       final initialLimits = {
-        'notesCount': notesCount,           // ✅ Реальное количество заметок
-        'markerMapsCount': markerMapsCount, // ✅ Реальное количество карт
-        'expensesCount': expensesCount,     // ✅ Реальное количество расходов
-        'tripsCount': tripsCount,           // ✅ Реальное количество поездок
-        'budgetNotesCount': budgetNotesCount, // ✅ Реальное количество заметок бюджета
-        'lastResetDate': DateTime.now().toIso8601String(),
+        SubscriptionConstants.notesCountField: fishingNotesCount,
+        SubscriptionConstants.markerMapsCountField: markerMapsCount,
+        SubscriptionConstants.budgetNotesCountField: budgetNotesCount,
+        SubscriptionConstants.lastResetDateField: DateTime.now().toIso8601String(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'initializedWith': 'existing_data_count', // Флаг что лимиты инициализированы правильно
       };
-
-      debugPrint('🔍 === ИТОГОВЫЕ ПОДСЧИТАННЫЕ ЛИМИТЫ ===');
-      debugPrint('📝 Заметки рыбалки: $notesCount');
-      debugPrint('🗺️ Маркерные карты: $markerMapsCount');
-      debugPrint('🚗 Поездки: $tripsCount');
-      debugPrint('💰 Расходы: $expensesCount');
-      debugPrint('📊 Заметки бюджета: $budgetNotesCount');
 
       await _firestore
           .collection('users')
           .doc(userId)
-          .collection('usage_limits')
-          .doc('current')
+          .collection(SubscriptionConstants.userUsageLimitsSubcollection)
+          .doc(SubscriptionConstants.currentUsageLimitsDocument)
           .set(initialLimits);
 
-      debugPrint('✅ Начальные лимиты созданы с реальными данными для пользователя: $userId');
-      debugPrint('🔍 === КОНЕЦ СОЗДАНИЯ НАЧАЛЬНЫХ ЛИМИТОВ ===');
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при создании начальных лимитов: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
-
-      // ✅ FALLBACK: Если произошла ошибка подсчета, создаем с нулевыми значениями
-      debugPrint('⚠️ Создаем лимиты с нулевыми значениями из-за ошибки');
-
-      final fallbackLimits = {
-        'notesCount': 0,
-        'markerMapsCount': 0,
-        'expensesCount': 0,
-        'tripsCount': 0,
-        'budgetNotesCount': 0,
-        'lastResetDate': DateTime.now().toIso8601String(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'initializedWith': 'fallback_zero_values',
-        'initializationError': e.toString(),
-      };
-
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('usage_limits')
-          .doc('current')
-          .set(fallbackLimits);
-
-      debugPrint('✅ Fallback лимиты созданы для пользователя: $userId');
-    }
-  }
-
-  /// ✅ НОВЫЙ МЕТОД: Принудительный пересчет и обновление лимитов использования
-  Future<void> forceRecalculateUsageLimits() async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      debugPrint('🔄 === ПРИНУДИТЕЛЬНЫЙ ПЕРЕСЧЕТ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
-      debugPrint('🔄 userId: $userId');
-
-      // ✅ ПОДСЧИТЫВАЕМ ВСЕ существующие данные пользователя
-
-      // 1. Подсчитываем заметки рыбалки
-      int notesCount = 0;
-      try {
-        final notesSnapshot = await getUserFishingNotesNew();
-        notesCount = notesSnapshot.docs.length;
-        debugPrint('📝 Найдено заметок рыбалки: $notesCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете заметок рыбалки: $e');
-        // Продолжаем с 0
-      }
-
-      // 2. Подсчитываем маркерные карты
-      int markerMapsCount = 0;
-      try {
-        final mapsSnapshot = await getUserMarkerMaps();
-        markerMapsCount = mapsSnapshot.docs.length;
-        debugPrint('🗺️ Найдено маркерных карт: $markerMapsCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете маркерных карт: $e');
-        // Продолжаем с 0
-      }
-
-      // 3. Подсчитываем поездки на рыбалку
-      int tripsCount = 0;
-      try {
-        final tripsSnapshot = await getUserFishingTrips();
-        tripsCount = tripsSnapshot.docs.length;
-        debugPrint('🚗 Найдено поездок: $tripsCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете поездок: $e');
-        // Продолжаем с 0
-      }
-
-      // 4. Подсчитываем общее количество расходов
-      int expensesCount = 0;
-      try {
-        final allExpenses = await getAllUserExpenses();
-        expensesCount = allExpenses.length;
-        debugPrint('💰 Найдено расходов: $expensesCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете расходов: $e');
-        // Продолжаем с 0
-      }
-
-      // 5. Подсчитываем заметки бюджета
-      int budgetNotesCount = 0;
-      try {
-        final budgetSnapshot = await getUserBudgetNotes();
-        budgetNotesCount = budgetSnapshot.docs.length;
-        debugPrint('📊 Найдено заметок бюджета: $budgetNotesCount');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при подсчете заметок бюджета: $e');
-        // Продолжаем с 0
-      }
-
-      // ✅ ОБНОВЛЯЕМ ЛИМИТЫ С РЕАЛЬНЫМИ ЗНАЧЕНИЯМИ
-      final updatedLimits = {
-        'notesCount': notesCount,           // ✅ Реальное количество заметок
-        'markerMapsCount': markerMapsCount, // ✅ Реальное количество карт
-        'expensesCount': expensesCount,     // ✅ Реальное количество расходов
-        'tripsCount': tripsCount,           // ✅ Реальное количество поездок
-        'budgetNotesCount': budgetNotesCount, // ✅ Реальное количество заметок бюджета
-        'lastResetDate': DateTime.now().toIso8601String(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'recalculatedAt': DateTime.now().toIso8601String(),
-        'recalculationType': 'force_recalculate', // Флаг что это был принудительный пересчет
-      };
-
-      debugPrint('🔄 === ИТОГОВЫЕ ПЕРЕСЧИТАННЫЕ ЛИМИТЫ ===');
-      debugPrint('📝 Заметки рыбалки: $notesCount');
-      debugPrint('🗺️ Маркерные карты: $markerMapsCount');
-      debugPrint('🚗 Поездки: $tripsCount');
-      debugPrint('💰 Расходы: $expensesCount');
-      debugPrint('📊 Заметки бюджета: $budgetNotesCount');
-
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('usage_limits')
-          .doc('current')
-          .update(updatedLimits);
-
-      debugPrint('✅ Лимиты принудительно пересчитаны и обновлены для пользователя: $userId');
-      debugPrint('🔄 === КОНЕЦ ПРИНУДИТЕЛЬНОГО ПЕРЕСЧЕТА ЛИМИТОВ ===');
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при принудительном пересчете лимитов: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+      debugPrint('Начальные лимиты созданы для пользователя: $userId');
+    } catch (e) {
+      debugPrint('Ошибка при создании начальных лимитов: $e');
       rethrow;
     }
   }
 
-  /// Обновление лимитов использования пользователя
-  Future<void> updateUserUsageLimits(Map<String, dynamic> limitsData) async {
-    final userId = currentUserId;
-
-    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
-    debugPrint('🔍 userId: $userId');
-    debugPrint('🔍 isUserLoggedIn: $isUserLoggedIn');
-    debugPrint('🔍 limitsData: $limitsData');
-
-    if (userId == null) {
-      debugPrint('❌ userId is null при обновлении лимитов!');
-      throw Exception('Пользователь не авторизован');
-    }
-
-    try {
-      final docRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('usage_limits')
-          .doc('current');
-
-      debugPrint('🔍 Полный путь лимитов: users/$userId/usage_limits/current');
-      debugPrint('🔍 DocumentReference: ${docRef.path}');
-
-      final dataToSave = {
-        ...limitsData,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'debug_userId': userId,
-        'debug_timestamp': DateTime.now().toIso8601String(),
-      };
-
-      debugPrint('🔍 Данные лимитов для сохранения: $dataToSave');
-
-      await docRef.set(dataToSave, SetOptions(merge: true));
-
-      debugPrint('✅ Лимиты использования успешно сохранены в Firebase!');
-
-      // Проверяем что данные действительно сохранились
-      final savedDoc = await docRef.get();
-      debugPrint('🔍 Проверка сохранения лимитов: exists=${savedDoc.exists}');
-      if (savedDoc.exists) {
-        debugPrint('🔍 Сохраненные данные лимитов: ${savedDoc.data()}');
-      }
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при сохранении лимитов использования: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
-      rethrow;
-    }
-
-    debugPrint('🔍 === КОНЕЦ СОХРАНЕНИЯ ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
-  }
-
-  /// Увеличение счетчика использования определенного типа
+  /// Увеличение счетчика использования
   Future<bool> incrementUsageCount(String countType, {int increment = 1}) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      debugPrint('🔍 === УВЕЛИЧЕНИЕ СЧЕТЧИКА ИСПОЛЬЗОВАНИЯ ===');
-      debugPrint('🔍 userId: $userId');
-      debugPrint('🔍 countType: $countType');
-      debugPrint('🔍 increment: $increment');
-
       final docRef = _firestore
           .collection('users')
           .doc(userId)
-          .collection('usage_limits')
-          .doc('current');
+          .collection(SubscriptionConstants.userUsageLimitsSubcollection)
+          .doc(SubscriptionConstants.currentUsageLimitsDocument);
 
-      // Получаем текущие лимиты
       final doc = await docRef.get();
-
       if (!doc.exists) {
-        debugPrint('⚠️ Документ лимитов не существует - создаем начальные лимиты');
         await _createInitialUsageLimits();
       }
 
-      // Увеличиваем счетчик
       await docRef.update({
         countType: FieldValue.increment(increment),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('✅ Счетчик $countType увеличен на $increment');
-
-      // Проверяем новое значение
-      final updatedDoc = await docRef.get();
-      if (updatedDoc.exists) {
-        final data = updatedDoc.data() as Map<String, dynamic>;
-        final newCount = data[countType] ?? 0;
-        debugPrint('🔍 Новое значение $countType: $newCount');
-      }
-
+      debugPrint('Счетчик $countType увеличен на $increment');
       return true;
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при увеличении счетчика использования: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+    } catch (e) {
+      debugPrint('Ошибка при увеличении счетчика использования: $e');
       return false;
     }
   }
 
-  /// Проверка лимита использования для определенного типа
+  /// Проверка лимита использования
   Future<Map<String, dynamic>> checkUsageLimit(String countType, int maxLimit) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      debugPrint('🔍 === ПРОВЕРКА ЛИМИТА ИСПОЛЬЗОВАНИЯ ===');
-      debugPrint('🔍 userId: $userId');
-      debugPrint('🔍 countType: $countType');
-      debugPrint('🔍 maxLimit: $maxLimit');
-
       final doc = await getUserUsageLimits();
 
       if (!doc.exists) {
-        debugPrint('⚠️ Лимиты не найдены - возвращаем что лимит не превышен');
         return {
           'canProceed': true,
           'currentCount': 0,
@@ -2430,16 +968,7 @@ class FirebaseService {
       final data = doc.data() as Map<String, dynamic>;
       final currentCount = data[countType] ?? 0;
       final remaining = maxLimit - currentCount;
-
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Изменяем < на <=
-      // ❌ СТАРЫЙ КОД (НЕПРАВИЛЬНО): final canProceed = currentCount < maxLimit;
-      // ✅ НОВЫЙ КОД (ПРАВИЛЬНО):
       final canProceed = currentCount < maxLimit;
-
-      debugPrint('🔍 Текущий счетчик $countType: $currentCount');
-      debugPrint('🔍 Максимальный лимит: $maxLimit');
-      debugPrint('🔍 Осталось: $remaining');
-      debugPrint('🔍 Можно продолжить: $canProceed');
 
       return {
         'canProceed': canProceed,
@@ -2447,11 +976,8 @@ class FirebaseService {
         'maxLimit': maxLimit,
         'remaining': remaining,
       };
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка при проверке лимита использования: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
-      // В случае ошибки разрешаем действие
+    } catch (e) {
+      debugPrint('Ошибка при проверке лимита использования: $e');
       return {
         'canProceed': true,
         'currentCount': 0,
@@ -2462,190 +988,29 @@ class FirebaseService {
     }
   }
 
-  /// Сброс лимитов использования (обычно ежемесячно)
-  Future<void> resetUserUsageLimits({String? resetReason}) async {
-    final userId = currentUserId;
-    if (userId == null) throw Exception('Пользователь не авторизован');
-
-    try {
-      debugPrint('🔍 === СБРОС ЛИМИТОВ ИСПОЛЬЗОВАНИЯ ===');
-      debugPrint('🔍 userId: $userId');
-      debugPrint('🔍 resetReason: $resetReason');
-
-      final resetData = {
-        'notesCount': 0,
-        'markerMapsCount': 0,
-        'expensesCount': 0,
-        'tripsCount': 0,
-        'budgetNotesCount': 0,
-        'lastResetDate': DateTime.now().toIso8601String(),
-        'resetReason': resetReason ?? 'manual_reset',
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      await updateUserUsageLimits(resetData);
-
-      debugPrint('✅ Лимиты использования сброшены для пользователя: $userId');
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при сбросе лимитов использования: $e');
-      rethrow;
-    }
-  }
-
-  /// Проверка нужен ли автоматический сброс лимитов (например, ежемесячно)
-  Future<bool> shouldResetUsageLimits() async {
-    try {
-      final doc = await getUserUsageLimits();
-
-      if (!doc.exists) {
-        return false; // Если документа нет, сброс не нужен
-      }
-
-      final data = doc.data() as Map<String, dynamic>;
-      final lastResetDateString = data['lastResetDate'] as String?;
-
-      if (lastResetDateString == null) {
-        return true; // Если дата сброса не установлена, нужен сброс
-      }
-
-      final lastResetDate = DateTime.parse(lastResetDateString);
-      final now = DateTime.now();
-
-      // Проверяем прошел ли месяц с последнего сброса
-      final monthsSinceReset = now.difference(lastResetDate).inDays ~/ 30;
-      final shouldReset = monthsSinceReset >= 1;
-
-      debugPrint('🔍 Последний сброс лимитов: ${lastResetDate.toIso8601String()}');
-      debugPrint('🔍 Месяцев с последнего сброса: $monthsSinceReset');
-      debugPrint('🔍 Нужен сброс: $shouldReset');
-
-      return shouldReset;
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при проверке необходимости сброса лимитов: $e');
-      return false;
-    }
-  }
-
-  /// Получение полной статистики использования
-  Future<Map<String, dynamic>> getUsageStatistics() async {
-    try {
-      final doc = await getUserUsageLimits();
-
-      if (!doc.exists) {
-        return {
-          'notesCount': 0,
-          'markerMapsCount': 0,
-          'expensesCount': 0,
-          'tripsCount': 0,
-          'budgetNotesCount': 0,
-          'lastResetDate': null,
-          'exists': false,
-        };
-      }
-
-      final data = doc.data() as Map<String, dynamic>;
-
-      return {
-        'notesCount': data['notesCount'] ?? 0,
-        'markerMapsCount': data['markerMapsCount'] ?? 0,
-        'expensesCount': data['expensesCount'] ?? 0,
-        'tripsCount': data['tripsCount'] ?? 0,
-        'budgetNotesCount': data['budgetNotesCount'] ?? 0,
-        'lastResetDate': data['lastResetDate'],
-        'updatedAt': data['updatedAt'],
-        'exists': true,
-      };
-
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении статистики использования: $e');
-      return {'exists': false, 'error': e.toString()};
-    }
-  }
-
-  /// Вспомогательный метод для получения лимитов в зависимости от типа подписки
-  Map<String, int> getSubscriptionLimits(String subscriptionType) {
-    switch (subscriptionType.toLowerCase()) {
-      case 'free':
-      case 'none':
-        return {
-          'notesCount': 3,
-          'markerMapsCount': 3,
-          'expensesCount': 3,
-          'tripsCount': 3,
-          'budgetNotesCount': 3,
-        };
-
-      case 'premium':
-      case 'pro':
-        return {
-          'notesCount': 100,
-          'markerMapsCount': 50,
-          'expensesCount': 500,
-          'tripsCount': 50,
-          'budgetNotesCount': 100,
-        };
-
-      case 'unlimited':
-      case 'enterprise':
-        return {
-          'notesCount': 999999,
-          'markerMapsCount': 999999,
-          'expensesCount': 999999,
-          'tripsCount': 999999,
-          'budgetNotesCount': 999999,
-        };
-
-      default:
-      // По умолчанию возвращаем бесплатные лимиты
-        return {
-          'notesCount': 5,
-          'markerMapsCount': 2,
-          'expensesCount': 10,
-          'tripsCount': 2,
-          'budgetNotesCount': 3,
-        };
-    }
-  }
-
-  /// Проверка может ли пользователь создать новый элемент определенного типа
+  /// Проверка может ли пользователь создать новый элемент
   Future<Map<String, dynamic>> canCreateItem(String itemType) async {
     try {
-      // Получаем тип подписки пользователя
-      final subscriptionDoc = await getUserSubscription();
-      String subscriptionType = 'free';
-
-      if (subscriptionDoc.exists) {
-        final subscriptionData = subscriptionDoc.data() as Map<String, dynamic>;
-        final isActive = subscriptionData['isActive'] ?? false;
-        final status = subscriptionData['status'] ?? 'none';
-
-        if (isActive && status == 'active') {
-          subscriptionType = subscriptionData['type'] ?? 'free';
-        }
+      // Проверяем активность подписки
+      final isActive = await isSubscriptionActive();
+      if (isActive) {
+        return {
+          'canProceed': true,
+          'currentCount': 0,
+          'maxLimit': 999999,
+          'remaining': 999999,
+          'subscriptionActive': true,
+        };
       }
 
-      debugPrint('🔍 Тип подписки пользователя: $subscriptionType');
+      // Получаем лимит для бесплатного пользователя
+      final maxLimit = SubscriptionConstants.getContentLimit(
+        _getContentTypeFromFirebaseKey(itemType),
+      );
 
-      // Получаем лимиты для этого типа подписки
-      final limits = getSubscriptionLimits(subscriptionType);
-      final maxLimit = limits[itemType] ?? 0;
-
-      debugPrint('🔍 Максимальный лимит для $itemType: $maxLimit');
-
-      // Проверяем текущий лимит
-      final limitCheck = await checkUsageLimit(itemType, maxLimit);
-
-      return {
-        ...limitCheck,
-        'subscriptionType': subscriptionType,
-        'itemType': itemType,
-      };
-
+      return await checkUsageLimit(itemType, maxLimit);
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке возможности создания элемента: $e');
-      // В случае ошибки разрешаем создание
+      debugPrint('Ошибка при проверке возможности создания элемента: $e');
       return {
         'canProceed': true,
         'currentCount': 0,
@@ -2653,6 +1018,96 @@ class FirebaseService {
         'remaining': 999999,
         'error': e.toString(),
       };
+    }
+  }
+
+  /// Преобразование Firebase ключа в ContentType
+  ContentType _getContentTypeFromFirebaseKey(String firebaseKey) {
+    switch (firebaseKey) {
+      case 'notesCount':
+        return ContentType.fishingNotes;
+      case 'markerMapsCount':
+        return ContentType.markerMaps;
+      case 'budgetNotesCount':
+        return ContentType.budgetNotes;
+      default:
+        return ContentType.fishingNotes;
+    }
+  }
+
+  /// Получение статистики использования
+  Future<Map<String, dynamic>> getUsageStatistics() async {
+    try {
+      final doc = await getUserUsageLimits();
+
+      if (!doc.exists) {
+        return {
+          SubscriptionConstants.notesCountField: 0,
+          SubscriptionConstants.markerMapsCountField: 0,
+          SubscriptionConstants.budgetNotesCountField: 0,
+          'exists': false,
+        };
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      return {
+        SubscriptionConstants.notesCountField: data[SubscriptionConstants.notesCountField] ?? 0,
+        SubscriptionConstants.markerMapsCountField: data[SubscriptionConstants.markerMapsCountField] ?? 0,
+        SubscriptionConstants.budgetNotesCountField: data[SubscriptionConstants.budgetNotesCountField] ?? 0,
+        SubscriptionConstants.lastResetDateField: data[SubscriptionConstants.lastResetDateField],
+        'updatedAt': data['updatedAt'],
+        'exists': true,
+      };
+    } catch (e) {
+      debugPrint('Ошибка при получении статистики использования: $e');
+      return {'exists': false, 'error': e.toString()};
+    }
+  }
+
+  /// Сброс лимитов использования
+  Future<void> resetUserUsageLimits({String? resetReason}) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      final resetData = {
+        SubscriptionConstants.notesCountField: 0,
+        SubscriptionConstants.markerMapsCountField: 0,
+        SubscriptionConstants.budgetNotesCountField: 0,
+        SubscriptionConstants.lastResetDateField: DateTime.now().toIso8601String(),
+        'resetReason': resetReason ?? 'manual_reset',
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection(SubscriptionConstants.userUsageLimitsSubcollection)
+          .doc(SubscriptionConstants.currentUsageLimitsDocument)
+          .set(resetData, SetOptions(merge: true));
+
+      debugPrint('Лимиты использования сброшены для пользователя: $userId');
+    } catch (e) {
+      debugPrint('Ошибка при сбросе лимитов использования: $e');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // ЗАГРУЗКА ФАЙЛОВ
+  // ========================================
+
+  /// Загрузка изображения в Firebase Storage
+  Future<String> uploadImage(String path, List<int> imageBytes) async {
+    try {
+      final ref = _storage.ref().child(path);
+      final Uint8List uint8List = Uint8List.fromList(imageBytes);
+      final uploadTask = ref.putData(uint8List);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Ошибка при загрузке изображения: $e');
+      rethrow;
     }
   }
 }

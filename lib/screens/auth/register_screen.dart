@@ -10,6 +10,7 @@ import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 import '../help/privacy_policy_screen.dart';
 import '../help/terms_of_service_screen.dart';
+import '../../widgets/user_agreements_dialog.dart'; // ДОБАВЛЕН ИМПОРТ
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -167,24 +168,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Функция для сохранения согласий пользователя (новая структура)
-  Future<void> _saveUserConsents() async {
+  // ✅ ИСПРАВЛЕНО: Функция для сохранения согласий пользователя с проверкой
+  Future<bool> _saveUserConsents() async {
     try {
+      // ✅ НОВАЯ ЛОГИКА: Сохраняем согласия только если пользователь их принял
+      if (!_acceptedTermsAndPrivacy) {
+        debugPrint('❌ Пользователь НЕ принял соглашения - не сохраняем');
+        return false;
+      }
+
+      debugPrint('✅ Пользователь принял соглашения через чекбокс - сохраняем');
+
       await _firebaseService.updateUserConsents({
         'privacyPolicyAccepted': true,
         'termsOfServiceAccepted': true,
         'consentDate': FieldValue.serverTimestamp(),
-        'appVersion': '1.0.0', // Можно получить из package_info_plus
+        'appVersion': '1.0.0',
+        'authProvider': 'email',
+        'consentMethod': 'registration_checkbox', // ✅ ДОБАВЛЕНО: как были приняты согласия
         'deviceInfo': {
           'platform': Theme.of(context).platform.name,
-          // Можно добавить больше информации об устройстве
         },
       });
 
       debugPrint('✅ Согласия пользователя сохранены в новой структуре');
+      return true;
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении согласий: $e');
-      // Не прерываем регистрацию, если не удалось сохранить согласия
+      return false;
+    }
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Показ диалога согласий при ошибке сохранения
+  Future<bool> _showAgreementsDialog() async {
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return UserAgreementsDialog(
+            onAgreementsAccepted: () {
+              debugPrint('✅ Пользователь принял соглашения через диалог');
+            },
+            onCancel: () {
+              debugPrint('❌ Пользователь отклонил соглашения через диалог');
+            },
+          );
+        },
+      );
+
+      return result == true;
+    } catch (e) {
+      debugPrint('❌ Ошибка при показе диалога согласий: $e');
+      return false;
     }
   }
 
@@ -194,7 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    // Проверяем согласие с условиями
+    // ✅ УСИЛЕННАЯ ПРОВЕРКА: Согласие с условиями ОБЯЗАТЕЛЬНО
     if (!_acceptedTermsAndPrivacy) {
       final localizations = AppLocalizations.of(context);
       setState(() {
@@ -207,6 +243,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
       _errorMessage = '';
     });
+
+    // ✅ ДОБАВЛЕНО: Переменная для отслеживания успешности
+    bool registrationSuccessful = false;
 
     try {
       final email = _emailController.text.trim();
@@ -226,8 +265,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // === НОВАЯ СТРУКТУРА: Создаем профиль пользователя ===
         await _createUserProfile(user.uid, name, email);
 
-        // === НОВАЯ СТРУКТУРА: Сохраняем согласия пользователя ===
-        await _saveUserConsents();
+        // ✅ ИСПРАВЛЕНО: Сохраняем согласия с проверкой
+        final consentsSuccess = await _saveUserConsents();
+
+        if (!consentsSuccess) {
+          debugPrint('⚠️ Не удалось сохранить согласия через чекбокс - показываем диалог');
+
+          // Показываем диалог согласий как запасной вариант
+          final dialogResult = await _showAgreementsDialog();
+
+          if (!dialogResult) {
+            // Пользователь отклонил соглашения - удаляем созданный аккаунт
+            debugPrint('❌ Пользователь отклонил согласия - удаляем аккаунт');
+
+            try {
+              await user.delete();
+              debugPrint('✅ Аккаунт удален из-за отказа от соглашений');
+            } catch (deleteError) {
+              debugPrint('❌ Ошибка при удалении аккаунта: $deleteError');
+            }
+
+            if (mounted) {
+              setState(() {
+                _errorMessage = AppLocalizations.of(context).translate('agreements_required')
+                    ?? 'Для регистрации необходимо принять соглашения';
+              });
+            }
+            return; // Прерываем регистрацию
+          }
+        }
+
+        // ✅ Если дошли до этого места - согласия приняты и сохранены
+        registrationSuccessful = true;
 
         if (mounted) {
           final localizations = AppLocalizations.of(context);
@@ -261,6 +330,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
+      debugPrint('❌ Ошибка регистрации: $e');
+
+      // ✅ ДОБАВЛЕНО: Если регистрация не удалась и есть пользователь - выходим
+      if (!registrationSuccessful && _firebaseService.currentUser != null) {
+        try {
+          await _firebaseService.signOut();
+          debugPrint('✅ Выполнен выход после ошибки регистрации');
+        } catch (signOutError) {
+          debugPrint('❌ Ошибка при выходе: $signOutError');
+        }
+      }
+
       setState(() {
         _errorMessage = e.toString();
       });
@@ -499,27 +580,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   child: TextFormField(
                                     controller: _emailController,
                                     onTap: () {
-                                      // Множественные попытки сбросить автовыделение для старых устройств
+                                      // Убираем автовыделение текста
                                       Future.microtask(() {
-                                        if (_emailController.selection.start == 0 &&
-                                            _emailController.selection.end == _emailController.text.length) {
-                                          _emailController.selection = TextSelection.collapsed(
-                                            offset: _emailController.text.length,
-                                          );
-                                        }
-                                      });
-
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        if (_emailController.selection.start == 0 &&
-                                            _emailController.selection.end == _emailController.text.length) {
-                                          _emailController.selection = TextSelection.collapsed(
-                                            offset: _emailController.text.length,
-                                          );
-                                        }
-                                      });
-
-                                      // Дополнительная проверка через небольшую задержку
-                                      Future.delayed(Duration(milliseconds: 10), () {
                                         if (_emailController.selection.start == 0 &&
                                             _emailController.selection.end == _emailController.text.length) {
                                           _emailController.selection = TextSelection.collapsed(
@@ -529,32 +591,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       });
                                     },
                                     onChanged: (value) {
-                                      // Сбрасываем автовыделение при вводе символов (особенно @ и других спецсимволов)
-                                      // Используем несколько методов для максимальной надежности
+                                      // Сбрасываем автовыделение при вводе
                                       if (_emailController.selection.start == 0 &&
                                           _emailController.selection.end == _emailController.text.length) {
                                         _emailController.selection = TextSelection.collapsed(
                                           offset: _emailController.text.length,
                                         );
                                       }
-
-                                      Future.microtask(() {
-                                        if (_emailController.selection.start == 0 &&
-                                            _emailController.selection.end == _emailController.text.length) {
-                                          _emailController.selection = TextSelection.collapsed(
-                                            offset: _emailController.text.length,
-                                          );
-                                        }
-                                      });
-
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        if (_emailController.selection.start == 0 &&
-                                            _emailController.selection.end == _emailController.text.length) {
-                                          _emailController.selection = TextSelection.collapsed(
-                                            offset: _emailController.text.length,
-                                          );
-                                        }
-                                      });
                                     },
                                     style: TextStyle(
                                       color: AppConstants.textColor,
@@ -628,27 +671,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         controller: _passwordController,
                                         focusNode: _passwordFocusNode,
                                         onTap: () {
-                                          // Множественные попытки сбросить автовыделение для старых устройств
+                                          // Убираем автовыделение текста
                                           Future.microtask(() {
-                                            if (_passwordController.selection.start == 0 &&
-                                                _passwordController.selection.end == _passwordController.text.length) {
-                                              _passwordController.selection = TextSelection.collapsed(
-                                                offset: _passwordController.text.length,
-                                              );
-                                            }
-                                          });
-
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                                            if (_passwordController.selection.start == 0 &&
-                                                _passwordController.selection.end == _passwordController.text.length) {
-                                              _passwordController.selection = TextSelection.collapsed(
-                                                offset: _passwordController.text.length,
-                                              );
-                                            }
-                                          });
-
-                                          // Дополнительная проверка через небольшую задержку
-                                          Future.delayed(Duration(milliseconds: 10), () {
                                             if (_passwordController.selection.start == 0 &&
                                                 _passwordController.selection.end == _passwordController.text.length) {
                                               _passwordController.selection = TextSelection.collapsed(
@@ -658,15 +682,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           });
                                         },
                                         onChanged: (value) {
-                                          // Сбрасываем автовыделение при вводе символов и одновременно валидируем
-                                          Future.microtask(() {
-                                            if (_passwordController.selection.start == 0 &&
-                                                _passwordController.selection.end == _passwordController.text.length) {
-                                              _passwordController.selection = TextSelection.collapsed(
-                                                offset: _passwordController.text.length,
-                                              );
-                                            }
-                                          });
+                                          // Сбрасываем автовыделение при вводе и валидируем
+                                          if (_passwordController.selection.start == 0 &&
+                                              _passwordController.selection.end == _passwordController.text.length) {
+                                            _passwordController.selection = TextSelection.collapsed(
+                                              offset: _passwordController.text.length,
+                                            );
+                                          }
                                           _validatePasswordInput(value);
                                         },
                                         inputFormatters: [
@@ -911,27 +933,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     controller: _confirmPasswordController,
                                     focusNode: _confirmPasswordFocusNode,
                                     onTap: () {
-                                      // Множественные попытки сбросить автовыделение для старых устройств
+                                      // Убираем автовыделение текста
                                       Future.microtask(() {
-                                        if (_confirmPasswordController.selection.start == 0 &&
-                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
-                                          _confirmPasswordController.selection = TextSelection.collapsed(
-                                            offset: _confirmPasswordController.text.length,
-                                          );
-                                        }
-                                      });
-
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        if (_confirmPasswordController.selection.start == 0 &&
-                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
-                                          _confirmPasswordController.selection = TextSelection.collapsed(
-                                            offset: _confirmPasswordController.text.length,
-                                          );
-                                        }
-                                      });
-
-                                      // Дополнительная проверка через небольшую задержку
-                                      Future.delayed(Duration(milliseconds: 10), () {
                                         if (_confirmPasswordController.selection.start == 0 &&
                                             _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
                                           _confirmPasswordController.selection = TextSelection.collapsed(
@@ -941,15 +944,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       });
                                     },
                                     onChanged: (value) {
-                                      // Сбрасываем автовыделение при вводе символов
-                                      Future.microtask(() {
-                                        if (_confirmPasswordController.selection.start == 0 &&
-                                            _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
-                                          _confirmPasswordController.selection = TextSelection.collapsed(
-                                            offset: _confirmPasswordController.text.length,
-                                          );
-                                        }
-                                      });
+                                      // Сбрасываем автовыделение при вводе
+                                      if (_confirmPasswordController.selection.start == 0 &&
+                                          _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
+                                        _confirmPasswordController.selection = TextSelection.collapsed(
+                                          offset: _confirmPasswordController.text.length,
+                                        );
+                                      }
                                     },
                                     style: TextStyle(
                                       color: AppConstants.textColor,

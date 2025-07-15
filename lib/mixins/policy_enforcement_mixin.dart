@@ -2,203 +2,130 @@
 
 import 'package:flutter/material.dart';
 import '../services/user_consent_service.dart';
+import '../services/firebase/firebase_service.dart';
 import '../widgets/user_agreements_dialog.dart';
 import '../localization/app_localizations.dart';
 import '../constants/app_constants.dart';
 
-/// Миксин для проверки политики конфиденциальности и применения ограничений
+/// ✅ УПРОЩЕННЫЙ миксин для проверки согласий пользователя
+/// Убрана сложная система ограничений - только простая проверка: согласия приняты ДА/НЕТ
 mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   final UserConsentService _consentService = UserConsentService();
-  ConsentRestrictionResult? _currentRestrictions;
+  final FirebaseService _firebaseService = FirebaseService();
 
-  /// Проверяет политику конфиденциальности при инициализации
+  bool _consentsChecked = false;
+  bool _consentsValid = false;
+
+  /// ✅ УПРОЩЕННАЯ проверка согласий при инициализации
   Future<void> checkPolicyCompliance() async {
+    if (_consentsChecked) return; // Избегаем повторных проверок
+
     try {
+      debugPrint('📋 Проверяем согласия пользователя...');
+
       final consentResult = await _consentService.checkUserConsents();
+      _consentsChecked = true;
+      _consentsValid = consentResult.allValid;
 
       if (!consentResult.allValid) {
-        debugPrint('🚫 Политика не принята - показываем принудительный диалог');
+        debugPrint('🚫 Согласия не приняты или устарели - показываем диалог');
         await _showMandatoryPolicyDialog();
-      }
-
-      // Получаем текущие ограничения
-      _currentRestrictions = await _consentService.getConsentRestrictions();
-
-      if (_currentRestrictions != null && _currentRestrictions!.hasRestrictions) {
-        debugPrint('⚠️ Действуют ограничения: ${_currentRestrictions!.level}');
-        _showRestrictionBanner();
+      } else {
+        debugPrint('✅ Все согласия актуальны');
       }
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке политики: $e');
+      debugPrint('❌ Ошибка при проверке согласий: $e');
+      _consentsChecked = true;
+      _consentsValid = false;
+      // В случае ошибки показываем диалог для безопасности
+      await _showMandatoryPolicyDialog();
     }
   }
 
-  /// Показывает принудительный диалог принятия политики
+  /// ✅ ИСПРАВЛЕН: Показывает диалог принятия согласий с правильными параметрами
   Future<void> _showMandatoryPolicyDialog() async {
     if (!mounted) return;
 
-    return showDialog<void>(
+    final bool? agreementsAccepted = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return PopScope(
-          canPop: false, // Заменяем deprecated WillPopScope
+          canPop: false, // Запрещаем закрытие свайпом/кнопкой назад
           child: UserAgreementsDialog(
+            isRegistration: false, // ✅ ИСПРАВЛЕНО: добавлен обязательный параметр
             onAgreementsAccepted: () {
-              debugPrint('✅ Политика принята пользователем');
-              _refreshRestrictions();
+              debugPrint('✅ Согласия приняты пользователем');
+              Navigator.of(context).pop(true);
             },
-            onCancel: () async {
-              debugPrint('❌ Пользователь отказался от принятия политики');
-              await _consentService.recordPolicyRejection();
-              _refreshRestrictions();
+            onCancel: () {
+              debugPrint('❌ Пользователь отказался от принятия согласий');
+              Navigator.of(context).pop(false);
             },
           ),
         );
       },
     );
-  }
 
-  /// Обновляет ограничения после изменений
-  Future<void> _refreshRestrictions() async {
-    if (!mounted) return;
+    // ✅ УПРОЩЕННАЯ логика: принял - продолжаем, отказался - выход
+    if (agreementsAccepted == true) {
+      _consentsValid = true;
+      if (mounted) setState(() {}); // Обновляем UI
+    } else {
+      // Если пользователь отказался - выходим из аккаунта
+      debugPrint('🚪 Выход из аккаунта из-за отказа от согласий');
+      await _firebaseService.signOut();
 
-    _currentRestrictions = await _consentService.getConsentRestrictions();
-
-    if (_currentRestrictions != null && _currentRestrictions!.hasRestrictions) {
-      _showRestrictionBanner();
-    }
-
-    setState(() {}); // Обновляем UI
-  }
-
-  /// Показывает баннер с информацией об ограничениях
-  void _showRestrictionBanner() {
-    if (!mounted || _currentRestrictions == null) return;
-
-    final localizations = AppLocalizations.of(context);
-    final restrictions = _currentRestrictions!;
-
-    Color bannerColor;
-    IconData bannerIcon;
-
-    switch (restrictions.level) {
-      case ConsentRestrictionLevel.soft:
-        bannerColor = Colors.orange;
-        bannerIcon = Icons.warning_amber;
-        break;
-      case ConsentRestrictionLevel.hard:
-        bannerColor = Colors.red;
-        bannerIcon = Icons.warning;
-        break;
-      case ConsentRestrictionLevel.final_:
-        bannerColor = Colors.red[800]!;
-        bannerIcon = Icons.error;
-        break;
-      case ConsentRestrictionLevel.deletion:
-        bannerColor = Colors.red[900]!;
-        bannerIcon = Icons.delete_forever;
-        break;
-      default:
-        return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(bannerIcon, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    localizations.translate('policy_restrictions_title') != null
-                        ? localizations.translate('policy_restrictions_title')!
-                        : 'Ограничения доступа',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    restrictions.restrictionMessage,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
+      if (mounted) {
+        // Показываем сообщение и возвращаемся на экран входа
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)?.translate('consents_required') ??
+                  'Для использования приложения необходимо принять согласия',
             ),
-          ],
-        ),
-        backgroundColor: bannerColor,
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(
-          label: localizations.translate('accept_policy') != null
-              ? localizations.translate('accept_policy')!
-              : 'Принять политику',
-          textColor: Colors.white,
-          onPressed: () => _showMandatoryPolicyDialog(),
-        ),
-      ),
-    );
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Навигация на экран входа будет обработана автоматически
+        // через FirebaseAuth.authStateChanges в main.dart
+      }
+    }
   }
 
-  /// Проверяет возможность выполнения действия
+  /// ✅ УПРОЩЕННАЯ проверка возможности выполнения действия
+  /// Теперь проверяется только: приняты ли согласия
   bool canPerformAction(String action) {
-    if (_currentRestrictions == null) return true;
-    return _consentService.canPerformAction(
-      action,
-      _currentRestrictions!.level,
-    );
+    return _consentsValid;
   }
 
-  /// Показывает сообщение о блокировке действия
+  /// ✅ УПРОЩЕННОЕ сообщение о блокировке действия
   void showActionBlockedMessage(String action) {
     if (!mounted) return;
 
     final localizations = AppLocalizations.of(context);
-    String message;
-
-    switch (action) {
-      case 'create_note':
-        message = localizations.translate('create_note_blocked') != null
-            ? localizations.translate('create_note_blocked')!
-            : 'Создание заметок заблокировано. Примите политику конфиденциальности.';
-        break;
-      case 'create_map':
-        message = localizations.translate('create_map_blocked') != null
-            ? localizations.translate('create_map_blocked')!
-            : 'Создание карт заблокировано. Примите политику конфиденциальности.';
-        break;
-      case 'edit_profile':
-        message = localizations.translate('edit_profile_blocked') != null
-            ? localizations.translate('edit_profile_blocked')!
-            : 'Редактирование профиля заблокировано. Примите политику конфиденциальности.';
-        break;
-      default:
-        message = localizations.translate('action_blocked') != null
-            ? localizations.translate('action_blocked')!
-            : 'Действие заблокировано. Примите политику конфиденциальности.';
-    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+        content: Text(
+          localizations?.translate('action_blocked_consents_required') ??
+              'Для выполнения действия необходимо принять согласия',
+        ),
+        backgroundColor: Colors.orange,
         action: SnackBarAction(
-          label: localizations.translate('accept_policy') != null
-              ? localizations.translate('accept_policy')!
-              : 'Принять политику',
+          label: localizations?.translate('accept_consents') ??
+              'Принять согласия',
           textColor: Colors.white,
           onPressed: () => _showMandatoryPolicyDialog(),
         ),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
 
-  /// Безопасное выполнение действия с проверкой ограничений
+  /// ✅ УПРОЩЕННОЕ безопасное выполнение действия
   Future<bool> safePerformAction(
       String action,
       Future<void> Function() actionCallback,
@@ -213,11 +140,25 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       return true;
     } catch (e) {
       debugPrint('❌ Ошибка при выполнении действия $action: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)?.translate('action_failed') ??
+                  'Не удалось выполнить действие. Попробуйте еще раз.',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
       return false;
     }
   }
 
-  /// Создает виджет с ограничениями
+  /// ✅ УПРОЩЕННЫЙ виджет с проверкой согласий
   Widget buildRestrictedWidget({
     required String action,
     required Widget child,
@@ -229,52 +170,60 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     return child;
   }
 
-  /// Создает заглушку для заблокированного контента
+  /// ✅ УПРОЩЕННАЯ заглушка для заблокированного контента
   Widget _buildRestrictedPlaceholder(String action) {
     final localizations = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red, width: 1),
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange, width: 2),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lock, size: 48, color: Colors.red[700]),
-          const SizedBox(height: 8),
+          Icon(
+            Icons.privacy_tip_outlined,
+            size: 48,
+            color: Colors.orange[700],
+          ),
+          const SizedBox(height: 12),
           Text(
-            localizations.translate('content_blocked') != null
-                ? localizations.translate('content_blocked')!
-                : 'Контент заблокирован',
+            localizations?.translate('content_requires_consents') ??
+                'Контент требует принятия согласий',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.red[700],
+              color: Colors.orange[700],
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
-            localizations.translate('accept_policy_to_unlock') != null
-                ? localizations.translate('accept_policy_to_unlock')!
-                : 'Примите политику конфиденциальности для разблокировки',
-            style: TextStyle(fontSize: 14, color: Colors.red[600]),
+            localizations?.translate('accept_consents_to_unlock') ??
+                'Примите пользовательские согласия для доступа к контенту',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.orange[600],
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
             onPressed: () => _showMandatoryPolicyDialog(),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppConstants.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: Text(
-              localizations.translate('accept_policy') != null
-                  ? localizations.translate('accept_policy')!
-                  : 'Принять политику',
-              style: const TextStyle(color: Colors.white),
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: Text(
+              localizations?.translate('accept_consents') ??
+                  'Принять согласия',
             ),
           ),
         ],
@@ -282,18 +231,33 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// Получает текущие ограничения
-  ConsentRestrictionResult? get currentRestrictions => _currentRestrictions;
+  /// ✅ УПРОЩЕННЫЕ геттеры для проверки состояния
 
-  /// Есть ли активные ограничения
-  bool get hasActiveRestrictions =>
-      _currentRestrictions != null && _currentRestrictions!.hasRestrictions;
+  /// Проверены ли согласия
+  bool get consentsChecked => _consentsChecked;
+
+  /// Валидны ли согласия
+  bool get consentsValid => _consentsValid;
 
   /// Может ли пользователь создавать контент
-  bool get canCreateContent =>
-      _currentRestrictions != null ? _currentRestrictions!.canCreateContent : true;
+  bool get canCreateContent => _consentsValid;
 
-  /// Может ли пользователь редактировать профиль
-  bool get canEditProfile =>
-      _currentRestrictions != null ? _currentRestrictions!.canEditProfile : true;
+  /// Может ли пользователь редактировать данные
+  bool get canEditData => _consentsValid;
+
+  /// Может ли пользователь использовать премиум функции
+  bool get canUsePremiumFeatures => _consentsValid;
+
+  /// ✅ МЕТОД для принудительной перепроверки согласий
+  Future<void> recheckConsents() async {
+    _consentsChecked = false;
+    _consentsValid = false;
+    await checkPolicyCompliance();
+  }
+
+  /// ✅ МЕТОД для сброса состояния согласий (например, при выходе)
+  void resetConsentsState() {
+    _consentsChecked = false;
+    _consentsValid = false;
+  }
 }

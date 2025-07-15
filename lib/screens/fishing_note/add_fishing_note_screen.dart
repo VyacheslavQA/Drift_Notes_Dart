@@ -425,17 +425,19 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная проверка лимитов перед созданием
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Упрощенная проверка лимитов
   Future<bool> _checkLimitsBeforeCreating() async {
     final localizations = AppLocalizations.of(context);
 
     try {
-      debugPrint('🔍 Проверяем лимиты перед созданием заметки...');
+      debugPrint('🔍 Упрощенная проверка лимитов перед созданием заметки...');
 
-      final usageResult = await _subscriptionService.checkOfflineUsage(ContentType.fishingNotes);
-      debugPrint('📊 Результат проверки лимитов: canCreate=${usageResult.canCreate}, shouldShowWarning=${usageResult.shouldShowWarning}');
+      // ✅ ИСПРАВЛЕНО: Простая проверка без показа предупреждений
+      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
 
-      if (!usageResult.canCreate) {
+      debugPrint('📊 Результат упрощенной проверки: canCreate=$canCreate');
+
+      if (!canCreate) {
         debugPrint('❌ Лимит достигнут - показываем Paywall');
 
         if (mounted) {
@@ -452,66 +454,14 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         return false;
       }
 
-      if (usageResult.shouldShowWarning) {
-        debugPrint('⚠️ Показываем предупреждение о приближении к лимиту');
-
-        if (mounted) {
-          final shouldContinue = await showDialog<bool>(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: AppConstants.cardColor,
-                title: Text(
-                  'Приближение к лимиту',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                content: Text(
-                  'Вы приближаетесь к лимиту создания заметок. Рассмотрите возможность обновления до Premium.',
-                  style: TextStyle(color: AppConstants.textColor),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: Text(
-                      localizations.translate('cancel'),
-                      style: TextStyle(color: AppConstants.textColor),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: Text(
-                      'Продолжить',
-                      style: TextStyle(color: AppConstants.primaryColor),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-
-          return shouldContinue ?? false;
-        }
-      }
-
-      debugPrint('✅ Проверка лимитов пройдена - можно создавать');
+      debugPrint('✅ Упрощенная проверка лимитов пройдена - можно создавать');
       return true;
 
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке лимитов: $e');
+      debugPrint('❌ Ошибка при упрощенной проверке лимитов: $e');
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка проверки лимитов. Попробуйте еще раз.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-
-      // При ошибке проверки лимитов - разрешаем создание (graceful fallback)
+      // ✅ ИСПРАВЛЕНО: При ошибке проверки лимитов - разрешаем создание
+      debugPrint('🔄 Ошибка проверки лимитов - разрешаем создание как fallback');
       return true;
     }
   }
@@ -662,16 +612,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         // ✅ ИСПРАВЛЕНО: Используем новый метод для сохранения в новой структуре
         await _firebaseService.addFishingNoteNew(noteData);
 
-        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем серверный счетчик в Firebase
-        try {
-          await _firebaseService.incrementUsageCount('notesCount');
-          debugPrint('✅ Серверный счетчик заметок увеличен в Firebase');
-        } catch (e) {
-          debugPrint('❌ Ошибка увеличения серверного счетчика: $e');
-          // Продолжаем, заметка уже сохранена
-        }
-
-        debugPrint('✅ Заметка сохранена онлайн, серверный счетчик обновлен');
+        debugPrint('✅ Заметка сохранена онлайн');
         saveSuccessful = true;
 
       } else {
@@ -698,17 +639,19 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         // Сохраняем заметку локально
         await _offlineStorage.saveOfflineFishingNote(noteData);
 
-        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Увеличиваем локальный счетчик в Firebase
+        debugPrint('✅ Заметка сохранена офлайн');
+        saveSuccessful = true;
+      }
+
+      // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик ПОСЛЕ успешного сохранения
+      if (saveSuccessful) {
         try {
           await _firebaseService.incrementUsageCount('notesCount');
-          debugPrint('✅ Локальный счетчик заметок увеличен в Firebase');
+          debugPrint('✅ Счетчик заметок увеличен в Firebase');
         } catch (e) {
-          debugPrint('❌ Ошибка увеличения локального счетчика: $e');
+          debugPrint('❌ Ошибка увеличения счетчика: $e');
           // Продолжаем, заметка уже сохранена
         }
-
-        debugPrint('✅ Заметка сохранена офлайн, локальный счетчик обновлен');
-        saveSuccessful = true;
       }
 
       // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного создания

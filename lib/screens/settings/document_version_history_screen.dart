@@ -9,6 +9,8 @@ import '../../models/user_consent_models.dart';
 import '../help/privacy_policy_screen.dart';
 import '../help/terms_of_service_screen.dart';
 
+/// ✅ УПРОЩЕННАЯ версия экрана информации о документах
+/// Показывает только текущие версии и статус принятия
 class DocumentVersionHistoryScreen extends StatefulWidget {
   final String documentType; // 'privacy_policy' или 'terms_of_service'
 
@@ -24,16 +26,15 @@ class _DocumentVersionHistoryScreenState
   final UserConsentService _consentService = UserConsentService();
 
   bool _isLoading = true;
-  List<DocumentVersion> _versions = [];
   UserConsentStatus? _consentStatus;
-  ConsentCheckResult? _consentResult; // НОВОЕ: Результат проверки согласий
+  ConsentCheckResult? _consentResult;
   String _currentVersionString = '';
   bool _isDependenciesInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // НЕ вызываем _loadVersionHistory() здесь!
+    // НЕ вызываем _loadVersionInfo() здесь!
     // Перенесено в didChangeDependencies()
   }
 
@@ -43,11 +44,12 @@ class _DocumentVersionHistoryScreenState
     // Выполняем инициализацию только один раз после того, как dependencies готовы
     if (!_isDependenciesInitialized) {
       _isDependenciesInitialized = true;
-      _loadVersionHistory();
+      _loadVersionInfo();
     }
   }
 
-  Future<void> _loadVersionHistory() async {
+  /// ✅ ИСПРАВЛЕНО: Загружаем только текущую версию и статус
+  Future<void> _loadVersionInfo() async {
     if (!mounted) return;
 
     try {
@@ -55,25 +57,18 @@ class _DocumentVersionHistoryScreenState
       final localizations = AppLocalizations.of(context);
       final languageCode = localizations.locale.languageCode;
 
+      // ✅ ИСПРАВЛЕНО: Используем существующие методы
       if (widget.documentType == 'privacy_policy') {
-        _versions = await _consentService.getPrivacyPolicyHistory(languageCode);
-        _currentVersionString = await _consentService
-            .getCurrentPrivacyPolicyVersion(languageCode);
+        _currentVersionString = await _consentService.getCurrentPrivacyPolicyVersion(languageCode);
       } else {
-        _versions = await _consentService.getTermsOfServiceHistory(
-          languageCode,
-        );
-        _currentVersionString = await _consentService
-            .getCurrentTermsOfServiceVersion(languageCode);
+        _currentVersionString = await _consentService.getCurrentTermsOfServiceVersion(languageCode);
       }
 
+      // Получаем статус согласий
       _consentStatus = await _consentService.getUserConsentStatus(languageCode);
 
-      // НОВОЕ: Получаем результат проверки согласий для селективного статуса
+      // Получаем результат проверки согласий для селективного статуса
       _consentResult = await _consentService.checkUserConsents(languageCode);
-
-      // Сортируем версии по дате выпуска (новые сверху)
-      _versions.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
 
       if (mounted) {
         setState(() {
@@ -81,7 +76,7 @@ class _DocumentVersionHistoryScreenState
         });
       }
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки истории версий: $e');
+      debugPrint('❌ Ошибка загрузки информации о версии: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -97,10 +92,10 @@ class _DocumentVersionHistoryScreenState
   }
 
   String _getCurrentVersion() {
-    return _currentVersionString;
+    return _currentVersionString.isNotEmpty ? _currentVersionString : '1.0.0';
   }
 
-  // НОВЫЙ МЕТОД: Проверяет нужно ли обновление конкретного документа
+  /// Проверяет нужно ли обновление конкретного документа
   bool _needsUpdate() {
     if (_consentResult == null) return false;
 
@@ -111,7 +106,7 @@ class _DocumentVersionHistoryScreenState
     }
   }
 
-  // НОВЫЙ МЕТОД: Получает статус принятия конкретного документа
+  /// Получает статус принятия конкретного документа
   bool _isDocumentAccepted() {
     if (_consentStatus == null) return false;
 
@@ -122,33 +117,28 @@ class _DocumentVersionHistoryScreenState
     }
   }
 
-  /// НОВЫЙ МЕТОД: Открытие документа для чтения
-  void _openDocumentForReading(DocumentVersion version) {
-    if (version.isCurrent) {
-      // Если текущая версия - открываем обычные экраны
-      if (widget.documentType == 'privacy_policy') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
-        );
-      } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
-        );
-      }
+  /// Получает сохраненную версию документа
+  String? _getSavedVersion() {
+    if (_consentResult == null) return null;
+
+    if (widget.documentType == 'privacy_policy') {
+      return _consentResult!.savedPrivacyVersion;
     } else {
-      // Если архивная версия - открываем специальный экран
+      return _consentResult!.savedTermsVersion;
+    }
+  }
+
+  /// Открытие документа для чтения
+  void _openDocumentForReading() {
+    if (widget.documentType == 'privacy_policy') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder:
-              (context) => ArchivedDocumentViewerScreen(
-                documentType: widget.documentType,
-                version: version.version,
-                documentTitle: _getDocumentTitle(AppLocalizations.of(context)),
-              ),
-        ),
+        MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TermsOfServiceScreen()),
       );
     }
   }
@@ -161,7 +151,7 @@ class _DocumentVersionHistoryScreenState
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
         title: Text(
-          '${localizations.translate('version_history') ?? 'Version History'}: ${_getDocumentTitle(localizations)}',
+          _getDocumentTitle(localizations),
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 18,
@@ -175,615 +165,365 @@ class _DocumentVersionHistoryScreenState
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  color: AppConstants.primaryColor,
-                ),
-              )
-              : _buildContent(localizations),
+      body: _isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          color: AppConstants.primaryColor,
+        ),
+      )
+          : _buildContent(localizations),
     );
   }
 
   Widget _buildContent(AppLocalizations localizations) {
-    if (_versions.isEmpty) {
-      return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Информация о текущей версии
+          _buildCurrentVersionCard(localizations),
+
+          const SizedBox(height: 24),
+
+          // Информация о статусе
+          _buildStatusCard(localizations),
+
+          const SizedBox(height: 24),
+
+          // Кнопка для чтения документа
+          _buildReadDocumentButton(localizations),
+        ],
+      ),
+    );
+  }
+
+  /// Карточка с информацией о текущей версии
+  Widget _buildCurrentVersionCard(AppLocalizations localizations) {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+
+    return Card(
+      color: AppConstants.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isAccepted && !needsUpdate
+              ? AppConstants.primaryColor
+              : Colors.orange,
+          width: 2,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.history,
-              size: 64,
-              color: AppConstants.textColor.withOpacity(0.5),
+            Row(
+              children: [
+                Icon(
+                  Icons.article_outlined,
+                  color: AppConstants.primaryColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  localizations.translate('current_version') ?? 'Current version',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
+
             const SizedBox(height: 16),
-            Text(
-              localizations.translate('no_version_history') ??
-                  'No version history available',
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 16,
+
+            // Версия
+            _buildInfoRow(
+              Icons.tag,
+              localizations.translate('version') ?? 'Version',
+              _getCurrentVersion(),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Дата последнего принятия
+            if (_consentStatus?.consentTimestamp != null)
+              _buildInfoRow(
+                Icons.schedule,
+                localizations.translate('accepted_date') ?? 'Accepted date',
+                _formatDate(_consentStatus!.consentTimestamp!),
+              ),
+
+            const SizedBox(height: 16),
+
+            // Статус принятия
+            _buildStatusIndicator(localizations),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка со статусом
+  Widget _buildStatusCard(AppLocalizations localizations) {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+    final savedVersion = _getSavedVersion();
+
+    return Card(
+      color: AppConstants.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: AppConstants.primaryColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  localizations.translate('status_information') ?? 'Status Information',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            if (savedVersion != null) ...[
+              _buildInfoRow(
+                Icons.history,
+                localizations.translate('your_version') ?? 'Your version',
+                savedVersion,
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Описание статуса
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _getStatusColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _getStatusColor(),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _getStatusIcon(),
+                        color: _getStatusColor(),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _getStatusTitle(localizations),
+                        style: TextStyle(
+                          color: _getStatusColor(),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _getStatusDescription(localizations),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.8),
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    return Column(
+  /// Кнопка для чтения документа
+  Widget _buildReadDocumentButton(AppLocalizations localizations) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _openDocumentForReading,
+        icon: const Icon(
+          Icons.visibility,
+          color: Colors.white,
+          size: 20,
+        ),
+        label: Text(
+          localizations.translate('read_document') ?? 'Read Document',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppConstants.primaryColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Индикатор статуса
+  Widget _buildStatusIndicator(AppLocalizations localizations) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _getStatusColor().withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _getStatusColor(),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _getStatusIcon(),
+            color: _getStatusColor(),
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _getStatusTitle(localizations),
+            style: TextStyle(
+              color: _getStatusColor(),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Строка с информацией
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Информация о текущей версии
-        _buildCurrentVersionHeader(localizations),
-
-        // Список версий
+        Icon(
+          icon,
+          size: 16,
+          color: AppConstants.textColor.withOpacity(0.7),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 100,
+          child: Text(
+            '$label:',
+            style: TextStyle(
+              color: AppConstants.textColor.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+        ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _versions.length,
-            itemBuilder: (context, index) {
-              return _buildVersionCard(_versions[index], localizations, index);
-            },
+          child: Text(
+            value,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ИСПРАВЛЕННЫЙ МЕТОД: Показывает статус конкретного документа
-  Widget _buildCurrentVersionHeader(AppLocalizations localizations) {
+  /// Получает цвет статуса
+  Color _getStatusColor() {
     final needsUpdate = _needsUpdate();
     final isAccepted = _isDocumentAccepted();
 
-    return Container(
-      width: double.infinity,
-      color: AppConstants.primaryColor.withOpacity(0.1),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            localizations.translate('current_version') ?? 'Current version',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                isAccepted && !needsUpdate ? Icons.check_circle : Icons.warning,
-                color:
-                    isAccepted && !needsUpdate
-                        ? AppConstants.primaryColor
-                        : Colors.orange,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _getCurrentVersion(),
-                style: TextStyle(
-                  color:
-                      isAccepted && !needsUpdate
-                          ? AppConstants.primaryColor
-                          : Colors.orange,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // НОВАЯ ЛОГИКА: Показываем статус конкретного документа
-          if (!isAccepted)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.close, color: Colors.red, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Не принято',
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (needsUpdate)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.orange, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.update, color: Colors.orange, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Требуется обновление',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.green, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check, color: Colors.green, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Принято',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVersionCard(
-    DocumentVersion version,
-    AppLocalizations localizations,
-    int index,
-  ) {
-    final isCurrent = version.version == _getCurrentVersion();
-
-    return Card(
-      color: AppConstants.cardColor,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side:
-            isCurrent
-                ? BorderSide(color: AppConstants.primaryColor, width: 2)
-                : BorderSide.none,
-      ),
-      child: Column(
-        children: [
-          // Основная информация о версии
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Заголовок версии
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            isCurrent
-                                ? AppConstants.primaryColor
-                                : AppConstants.textColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        '${localizations.translate('version') ?? 'Version'} ${version.version}',
-                        style: TextStyle(
-                          color:
-                              isCurrent ? Colors.white : AppConstants.textColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (isCurrent)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green, width: 1),
-                        ),
-                        child: Text(
-                          localizations.translate('current') ?? 'Current',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    if (!isCurrent)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange, width: 1),
-                        ),
-                        child: Text(
-                          localizations.translate('archived_version') ??
-                              'Archived Version',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Информация о версии
-                _buildVersionInfoRow(
-                  Icons.calendar_today,
-                  localizations.translate('release_date') ?? 'Release date',
-                  _formatDate(version.releaseDate),
-                ),
-
-                if (version.description != null) ...[
-                  const SizedBox(height: 8),
-                  _buildVersionInfoRow(
-                    Icons.description,
-                    localizations.translate('description') ?? 'Description',
-                    version.description!,
-                  ),
-                ],
-
-                if (version.hash != null) ...[
-                  const SizedBox(height: 8),
-                  _buildVersionInfoRow(
-                    Icons.fingerprint,
-                    localizations.translate('hash') ?? 'Hash',
-                    version.hash!,
-                  ),
-                ],
-
-                // ИСПРАВЛЕНО: Показываем правильный язык документа
-                _buildVersionInfoRow(
-                  Icons.language,
-                  localizations.translate('language') ?? 'Language',
-                  _getLanguageDisplayName(version.language),
-                ),
-              ],
-            ),
-          ),
-
-          // Кнопка "Прочитать" с локализацией
-          const Divider(height: 1, color: Colors.white10),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _openDocumentForReading(version),
-                icon: Icon(
-                  isCurrent ? Icons.visibility : Icons.history_edu,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                label: Text(
-                  localizations.translate('read') ?? 'Read',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isCurrent ? AppConstants.primaryColor : Colors.orange,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// НОВЫЙ МЕТОД: Получает читаемое название языка
-  String _getLanguageDisplayName(String languageCode) {
-    switch (languageCode.toLowerCase()) {
-      case 'ru':
-        return 'RU';
-      case 'en':
-        return 'EN';
-      default:
-        return languageCode.toUpperCase();
+    if (!isAccepted) {
+      return Colors.red;
+    } else if (needsUpdate) {
+      return Colors.orange;
+    } else {
+      return Colors.green;
     }
   }
 
-  Widget _buildVersionInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: AppConstants.textColor.withOpacity(0.7)),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 12,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  /// Получает иконку статуса
+  IconData _getStatusIcon() {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+
+    if (!isAccepted) {
+      return Icons.close;
+    } else if (needsUpdate) {
+      return Icons.update;
+    } else {
+      return Icons.check;
+    }
   }
 
+  /// Получает заголовок статуса
+  String _getStatusTitle(AppLocalizations localizations) {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+
+    if (!isAccepted) {
+      return localizations.translate('not_accepted') ?? 'Not Accepted';
+    } else if (needsUpdate) {
+      return localizations.translate('update_required') ?? 'Update Required';
+    } else {
+      return localizations.translate('accepted') ?? 'Accepted';
+    }
+  }
+
+  /// Получает описание статуса
+  String _getStatusDescription(AppLocalizations localizations) {
+    final needsUpdate = _needsUpdate();
+    final isAccepted = _isDocumentAccepted();
+
+    if (!isAccepted) {
+      return localizations.translate('document_not_accepted_desc') ??
+          'You have not accepted this document yet. Please read and accept it to continue using the app.';
+    } else if (needsUpdate) {
+      return localizations.translate('document_update_required_desc') ??
+          'This document has been updated. Please review the new version and accept the changes.';
+    } else {
+      return localizations.translate('document_accepted_desc') ??
+          'You have accepted the current version of this document.';
+    }
+  }
+
+  /// Форматирует дату
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-  }
-}
-
-/// Просмотр архивных версий документов с правильным языком
-class ArchivedDocumentViewerScreen extends StatefulWidget {
-  final String documentType;
-  final String version;
-  final String documentTitle;
-
-  const ArchivedDocumentViewerScreen({
-    super.key,
-    required this.documentType,
-    required this.version,
-    required this.documentTitle,
-  });
-
-  @override
-  State<ArchivedDocumentViewerScreen> createState() =>
-      _ArchivedDocumentViewerScreenState();
-}
-
-class _ArchivedDocumentViewerScreenState
-    extends State<ArchivedDocumentViewerScreen> {
-  String _documentText = '';
-  bool _isLoading = true;
-  bool _hasLoadedOnce = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // НЕ загружаем документ здесь!
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Загружаем только один раз
-    if (!_hasLoadedOnce) {
-      _hasLoadedOnce = true;
-      _loadArchivedDocument();
-    }
-  }
-
-  Future<void> _loadArchivedDocument() async {
-    if (!mounted) return;
-
-    try {
-      final localizations = AppLocalizations.of(context);
-      final languageCode = localizations.locale.languageCode;
-
-      // Формируем путь к архивному файлу
-      final fileName =
-          'assets/${widget.documentType}/${widget.documentType}_${languageCode}_v${widget.version}.txt';
-
-      debugPrint('🔍 Загружаем архивный документ: $fileName');
-
-      String documentText;
-      try {
-        documentText = await rootBundle.loadString(fileName);
-        debugPrint('✅ Успешно загружен архивный документ: $fileName');
-      } catch (e) {
-        debugPrint('❌ Не удалось загрузить $fileName: $e');
-        // Если архивная версия не найдена, пробуем загрузить текущую
-        try {
-          final currentFileName =
-              'assets/${widget.documentType}/${widget.documentType}_$languageCode.txt';
-          documentText = await rootBundle.loadString(currentFileName);
-          debugPrint('✅ Загружена текущая версия как замена: $currentFileName');
-        } catch (e2) {
-          debugPrint('❌ Не удалось загрузить и текущую версию: $e2');
-          throw Exception(
-            localizations.translate('document_loading_error') ??
-                'Failed to load document',
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _documentText = documentText;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Критическая ошибка при загрузке архивного документа: $e');
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        setState(() {
-          _documentText =
-              '${localizations.translate('document_loading_error') ?? 'Error loading archived document'}\n\n${localizations.translate('error') ?? 'Error'}: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.documentTitle,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              '${localizations.translate('version') ?? 'Version'} ${widget.version}',
-              style: TextStyle(
-                color: AppConstants.textColor.withOpacity(0.7),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppConstants.textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  color: AppConstants.primaryColor,
-                ),
-              )
-              : Column(
-                children: [
-                  // ВОДЯНОЙ ЗНАК "Архивная версия" с локализацией
-                  Container(
-                    width: double.infinity,
-                    color: Colors.orange.withOpacity(0.1),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.archive, color: Colors.orange, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${localizations.translate('archived_version') ?? 'Archived version'} ${widget.version}',
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orange, width: 1),
-                          ),
-                          child: Text(
-                            localizations.translate('read_only') ?? 'Read only',
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Содержимое документа
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.1,
-                            ),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          _documentText,
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                            height: 1.6,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-    );
   }
 }
