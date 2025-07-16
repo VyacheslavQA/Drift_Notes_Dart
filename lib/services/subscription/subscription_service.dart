@@ -181,7 +181,7 @@ class SubscriptionService {
   }
 
   // ========================================
-  // ОСНОВНЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ
+  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Основной метод проверки возможности создания контента
@@ -197,9 +197,14 @@ class SubscriptionService {
         return false;
       }
 
-      // Используем новую Firebase систему
-      final limitCheck = await firebaseService.canCreateItem(_getFirebaseItemType(contentType));
-      return limitCheck['canProceed'] ?? false;
+      // ✅ ИСПРАВЛЕНО: Используем новый метод с правильным подсчетом
+      final currentUsage = await getCurrentUsage(contentType);
+      final limit = getLimit(contentType);
+
+      final canCreate = currentUsage < limit;
+
+      debugPrint('🔍 canCreateContent: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
+      return canCreate;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки возможности создания контента: $e');
@@ -230,9 +235,14 @@ class SubscriptionService {
         }
       }
 
-      // 3. Используем новую систему Firebase для проверки лимитов
-      final canCreate = await firebaseService.canCreateItem(_getFirebaseItemType(contentType));
-      return canCreate['canProceed'] ?? false;
+      // 3. ✅ ИСПРАВЛЕНО: Используем новый метод правильного подсчета
+      final currentUsage = await getCurrentUsage(contentType);
+      final limit = getLimit(contentType);
+
+      final canCreate = currentUsage < limit;
+
+      debugPrint('🔍 canCreateContentOffline: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
+      return canCreate;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка проверки офлайн создания контента: $e');
@@ -245,12 +255,11 @@ class SubscriptionService {
   /// ✅ ИСПРАВЛЕНО: Получение детальной информации о статусе использования
   Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
     try {
-      final limitCheck = await firebaseService.canCreateItem(_getFirebaseItemType(contentType));
-
-      final canCreate = limitCheck['canProceed'] ?? false;
-      final currentUsage = limitCheck['currentCount'] ?? 0;
-      final maxLimit = limitCheck['maxLimit'] ?? 0;
-      final remaining = limitCheck['remaining'] ?? 0;
+      // ✅ ИСПРАВЛЕНО: Используем правильный подсчет вместо Firebase canCreateItem
+      final currentUsage = await getCurrentUsage(contentType);
+      final maxLimit = getLimit(contentType);
+      final remaining = maxLimit - currentUsage;
+      final canCreate = currentUsage < maxLimit;
 
       // Определяем тип предупреждения
       OfflineLimitWarningType warningType;
@@ -266,6 +275,8 @@ class SubscriptionService {
         warningType = OfflineLimitWarningType.normal;
         message = 'Доступно $remaining ${_getContentTypeName(contentType)}';
       }
+
+      debugPrint('🔍 checkOfflineUsage: $contentType, current=$currentUsage, limit=$maxLimit, remaining=$remaining, canCreate=$canCreate');
 
       return OfflineUsageResult(
         canCreate: canCreate,
@@ -294,6 +305,91 @@ class SubscriptionService {
   }
 
   // ========================================
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК
+  // ========================================
+
+  /// ✅ ИСПРАВЛЕНО: Получение текущего использования с правильным подсчетом всех заметок
+  Future<int> getCurrentUsage(ContentType contentType) async {
+    try {
+      debugPrint('🔍 getCurrentUsage: начинаем подсчет для $contentType');
+
+      final userId = firebaseService.currentUserId;
+      if (userId == null) {
+        debugPrint('❌ getCurrentUsage: пользователь не авторизован');
+        return 0;
+      }
+
+      int totalCount = 0;
+
+      // 1. ✅ ИСПРАВЛЕНО: Считаем РЕАЛЬНЫЕ заметки из Firebase subcollections
+      final hasNetwork = await NetworkUtils.isNetworkAvailable();
+      if (hasNetwork) {
+        try {
+          int onlineCount = 0;
+
+          switch (contentType) {
+            case ContentType.fishingNotes:
+              final snapshot = await firebaseService.getUserFishingNotesNew();
+              onlineCount = snapshot.docs.length;
+              break;
+            case ContentType.markerMaps:
+              final snapshot = await firebaseService.getUserMarkerMaps();
+              onlineCount = snapshot.docs.length;
+              break;
+            case ContentType.budgetNotes:
+              final snapshot = await firebaseService.getUserBudgetNotes();
+              onlineCount = snapshot.docs.length;
+              break;
+            case ContentType.depthChart:
+              onlineCount = 0; // Пока не реализовано
+              break;
+          }
+
+          totalCount += onlineCount;
+          debugPrint('📊 getCurrentUsage: онлайн $contentType = $onlineCount');
+        } catch (e) {
+          debugPrint('❌ getCurrentUsage: ошибка подсчета онлайн заметок: $e');
+        }
+      }
+
+      // 2. ✅ ИСПРАВЛЕНО: Считаем ОФЛАЙН заметки из локального хранилища
+      try {
+        int offlineCount = 0;
+
+        switch (contentType) {
+          case ContentType.fishingNotes:
+            final offlineNotes = await _offlineStorage.getOfflineFishingNotes(userId);
+            offlineCount = offlineNotes.length;
+            break;
+          case ContentType.markerMaps:
+            final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
+            // Фильтруем по userId
+            offlineCount = offlineMaps.where((map) => map['userId'] == userId).length;
+            break;
+          case ContentType.budgetNotes:
+            final offlineBudgetNotes = await _offlineStorage.getOfflineBudgetNotes(userId);
+            offlineCount = offlineBudgetNotes.length;
+            break;
+          case ContentType.depthChart:
+            offlineCount = 0; // Пока не реализовано
+            break;
+        }
+
+        totalCount += offlineCount;
+        debugPrint('📊 getCurrentUsage: офлайн $contentType = $offlineCount');
+      } catch (e) {
+        debugPrint('❌ getCurrentUsage: ошибка подсчета офлайн заметок: $e');
+      }
+
+      debugPrint('✅ getCurrentUsage: итого $contentType = $totalCount');
+      return totalCount;
+    } catch (e) {
+      debugPrint('❌ getCurrentUsage: критическая ошибка подсчета: $e');
+      return 0;
+    }
+  }
+
+  // ========================================
   // МЕТОДЫ РАБОТЫ СО СЧЕТЧИКАМИ
   // ========================================
 
@@ -308,18 +404,10 @@ class SubscriptionService {
         return true;
       }
 
-      // Для ВСЕХ остальных пользователей - увеличиваем счетчики
-      final success = await firebaseService.incrementUsageCount(_getFirebaseItemType(contentType));
-
-      if (kDebugMode) {
-        if (success) {
-          debugPrint('📈 Счетчик увеличен для $contentType');
-        } else {
-          debugPrint('❌ Не удалось увеличить счетчик $contentType');
-        }
-      }
-
-      return success;
+      // ✅ ИСПРАВЛЕНО: Убираем увеличение счетчика в Firebase
+      // Теперь мы считаем реальные заметки, а не счетчики
+      debugPrint('✅ incrementUsage: счетчик $contentType (теперь считаем реальные заметки)');
+      return true;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка увеличения счетчика использования: $e');
@@ -331,34 +419,15 @@ class SubscriptionService {
   /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика использования
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
-      // Используем офлайн сторадж для уменьшения (пока Firebase не поддерживает decrement)
-      await _offlineStorage.decrementLocalUsage(contentType);
-
-      if (kDebugMode) {
-        final localCount = await _offlineStorage.getLocalUsageCount(contentType);
-        debugPrint('📉 Уменьшен офлайн счетчик $contentType: локально=$localCount');
-      }
-
+      // ✅ ИСПРАВЛЕНО: Убираем уменьшение счетчика
+      // Теперь мы считаем реальные заметки, а не счетчики
+      debugPrint('✅ decrementUsage: счетчик $contentType (теперь считаем реальные заметки)');
       return true;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка уменьшения счетчика использования: $e');
       }
       return false;
-    }
-  }
-
-  /// ✅ ИСПРАВЛЕНО: Получение текущего использования
-  Future<int> getCurrentUsage(ContentType contentType) async {
-    try {
-      final stats = await firebaseService.getUsageStatistics();
-      final firebaseKey = _getFirebaseItemType(contentType);
-      return stats[firebaseKey] ?? 0;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения текущего использования: $e');
-      }
-      return 0;
     }
   }
 
@@ -401,12 +470,24 @@ class SubscriptionService {
   /// ✅ ИСПРАВЛЕНО: Получение статистики использования
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
-      return await firebaseService.getUsageStatistics();
+      // ✅ ИСПРАВЛЕНО: Возвращаем реальные подсчеты вместо счетчиков Firebase
+      final fishingNotesCount = await getCurrentUsage(ContentType.fishingNotes);
+      final markerMapsCount = await getCurrentUsage(ContentType.markerMaps);
+      final budgetNotesCount = await getCurrentUsage(ContentType.budgetNotes);
+
+      return {
+        SubscriptionConstants.notesCountField: fishingNotesCount,
+        SubscriptionConstants.markerMapsCountField: markerMapsCount,
+        SubscriptionConstants.budgetNotesCountField: budgetNotesCount,
+        SubscriptionConstants.lastResetDateField: DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+        'exists': true,
+      };
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка получения статистики: $e');
+        debugPrint('❌ Ошибка получения статистики использования: $e');
       }
-      return {};
+      return {'exists': false, 'error': e.toString()};
     }
   }
 
@@ -597,13 +678,16 @@ class SubscriptionService {
       final userId = firebaseService.currentUserId;
       if (userId == null) return null;
 
-      final stats = await firebaseService.getUsageStatistics();
+      // ✅ ИСПРАВЛЕНО: Используем реальные подсчеты вместо счетчиков Firebase
+      final fishingNotesCount = await getCurrentUsage(ContentType.fishingNotes);
+      final markerMapsCount = await getCurrentUsage(ContentType.markerMaps);
+      final budgetNotesCount = await getCurrentUsage(ContentType.budgetNotes);
 
       return UsageLimitsModel(
         userId: userId,
-        notesCount: stats['notesCount'] ?? 0,
-        markerMapsCount: stats['markerMapsCount'] ?? 0,
-        budgetNotesCount: stats['budgetNotesCount'] ?? 0, // ✅ ИСПРАВЛЕНО: используем budgetNotesCount
+        notesCount: fishingNotesCount,
+        markerMapsCount: markerMapsCount,
+        budgetNotesCount: budgetNotesCount, // ✅ ИСПРАВЛЕНО: используем budgetNotesCount
         lastResetDate: DateTime.now(),
         updatedAt: DateTime.now(),
       );

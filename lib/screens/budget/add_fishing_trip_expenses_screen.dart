@@ -308,33 +308,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  /// 🔥 УНИФИКАЦИЯ: Приведение к единому стандарту с другими экранами
+  /// ✅ ИСПРАВЛЕНО: Убрано предупреждающее окно - только проверка жесткого лимита
   Future<bool> _checkLimitsBeforeCreating() async {
     final localizations = AppLocalizations.of(context);
 
     try {
-      debugPrint('🔍 Проверка лимитов через единую систему Firebase...');
+      debugPrint('🔍 Проверка лимитов для заметок бюджета...');
 
-      // 🔥 УНИФИКАЦИЯ: Прямая проверка через новую Firebase систему как в других экранах
-      final limitCheck = await _firebaseService.canCreateItem('expensesCount');
-
-      final canCreate = limitCheck['canProceed'] ?? false;
-      final currentCount = limitCheck['currentCount'] ?? 0;
-      final maxLimit = limitCheck['maxLimit'] ?? 0;
-      final remaining = limitCheck['remaining'] ?? 0;
+      // ✅ ИСПРАВЛЕНО: Используем новую систему через SubscriptionService
+      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.budgetNotes);
 
       debugPrint('✅ Результат проверки лимитов: canCreate=$canCreate');
-      debugPrint('📊 Статистика: $currentCount/$maxLimit (осталось: $remaining)');
 
       if (!canCreate) {
-        debugPrint('❌ Превышен лимит создания поездок');
+        debugPrint('❌ Превышен лимит создания заметок бюджета');
 
-        // Показываем Paywall экран
+        // ✅ ИСПРАВЛЕНО: Показываем Paywall для правильного типа контента
         await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PaywallScreen(
-              contentType: 'expenses',
+              contentType: 'budgetNotes',
               blockedFeature: localizations.translate('fishing_expenses') ?? 'Расходы на рыбалку',
             ),
           ),
@@ -343,30 +337,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         return false;
       }
 
-      // Показываем предупреждение если близко к лимиту (осталось 2 или меньше)
-      if (remaining <= 2 && remaining > 0) {
-        debugPrint('⚠️ Предупреждение: осталось $remaining поездок');
-
-        final shouldContinue = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(localizations.translate('warning') ?? 'Предупреждение'),
-            content: Text('Осталось $remaining ${remaining == 1 ? 'поездка' : 'поездки'} из $maxLimit'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(localizations.translate('cancel') ?? 'Отмена'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(localizations.translate('continue') ?? 'Продолжить'),
-              ),
-            ],
-          ),
-        );
-
-        return shouldContinue ?? false;
-      }
+      // ✅ УБРАНО: Предупреждающее окно "Осталось X заметок из Y"
+      // Теперь пользователь может создавать заметки без раздражающих предупреждений
+      // Жесткий лимит все еще работает - при превышении покажется PaywallScreen
 
       return true;
     } catch (e) {
@@ -399,7 +372,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         // Редактируем существующую поездку - проверка лимитов не нужна
         await _updateExistingTrip();
       } else {
-        // 🔥 УНИФИКАЦИЯ: Проверяем лимиты через единую систему ПЕРЕД созданием новой поездки
+        // ✅ ИСПРАВЛЕНО: Проверяем лимиты через правильную систему ПЕРЕД созданием новой поездки
         final canCreate = await _checkLimitsBeforeCreating();
         if (!canCreate) {
           return; // Пользователь отменил создание или превышен лимит
@@ -408,7 +381,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         // Создаем новую поездку
         await _createNewTrip();
 
-        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после создания поездки
+        // ✅ КРИТИЧЕСКИ ВАЖНО: Обновляем SubscriptionProvider после создания поездки
         try {
           final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
           await subscriptionProvider.refreshUsageData();
@@ -450,7 +423,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => PaywallScreen(
-                contentType: 'expenses',
+                contentType: 'budgetNotes',
                 blockedFeature: localizations.translate('fishing_expenses') ?? 'Расходы на рыбалку',
               ),
             ),

@@ -140,6 +140,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       debugPrint('🚀 Инициализация HomeScreen с поддержкой офлайн режима...');
 
+      // ✅ ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ:
+      _subscriptionService.setFirebaseService(_firebaseService);
+      debugPrint('🔗 FirebaseService установлен в SubscriptionService');
+
       // Проверяем подключение к сети
       _hasNetworkConnection = await NetworkUtils.isNetworkAvailable();
       debugPrint('🌐 Состояние сети: ${_hasNetworkConnection ? "онлайн" : "офлайн"}');

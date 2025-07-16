@@ -12,9 +12,12 @@ import '../../widgets/loading_overlay.dart';
 import '../../localization/app_localizations.dart';
 import 'fishing_type_selection_screen.dart';
 import 'fishing_note_detail_screen.dart';
-// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+// ✅ ИСПРАВЛЕНО: Добавляем импорты для новой системы лимитов
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
+import '../../services/subscription/subscription_service.dart';
+import '../../constants/subscription_constants.dart';
+import '../subscription/paywall_screen.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({super.key});
@@ -25,8 +28,9 @@ class FishingNotesListScreen extends StatefulWidget {
 
 class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     with SingleTickerProviderStateMixin {
-  // ✅ УПРОЩЕНО: Используем только Repository
+  // ✅ ИСПРАВЛЕНО: Добавляем сервис для проверки лимитов
   final _fishingNoteRepository = FishingNoteRepository();
+  final _subscriptionService = SubscriptionService();
 
   List<FishingNoteModel> _notes = [];
   bool _isLoading = true;
@@ -48,7 +52,6 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    // ✅ УПРОЩЕНО: Сразу загружаем заметки
     _loadNotes();
   }
 
@@ -58,7 +61,6 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     super.dispose();
   }
 
-  // ✅ УПРОЩЕНО: Простая загрузка заметок
   Future<void> _loadNotes() async {
     if (!mounted) return;
 
@@ -93,7 +95,6 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
-  // Обработка ошибок с более понятными сообщениями
   String _getErrorMessage(dynamic error) {
     final localizations = AppLocalizations.of(context);
 
@@ -109,42 +110,87 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
-  // ✅ УПРОЩЕНО: Простое создание новой заметки без проверок лимитов
+  // ✅ ИСПРАВЛЕНО: Правильная проверка лимитов перед созданием заметки
   Future<void> _addNewNote() async {
-    debugPrint('📝 FishingNotesListScreen: Переходим к созданию новой заметки...');
+    final localizations = AppLocalizations.of(context);
 
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const FishingTypeSelectionScreen(),
-      ),
-    );
+    try {
+      debugPrint('🔍 FishingNotesListScreen: Проверяем лимиты перед созданием...');
 
-    if (result == true && mounted) {
-      debugPrint('✅ FishingNotesListScreen: Заметка создана, обновляем список...');
+      // ✅ ИСПРАВЛЕНО: Проверяем лимиты с использованием новой системы
+      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
 
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после создания заметки
-      try {
-        final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
-        await subscriptionProvider.refreshUsageData();
-        debugPrint('✅ SubscriptionProvider обновлен после создания заметки');
-      } catch (e) {
-        debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
-        // Не прерываем выполнение, заметка уже создана
+      debugPrint('📊 FishingNotesListScreen: Результат проверки лимитов: canCreate=$canCreate');
+
+      if (!canCreate) {
+        debugPrint('❌ FishingNotesListScreen: Лимит достигнут - показываем Paywall');
+
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaywallScreen(
+                contentType: 'fishing_notes',
+                blockedFeature: 'Заметки рыбалки',
+              ),
+            ),
+          );
+        }
+        return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context).translate('note_created_successfully'),
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
+      debugPrint('✅ FishingNotesListScreen: Лимиты пройдены - переходим к созданию');
+
+      // ✅ ИСПРАВЛЕНО: Переходим к созданию только после проверки лимитов
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FishingTypeSelectionScreen(),
         ),
       );
 
-      // Обновляем список заметок
-      await _loadNotes();
+      if (result == true && mounted) {
+        debugPrint('✅ FishingNotesListScreen: Заметка создана, обновляем данные...');
+
+        // ✅ ИСПРАВЛЕНО: Обновляем SubscriptionProvider после создания заметки
+        try {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ FishingNotesListScreen: SubscriptionProvider обновлен');
+        } catch (e) {
+          debugPrint('❌ FishingNotesListScreen: Ошибка обновления SubscriptionProvider: $e');
+        }
+
+        // Показываем сообщение об успешном создании
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                localizations.translate('note_created_successfully'),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Обновляем список заметок
+        await _loadNotes();
+      }
+    } catch (e) {
+      debugPrint('❌ FishingNotesListScreen: Ошибка при создании заметки: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${localizations.translate('error_creating_note')}: ${e.toString()}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -221,13 +267,69 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
           ),
         ),
       ),
-      // ✅ УПРОЩЕНО: Простая кнопка создания заметки
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewNote,
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        heroTag: "add_fishing_note",
-        child: const Icon(Icons.add, size: 28),
+      // ✅ ИСПРАВЛЕНО: Floating Action Button с проверкой лимитов
+      floatingActionButton: Consumer<SubscriptionProvider>(
+        builder: (context, subscriptionProvider, child) {
+          final canCreate = subscriptionProvider.canCreateContentSync(ContentType.fishingNotes);
+          final usage = subscriptionProvider.getUsage(ContentType.fishingNotes) ?? 0;
+          final limit = subscriptionProvider.getLimit(ContentType.fishingNotes);
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              FloatingActionButton(
+                onPressed: _addNewNote,
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+                heroTag: "add_fishing_note",
+                child: const Icon(Icons.add, size: 28),
+              ),
+              // ✅ ИСПРАВЛЕНО: Показываем индикатор лимитов на FAB
+              if (!subscriptionProvider.hasPremiumAccess) ...[
+                // Индикатор блокировки
+                if (!canCreate)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.lock,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                // Индикатор использования
+                if (canCreate)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: subscriptionProvider.getUsageIndicatorColor(ContentType.fishingNotes),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$usage/$limit',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -327,34 +429,82 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               ),
               SizedBox(height: ResponsiveConstants.spacingXL),
 
-              // ✅ УПРОЩЕНО: Простая кнопка создания
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addNewNote,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+              // ✅ ИСПРАВЛЕНО: Кнопка создания с проверкой лимитов
+              Consumer<SubscriptionProvider>(
+                builder: (context, subscriptionProvider, child) {
+                  final canCreate = subscriptionProvider.canCreateContentSync(ContentType.fishingNotes);
+                  final usage = subscriptionProvider.getUsage(ContentType.fishingNotes) ?? 0;
+                  final limit = subscriptionProvider.getLimit(ContentType.fishingNotes);
+
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _addNewNote,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        foregroundColor: AppConstants.textColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 20 : 24,
+                          vertical: 16,
+                        ),
+                      ),
+                      icon: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            size: isSmallScreen ? 20 : 24,
+                          ),
+                          // Индикатор лимитов
+                          if (!subscriptionProvider.hasPremiumAccess && !canCreate)
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.lock,
+                                  color: Colors.white,
+                                  size: 8,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      label: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            localizations.translate('create_first_note'),
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          // Показываем лимиты для бесплатных пользователей
+                          if (!subscriptionProvider.hasPremiumAccess)
+                            Text(
+                              canCreate
+                                  ? '($usage/$limit)'
+                                  : '(${localizations.translate('limit_reached')})',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 10 : 12,
+                                color: AppConstants.textColor.withValues(alpha: 0.7),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 20 : 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  icon: Icon(
-                    Icons.add,
-                    size: isSmallScreen ? 20 : 24,
-                  ),
-                  label: Text(
-                    localizations.translate('create_first_note'),
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 14 : 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -363,6 +513,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
   }
 
+  // Остальные методы остаются без изменений...
   Widget _buildNoteCard(FishingNoteModel note) {
     final localizations = AppLocalizations.of(context);
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);

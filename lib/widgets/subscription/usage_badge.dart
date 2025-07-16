@@ -1,15 +1,15 @@
 // Путь: lib/widgets/subscription/usage_badge.dart
 
 import 'package:flutter/material.dart';
-import '../../models/subscription_model.dart';
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 import '../../constants/subscription_constants.dart';
-import '../../services/subscription/subscription_service.dart';
-import '../../services/firebase/firebase_service.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 
-/// ✅ УПРОЩЕННЫЙ универсальный виджет для отображения текущего использования лимитов
-class UsageBadge extends StatefulWidget {
+/// ✅ ИСПРАВЛЕННЫЙ универсальный виджет для отображения текущего использования лимитов
+/// Теперь работает через SubscriptionProvider
+class UsageBadge extends StatelessWidget {
   final ContentType contentType;
   final BadgeVariant variant;
   final double? fontSize;
@@ -30,118 +30,37 @@ class UsageBadge extends StatefulWidget {
   });
 
   @override
-  State<UsageBadge> createState() => _UsageBadgeState();
-}
-
-class _UsageBadgeState extends State<UsageBadge> {
-  final SubscriptionService _subscriptionService = SubscriptionService();
-  final FirebaseService _firebaseService = FirebaseService();
-
-  int _currentUsage = 0;
-  int _limit = 0;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUsageData();
-  }
-
-  /// ✅ УПРОЩЕННЫЙ: Единый метод загрузки данных через новую Firebase систему
-  Future<void> _loadUsageData() async {
-    try {
-      debugPrint('🔄 UsageBadge: Загрузка данных для ${widget.contentType}');
-
-      // 1. Получаем лимит (синхронно)
-      final limit = _subscriptionService.getLimit(widget.contentType);
-
-      // 2. ✅ ИСПРАВЛЕНО: Получаем текущее использование через новую Firebase систему
-      final currentUsage = await _getCurrentUsageFromFirebase();
-
-      debugPrint('📊 UsageBadge: ${widget.contentType} = $currentUsage/$limit');
-
-      if (mounted) {
-        setState(() {
-          _currentUsage = currentUsage;
-          _limit = limit;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ UsageBadge: Ошибка загрузки данных: $e');
-
-      if (mounted) {
-        setState(() {
-          _currentUsage = 0;
-          _limit = _subscriptionService.getLimit(widget.contentType);
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  /// ✅ УПРОЩЕННЫЙ: Единый метод получения текущего использования
-  Future<int> _getCurrentUsageFromFirebase() async {
-    try {
-      // Получаем статистику напрямую из Firebase
-      final stats = await _firebaseService.getUsageStatistics();
-
-      // Преобразуем ContentType в ключ Firebase
-      final String firebaseKey = _getFirebaseKey(widget.contentType);
-
-      final currentUsage = stats[firebaseKey] ?? 0;
-      debugPrint('🔥 Firebase stats[$firebaseKey] = $currentUsage');
-
-      return currentUsage;
-    } catch (e) {
-      debugPrint('❌ Ошибка получения статистики из Firebase: $e');
-      return 0;
-    }
-  }
-
-  /// ✅ ИСПРАВЛЕНО: Преобразование ContentType в ключ Firebase
-  String _getFirebaseKey(ContentType contentType) {
-    switch (contentType) {
-      case ContentType.fishingNotes:
-        return 'notesCount';
-      case ContentType.markerMaps:
-        return 'markerMapsCount';
-      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
-        return 'budgetNotesCount';
-      case ContentType.depthChart:
-        return 'depthChartCount';
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<SubscriptionModel>(
-      stream: _subscriptionService.subscriptionStream,
-      builder: (context, snapshot) {
-        final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context);
 
+    return Consumer<SubscriptionProvider>(
+      builder: (context, subscriptionProvider, child) {
         // Если премиум - показываем специальный бадж
-        if (_subscriptionService.hasPremiumAccess()) {
+        if (subscriptionProvider.hasPremiumAccess) {
           return _buildPremiumBadge(localizations);
         }
 
         // Если загружается - показываем индикатор
-        if (_isLoading) {
+        if (subscriptionProvider.isLoading) {
           return _buildLoadingBadge();
         }
 
+        // Получаем данные из Provider
+        final currentUsage = subscriptionProvider.getUsage(contentType) ?? 0;
+        final limit = subscriptionProvider.getLimit(contentType);
+
         // Проверяем нужно ли показывать при приближении к лимиту
-        final usagePercent = _limit > 0 ? (_currentUsage / _limit * 100).round() : 0;
-        if (widget.showOnlyWhenNearLimit && usagePercent < 80) {
+        final usagePercent = limit > 0 ? (currentUsage / limit * 100).round() : 0;
+        if (showOnlyWhenNearLimit && usagePercent < 80) {
           return const SizedBox();
         }
 
         // Проверяем вариант отображения
-        switch (widget.variant) {
+        switch (variant) {
           case BadgeVariant.always:
-            return _buildUsageBadge(localizations, _currentUsage, _limit, usagePercent);
+            return _buildUsageBadge(localizations, currentUsage, limit, usagePercent);
           case BadgeVariant.compact:
-            return _buildCompactBadge(localizations, _currentUsage, _limit, usagePercent);
+            return _buildCompactBadge(localizations, currentUsage, limit, usagePercent);
           case BadgeVariant.hidden:
             return const SizedBox();
         }
@@ -151,15 +70,15 @@ class _UsageBadgeState extends State<UsageBadge> {
 
   Widget _buildLoadingBadge() {
     // Для скрытого варианта не показываем загрузку
-    if (widget.variant == BadgeVariant.hidden) {
+    if (variant == BadgeVariant.hidden) {
       return const SizedBox();
     }
 
-    final isCompact = widget.variant == BadgeVariant.compact;
-    final iconSize = isCompact ? 10.0 : widget.fontSize! + 2;
+    final isCompact = variant == BadgeVariant.compact;
+    final iconSize = isCompact ? 10.0 : fontSize! + 2;
 
     return Container(
-      padding: widget.padding,
+      padding: padding,
       decoration: BoxDecoration(
         color: Colors.grey.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
@@ -167,9 +86,9 @@ class _UsageBadgeState extends State<UsageBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.showIcon && !isCompact) ...[
+          if (showIcon && !isCompact) ...[
             Icon(
-              _getContentTypeIcon(widget.contentType),
+              _getContentTypeIcon(contentType),
               color: Colors.grey,
               size: iconSize,
             ),
@@ -190,16 +109,16 @@ class _UsageBadgeState extends State<UsageBadge> {
 
   Widget _buildPremiumBadge(AppLocalizations localizations) {
     // Для скрытого варианта не показываем премиум
-    if (widget.variant == BadgeVariant.hidden) {
+    if (variant == BadgeVariant.hidden) {
       return const SizedBox();
     }
 
-    final isCompact = widget.variant == BadgeVariant.compact;
-    final fontSize = isCompact ? 10.0 : widget.fontSize;
+    final isCompact = variant == BadgeVariant.compact;
+    final fontSize = isCompact ? 10.0 : this.fontSize;
     final iconSize = isCompact ? 12.0 : fontSize! + 2;
     final padding = isCompact
         ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2)
-        : widget.padding;
+        : this.padding;
 
     return Container(
       padding: padding,
@@ -219,7 +138,7 @@ class _UsageBadgeState extends State<UsageBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.showIcon && !isCompact) ...[
+          if (showIcon && !isCompact) ...[
             Icon(
               Icons.stars,
               color: Colors.white,
@@ -268,7 +187,7 @@ class _UsageBadgeState extends State<UsageBadge> {
     }
 
     return Container(
-      padding: widget.padding,
+      padding: padding,
       decoration: BoxDecoration(
         color: badgeColor,
         borderRadius: BorderRadius.circular(12),
@@ -283,21 +202,21 @@ class _UsageBadgeState extends State<UsageBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.showIcon) ...[
+          if (showIcon) ...[
             Icon(
-              _getContentTypeIcon(widget.contentType),
+              _getContentTypeIcon(contentType),
               color: textColor,
-              size: widget.fontSize! + 2,
+              size: fontSize! + 2,
             ),
             const SizedBox(width: 4),
           ],
           Text(
-            widget.showPercentage
+            showPercentage
                 ? '$usagePercent%'
                 : '$currentUsage/$limit',
             style: TextStyle(
               color: textColor,
-              fontSize: widget.fontSize,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -336,7 +255,7 @@ class _UsageBadgeState extends State<UsageBadge> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        widget.showPercentage
+        showPercentage
             ? '$usagePercent%'
             : '$currentUsage/$limit',
         style: TextStyle(
@@ -355,7 +274,7 @@ class _UsageBadgeState extends State<UsageBadge> {
         return Icons.note_alt;
       case ContentType.markerMaps:
         return Icons.map;
-      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+      case ContentType.budgetNotes:
         return Icons.account_balance_wallet;
       case ContentType.depthChart:
         return Icons.trending_up;
@@ -363,7 +282,7 @@ class _UsageBadgeState extends State<UsageBadge> {
   }
 }
 
-/// ✅ УПРОЩЕННЫЕ варианты значков (перенесены из premium_create_button.dart)
+/// ✅ УПРОЩЕННЫЕ варианты значков
 enum BadgeVariant {
   always,     // всегда показывать на основных экранах
   compact,    // компактный для кнопок

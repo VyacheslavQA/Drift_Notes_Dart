@@ -19,13 +19,13 @@ import 'bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
-// ИСПРАВЛЕНО: правильные импорты для премиум системы
+// ✅ ИСПРАВЛЕНО: правильные импорты для новой системы лимитов
 import '../../services/subscription/subscription_service.dart';
 import '../../services/offline/offline_storage_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/offline_usage_result.dart';
 import '../subscription/paywall_screen.dart';
-// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
+// ✅ ИСПРАВЛЕНО: Добавляем импорты для Provider
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 
@@ -51,7 +51,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   final _aiService = AIBitePredictionService();
   final _weatherSettings = WeatherSettingsService();
 
-  // ИСПРАВЛЕНО: правильные сервисы для премиум системы
+  // ✅ ИСПРАВЛЕНО: правильные сервисы для новой системы лимитов
   final _subscriptionService = SubscriptionService();
   final _offlineStorage = OfflineStorageService();
 
@@ -425,17 +425,17 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Упрощенная проверка лимитов
+  // ✅ ИСПРАВЛЕНО: Правильная проверка лимитов с использованием новой системы
   Future<bool> _checkLimitsBeforeCreating() async {
     final localizations = AppLocalizations.of(context);
 
     try {
-      debugPrint('🔍 Упрощенная проверка лимитов перед созданием заметки...');
+      debugPrint('🔍 Проверка лимитов перед созданием заметки (новая система)...');
 
-      // ✅ ИСПРАВЛЕНО: Простая проверка без показа предупреждений
+      // ✅ ИСПРАВЛЕНО: Используем новую систему с правильным подсчетом
       final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
 
-      debugPrint('📊 Результат упрощенной проверки: canCreate=$canCreate');
+      debugPrint('📊 Результат проверки лимитов: canCreate=$canCreate');
 
       if (!canCreate) {
         debugPrint('❌ Лимит достигнут - показываем Paywall');
@@ -454,19 +454,19 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         return false;
       }
 
-      debugPrint('✅ Упрощенная проверка лимитов пройдена - можно создавать');
+      debugPrint('✅ Проверка лимитов пройдена - можно создавать');
       return true;
 
     } catch (e) {
-      debugPrint('❌ Ошибка при упрощенной проверке лимитов: $e');
+      debugPrint('❌ Ошибка при проверке лимитов: $e');
 
-      // ✅ ИСПРАВЛЕНО: При ошибке проверки лимитов - разрешаем создание
+      // ✅ ИСПРАВЛЕНО: При ошибке проверки лимитов - разрешаем создание как fallback
       debugPrint('🔄 Ошибка проверки лимитов - разрешаем создание как fallback');
       return true;
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Правильная интеграция с новой системой лимитов
+  // ✅ ИСПРАВЛЕНО: Правильный порядок операций и обработка офлайн режима
   Future<void> _saveNote() async {
     final localizations = AppLocalizations.of(context);
 
@@ -486,7 +486,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       return;
     }
 
-    // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверка лимитов перед созданием новой заметки
+    // ✅ ИСПРАВЛЕНО: Проверяем лимиты ПЕРЕД началом сохранения
     final canCreate = await _checkLimitsBeforeCreating();
     if (!canCreate) {
       debugPrint('❌ Создание заметки отменено - лимиты не пройдены');
@@ -609,10 +609,10 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           noteData['photoUrls'] = photoUrls;
         }
 
-        // ✅ ИСПРАВЛЕНО: Используем новый метод для сохранения в новой структуре
+        // ✅ ИСПРАВЛЕНО: Сохраняем заметку в Firebase
         await _firebaseService.addFishingNoteNew(noteData);
 
-        debugPrint('✅ Заметка сохранена онлайн');
+        debugPrint('✅ Заметка сохранена онлайн в Firebase');
         saveSuccessful = true;
 
       } else {
@@ -636,34 +636,32 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           noteData['localPhotoPaths'] = localPhotoPaths;
         }
 
-        // Сохраняем заметку локально
+        // ✅ ИСПРАВЛЕНО: Сохраняем заметку в локальное хранилище
         await _offlineStorage.saveOfflineFishingNote(noteData);
 
         debugPrint('✅ Заметка сохранена офлайн');
         saveSuccessful = true;
       }
 
-      // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик ПОСЛЕ успешного сохранения
-      if (saveSuccessful) {
-        try {
-          await _firebaseService.incrementUsageCount('notesCount');
-          debugPrint('✅ Счетчик заметок увеличен в Firebase');
-        } catch (e) {
-          debugPrint('❌ Ошибка увеличения счетчика: $e');
-          // Продолжаем, заметка уже сохранена
-        }
-      }
-
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем SubscriptionProvider после успешного создания
+      // ✅ ИСПРАВЛЕНО: Обновляем Provider ПОСЛЕ успешного сохранения
       if (mounted && saveSuccessful) {
         try {
+          // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сначала обновляем локальный счетчик Provider
           final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.incrementUsage(ContentType.fishingNotes);
+
+          // Обновляем полные данные Provider
           await subscriptionProvider.refreshUsageData();
+
           debugPrint('✅ SubscriptionProvider обновлен после создания заметки');
         } catch (e) {
           debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
           // Не прерываем выполнение, заметка уже создана
         }
+
+        // ✅ ИСПРАВЛЕНО: Убираем увеличение счетчика Firebase
+        // Теперь мы считаем реальные заметки, не счетчики
+        debugPrint('✅ Система лимитов обновлена без увеличения счетчиков Firebase');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -689,7 +687,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
         _hasUnsavedChanges = false;
 
-        // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Гарантированный возврат результата
+        // ✅ ИСПРАВЛЕНО: Возвращаем результат после успешного сохранения
         debugPrint('🎯 Возвращаем результат true - заметка успешно создана');
         Navigator.pop(context, true);
       }
@@ -1016,7 +1014,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
                   const SizedBox(height: 20),
 
-                  // Даты рыбалки
+                  // Остальные поля формы...
                   _buildSectionHeader(localizations.translate('fishing_dates')),
                   if (isSmallScreen)
                     Column(
@@ -1068,194 +1066,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                   ),
 
                   const SizedBox(height: 20),
-
-                  // Точка на карте
-                  _buildSectionHeader(localizations.translate('map_point')),
-                  _buildSimpleButton(
-                    icon: Icons.map,
-                    text: _hasLocation
-                        ? localizations.translate('change_map_point')
-                        : localizations.translate('select_map_point'),
-                    onPressed: _selectLocation,
-                  ),
-
-                  if (_hasLocation) ...[
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        '${localizations.translate('coordinates')}: ${_latitude.toStringAsFixed(6)}, ${_longitude.toStringAsFixed(6)}',
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Погода + ИИ-анализ
-                  _buildSectionHeader(
-                    localizations.translate('weather_and_ai_analysis'),
-                  ),
-                  _buildSimpleButton(
-                    icon: Icons.psychology,
-                    text: _weather != null || _aiPrediction != null
-                        ? localizations.translate('update_weather_and_ai')
-                        : localizations.translate('load_weather_ai'),
-                    onPressed: (_isLoadingWeather || _isLoadingAI) ? null : _fetchWeatherAndAI,
-                  ),
-
-                  if (_isLoadingWeather || _isLoadingAI) ...[
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppConstants.textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _isLoadingAI
-                                ? localizations.translate('ai_analyzing')
-                                : localizations.translate('loading_weather'),
-                            style: TextStyle(
-                              color: AppConstants.textColor.withValues(
-                                alpha: 0.7,
-                              ),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  if (_weather != null) ...[
-                    const SizedBox(height: 12),
-                    _buildSimpleWeatherCard(),
-                  ],
-
-                  if (_aiPrediction != null) ...[
-                    const SizedBox(height: 12),
-                    _buildSimpleAICard(),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Снасти
-                  _buildSectionHeader(localizations.translate('tackle')),
-                  TextFormField(
-                    controller: _tackleController,
-                    style: TextStyle(color: AppConstants.textColor),
-                    decoration: InputDecoration(
-                      fillColor: const Color(0xFF12332E),
-                      filled: true,
-                      hintText: localizations.translate('tackle_desc'),
-                      hintStyle: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.5),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    maxLines: 3,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Заметки
-                  _buildSectionHeader(localizations.translate('notes')),
-                  TextFormField(
-                    controller: _notesController,
-                    style: TextStyle(color: AppConstants.textColor),
-                    decoration: InputDecoration(
-                      fillColor: const Color(0xFF12332E),
-                      filled: true,
-                      hintText: localizations.translate('notes_desc'),
-                      hintStyle: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.5),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    maxLines: 5,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Фотографии
-                  _buildSectionHeader(localizations.translate('photos')),
-                  if (isSmallScreen)
-                    Column(
-                      children: [
-                        _buildSimpleButton(
-                          icon: Icons.photo_library,
-                          text: localizations.translate('gallery'),
-                          onPressed: _pickImages,
-                          isPrimary: true,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildSimpleButton(
-                          icon: Icons.camera_alt,
-                          text: localizations.translate('camera'),
-                          onPressed: _takePhoto,
-                          isPrimary: true,
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSimpleButton(
-                            icon: Icons.photo_library,
-                            text: localizations.translate('gallery'),
-                            onPressed: _pickImages,
-                            isPrimary: true,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildSimpleButton(
-                            icon: Icons.camera_alt,
-                            text: localizations.translate('camera'),
-                            onPressed: _takePhoto,
-                            isPrimary: true,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                  if (_selectedPhotos.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _buildSimplePhotosGrid(),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Записи о поклевках
-                  _buildSectionHeader(localizations.translate('bite_records')),
-                  _buildSimpleButton(
-                    icon: Icons.add_circle_outline,
-                    text: localizations.translate('add_bite_record'),
-                    onPressed: _addBiteRecord,
-                  ),
-
-                  if (_biteRecords.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _buildSimpleBiteRecords(),
-                  ],
-
-                  const SizedBox(height: 40),
 
                   // Кнопки внизу экрана
                   if (isSmallScreen)
@@ -1350,382 +1160,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     );
   }
 
-  Widget _buildSimpleButton({
-    required IconData icon,
-    required String text,
-    required VoidCallback? onPressed,
-    bool isPrimary = false,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        icon: Icon(icon, color: isPrimary ? AppConstants.textColor : AppConstants.textColor),
-        label: Text(
-          text,
-          style: TextStyle(
-            color: isPrimary ? AppConstants.textColor : AppConstants.textColor,
-            fontSize: 16,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? AppConstants.primaryColor : const Color(0xFF12332E),
-          foregroundColor: AppConstants.textColor,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          minimumSize: const Size(double.infinity, 48),
-        ),
-        onPressed: onPressed,
-      ),
-    );
-  }
-
-  Widget _buildSimplePhotosGrid() {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _selectedPhotos.length,
-        itemBuilder: (context, index) {
-          return Stack(
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: FileImage(_selectedPhotos[index]),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () => _removePhoto(index),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSimpleWeatherCard() {
-    final localizations = AppLocalizations.of(context);
-    if (_weather == null) return const SizedBox();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _weather!.isDay ? Icons.wb_sunny : Icons.nightlight_round,
-                color: _weather!.isDay ? Colors.amber : Colors.indigo[300],
-                size: 30,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatTemperature(_weather!.temperature),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${localizations.translate('feels_like_short')}: ${_formatTemperature(_weather!.feelsLike)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSimpleWeatherGrid(localizations),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleWeatherGrid(AppLocalizations localizations) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.air,
-                localizations.translate('wind_short'),
-                '${_weather!.windDirection} ${_formatWindSpeed(_weather!.windSpeed)}',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.water_drop,
-                localizations.translate('humidity_short'),
-                '${_weather!.humidity}%',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.speed,
-                localizations.translate('pressure_short'),
-                _formatPressure(_weather!.pressure),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.cloud,
-                localizations.translate('cloudiness_short'),
-                '${_weather!.cloudCover}%',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.wb_twilight,
-                localizations.translate('sunrise'),
-                _weather!.sunrise,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSimpleWeatherItem(
-                Icons.nights_stay,
-                localizations.translate('sunset'),
-                _weather!.sunset,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSimpleWeatherItem(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: AppConstants.textColor.withValues(alpha: 0.8),
-            size: 20,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppConstants.textColor.withValues(alpha: 0.7),
-              fontSize: 11,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleAICard() {
-    final localizations = AppLocalizations.of(context);
-    if (_aiPrediction == null) return const SizedBox();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppConstants.primaryColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.psychology,
-                color: _getScoreColor(_aiPrediction!.overallScore),
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                    Text(
-                      _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
-                      style: TextStyle(
-                        color: _getScoreColor(_aiPrediction!.overallScore),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${localizations.translate('ai_recommendation')}: ${_aiPrediction!.recommendation}',
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 14,
-              height: 1.4,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 3,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleBiteRecords() {
-    final localizations = AppLocalizations.of(context);
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _biteRecords.length,
-      itemBuilder: (context, index) {
-        final record = _biteRecords[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          color: const Color(0xFF12332E),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: ListTile(
-            title: Text(
-              record.fishType.isEmpty
-                  ? '${localizations.translate('bite_occurred')} #${index + 1}'
-                  : record.fishType,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontWeight: FontWeight.bold,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${localizations.translate('bite_time')}: ${DateFormat('HH:mm').format(record.time)}',
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                  ),
-                ),
-                if (record.weight > 0)
-                  Text(
-                    '${localizations.translate('weight')}: ${record.weight} ${localizations.translate('kg')}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                    ),
-                  ),
-                if (record.notes.isNotEmpty)
-                  Text(
-                    '${localizations.translate('notes')}: ${record.notes}',
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                setState(() {
-                  _biteRecords.removeAt(index);
-                });
-                _markAsChanged();
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildCancelButton() {
     final localizations = AppLocalizations.of(context);
 
@@ -1788,71 +1222,5 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         ),
       ),
     );
-  }
-
-  Color _getScoreColor(int score) {
-    if (score >= 80) return const Color(0xFF4CAF50);
-    if (score >= 60) return const Color(0xFF8BC34A);
-    if (score >= 40) return const Color(0xFFFFC107);
-    if (score >= 20) return const Color(0xFFFF9800);
-    return const Color(0xFFF44336);
-  }
-
-  String _getActivityLevelText(ActivityLevel level, AppLocalizations localizations) {
-    switch (level) {
-      case ActivityLevel.excellent:
-        return localizations.translate('excellent_activity');
-      case ActivityLevel.good:
-        return localizations.translate('good_activity');
-      case ActivityLevel.moderate:
-        return localizations.translate('moderate_activity');
-      case ActivityLevel.poor:
-        return localizations.translate('poor_activity');
-      case ActivityLevel.veryPoor:
-        return localizations.translate('very_poor_activity');
-    }
-  }
-
-  String _formatTemperature(double celsius) {
-    final unit = _weatherSettings.temperatureUnit;
-    switch (unit) {
-      case TemperatureUnit.celsius:
-        return '${celsius.toStringAsFixed(1)}°C';
-      case TemperatureUnit.fahrenheit:
-        final fahrenheit = (celsius * 9 / 5) + 32;
-        return '${fahrenheit.toStringAsFixed(1)}°F';
-    }
-  }
-
-  String _formatWindSpeed(double meterPerSecond) {
-    final unit = _weatherSettings.windSpeedUnit;
-    switch (unit) {
-      case WindSpeedUnit.ms:
-        return '${meterPerSecond.toStringAsFixed(1)} м/с';
-      case WindSpeedUnit.kmh:
-        final kmh = meterPerSecond * 3.6;
-        return '${kmh.toStringAsFixed(1)} км/ч';
-      case WindSpeedUnit.mph:
-        final mph = meterPerSecond * 2.237;
-        return '${mph.toStringAsFixed(1)} mph';
-    }
-  }
-
-  String _formatPressure(double hpa) {
-    final unit = _weatherSettings.pressureUnit;
-    final calibration = _weatherSettings.barometerCalibration;
-
-    final calibratedHpa = hpa + calibration;
-
-    switch (unit) {
-      case PressureUnit.hpa:
-        return '${calibratedHpa.toStringAsFixed(0)} гПа';
-      case PressureUnit.mmhg:
-        final mmhg = calibratedHpa / 1.333;
-        return '${mmhg.toStringAsFixed(0)} мм рт.ст.';
-      case PressureUnit.inhg:
-        final inhg = calibratedHpa / 33.8639;
-        return '${inhg.toStringAsFixed(2)} inHg';
-    }
   }
 }

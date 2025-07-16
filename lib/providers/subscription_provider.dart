@@ -8,9 +8,10 @@ import '../models/subscription_model.dart';
 import '../models/usage_limits_model.dart';
 import '../services/subscription/subscription_service.dart';
 import '../services/firebase/firebase_service.dart';
+import 'package:flutter/foundation.dart';
 
 /// ✅ ИСПРАВЛЕННЫЙ Provider для управления состоянием подписки
-/// Убран UsageLimitsService, исправлено expenses → budgetNotes
+/// Использует правильный подсчет реальных заметок
 class SubscriptionProvider extends ChangeNotifier {
   final SubscriptionService _subscriptionService = SubscriptionService();
   final FirebaseService _firebaseService = FirebaseService();
@@ -36,6 +37,28 @@ class SubscriptionProvider extends ChangeNotifier {
 
   // ✅ УПРОЩЕННЫЕ стримы - только SubscriptionService
   StreamSubscription<SubscriptionModel>? _subscriptionSubscription;
+
+  // ✅ ИСПРАВЛЕНО: Кэш для реальных подсчетов заметок
+  Map<ContentType, int> _realUsageCache = {};
+  DateTime? _lastUsageUpdateTime;
+
+  // ========================================
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Метод для установки FirebaseService
+  // ========================================
+
+  /// Устанавливает FirebaseService в SubscriptionService
+  void setFirebaseService(FirebaseService firebaseService) {
+    try {
+      _subscriptionService.setFirebaseService(firebaseService);
+      if (kDebugMode) {
+        debugPrint('✅ FirebaseService установлен в SubscriptionService через Provider');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Ошибка установки FirebaseService в Provider: $e');
+      }
+    }
+  }
 
   // ========================================
   // ✅ ИСПРАВЛЕННЫЕ ГЕТТЕРЫ
@@ -102,8 +125,8 @@ class SubscriptionProvider extends ChangeNotifier {
       // Загружаем подписку
       _subscription = await _subscriptionService.loadCurrentSubscription();
 
-      // ✅ ИСПРАВЛЕНО: Загружаем лимиты через Firebase
-      await _loadUsageLimits();
+      // ✅ ИСПРАВЛЕНО: Загружаем лимиты через правильный подсчет
+      await _loadUsageLimitsWithRealCount();
 
       await _loadLocalizedPrices();
       await loadAvailableProducts();
@@ -115,9 +138,11 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Загрузка лимитов использования через Firebase с правильными методами
-  Future<void> _loadUsageLimits() async {
+  /// ✅ ИСПРАВЛЕНО: Загружаем лимиты через правильный подсчет реальных заметок
+  Future<void> _loadUsageLimitsWithRealCount() async {
     try {
+      debugPrint('🔄 Загружаем лимиты через правильный подсчет заметок...');
+
       if (!_firebaseService.isUserLoggedIn) {
         // Для неавторизованных пользователей - дефолтные лимиты
         _usageLimits = UsageLimitsModel.defaultLimits('offline');
@@ -126,29 +151,32 @@ class SubscriptionProvider extends ChangeNotifier {
 
       final userId = _firebaseService.currentUserId!;
 
-      // ✅ ИСПРАВЛЕНО: Используем существующий метод getUsageStatistics
-      final statsData = await _firebaseService.getUsageStatistics();
+      // ✅ ИСПРАВЛЕНО: Используем правильный подсчет вместо getUsageStatistics
+      final fishingNotesCount = await _subscriptionService.getCurrentUsage(ContentType.fishingNotes);
+      final markerMapsCount = await _subscriptionService.getCurrentUsage(ContentType.markerMaps);
+      final budgetNotesCount = await _subscriptionService.getCurrentUsage(ContentType.budgetNotes);
 
-      if (statsData['exists'] == true) {
-        // Создаем UsageLimitsModel из статистики
-        _usageLimits = UsageLimitsModel(
-          userId: userId,
-          notesCount: statsData[SubscriptionConstants.notesCountField] ?? 0,
-          markerMapsCount: statsData[SubscriptionConstants.markerMapsCountField] ?? 0,
-          budgetNotesCount: statsData[SubscriptionConstants.budgetNotesCountField] ?? 0,
-          lastResetDate: statsData[SubscriptionConstants.lastResetDateField] != null
-              ? DateTime.parse(statsData[SubscriptionConstants.lastResetDateField])
-              : DateTime.now(),
-          updatedAt: statsData['updatedAt'] != null
-              ? DateTime.parse(statsData['updatedAt'])
-              : DateTime.now(),
-        );
-      } else {
-        // Создаем новые лимиты если их нет
-        _usageLimits = UsageLimitsModel.defaultLimits(userId);
-        // ✅ ИСПРАВЛЕНО: Сохраняем через существующий метод resetUserUsageLimits
-        await _firebaseService.resetUserUsageLimits(resetReason: 'initial_creation');
-      }
+      debugPrint('📊 Реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
+
+      // Создаем UsageLimitsModel с реальными данными
+      _usageLimits = UsageLimitsModel(
+        userId: userId,
+        notesCount: fishingNotesCount,
+        markerMapsCount: markerMapsCount,
+        budgetNotesCount: budgetNotesCount,
+        lastResetDate: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // ✅ ИСПРАВЛЕНО: Обновляем кэш реальных подсчетов
+      _realUsageCache = {
+        ContentType.fishingNotes: fishingNotesCount,
+        ContentType.markerMaps: markerMapsCount,
+        ContentType.budgetNotes: budgetNotesCount,
+      };
+      _lastUsageUpdateTime = DateTime.now();
+
+      debugPrint('✅ Лимиты загружены с реальными подсчетами');
     } catch (e) {
       debugPrint('❌ Ошибка загрузки лимитов: $e');
       _usageLimits = UsageLimitsModel.defaultLimits(_subscription?.userId ?? 'unknown');
@@ -171,12 +199,8 @@ class SubscriptionProvider extends ChangeNotifier {
       return false;
     }
 
-    // ✅ ИСПРАВЛЕНО: Проверка лимитов через UsageLimitsModel
-    if (_usageLimits == null) {
-      await _loadUsageLimits();
-    }
-
-    return _usageLimits?.canCreateNew(contentType) ?? false;
+    // ✅ ИСПРАВЛЕНО: Используем SubscriptionService с правильным подсчетом
+    return await _subscriptionService.canCreateContent(contentType);
   }
 
   /// ✅ ИСПРАВЛЕНО: Синхронная проверка
@@ -191,12 +215,16 @@ class SubscriptionProvider extends ChangeNotifier {
       return false;
     }
 
-    return _usageLimits?.canCreateNew(contentType) ?? false;
+    // ✅ ИСПРАВЛЕНО: Используем кэш реальных подсчетов
+    final currentUsage = _realUsageCache[contentType] ?? 0;
+    final limit = getLimit(contentType);
+    return currentUsage < limit;
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение использования для типа контента
   int? getUsage(ContentType contentType) {
-    return _usageLimits?.getCountForType(contentType);
+    // ✅ ИСПРАВЛЕНО: Используем кэш реальных подсчетов
+    return _realUsageCache[contentType] ?? _usageLimits?.getCountForType(contentType) ?? 0;
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение лимита для типа контента
@@ -212,32 +240,43 @@ class SubscriptionProvider extends ChangeNotifier {
   int getRemainingCount(ContentType contentType) {
     if (isPremium) return SubscriptionConstants.unlimitedValue; // Безлимитно
 
-    return _usageLimits?.getRemainingCount(contentType) ?? 0;
+    final currentUsage = getUsage(contentType) ?? 0;
+    final limit = getLimit(contentType);
+    return (limit - currentUsage).clamp(0, limit);
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение процента использования
   double getUsagePercentage(ContentType contentType) {
     if (isPremium) return 0.0;
 
-    return _usageLimits?.getUsagePercentage(contentType) ?? 0.0;
+    final currentUsage = getUsage(contentType) ?? 0;
+    final limit = getLimit(contentType);
+
+    if (limit <= 0) return 0.0;
+    return (currentUsage / limit).clamp(0.0, 1.0);
   }
 
-  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования через Firebase методы
+  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования
   Future<void> incrementUsage(ContentType contentType) async {
     try {
-      if (_usageLimits == null) return;
+      debugPrint('📈 Увеличиваем счетчик $contentType...');
 
-      // Обновляем локальную модель
-      _usageLimits = _usageLimits!.incrementCounter(contentType);
-      notifyListeners();
+      // ✅ ИСПРАВЛЕНО: Сначала обновляем локальный кэш
+      final currentUsage = _realUsageCache[contentType] ?? 0;
+      _realUsageCache[contentType] = currentUsage + 1;
 
-      // ✅ ИСПРАВЛЕНО: Сохраняем через правильный Firebase метод
-      if (_firebaseService.isUserLoggedIn) {
-        final firebaseFieldName = _getFirebaseFieldName(contentType);
-        await _firebaseService.incrementUsageCount(firebaseFieldName);
+      // Обновляем модель лимитов
+      if (_usageLimits != null) {
+        _usageLimits = _usageLimits!.incrementCounter(contentType);
       }
 
-      debugPrint('✅ Счетчик ${contentType.name} увеличен: ${getUsage(contentType)}');
+      // Уведомляем UI об изменениях
+      notifyListeners();
+
+      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService (который теперь не работает со счетчиками)
+      await _subscriptionService.incrementUsage(contentType);
+
+      debugPrint('✅ Счетчик $contentType увеличен локально до ${_realUsageCache[contentType]}');
     } catch (e) {
       debugPrint('❌ Ошибка увеличения счетчика: $e');
     }
@@ -246,32 +285,28 @@ class SubscriptionProvider extends ChangeNotifier {
   /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика через SubscriptionService
   Future<void> decrementUsage(ContentType contentType) async {
     try {
-      if (_usageLimits == null) return;
+      debugPrint('📉 Уменьшаем счетчик $contentType...');
 
-      // Обновляем локальную модель
-      _usageLimits = _usageLimits!.decrementCounter(contentType);
+      // ✅ ИСПРАВЛЕНО: Сначала обновляем локальный кэш
+      final currentUsage = _realUsageCache[contentType] ?? 0;
+      if (currentUsage > 0) {
+        _realUsageCache[contentType] = currentUsage - 1;
+      }
+
+      // Обновляем модель лимитов
+      if (_usageLimits != null) {
+        _usageLimits = _usageLimits!.decrementCounter(contentType);
+      }
+
+      // Уведомляем UI об изменениях
       notifyListeners();
 
-      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService для уменьшения
+      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService
       await _subscriptionService.decrementUsage(contentType);
 
-      debugPrint('✅ Счетчик ${contentType.name} уменьшен: ${getUsage(contentType)}');
+      debugPrint('✅ Счетчик $contentType уменьшен локально до ${_realUsageCache[contentType]}');
     } catch (e) {
       debugPrint('❌ Ошибка уменьшения счетчика: $e');
-    }
-  }
-
-  /// ✅ НОВЫЙ: Преобразование ContentType в название поля Firebase
-  String _getFirebaseFieldName(ContentType contentType) {
-    switch (contentType) {
-      case ContentType.fishingNotes:
-        return SubscriptionConstants.notesCountField;
-      case ContentType.markerMaps:
-        return SubscriptionConstants.markerMapsCountField;
-      case ContentType.budgetNotes:
-        return SubscriptionConstants.budgetNotesCountField;
-      case ContentType.depthChart:
-        return 'depthChartCount'; // На случай если будет добавлен
     }
   }
 
@@ -385,7 +420,7 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   // ========================================
-  // ✅ УПРОЩЕННЫЕ МЕТОДЫ ОБНОВЛЕНИЯ
+  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ОБНОВЛЕНИЯ
   // ========================================
 
   /// ✅ КРИТИЧЕСКИ ВАЖНО: Принудительное обновление данных
@@ -395,7 +430,9 @@ class SubscriptionProvider extends ChangeNotifier {
 
       // Загружаем актуальные данные
       _subscription = await _subscriptionService.loadCurrentSubscription();
-      await _loadUsageLimits();
+
+      // ✅ ИСПРАВЛЕНО: Загружаем лимиты с правильным подсчетом
+      await _loadUsageLimitsWithRealCount();
 
       // 🚨 КРИТИЧЕСКИ ВАЖНО: Уведомляем всех слушателей
       notifyListeners();
@@ -488,19 +525,37 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ НОВЫЙ: Получение статистики использования
+  /// ✅ ИСПРАВЛЕНО: Получение статистики использования
   Map<String, dynamic> getUsageStats() {
-    return _usageLimits?.getUsageStats() ?? {
-      'notes': {'current': 0, 'limit': 3, 'remaining': 3, 'percentage': 0.0},
-      'maps': {'current': 0, 'limit': 3, 'remaining': 3, 'percentage': 0.0},
-      'budgetNotes': {'current': 0, 'limit': 3, 'remaining': 3, 'percentage': 0.0},
-      'total': 0,
+    return {
+      'notes': {
+        'current': getUsage(ContentType.fishingNotes) ?? 0,
+        'limit': getLimit(ContentType.fishingNotes),
+        'remaining': getRemainingCount(ContentType.fishingNotes),
+        'percentage': getUsagePercentage(ContentType.fishingNotes),
+      },
+      'maps': {
+        'current': getUsage(ContentType.markerMaps) ?? 0,
+        'limit': getLimit(ContentType.markerMaps),
+        'remaining': getRemainingCount(ContentType.markerMaps),
+        'percentage': getUsagePercentage(ContentType.markerMaps),
+      },
+      'budgetNotes': {
+        'current': getUsage(ContentType.budgetNotes) ?? 0,
+        'limit': getLimit(ContentType.budgetNotes),
+        'remaining': getRemainingCount(ContentType.budgetNotes),
+        'percentage': getUsagePercentage(ContentType.budgetNotes),
+      },
+      'total': (_realUsageCache.values.fold(0, (sum, count) => sum + count)),
     };
   }
 
-  /// ✅ НОВЫЙ: Проверка нужно ли показать предупреждение о лимите
+  /// ✅ ИСПРАВЛЕНО: Проверка нужно ли показать предупреждение о лимите
   bool shouldShowLimitWarning(ContentType contentType) {
-    return _usageLimits?.shouldShowWarning(contentType) ?? false;
+    if (isPremium) return false;
+
+    final remaining = getRemainingCount(contentType);
+    return remaining <= 1 && remaining > 0;
   }
 
   // ========================================

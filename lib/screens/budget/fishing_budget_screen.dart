@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../../providers/subscription_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
@@ -154,7 +156,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     );
   }
 
-  // ИСПРАВЛЕНО: Проверка лимитов через репозиторий
+  // ✅ ИСПРАВЛЕНО: Проверка лимитов через репозиторий с обновлением Provider
   void _navigateToAddExpense() async {
     debugPrint('➕ Попытка создания новой поездки...');
 
@@ -179,6 +181,17 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     if (result == true) {
       debugPrint('✅ Новая поездка создана, перезагружаем список');
       _loadTrips();
+
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Обновляем SubscriptionProvider
+      try {
+        if (mounted) {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после создания поездки');
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+      }
     }
   }
 
@@ -206,6 +219,17 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     if (result == true) {
       debugPrint('🔄 Поездка изменена, перезагружаем список');
       _loadTrips();
+
+      // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider после изменения поездки
+      try {
+        if (mounted) {
+          final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+          await subscriptionProvider.refreshUsageData();
+          debugPrint('✅ SubscriptionProvider обновлен после изменения поездки');
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+      }
     }
   }
 
@@ -226,15 +250,20 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               ),
             ),
             const SizedBox(width: 8),
-            UsageBadge(
-              contentType: ContentType.budgetNotes,
-              fontSize: ResponsiveUtils.isTablet(context) ? 14 : 12,
-              padding: EdgeInsets.symmetric(
-                horizontal: ResponsiveUtils.isTablet(context) ? 10 : 8,
-                vertical: ResponsiveUtils.isTablet(context) ? 6 : 4,
-              ),
-              showIcon: true,
-              showPercentage: false,
+            // ✅ ИСПРАВЛЕНО: UsageBadge обновляется через Consumer
+            Consumer<SubscriptionProvider>(
+              builder: (context, subscriptionProvider, child) {
+                return UsageBadge(
+                  contentType: ContentType.budgetNotes,
+                  fontSize: ResponsiveUtils.isTablet(context) ? 14 : 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveUtils.isTablet(context) ? 10 : 8,
+                    vertical: ResponsiveUtils.isTablet(context) ? 6 : 4,
+                  ),
+                  showIcon: true,
+                  showPercentage: false,
+                );
+              },
             ),
           ],
         ),
@@ -256,7 +285,20 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
               color: AppConstants.textColor,
               size: ResponsiveUtils.getIconSize(context),
             ),
-            onPressed: _loadTrips,
+            onPressed: () async {
+              await _loadTrips();
+
+              // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider при обновлении
+              try {
+                if (mounted) {
+                  final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+                  await subscriptionProvider.refreshUsageData();
+                  debugPrint('✅ SubscriptionProvider обновлен при обновлении экрана');
+                }
+              } catch (e) {
+                debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+              }
+            },
             tooltip: localizations.translate('refresh') ?? 'Обновить',
           ),
         ],
@@ -303,7 +345,20 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       addHorizontalPadding: true,
       addVerticalPadding: true,
       child: RefreshIndicator(
-        onRefresh: _loadTrips,
+        onRefresh: () async {
+          await _loadTrips();
+
+          // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider при pull-to-refresh
+          try {
+            if (mounted) {
+              final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+              await subscriptionProvider.refreshUsageData();
+              debugPrint('✅ SubscriptionProvider обновлен при pull-to-refresh');
+            }
+          } catch (e) {
+            debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+          }
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
@@ -325,7 +380,20 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
   Widget _buildExpensesTab() {
     return ExpenseListScreen(
-      onExpenseUpdated: _loadTrips,
+      onExpenseUpdated: () async {
+        await _loadTrips();
+
+        // ✅ ДОБАВЛЕНО: Обновляем SubscriptionProvider при изменении расходов
+        try {
+          if (mounted) {
+            final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+            await subscriptionProvider.refreshUsageData();
+            debugPrint('✅ SubscriptionProvider обновлен при изменении расходов');
+          }
+        } catch (e) {
+          debugPrint('❌ Ошибка обновления SubscriptionProvider: $e');
+        }
+      },
     );
   }
 

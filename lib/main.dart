@@ -516,9 +516,13 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void _initializeSubscriptionProvider() {
     try {
       final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+
+      // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Устанавливаем FirebaseService ПЕРЕД инициализацией
+      subscriptionProvider.setFirebaseService(_firebaseService);
+
       subscriptionProvider.initialize().then((_) {
         if (kDebugMode) {
-          debugPrint('✅ SubscriptionProvider инициализирован в приложении');
+          debugPrint('✅ SubscriptionProvider инициализирован с FirebaseService');
         }
       }).catchError((error) {
         if (kDebugMode) {
