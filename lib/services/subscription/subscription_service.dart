@@ -305,10 +305,10 @@ class SubscriptionService {
   }
 
   // ========================================
-  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК С КЭШОМ
   // ========================================
 
-  /// ✅ ИСПРАВЛЕНО: Получение текущего использования с правильным подсчетом всех заметок
+  /// ✅ ИСПРАВЛЕНО: Получение текущего использования с кэшем для офлайн режима
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
       debugPrint('🔍 getCurrentUsage: начинаем подсчет для $contentType');
@@ -319,10 +319,25 @@ class SubscriptionService {
         return 0;
       }
 
+      final hasNetwork = await NetworkUtils.isNetworkAvailable();
+
+      // ✅ ИСПРАВЛЕНО: В офлайн режиме СНАЧАЛА проверяем кэш
+      if (!hasNetwork) {
+        debugPrint('📱 getCurrentUsage: офлайн режим, проверяем кэш...');
+
+        final cachedLimits = await _offlineStorage.getCachedUsageLimits();
+        if (cachedLimits != null) {
+          final cachedCount = cachedLimits.getCountForType(contentType);
+          debugPrint('✅ getCurrentUsage: из кэша $contentType = $cachedCount');
+          return cachedCount;
+        }
+
+        debugPrint('⚠️ getCurrentUsage: кэш пуст, считаем локальные данные');
+      }
+
       int totalCount = 0;
 
       // 1. ✅ ИСПРАВЛЕНО: Считаем РЕАЛЬНЫЕ заметки из Firebase subcollections
-      final hasNetwork = await NetworkUtils.isNetworkAvailable();
       if (hasNetwork) {
         try {
           int onlineCount = 0;
@@ -582,10 +597,10 @@ class SubscriptionService {
   }
 
   // ========================================
-  // КЭШИРОВАНИЕ И ОФЛАЙН МЕТОДЫ
+  // ✅ ИСПРАВЛЕННОЕ КЭШИРОВАНИЕ И ОФЛАЙН МЕТОДЫ
   // ========================================
 
-  /// Кэширование данных подписки при онлайн режиме
+  /// ✅ ИСПРАВЛЕНО: Кэширование данных подписки при онлайн режиме
   Future<void> cacheSubscriptionDataOnline() async {
     try {
       if (kDebugMode) {
@@ -606,11 +621,12 @@ class SubscriptionService {
       // Кэшируем подписку
       await _offlineStorage.cacheSubscriptionStatus(subscription);
 
-      // Кэшируем лимиты через новую систему Firebase
+      // ✅ ИСПРАВЛЕНО: Кэшируем РЕАЛЬНЫЕ счетчики заметок
       try {
         final usageLimits = await _loadUsageLimitsFromFirebase();
         if (usageLimits != null) {
           await _offlineStorage.cacheUsageLimits(usageLimits);
+          debugPrint('✅ Реальные счетчики заметок кэшированы');
         }
       } catch (e) {
         if (kDebugMode) {
@@ -672,7 +688,7 @@ class SubscriptionService {
     }
   }
 
-  /// Получение UsageLimitsModel из Firebase
+  /// ✅ ИСПРАВЛЕНО: Получение UsageLimitsModel из Firebase с реальными подсчетами
   Future<UsageLimitsModel?> _loadUsageLimitsFromFirebase() async {
     try {
       final userId = firebaseService.currentUserId;
@@ -682,6 +698,8 @@ class SubscriptionService {
       final fishingNotesCount = await getCurrentUsage(ContentType.fishingNotes);
       final markerMapsCount = await getCurrentUsage(ContentType.markerMaps);
       final budgetNotesCount = await getCurrentUsage(ContentType.budgetNotes);
+
+      debugPrint('📊 Кэшируем реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
 
       return UsageLimitsModel(
         userId: userId,

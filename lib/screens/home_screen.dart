@@ -144,13 +144,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _subscriptionService.setFirebaseService(_firebaseService);
       debugPrint('🔗 FirebaseService установлен в SubscriptionService');
 
+      // ✅ ДОБАВЬТЕ ЭТИ 2 СТРОКИ:
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      subscriptionProvider.setFirebaseService(_firebaseService);
+
       // Проверяем подключение к сети
       _hasNetworkConnection = await NetworkUtils.isNetworkAvailable();
       debugPrint('🌐 Состояние сети: ${_hasNetworkConnection ? "онлайн" : "офлайн"}');
 
+
       if (_hasNetworkConnection) {
+        // ✅ ДОБАВЬТЕ ЭТИ 2 СТРОКИ:
+        await subscriptionProvider.updateCacheAfterAuth();
+        debugPrint('✅ Кэш обновлен после инициализации');
+
         await _initializeOnlineMode();
       } else {
+        // ✅ ДОБАВЬТЕ ЭТИ 2 СТРОКИ:
+        await subscriptionProvider.refreshUsageDataOffline();
+        debugPrint('✅ Данные обновлены для офлайн режима');
+
         await _initializeOfflineOnly();
       }
 

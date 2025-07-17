@@ -8,10 +8,11 @@ import '../models/subscription_model.dart';
 import '../models/usage_limits_model.dart';
 import '../services/subscription/subscription_service.dart';
 import '../services/firebase/firebase_service.dart';
+import '../utils/network_utils.dart';
 import 'package:flutter/foundation.dart';
 
 /// ✅ ИСПРАВЛЕННЫЙ Provider для управления состоянием подписки
-/// Использует правильный подсчет реальных заметок
+/// Синхронизируется с кэшем лимитов из SubscriptionService
 class SubscriptionProvider extends ChangeNotifier {
   final SubscriptionService _subscriptionService = SubscriptionService();
   final FirebaseService _firebaseService = FirebaseService();
@@ -38,7 +39,7 @@ class SubscriptionProvider extends ChangeNotifier {
   // ✅ УПРОЩЕННЫЕ стримы - только SubscriptionService
   StreamSubscription<SubscriptionModel>? _subscriptionSubscription;
 
-  // ✅ ИСПРАВЛЕНО: Кэш для реальных подсчетов заметок
+  // ✅ ИСПРАВЛЕНО: Кэш для реальных подсчетов заметок (синхронизируется с SubscriptionService)
   Map<ContentType, int> _realUsageCache = {};
   DateTime? _lastUsageUpdateTime;
 
@@ -151,7 +152,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
       final userId = _firebaseService.currentUserId!;
 
-      // ✅ ИСПРАВЛЕНО: Используем правильный подсчет вместо getUsageStatistics
+      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService.getCurrentUsage (с кэшем)
       final fishingNotesCount = await _subscriptionService.getCurrentUsage(ContentType.fishingNotes);
       final markerMapsCount = await _subscriptionService.getCurrentUsage(ContentType.markerMaps);
       final budgetNotesCount = await _subscriptionService.getCurrentUsage(ContentType.budgetNotes);
@@ -199,11 +200,17 @@ class SubscriptionProvider extends ChangeNotifier {
       return false;
     }
 
-    // ✅ ИСПРАВЛЕНО: Используем SubscriptionService с правильным подсчетом
-    return await _subscriptionService.canCreateContent(contentType);
+    // ✅ ИСПРАВЛЕНО: Используем SubscriptionService с кэшем
+    final hasNetwork = await NetworkUtils.isNetworkAvailable();
+
+    if (hasNetwork) {
+      return await _subscriptionService.canCreateContent(contentType);
+    } else {
+      return await _subscriptionService.canCreateContentOffline(contentType);
+    }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Синхронная проверка
+  /// ✅ ИСПРАВЛЕНО: Синхронная проверка (используем кэш)
   bool canCreateContentSync(ContentType contentType) {
     // Если премиум - разрешаем все
     if (isPremium) {
@@ -218,7 +225,10 @@ class SubscriptionProvider extends ChangeNotifier {
     // ✅ ИСПРАВЛЕНО: Используем кэш реальных подсчетов
     final currentUsage = _realUsageCache[contentType] ?? 0;
     final limit = getLimit(contentType);
-    return currentUsage < limit;
+    final canCreate = currentUsage < limit;
+
+    debugPrint('🔍 canCreateContentSync: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
+    return canCreate;
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение использования для типа контента
@@ -420,7 +430,7 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   // ========================================
-  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ОБНОВЛЕНИЯ
+  // ✅ КРИТИЧЕСКИ ВАЖНЫЕ МЕТОДЫ ОБНОВЛЕНИЯ
   // ========================================
 
   /// ✅ КРИТИЧЕСКИ ВАЖНО: Принудительное обновление данных
@@ -431,6 +441,11 @@ class SubscriptionProvider extends ChangeNotifier {
       // Загружаем актуальные данные
       _subscription = await _subscriptionService.loadCurrentSubscription();
 
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Обновляем кэш подписки если онлайн
+      if (await NetworkUtils.isNetworkAvailable()) {
+        await _subscriptionService.cacheSubscriptionDataOnline();
+      }
+
       // ✅ ИСПРАВЛЕНО: Загружаем лимиты с правильным подсчетом
       await _loadUsageLimitsWithRealCount();
 
@@ -440,6 +455,28 @@ class SubscriptionProvider extends ChangeNotifier {
       debugPrint('✅ SubscriptionProvider: Данные обновлены');
     } catch (e) {
       debugPrint('❌ SubscriptionProvider: Ошибка обновления: $e');
+      _lastError = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Принудительное обновление при переходе в офлайн
+  Future<void> refreshUsageDataOffline() async {
+    try {
+      debugPrint('🔄 SubscriptionProvider: Обновление данных для офлайн...');
+
+      // Загружаем актуальные данные
+      _subscription = await _subscriptionService.loadCurrentSubscription();
+
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Загружаем лимиты из кэша
+      await _loadUsageLimitsWithRealCount();
+
+      // 🚨 КРИТИЧЕСКИ ВАЖНО: Уведомляем всех слушателей
+      notifyListeners();
+
+      debugPrint('✅ SubscriptionProvider: Данные обновлены для офлайн');
+    } catch (e) {
+      debugPrint('❌ SubscriptionProvider: Ошибка обновления для офлайн: $e');
       _lastError = e.toString();
       notifyListeners();
     }
@@ -460,6 +497,34 @@ class SubscriptionProvider extends ChangeNotifier {
       _lastError = e.toString();
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Обновление кэша при успешной авторизации
+  Future<void> updateCacheAfterAuth() async {
+    try {
+      debugPrint('🔄 SubscriptionProvider: Обновление кэша после авторизации...');
+
+      // Проверяем что пользователь авторизован
+      if (!_firebaseService.isUserLoggedIn) {
+        debugPrint('❌ Пользователь не авторизован');
+        return;
+      }
+
+      // Проверяем онлайн статус
+      final hasNetwork = await NetworkUtils.isNetworkAvailable();
+      if (hasNetwork) {
+        // Кэшируем данные для офлайн
+        await _subscriptionService.cacheSubscriptionDataOnline();
+        debugPrint('✅ Данные кэшированы для офлайн');
+      }
+
+      // Обновляем данные
+      await refreshUsageData();
+
+      debugPrint('✅ SubscriptionProvider: Кэш обновлен после авторизации');
+    } catch (e) {
+      debugPrint('❌ SubscriptionProvider: Ошибка обновления кэша: $e');
     }
   }
 
