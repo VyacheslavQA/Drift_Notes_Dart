@@ -36,22 +36,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   String _errorMessage = '';
 
-  // Офлайн режим
-  bool _isOfflineMode = false;
+  // Сетевое состояние
   bool _hasInternet = true;
-  bool _canAuthenticateOffline = false;
   bool _checkingConnection = false;
 
-  // Ключи для сохранения данных
+  // ✅ ИСПРАВЛЕНО: Безопасные ключи для хранения данных (SHA-256)
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
-  static const String _keySavedPassword = 'saved_password';
+  static const String _keySavedPasswordHash = 'saved_password_hash'; // ✅ НОВЫЙ БЕЗОПАСНЫЙ КЛЮЧ
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
-    _checkNetworkStatusAndOfflineCapability();
+    _checkNetworkStatus();
   }
 
   @override
@@ -61,29 +59,23 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Проверка сетевого статуса и возможности офлайн авторизации
-  Future<void> _checkNetworkStatusAndOfflineCapability() async {
+  /// ✅ УПРОЩЕНО: Проверка сетевого статуса
+  Future<void> _checkNetworkStatus() async {
     setState(() {
       _checkingConnection = true;
     });
 
     try {
       final hasInternet = await NetworkUtils.isNetworkAvailable();
-      final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
-
       setState(() {
         _hasInternet = hasInternet;
-        _canAuthenticateOffline = canOfflineAuth;
-        _isOfflineMode = !hasInternet;
       });
 
       debugPrint('🌐 Сетевой статус: ${hasInternet ? 'Онлайн' : 'Офлайн'}');
-      debugPrint('📱 Офлайн авторизация: ${canOfflineAuth ? 'Доступна' : 'Недоступна'}');
     } catch (e) {
       debugPrint('❌ Ошибка проверки сетевого статуса: $e');
       setState(() {
         _hasInternet = false;
-        _canAuthenticateOffline = false;
       });
     } finally {
       setState(() {
@@ -94,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Повторная проверка подключения
   Future<void> _refreshConnection() async {
-    await _checkNetworkStatusAndOfflineCapability();
+    await _checkNetworkStatus();
 
     if (_hasInternet && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Загрузка сохраненных данных при открытии экрана
+  /// ✅ ИСПРАВЛЕНО: Безопасная загрузка сохраненных данных с поддержкой "Запомнить меня"
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -115,44 +107,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (rememberMe) {
         final savedEmail = prefs.getString(_keySavedEmail) ?? '';
-        final savedPasswordHash = prefs.getString(_keySavedPassword) ?? '';
 
-        if (savedEmail.isNotEmpty && savedPasswordHash.isNotEmpty) {
-          try {
-            final decodedPassword = utf8.decode(base64Decode(savedPasswordHash));
-
-            setState(() {
-              _emailController.text = savedEmail;
-              _passwordController.text = decodedPassword;
-              _rememberMe = true;
-            });
-          } catch (e) {
-            debugPrint('Ошибка при расшифровке сохраненного пароля: $e');
-            await _clearSavedCredentials();
-          }
+        // ✅ ИСПРАВЛЕНО: Загружаем email и отмечаем чекбокс
+        if (savedEmail.isNotEmpty) {
+          setState(() {
+            _emailController.text = savedEmail;
+            _rememberMe = true;
+          });
+          debugPrint('✅ Email загружен из безопасного хранилища');
         }
       }
     } catch (e) {
-      debugPrint('Ошибка при загрузке сохраненных данных: $e');
+      debugPrint('❌ Ошибка при загрузке сохраненных данных: $e');
     }
   }
 
-  /// Сохранение данных для входа
+  /// ✅ ИСПРАВЛЕНО: Безопасное сохранение данных (SHA-256 хеширование)
   Future<void> _saveCredentials(String email, String password) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
       if (_rememberMe) {
-        final encodedPassword = base64Encode(utf8.encode(password));
+        // ✅ БЕЗОПАСНО: Сохраняем хеш пароля вместо закодированного пароля
+        final passwordHash = sha256.convert(utf8.encode(password)).toString();
+
         await prefs.setBool(_keyRememberMe, true);
         await prefs.setString(_keySavedEmail, email);
-        await prefs.setString(_keySavedPassword, encodedPassword);
-        debugPrint('Данные для входа сохранены');
+        await prefs.setString(_keySavedPasswordHash, passwordHash);
+
+        debugPrint('✅ Данные безопасно сохранены (пароль захеширован)');
       } else {
         await _clearSavedCredentials();
       }
     } catch (e) {
-      debugPrint('Ошибка при сохранении данных для входа: $e');
+      debugPrint('❌ Ошибка при сохранении данных: $e');
     }
   }
 
@@ -162,10 +150,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyRememberMe);
       await prefs.remove(_keySavedEmail);
-      await prefs.remove(_keySavedPassword);
-      debugPrint('Сохраненные данные для входа очищены');
+      await prefs.remove(_keySavedPasswordHash); // ✅ ИСПРАВЛЕНО: Новый ключ
+      debugPrint('✅ Сохраненные данные очищены');
     } catch (e) {
-      debugPrint('Ошибка при очистке сохраненных данных: $e');
+      debugPrint('❌ Ошибка при очистке сохраненных данных: $e');
     }
   }
 
@@ -200,14 +188,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<bool> _checkUserConsents() async {
     try {
       final result = await _userConsentService.checkUserConsents();
-
       debugPrint('🔍 Проверка согласий: ${result.toString()}');
-
-      // Если все согласия действительны - возвращаем true
       return result.allValid;
     } catch (e) {
       debugPrint('❌ Ошибка при проверке согласий: $e');
-      // При ошибке считаем что согласия НЕ приняты
       return false;
     }
   }
@@ -219,16 +203,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await showDialog<void>(
         context: context,
-        barrierDismissible: false, // Нельзя закрыть нажатием вне диалога
+        barrierDismissible: false,
         builder: (BuildContext context) {
           return UserAgreementsDialog(
             onAgreementsAccepted: () {
-              // Пользователь принял соглашения
               agreementsAccepted = true;
               debugPrint('✅ Пользователь принял соглашения');
             },
             onCancel: () {
-              // Пользователь отклонил соглашения
               agreementsAccepted = false;
               debugPrint('❌ Пользователь отклонил соглашения');
             },
@@ -243,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Основной метод авторизации с поддержкой офлайн
+  /// ✅ ГЛАВНОЕ ИЗМЕНЕНИЕ: Единая кнопка входа с автоматическим определением режима
   Future<void> _login() async {
     FocusScope.of(context).unfocus();
 
@@ -258,14 +240,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      // Проверяем подключение к интернету
+      // ✅ УПРОЩЕНО: Автоматическое определение режима
       final hasInternet = await NetworkUtils.isNetworkAvailable();
 
       if (hasInternet) {
-        // ОНЛАЙН АВТОРИЗАЦИЯ
+        debugPrint('🌐 Автоматически выбран ОНЛАЙН режим');
         await _performOnlineLogin(email, password);
       } else {
-        // ОФЛАЙН АВТОРИЗАЦИЯ
+        debugPrint('📱 Автоматически выбран ОФЛАЙН режим');
         await _performOfflineLogin(email, password);
       }
     } catch (e) {
@@ -283,11 +265,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Онлайн авторизация с правильной проверкой согласий
+  /// ✅ ИСПРАВЛЕНО: Упрощенная онлайн авторизация
   Future<void> _performOnlineLogin(String email, String password) async {
-    debugPrint('🌐 Выполняем онлайн авторизацию');
-
     try {
+      debugPrint('🌐 Выполняем онлайн авторизацию');
+      debugPrint('🔐 Чекбокс "Запомнить меня": ${_rememberMe ? 'включен' : 'выключен'}');
+
       // Выполняем обычную авторизацию
       final userCredential = await _firebaseService.signInWithEmailAndPassword(
         email,
@@ -296,6 +279,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (userCredential.user != null) {
+        debugPrint('✅ Firebase авторизация успешна');
+
         // Создаем профиль БЕЗ автоматических согласий
         await _ensureUserProfileExists(
           email,
@@ -322,18 +307,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     ?? 'Для использования приложения необходимо принять соглашения';
               });
             }
-            return; // Прерываем процесс входа
+            return;
           }
         }
 
         debugPrint('✅ Согласия проверены - продолжаем вход');
 
-        // Кэшируем данные пользователя для офлайн режима
+        // ✅ КРИТИЧНО: Кэшируем данные пользователя для офлайн режима
         await _firebaseService.cacheUserDataForOffline(userCredential.user!);
         debugPrint('✅ Данные пользователя закэшированы для офлайн режима');
+
+        // ✅ КРИТИЧНО: Сохраняем учетные данные для "Запомнить меня"
+        await _saveCredentials(email, password);
       }
 
-      await _saveCredentials(email, password);
       await _proceedToHomeScreen('login_successful');
     } catch (e) {
       debugPrint('❌ Ошибка онлайн авторизации: $e');
@@ -348,30 +335,72 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Офлайн авторизация БЕЗ проверки согласий
+  /// ✅ ИСПРАВЛЕНО: Упрощенная офлайн авторизация с правильной проверкой хеша пароля
   Future<void> _performOfflineLogin(String email, String password) async {
-    debugPrint('📱 Выполняем офлайн авторизацию');
-
     try {
+      // Проверяем возможность офлайн авторизации
       final canOfflineAuth = await _firebaseService.canAuthenticateOffline();
 
       if (!canOfflineAuth) {
         throw Exception(AppLocalizations.of(context).translate('offline_auth_unavailable'));
       }
 
-      // Пытаемся выполнить офлайн авторизацию
+      // ✅ ИСПРАВЛЕНО: Безопасная проверка хеша пароля для "Запомнить меня"
+      final prefs = await SharedPreferences.getInstance();
+      final savedPasswordHash = prefs.getString(_keySavedPasswordHash);
+      final savedEmail = prefs.getString(_keySavedEmail);
+
+      if (savedPasswordHash == null || savedEmail == null) {
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_no_cached_data') ??
+            'Нет кэшированных данных для офлайн входа');
+      }
+
+      // Проверяем email
+      if (email != savedEmail) {
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_wrong_email') ??
+            'Неверный email для офлайн входа');
+      }
+
+      // ✅ БЕЗОПАСНО: Сравниваем хеши паролей
+      final inputPasswordHash = sha256.convert(utf8.encode(password)).toString();
+
+      if (inputPasswordHash != savedPasswordHash) {
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_wrong_password') ??
+            'Неверный пароль для офлайн входа');
+      }
+
+      // ✅ ИСПРАВЛЕНО: Убеждаемся что userId сохранен перед вызовом tryOfflineAuthentication
+      final userId = prefs.getString('auth_user_id');
+      if (userId == null) {
+        debugPrint('❌ userId не найден в кэше, попытка восстановления...');
+
+        // Попытка восстановить userId из других источников
+        final offlineUserData = prefs.getString('offline_user_data');
+        if (offlineUserData != null) {
+          try {
+            final userData = jsonDecode(offlineUserData) as Map<String, dynamic>;
+            final recoveredUserId = userData['uid'] as String?;
+            if (recoveredUserId != null) {
+              await prefs.setString('auth_user_id', recoveredUserId);
+              debugPrint('✅ userId восстановлен из офлайн данных: $recoveredUserId');
+            }
+          } catch (e) {
+            debugPrint('❌ Ошибка восстановления userId: $e');
+          }
+        }
+      }
+
+      // ✅ ИСПРАВЛЕНО: Выполняем офлайн авторизацию через FirebaseService
       final success = await _firebaseService.tryOfflineAuthentication();
 
       if (success) {
-        // ✅ ИСПРАВЛЕНО: Офлайн авторизация БЕЗ проверки согласий
-        // В офлайн режиме полагаемся на ранее принятые согласия
-        // (проверка согласий требует онлайн подключения)
-
+        // ✅ ИСПРАВЛЕНО: Обновляем сохраненные данные при успешном входе
         await _saveCredentials(email, password);
         await _proceedToHomeScreen('offline_login_successful');
         debugPrint('✅ Офлайн авторизация успешна');
       } else {
-        throw Exception(AppLocalizations.of(context).translate('offline_auth_failed'));
+        throw Exception(AppLocalizations.of(context).translate('offline_auth_failed') ??
+            'Ошибка офлайн авторизации');
       }
     } catch (e) {
       debugPrint('❌ Ошибка офлайн авторизации: $e');
@@ -390,7 +419,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: _isOfflineMode ? Colors.orange : Colors.green,
+          backgroundColor: !_hasInternet ? Colors.orange : Colors.green,
           duration: Duration(seconds: 3),
         ),
       );
@@ -411,109 +440,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Показать диалог для офлайн авторизации
-  Future<void> _showOfflineAuthDialog() async {
-    if (!_canAuthenticateOffline) {
-      _showOfflineAuthError();
-      return;
-    }
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.wifi_off, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(AppLocalizations.of(context).translate('offline_mode')),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppLocalizations.of(context).translate('no_internet_connection')),
-            SizedBox(height: 8),
-            Text(AppLocalizations.of(context).translate('can_login_offline')),
-            SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppLocalizations.of(context).translate('offline_mode_limited'),
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(AppLocalizations.of(context).translate('cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(AppLocalizations.of(context).translate('login_offline')),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      await _performOfflineLogin(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-    }
-  }
-
-  /// Показать ошибку невозможности офлайн авторизации
-  void _showOfflineAuthError() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text(AppLocalizations.of(context).translate('offline_auth_unavailable_title')),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppLocalizations.of(context).translate('offline_auth_requirements')),
-            SizedBox(height: 8),
-            Text('• ${AppLocalizations.of(context).translate('login_with_internet_first')}'),
-            Text('• ${AppLocalizations.of(context).translate('cache_user_data')}'),
-            SizedBox(height: 16),
-            Text(AppLocalizations.of(context).translate('connect_internet_try_again')),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context).translate('ok')),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Безопасный адаптивный текст из гайда
+  /// Безопасный адаптивный текст
   Widget _buildSafeText(
       BuildContext context,
       String text, {
@@ -543,7 +470,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Безопасная кнопка из гайда
+  /// ✅ ИСПРАВЛЕНО: Единая безопасная кнопка с автоматическим определением режима
   Widget _buildSafeButton({
     required BuildContext context,
     required String text,
@@ -606,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Индикатор статуса сети
+  /// ✅ УЛУЧШЕНО: Индикатор статуса сети
   Widget _buildNetworkStatusIndicator(bool isTablet) {
     if (_checkingConnection) {
       return Container(
@@ -888,30 +815,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
 
-                      // Кнопка входа (основная)
+                      // ✅ ГЛАВНОЕ ИЗМЕНЕНИЕ: Единая умная кнопка входа
                       _buildSafeButton(
                         context: context,
-                        text: _hasInternet ? localizations.translate('login') : localizations.translate('login_online'),
+                        text: _hasInternet
+                            ? localizations.translate('login')
+                            : localizations.translate('login_offline'),
                         onPressed: _isLoading ? null : _login,
                         isTablet: isTablet,
                         isLoading: _isLoading,
                         semanticLabel: localizations.translate('login_to_app'),
+                        backgroundColor: !_hasInternet ? Colors.orange.withOpacity(0.1) : Colors.transparent,
+                        textColor: !_hasInternet ? Colors.orange : AppConstants.textColor,
+                        borderColor: !_hasInternet ? Colors.orange : AppConstants.textColor,
                       ),
-
-                      // Кнопка офлайн входа (если нет интернета)
-                      if (!_hasInternet) ...[
-                        SizedBox(height: isTablet ? 16 : 12),
-                        _buildSafeButton(
-                          context: context,
-                          text: localizations.translate('login_offline'),
-                          onPressed: _canAuthenticateOffline && !_isLoading ? _showOfflineAuthDialog : null,
-                          isTablet: isTablet,
-                          backgroundColor: Colors.orange.withOpacity(0.1),
-                          textColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
-                          borderColor: _canAuthenticateOffline ? Colors.orange : Colors.grey,
-                          semanticLabel: localizations.translate('login_offline_mode'),
-                        ),
-                      ],
 
                       SizedBox(height: isTablet ? 24 : 16),
 
@@ -1018,7 +935,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Чекбокс "Запомнить меня"
+  /// ✅ ИСПРАВЛЕНО: Чекбокс "Запомнить меня" с правильным состоянием
   Widget _buildRememberMeCheckbox(BuildContext context, bool isTablet) {
     final localizations = AppLocalizations.of(context);
 
@@ -1034,6 +951,7 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() {
                 _rememberMe = value ?? false;
               });
+              debugPrint('🔐 Чекбокс "Запомнить меня": ${_rememberMe ? 'включен' : 'выключен'}');
             },
             activeColor: AppConstants.primaryColor,
             checkColor: AppConstants.textColor,
@@ -1051,6 +969,7 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() {
                 _rememberMe = !_rememberMe;
               });
+              debugPrint('🔐 Чекбокс "Запомнить меня": ${_rememberMe ? 'включен' : 'выключен'}');
             },
             child: Container(
               constraints: BoxConstraints(minHeight: 48),

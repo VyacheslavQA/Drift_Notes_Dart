@@ -19,17 +19,18 @@ class FirebaseService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final OfflineStorageService _offlineStorage = OfflineStorageService();
 
-  // Ключи для хранения пользовательских данных
+  // ✅ ИСПРАВЛЕНО: Унифицированные ключи для хранения данных
   static const String _authUserEmailKey = 'auth_user_email';
   static const String _authUserIdKey = 'auth_user_id';
   static const String _authUserDisplayNameKey = 'auth_user_display_name';
 
-  // Офлайн авторизация
-  static const String _offlineAuthEnabledKey = 'offline_auth_enabled';
-  static const String _lastOnlineAuthKey = 'last_online_auth_timestamp';
-  static const String _offlineUserDataKey = 'offline_cached_user_data';
-  static const String _offlineAuthExpiryKey = 'offline_auth_expiry_date';
+  // ✅ ДОБАВЛЕНО: Ключи для "Запомнить меня" (совместимость с login_screen.dart)
+  static const String _keySavedEmail = 'saved_email';
+  static const String _keySavedPasswordHash = 'saved_password_hash';
 
+  // ✅ УПРОЩЕНО: Офлайн авторизация
+  static const String _offlineAuthEnabledKey = 'offline_auth_enabled';
+  static const String _offlineAuthExpiryKey = 'offline_auth_expiry_date';
   static const int _offlineAuthValidityDays = 30;
 
   // Кэшированные данные
@@ -75,83 +76,123 @@ class FirebaseService {
       final prefs = await SharedPreferences.getInstance();
       _cachedUserId = prefs.getString(_authUserIdKey);
     } catch (e) {
-      debugPrint('Ошибка при загрузке ID пользователя из кэша: $e');
+      debugPrint('❌ Ошибка при загрузке ID пользователя из кэша: $e');
     }
   }
 
   // ========================================
-  // ОФЛАЙН АВТОРИЗАЦИЯ
+  // УПРОЩЕННАЯ ОФЛАЙН АВТОРИЗАЦИЯ
   // ========================================
 
-  /// Проверка возможности офлайн авторизации
+  /// ✅ ИСПРАВЛЕНО: Проверка возможности офлайн авторизации с правильными ключами
   Future<bool> canAuthenticateOffline() async {
     try {
-      final isValid = await _offlineStorage.isOfflineAuthValid();
-      debugPrint('Офлайн авторизация: ${isValid ? 'доступна' : 'недоступна'}');
-      return isValid;
+      final prefs = await SharedPreferences.getInstance();
+
+      // ✅ ИСПРАВЛЕНО: Проверяем базовые данные по правильным ключам
+      final isEnabled = prefs.getBool(_offlineAuthEnabledKey) ?? false;
+      final savedEmail = prefs.getString(_keySavedEmail); // ✅ Используем правильный ключ
+      final savedPasswordHash = prefs.getString(_keySavedPasswordHash); // ✅ Проверяем хеш пароля
+      final expiryTimestamp = prefs.getInt(_offlineAuthExpiryKey);
+
+      debugPrint('🔍 canAuthenticateOffline: isEnabled=$isEnabled');
+      debugPrint('🔍 canAuthenticateOffline: savedEmail=${savedEmail ?? 'null'}');
+      debugPrint('🔍 canAuthenticateOffline: savedPasswordHash=${savedPasswordHash != null ? 'есть' : 'null'}');
+      debugPrint('🔍 canAuthenticateOffline: expiryTimestamp=${expiryTimestamp ?? 'null'}');
+
+      if (!isEnabled || savedEmail == null || savedPasswordHash == null || expiryTimestamp == null) {
+        debugPrint('❌ canAuthenticateOffline: Базовые данные отсутствуют');
+        return false;
+      }
+
+      // Проверяем срок действия (30 дней)
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiryTimestamp);
+      final now = DateTime.now();
+      final isNotExpired = now.isBefore(expiryDate);
+
+      debugPrint('🔍 canAuthenticateOffline: expiryDate=$expiryDate');
+      debugPrint('🔍 canAuthenticateOffline: now=$now');
+      debugPrint('🔍 canAuthenticateOffline: isNotExpired=$isNotExpired');
+
+      debugPrint('🔍 Офлайн авторизация: ${isNotExpired ? 'доступна' : 'истекла'}');
+      return isNotExpired;
     } catch (e) {
-      debugPrint('Ошибка при проверке офлайн авторизации: $e');
+      debugPrint('❌ Ошибка при проверке офлайн авторизации: $e');
       return false;
     }
   }
 
-  /// Кэширование данных пользователя для офлайн режима
+  /// ✅ ИСПРАВЛЕНО: Кэширование данных пользователя для офлайн режима
   Future<void> cacheUserDataForOffline(User user) async {
     try {
-      debugPrint('Кэширование данных для офлайн режима: ${user.email}');
+      debugPrint('📦 Кэширование данных для офлайн режима: ${user.email}');
 
-      // Используем OfflineStorageService
-      await _offlineStorage.saveOfflineUserData(user);
-
-      // Дополнительно сохраняем в старом формате для совместимости
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_offlineAuthEnabledKey, true);
-      await prefs.setInt(_lastOnlineAuthKey, DateTime.now().millisecondsSinceEpoch);
 
+      // ✅ ИСПРАВЛЕНО: Сохраняем только в основные ключи
+      await prefs.setBool(_offlineAuthEnabledKey, true);
+      await prefs.setString(_authUserEmailKey, user.email ?? '');
+      await prefs.setString(_authUserIdKey, user.uid);
+      await prefs.setString(_authUserDisplayNameKey, user.displayName ?? '');
+      await prefs.setString(_keySavedEmail, user.email ?? '');
+
+      // Устанавливаем срок действия (30 дней)
       final expiryDate = DateTime.now().add(Duration(days: _offlineAuthValidityDays));
       await prefs.setInt(_offlineAuthExpiryKey, expiryDate.millisecondsSinceEpoch);
 
-      debugPrint('Данные пользователя кэшированы для офлайн режима');
+      // ✅ ИСПРАВЛЕНО: Не дублируем вызов saveOfflineUserData - он конфликтует с ключами!
+      // await _offlineStorage.saveOfflineUserData(user); // ❌ УБИРАЕМ - создает конфликт
+
+      debugPrint('✅ Данные пользователя кэшированы для офлайн режима');
+      debugPrint('🔐 Офлайн userId: ${user.uid}');
+      debugPrint('🔐 Офлайн email: ${user.email}');
     } catch (e) {
-      debugPrint('Ошибка при кэшировании данных пользователя: $e');
+      debugPrint('❌ Ошибка при кэшировании данных пользователя: $e');
     }
   }
 
-  /// Попытка офлайн авторизации
+  /// ✅ ИСПРАВЛЕНО: Попытка офлайн авторизации с правильными ключами
   Future<bool> tryOfflineAuthentication() async {
     try {
-      debugPrint('Попытка офлайн авторизации...');
+      debugPrint('🔄 Попытка офлайн авторизации...');
 
+      // Проверяем возможность авторизации
       final canAuth = await canAuthenticateOffline();
       if (!canAuth) {
+        debugPrint('❌ Офлайн авторизация недоступна');
         return false;
       }
 
-      final cachedData = await _offlineStorage.getCachedUserData();
-      if (cachedData == null) {
+      // ✅ ИСПРАВЛЕНО: Загружаем данные из правильных ключей
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUserId = prefs.getString(_authUserIdKey);
+      final cachedEmail = prefs.getString(_keySavedEmail);
+
+      debugPrint('🔍 tryOfflineAuthentication: cachedUserId=${cachedUserId ?? 'null'}');
+      debugPrint('🔍 tryOfflineAuthentication: cachedEmail=${cachedEmail ?? 'null'}');
+
+      if (cachedUserId == null || cachedEmail == null) {
+        debugPrint('❌ Недостаточно данных для офлайн авторизации');
         return false;
       }
 
-      final cachedUserId = cachedData['uid'] as String?;
-      if (cachedUserId == null) {
-        return false;
-      }
-
+      // Переключаемся в офлайн режим
       _isOfflineMode = true;
       _cachedUserId = cachedUserId;
 
+      // ✅ ИСПРАВЛЕНО: Сохраняем данные через простой метод без конфликта ключей
       await _offlineStorage.saveUserData({
         'uid': cachedUserId,
-        'email': cachedData['email'] ?? '',
-        'displayName': cachedData['displayName'] ?? '',
+        'email': cachedEmail,
+        'displayName': prefs.getString(_authUserDisplayNameKey) ?? '',
         'isOfflineMode': true,
         'offlineAuthTimestamp': DateTime.now().toIso8601String(),
       });
 
-      debugPrint('Офлайн авторизация успешна: ${cachedData['email']}');
+      debugPrint('✅ Офлайн авторизация успешна: $cachedEmail');
       return true;
     } catch (e) {
-      debugPrint('Ошибка при офлайн авторизации: $e');
+      debugPrint('❌ Ошибка при офлайн авторизации: $e');
       _isOfflineMode = false;
       _cachedUserId = null;
       return false;
@@ -164,29 +205,29 @@ class FirebaseService {
       if (_isOfflineMode && _auth.currentUser != null) {
         _isOfflineMode = false;
         await cacheUserDataForOffline(_auth.currentUser!);
-        debugPrint('Переключен в онлайн режим');
+        debugPrint('✅ Переключен в онлайн режим');
       }
     } catch (e) {
-      debugPrint('Ошибка при переключении в онлайн режим: $e');
+      debugPrint('❌ Ошибка при переключении в онлайн режим: $e');
     }
   }
 
-  /// Отключение офлайн режима
+  /// ✅ УПРОЩЕНО: Отключение офлайн режима
   Future<void> disableOfflineMode() async {
     try {
       _isOfflineMode = false;
       _cachedUserId = null;
 
+      // Очищаем данные
       await _offlineStorage.clearOfflineAuthData();
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_offlineAuthEnabledKey, false);
-      await prefs.remove(_offlineUserDataKey);
       await prefs.remove(_offlineAuthExpiryKey);
 
-      debugPrint('Офлайн режим отключен');
+      debugPrint('✅ Офлайн режим отключен');
     } catch (e) {
-      debugPrint('Ошибка при отключении офлайн режима: $e');
+      debugPrint('❌ Ошибка при отключении офлайн режима: $e');
     }
   }
 
@@ -256,25 +297,33 @@ class FirebaseService {
     }
   }
 
-  /// Сохранение данных пользователя в кэш
+  /// ✅ ИСПРАВЛЕНО: Сохранение данных пользователя в основные ключи
   Future<void> _cacheUserData(User? user) async {
     if (user == null) return;
 
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // ✅ ИСПРАВЛЕНО: Сохраняем только в основные ключи
       await prefs.setString(_authUserEmailKey, user.email ?? '');
       await prefs.setString(_authUserIdKey, user.uid);
       await prefs.setString(_authUserDisplayNameKey, user.displayName ?? '');
+      await prefs.setString(_keySavedEmail, user.email ?? '');
 
       _cachedUserId = user.uid;
 
+      // ✅ ИСПРАВЛЕНО: Простое сохранение через OfflineStorageService
       await _offlineStorage.saveUserData({
         'uid': user.uid,
         'email': user.email ?? '',
         'displayName': user.displayName ?? '',
       });
+
+      debugPrint('✅ Данные пользователя сохранены в основные ключи');
+      debugPrint('🔐 userId: ${user.uid}');
+      debugPrint('🔐 email: ${user.email}');
     } catch (e) {
-      debugPrint('Ошибка при сохранении данных пользователя в кэш: $e');
+      debugPrint('❌ Ошибка при сохранении данных пользователя в кэш: $e');
     }
   }
 
@@ -341,7 +390,7 @@ class FirebaseService {
       }
     }
 
-    debugPrint('Firebase Auth Error: $e');
+    debugPrint('❌ Firebase Auth Error: $e');
     return errorMessage;
   }
 
@@ -368,7 +417,7 @@ class FirebaseService {
 
       await _auth.signOut();
     } catch (e) {
-      debugPrint('Ошибка при выходе: $e');
+      debugPrint('❌ Ошибка при выходе: $e');
     }
   }
 
@@ -426,9 +475,9 @@ class FirebaseService {
         ...profileData,
       }, SetOptions(merge: true));
 
-      debugPrint('Профиль пользователя создан/обновлен: $userId');
+      debugPrint('✅ Профиль пользователя создан/обновлен: $userId');
     } catch (e) {
-      debugPrint('Ошибка при создании профиля пользователя: $e');
+      debugPrint('❌ Ошибка при создании профиля пользователя: $e');
       rethrow;
     }
   }
@@ -441,7 +490,7 @@ class FirebaseService {
     try {
       return await _firestore.collection('users').doc(userId).get();
     } catch (e) {
-      debugPrint('Ошибка при получении профиля пользователя: $e');
+      debugPrint('❌ Ошибка при получении профиля пользователя: $e');
       rethrow;
     }
   }
@@ -457,9 +506,9 @@ class FirebaseService {
         ...profileData,
       });
 
-      debugPrint('Профиль пользователя обновлен: $userId');
+      debugPrint('✅ Профиль пользователя обновлен: $userId');
     } catch (e) {
-      debugPrint('Ошибка при обновлении профиля пользователя: $e');
+      debugPrint('❌ Ошибка при обновлении профиля пользователя: $e');
       rethrow;
     }
   }
@@ -484,7 +533,7 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Ошибка при добавлении заметки о рыбалке: $e');
+      debugPrint('❌ Ошибка при добавлении заметки о рыбалке: $e');
       rethrow;
     }
   }
@@ -505,7 +554,7 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Ошибка при обновлении заметки о рыбалке: $e');
+      debugPrint('❌ Ошибка при обновлении заметки о рыбалке: $e');
       rethrow;
     }
   }
@@ -530,7 +579,7 @@ class FirebaseService {
             .collection(SubscriptionConstants.fishingNotesSubcollection)
             .get();
       }
-      debugPrint('Ошибка при получении заметок о рыбалке: $e');
+      debugPrint('❌ Ошибка при получении заметок о рыбалке: $e');
       rethrow;
     }
   }
@@ -548,7 +597,7 @@ class FirebaseService {
           .doc(noteId)
           .delete();
     } catch (e) {
-      debugPrint('Ошибка при удалении заметки о рыбалке: $e');
+      debugPrint('❌ Ошибка при удалении заметки о рыбалке: $e');
       rethrow;
     }
   }
@@ -573,10 +622,10 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('Маркерная карта добавлена с ID: ${docRef.id}');
+      debugPrint('✅ Маркерная карта добавлена с ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('Ошибка при добавлении маркерной карты: $e');
+      debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
       rethrow;
     }
   }
@@ -597,7 +646,7 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Ошибка при обновлении маркерной карты: $e');
+      debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
       rethrow;
     }
   }
@@ -615,7 +664,7 @@ class FirebaseService {
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
-      debugPrint('Ошибка при получении маркерных карт: $e');
+      debugPrint('❌ Ошибка при получении маркерных карт: $e');
       rethrow;
     }
   }
@@ -633,7 +682,7 @@ class FirebaseService {
           .doc(mapId)
           .delete();
     } catch (e) {
-      debugPrint('Ошибка при удалении маркерной карты: $e');
+      debugPrint('❌ Ошибка при удалении маркерной карты: $e');
       rethrow;
     }
   }
@@ -658,7 +707,7 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Ошибка при добавлении заметки о бюджете: $e');
+      debugPrint('❌ Ошибка при добавлении заметки о бюджете: $e');
       rethrow;
     }
   }
@@ -679,7 +728,7 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('Ошибка при обновлении заметки о бюджете: $e');
+      debugPrint('❌ Ошибка при обновлении заметки о бюджете: $e');
       rethrow;
     }
   }
@@ -697,7 +746,7 @@ class FirebaseService {
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
-      debugPrint('Ошибка при получении заметок о бюджете: $e');
+      debugPrint('❌ Ошибка при получении заметок о бюджете: $e');
       rethrow;
     }
   }
@@ -715,7 +764,7 @@ class FirebaseService {
           .doc(noteId)
           .delete();
     } catch (e) {
-      debugPrint('Ошибка при удалении заметки о бюджете: $e');
+      debugPrint('❌ Ошибка при удалении заметки о бюджете: $e');
       rethrow;
     }
   }
@@ -740,9 +789,9 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      debugPrint('Согласия успешно сохранены');
+      debugPrint('✅ Согласия успешно сохранены');
     } catch (e) {
-      debugPrint('Ошибка при сохранении согласий: $e');
+      debugPrint('❌ Ошибка при сохранении согласий: $e');
       rethrow;
     }
   }
@@ -760,7 +809,7 @@ class FirebaseService {
           .doc('consents')
           .get();
     } catch (e) {
-      debugPrint('Ошибка при получении согласий: $e');
+      debugPrint('❌ Ошибка при получении согласий: $e');
       rethrow;
     }
   }
@@ -785,9 +834,9 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      debugPrint('Подписка успешно сохранена');
+      debugPrint('✅ Подписка успешно сохранена');
     } catch (e) {
-      debugPrint('Ошибка при сохранении подписки: $e');
+      debugPrint('❌ Ошибка при сохранении подписки: $e');
       rethrow;
     }
   }
@@ -805,7 +854,7 @@ class FirebaseService {
           .doc('current')
           .get();
     } catch (e) {
-      debugPrint('Ошибка при получении подписки: $e');
+      debugPrint('❌ Ошибка при получении подписки: $e');
       rethrow;
     }
   }
@@ -828,13 +877,13 @@ class FirebaseService {
 
       return isActive && status == 'active';
     } catch (e) {
-      debugPrint('Ошибка при проверке активности подписки: $e');
+      debugPrint('❌ Ошибка при проверке активности подписки: $e');
       return false;
     }
   }
 
   // ========================================
-  // ЛИМИТЫ ИСПОЛЬЗОВАНИЯ
+  // ⚠️ КРИТИЧНО: ЛИМИТЫ ИСПОЛЬЗОВАНИЯ (НЕ ТРОГАЕМ!)
   // ========================================
 
   /// Получение лимитов использования пользователя
@@ -858,7 +907,7 @@ class FirebaseService {
 
       return doc;
     } catch (e) {
-      debugPrint('Ошибка при получении лимитов использования: $e');
+      debugPrint('❌ Ошибка при получении лимитов использования: $e');
       rethrow;
     }
   }
@@ -878,21 +927,21 @@ class FirebaseService {
         final fishingNotesSnapshot = await getUserFishingNotesNew();
         fishingNotesCount = fishingNotesSnapshot.docs.length;
       } catch (e) {
-        debugPrint('Ошибка при подсчете заметок рыбалки: $e');
+        debugPrint('❌ Ошибка при подсчете заметок рыбалки: $e');
       }
 
       try {
         final markerMapsSnapshot = await getUserMarkerMaps();
         markerMapsCount = markerMapsSnapshot.docs.length;
       } catch (e) {
-        debugPrint('Ошибка при подсчете маркерных карт: $e');
+        debugPrint('❌ Ошибка при подсчете маркерных карт: $e');
       }
 
       try {
         final budgetNotesSnapshot = await getUserBudgetNotes();
         budgetNotesCount = budgetNotesSnapshot.docs.length;
       } catch (e) {
-        debugPrint('Ошибка при подсчете заметок бюджета: $e');
+        debugPrint('❌ Ошибка при подсчете заметок бюджета: $e');
       }
 
       final initialLimits = {
@@ -911,9 +960,9 @@ class FirebaseService {
           .doc(SubscriptionConstants.currentUsageLimitsDocument)
           .set(initialLimits);
 
-      debugPrint('Начальные лимиты созданы для пользователя: $userId');
+      debugPrint('✅ Начальные лимиты созданы для пользователя: $userId');
     } catch (e) {
-      debugPrint('Ошибка при создании начальных лимитов: $e');
+      debugPrint('❌ Ошибка при создании начальных лимитов: $e');
       rethrow;
     }
   }
@@ -940,10 +989,10 @@ class FirebaseService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('Счетчик $countType увеличен на $increment');
+      debugPrint('✅ Счетчик $countType увеличен на $increment');
       return true;
     } catch (e) {
-      debugPrint('Ошибка при увеличении счетчика использования: $e');
+      debugPrint('❌ Ошибка при увеличении счетчика использования: $e');
       return false;
     }
   }
@@ -977,7 +1026,7 @@ class FirebaseService {
         'remaining': remaining,
       };
     } catch (e) {
-      debugPrint('Ошибка при проверке лимита использования: $e');
+      debugPrint('❌ Ошибка при проверке лимита использования: $e');
       return {
         'canProceed': true,
         'currentCount': 0,
@@ -1010,7 +1059,7 @@ class FirebaseService {
 
       return await checkUsageLimit(itemType, maxLimit);
     } catch (e) {
-      debugPrint('Ошибка при проверке возможности создания элемента: $e');
+      debugPrint('❌ Ошибка при проверке возможности создания элемента: $e');
       return {
         'canProceed': true,
         'currentCount': 0,
@@ -1059,7 +1108,7 @@ class FirebaseService {
         'exists': true,
       };
     } catch (e) {
-      debugPrint('Ошибка при получении статистики использования: $e');
+      debugPrint('❌ Ошибка при получении статистики использования: $e');
       return {'exists': false, 'error': e.toString()};
     }
   }
@@ -1086,9 +1135,9 @@ class FirebaseService {
           .doc(SubscriptionConstants.currentUsageLimitsDocument)
           .set(resetData, SetOptions(merge: true));
 
-      debugPrint('Лимиты использования сброшены для пользователя: $userId');
+      debugPrint('✅ Лимиты использования сброшены для пользователя: $userId');
     } catch (e) {
-      debugPrint('Ошибка при сбросе лимитов использования: $e');
+      debugPrint('❌ Ошибка при сбросе лимитов использования: $e');
       rethrow;
     }
   }
@@ -1106,7 +1155,7 @@ class FirebaseService {
       final snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
-      debugPrint('Ошибка при загрузке изображения: $e');
+      debugPrint('❌ Ошибка при загрузке изображения: $e');
       rethrow;
     }
   }

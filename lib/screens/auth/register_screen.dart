@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart'; // ✅ ДОБАВЛЕНО: Для безопасного хеширования
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ ДОБАВЛЕНО: Для сохранения данных
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
 import '../../localization/app_localizations.dart';
 import '../help/privacy_policy_screen.dart';
 import '../help/terms_of_service_screen.dart';
-import '../../widgets/user_agreements_dialog.dart'; // ДОБАВЛЕН ИМПОРТ
+import '../../widgets/user_agreements_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -51,6 +54,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Регулярное выражение для допустимых символов в пароле
   final RegExp _allowedPasswordChars = RegExp(r'^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
 
+  // ✅ ДОБАВЛЕНО: Ключи для безопасного хранения данных
+  static const String _keyRememberMe = 'remember_me';
+  static const String _keySavedEmail = 'saved_email';
+  static const String _keySavedPasswordHash = 'saved_password_hash';
+
   @override
   void initState() {
     super.initState();
@@ -66,7 +74,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.addListener(() {
       if (_emailController.selection.start == 0 &&
           _emailController.selection.end == _emailController.text.length) {
-        // Используем Future.microtask для избежания рекурсии
         Future.microtask(() {
           if (mounted && _emailController.selection.start == 0 &&
               _emailController.selection.end == _emailController.text.length) {
@@ -148,7 +155,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Функция для создания профиля пользователя (новая структура)
+  // ✅ ДОБАВЛЕНО: Безопасное сохранение данных для офлайн режима
+  Future<void> _saveCredentialsForOffline(String email, String password) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // ✅ БЕЗОПАСНО: Сохраняем хеш пароля для офлайн режима
+      final passwordHash = sha256.convert(utf8.encode(password)).toString();
+
+      await prefs.setBool(_keyRememberMe, true);
+      await prefs.setString(_keySavedEmail, email);
+      await prefs.setString(_keySavedPasswordHash, passwordHash);
+
+      debugPrint('✅ Данные пользователя безопасно сохранены для офлайн режима');
+    } catch (e) {
+      debugPrint('❌ Ошибка при сохранении данных: $e');
+    }
+  }
+
+  // ✅ УПРОЩЕНО: Функция для создания профиля пользователя
   Future<void> _createUserProfile(String userId, String name, String email) async {
     try {
       await _firebaseService.createUserProfile({
@@ -161,23 +186,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'fishingTypes': ['Обычная рыбалка'],
       });
 
-      debugPrint('✅ Профиль пользователя создан в новой структуре');
+      debugPrint('✅ Профиль пользователя создан');
     } catch (e) {
       debugPrint('❌ Ошибка при создании профиля пользователя: $e');
       // Не прерываем регистрацию, если не удалось создать профиль
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Функция для сохранения согласий пользователя с проверкой
+  // ✅ УПРОЩЕНО: Функция для сохранения согласий пользователя
   Future<bool> _saveUserConsents() async {
     try {
-      // ✅ НОВАЯ ЛОГИКА: Сохраняем согласия только если пользователь их принял
+      // Проверяем что пользователь принял согласия
       if (!_acceptedTermsAndPrivacy) {
-        debugPrint('❌ Пользователь НЕ принял соглашения - не сохраняем');
+        debugPrint('❌ Пользователь НЕ принял соглашения');
         return false;
       }
 
-      debugPrint('✅ Пользователь принял соглашения через чекбокс - сохраняем');
+      debugPrint('✅ Пользователь принял соглашения - сохраняем');
 
       await _firebaseService.updateUserConsents({
         'privacyPolicyAccepted': true,
@@ -185,13 +210,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'consentDate': FieldValue.serverTimestamp(),
         'appVersion': '1.0.0',
         'authProvider': 'email',
-        'consentMethod': 'registration_checkbox', // ✅ ДОБАВЛЕНО: как были приняты согласия
+        'consentMethod': 'registration_checkbox',
         'deviceInfo': {
           'platform': Theme.of(context).platform.name,
         },
       });
 
-      debugPrint('✅ Согласия пользователя сохранены в новой структуре');
+      debugPrint('✅ Согласия пользователя сохранены');
       return true;
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении согласий: $e');
@@ -199,7 +224,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ НОВЫЙ МЕТОД: Показ диалога согласий при ошибке сохранения
+  // ✅ УПРОЩЕНО: Показ диалога согласий при ошибке сохранения
   Future<bool> _showAgreementsDialog() async {
     try {
       final result = await showDialog<bool>(
@@ -224,13 +249,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  // ✅ УПРОЩЕНО: Основная функция регистрации
   Future<void> _register() async {
     // Скрываем клавиатуру
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ УСИЛЕННАЯ ПРОВЕРКА: Согласие с условиями ОБЯЗАТЕЛЬНО
+    // ✅ ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: Согласие с условиями
     if (!_acceptedTermsAndPrivacy) {
       final localizations = AppLocalizations.of(context);
       setState(() {
@@ -244,15 +270,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = '';
     });
 
-    // ✅ ДОБАВЛЕНО: Переменная для отслеживания успешности
-    bool registrationSuccessful = false;
-
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
       final name = _nameController.text.trim();
 
-      // Регистрируем пользователя в Firebase Auth
+      // ✅ УПРОЩЕНО: Регистрируем пользователя в Firebase Auth
       final userCredential = await _firebaseService
           .registerWithEmailAndPassword(email, password, context);
 
@@ -262,15 +285,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Обновляем имя пользователя
         await user.updateDisplayName(name);
 
-        // === НОВАЯ СТРУКТУРА: Создаем профиль пользователя ===
+        // ✅ УПРОЩЕНО: Создаем профиль пользователя
         await _createUserProfile(user.uid, name, email);
 
-        // ✅ ИСПРАВЛЕНО: Сохраняем согласия с проверкой
+        // ✅ УПРОЩЕНО: Сохраняем согласия
         final consentsSuccess = await _saveUserConsents();
 
         if (!consentsSuccess) {
-          debugPrint('⚠️ Не удалось сохранить согласия через чекбокс - показываем диалог');
-
           // Показываем диалог согласий как запасной вариант
           final dialogResult = await _showAgreementsDialog();
 
@@ -291,17 +312,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ?? 'Для регистрации необходимо принять соглашения';
               });
             }
-            return; // Прерываем регистрацию
+            return;
           }
         }
 
-        // ✅ Если дошли до этого места - согласия приняты и сохранены
-        registrationSuccessful = true;
+        // ✅ ДОБАВЛЕНО: Сохраняем данные для офлайн режима
+        await _saveCredentialsForOffline(email, password);
 
+        // ✅ ДОБАВЛЕНО: Кэшируем данные для офлайн режима
+        await _firebaseService.cacheUserDataForOffline(user);
+
+        // ✅ УСПЕШНАЯ РЕГИСТРАЦИЯ
         if (mounted) {
           final localizations = AppLocalizations.of(context);
 
-          // Показываем сообщение об успешной регистрации
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(localizations.translate('registration_successful')),
@@ -310,17 +334,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
 
-          // Проверяем, есть ли коллбэк для выполнения отложенного действия
+          // Переходим на главный экран
           if (widget.onAuthSuccess != null) {
             debugPrint('🎯 Вызываем коллбэк после успешной регистрации');
-            // Переходим на главный экран
             Navigator.of(context).pushReplacementNamed('/home');
-            // Вызываем коллбэк через небольшую задержку
             Future.delayed(const Duration(milliseconds: 500), () {
               widget.onAuthSuccess!();
             });
           } else {
-            // Обычная навигация без коллбэка
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
                 Navigator.of(context).pushReplacementNamed('/home');
@@ -332,8 +353,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       debugPrint('❌ Ошибка регистрации: $e');
 
-      // ✅ ДОБАВЛЕНО: Если регистрация не удалась и есть пользователь - выходим
-      if (!registrationSuccessful && _firebaseService.currentUser != null) {
+      // При ошибке регистрации выходим из аккаунта
+      if (_firebaseService.currentUser != null) {
         try {
           await _firebaseService.signOut();
           debugPrint('✅ Выполнен выход после ошибки регистрации');
@@ -370,7 +391,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ БЕЗОПАСНАЯ ФОРМУЛА ЭКРАНА из гайда
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -388,15 +408,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // ✅ Простая логика из гайда
               final isTablet = MediaQuery.of(context).size.width >= 600;
               final textScale = MediaQuery.of(context).textScaler.scale(1.0);
-              // ✅ Ограничиваем масштабирование из гайда
               final adaptiveTextScale = textScale > 1.3 ? 1.3 / textScale : 1.0;
               final localizations = AppLocalizations.of(context);
 
               return SingleChildScrollView(
-                // ✅ Fallback на случай overflow
                 padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -406,7 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Кнопка "Назад" с правильной семантикой
+                      // Кнопка "Назад"
                       const SizedBox(height: 16),
                       Semantics(
                         button: true,
@@ -421,11 +438,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               size: isTablet ? 28 : 24,
                             ),
                             onPressed: () {
-                              // Безопасный возврат назад
                               if (Navigator.canPop(context)) {
                                 Navigator.pop(context);
                               } else {
-                                // Если не можем вернуться назад, переходим к экрану выбора авторизации
                                 Navigator.pushReplacementNamed(
                                   context,
                                   '/auth_selection',
@@ -436,14 +451,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
 
-                      // Основной контент без Flexible в ScrollView
+                      // Основной контент
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Верхняя часть: заголовок без логотипа
+                          // Верхняя часть: заголовок
                           Column(
                             children: [
-                              // Заголовок экрана - увеличенный размер
                               Text(
                                 localizations.translate('registration'),
                                 style: TextStyle(
@@ -455,23 +469,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               SizedBox(height: isTablet ? 16 : 12),
 
-                              // Подзаголовок - увеличенный размер
                               Text(
                                 localizations.translate('create_account_access'),
                                 style: TextStyle(
                                   fontSize: (isTablet ? 16 * 1.2 : 16) * adaptiveTextScale,
-                                  color: AppConstants.textColor.withValues(
-                                    alpha: 0.7,
-                                  ),
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
                                 ),
                                 textAlign: TextAlign.center,
-                                maxLines: 2, // ✅ Защита от overflow
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
 
                               SizedBox(height: isTablet ? 32 : 24),
 
-                              // Название приложения - увеличенный размер
                               Text(
                                 'Drift Notes',
                                 style: TextStyle(
@@ -485,7 +495,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           SizedBox(height: isTablet ? 40 : 30),
 
-                          // Средняя часть: форма регистрации
+                          // Форма регистрации
                           Form(
                             key: _formKey,
                             child: Column(
@@ -500,11 +510,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   child: TextFormField(
                                     controller: _nameController,
                                     onTap: () {
-                                      // Предотвращаем автовыделение всего текста
                                       Future.delayed(Duration.zero, () {
                                         if (_nameController.selection.baseOffset == 0 &&
                                             _nameController.selection.extentOffset == _nameController.text.length) {
-                                          // Если весь текст выделен, ставим курсор в конец
                                           _nameController.selection = TextSelection.fromPosition(
                                             TextPosition(offset: _nameController.text.length),
                                           );
@@ -518,9 +526,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     decoration: InputDecoration(
                                       hintText: localizations.translate('name'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                        color: AppConstants.textColor.withValues(alpha: 0.5),
                                       ),
                                       filled: true,
                                       fillColor: const Color(0xFF12332E),
@@ -562,9 +568,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         vertical: isTablet ? 20 : 16,
                                       ),
                                     ),
-                                    validator:
-                                        (value) =>
-                                        Validators.validateName(value, context),
+                                    validator: (value) => Validators.validateName(value, context),
                                     textInputAction: TextInputAction.next,
                                   ),
                                 ),
@@ -580,7 +584,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   child: TextFormField(
                                     controller: _emailController,
                                     onTap: () {
-                                      // Убираем автовыделение текста
                                       Future.microtask(() {
                                         if (_emailController.selection.start == 0 &&
                                             _emailController.selection.end == _emailController.text.length) {
@@ -591,7 +594,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       });
                                     },
                                     onChanged: (value) {
-                                      // Сбрасываем автовыделение при вводе
                                       if (_emailController.selection.start == 0 &&
                                           _emailController.selection.end == _emailController.text.length) {
                                         _emailController.selection = TextSelection.collapsed(
@@ -606,9 +608,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     decoration: InputDecoration(
                                       hintText: localizations.translate('email'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                        color: AppConstants.textColor.withValues(alpha: 0.5),
                                       ),
                                       filled: true,
                                       fillColor: const Color(0xFF12332E),
@@ -650,9 +650,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         vertical: isTablet ? 20 : 16,
                                       ),
                                     ),
-                                    validator:
-                                        (value) =>
-                                        Validators.validateEmail(value, context),
+                                    validator: (value) => Validators.validateEmail(value, context),
                                     textInputAction: TextInputAction.next,
                                   ),
                                 ),
@@ -671,7 +669,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         controller: _passwordController,
                                         focusNode: _passwordFocusNode,
                                         onTap: () {
-                                          // Убираем автовыделение текста
                                           Future.microtask(() {
                                             if (_passwordController.selection.start == 0 &&
                                                 _passwordController.selection.end == _passwordController.text.length) {
@@ -682,7 +679,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           });
                                         },
                                         onChanged: (value) {
-                                          // Сбрасываем автовыделение при вводе и валидируем
                                           if (_passwordController.selection.start == 0 &&
                                               _passwordController.selection.end == _passwordController.text.length) {
                                             _passwordController.selection = TextSelection.collapsed(
@@ -699,13 +695,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           fontSize: isTablet ? 18 : 16,
                                         ),
                                         decoration: InputDecoration(
-                                          hintText: localizations.translate(
-                                            'password',
-                                          ),
+                                          hintText: localizations.translate('password'),
                                           hintStyle: TextStyle(
-                                            color: AppConstants.textColor.withValues(
-                                              alpha: 0.5,
-                                            ),
+                                            color: AppConstants.textColor.withValues(alpha: 0.5),
                                           ),
                                           filled: true,
                                           fillColor: const Color(0xFF12332E),
@@ -762,11 +754,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           ),
                                         ),
                                         obscureText: _obscurePassword,
-                                        validator:
-                                            (value) => Validators.validatePassword(
-                                          value,
-                                          context,
-                                        ),
+                                        validator: (value) => Validators.validatePassword(value, context),
                                         textInputAction: TextInputAction.next,
                                       ),
                                     ),
@@ -806,48 +794,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                       ),
 
-                                    // Требования к паролю под полем
-                                    if (_passwordFieldFocused ||
-                                        _passwordController.text.isNotEmpty)
+                                    // Требования к паролю
+                                    if (_passwordFieldFocused || _passwordController.text.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(top: isTablet ? 12 : 8),
                                         padding: EdgeInsets.all(isTablet ? 16 : 12),
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFF12332E,
-                                          ).withValues(alpha: 0.5),
+                                          color: const Color(0xFF12332E).withValues(alpha: 0.5),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Row(
-                                          mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                           children: [
                                             Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  _hasMinLength
-                                                      ? Icons.check_circle
-                                                      : Icons.cancel,
-                                                  color:
-                                                  _hasMinLength
-                                                      ? Colors.green
-                                                      : Colors.red.withValues(
-                                                    alpha: 0.7,
-                                                  ),
+                                                  _hasMinLength ? Icons.check_circle : Icons.cancel,
+                                                  color: _hasMinLength ? Colors.green : Colors.red.withValues(alpha: 0.7),
                                                   size: 14,
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   localizations.translate('password_min_chars'),
                                                   style: TextStyle(
-                                                    color:
-                                                    _hasMinLength
-                                                        ? Colors.green
-                                                        : AppConstants.textColor
-                                                        .withValues(
-                                                      alpha: 0.7,
-                                                    ),
+                                                    color: _hasMinLength ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -857,28 +828,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  _hasUppercase
-                                                      ? Icons.check_circle
-                                                      : Icons.cancel,
-                                                  color:
-                                                  _hasUppercase
-                                                      ? Colors.green
-                                                      : Colors.red.withValues(
-                                                    alpha: 0.7,
-                                                  ),
+                                                  _hasUppercase ? Icons.check_circle : Icons.cancel,
+                                                  color: _hasUppercase ? Colors.green : Colors.red.withValues(alpha: 0.7),
                                                   size: 14,
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   'A-Z',
                                                   style: TextStyle(
-                                                    color:
-                                                    _hasUppercase
-                                                        ? Colors.green
-                                                        : AppConstants.textColor
-                                                        .withValues(
-                                                      alpha: 0.7,
-                                                    ),
+                                                    color: _hasUppercase ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -888,28 +846,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  _hasNumber
-                                                      ? Icons.check_circle
-                                                      : Icons.cancel,
-                                                  color:
-                                                  _hasNumber
-                                                      ? Colors.green
-                                                      : Colors.red.withValues(
-                                                    alpha: 0.7,
-                                                  ),
+                                                  _hasNumber ? Icons.check_circle : Icons.cancel,
+                                                  color: _hasNumber ? Colors.green : Colors.red.withValues(alpha: 0.7),
                                                   size: 14,
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   '0-9',
                                                   style: TextStyle(
-                                                    color:
-                                                    _hasNumber
-                                                        ? Colors.green
-                                                        : AppConstants.textColor
-                                                        .withValues(
-                                                      alpha: 0.7,
-                                                    ),
+                                                    color: _hasNumber ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -933,7 +878,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     controller: _confirmPasswordController,
                                     focusNode: _confirmPasswordFocusNode,
                                     onTap: () {
-                                      // Убираем автовыделение текста
                                       Future.microtask(() {
                                         if (_confirmPasswordController.selection.start == 0 &&
                                             _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
@@ -944,7 +888,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       });
                                     },
                                     onChanged: (value) {
-                                      // Сбрасываем автовыделение при вводе
                                       if (_confirmPasswordController.selection.start == 0 &&
                                           _confirmPasswordController.selection.end == _confirmPasswordController.text.length) {
                                         _confirmPasswordController.selection = TextSelection.collapsed(
@@ -957,13 +900,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       fontSize: isTablet ? 18 : 16,
                                     ),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate(
-                                        'confirm_password',
-                                      ),
+                                      hintText: localizations.translate('confirm_password'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                        color: AppConstants.textColor.withValues(alpha: 0.5),
                                       ),
                                       filled: true,
                                       fillColor: const Color(0xFF12332E),
@@ -982,8 +921,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                         onPressed: () {
                                           setState(() {
-                                            _obscureConfirmPassword =
-                                            !_obscureConfirmPassword;
+                                            _obscureConfirmPassword = !_obscureConfirmPassword;
                                           });
                                         },
                                       ),
@@ -1021,8 +959,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ),
                                     ),
                                     obscureText: _obscureConfirmPassword,
-                                    validator:
-                                        (value) => Validators.validateConfirmPassword(
+                                    validator: (value) => Validators.validateConfirmPassword(
                                       value,
                                       _passwordController.text,
                                       context,
@@ -1037,7 +974,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           SizedBox(height: isTablet ? 24 : 20),
 
-                          // Чекбокс с пользовательским соглашением и политикой - увеличенный
+                          // Чекбокс с пользовательским соглашением
                           Semantics(
                             label: localizations.translate('agreement_consent_label'),
                             child: Container(
@@ -1058,9 +995,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       activeColor: AppConstants.primaryColor,
                                       checkColor: AppConstants.textColor,
                                       side: BorderSide(
-                                        color: AppConstants.textColor.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                        color: AppConstants.textColor.withValues(alpha: 0.5),
                                         width: 1.5,
                                       ),
                                     ),
@@ -1076,9 +1011,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                         children: [
                                           TextSpan(
-                                            text: localizations.translate(
-                                              'i_have_read_and_agree',
-                                            ),
+                                            text: localizations.translate('i_have_read_and_agree'),
                                           ),
                                           const TextSpan(text: ' '),
                                           TextSpan(
@@ -1088,9 +1021,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               decoration: TextDecoration.underline,
                                               fontWeight: FontWeight.w500,
                                             ),
-                                            recognizer:
-                                            TapGestureRecognizer()
-                                              ..onTap = _showTermsOfService,
+                                            recognizer: TapGestureRecognizer()..onTap = _showTermsOfService,
                                           ),
                                           const TextSpan(text: ' '),
                                           TextSpan(
@@ -1098,17 +1029,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           ),
                                           const TextSpan(text: ' '),
                                           TextSpan(
-                                            text: localizations.translate(
-                                              'privacy_policy_agreement',
-                                            ),
+                                            text: localizations.translate('privacy_policy_agreement'),
                                             style: TextStyle(
                                               color: AppConstants.primaryColor,
                                               decoration: TextDecoration.underline,
                                               fontWeight: FontWeight.w500,
                                             ),
-                                            recognizer:
-                                            TapGestureRecognizer()
-                                              ..onTap = _showPrivacyPolicy,
+                                            recognizer: TapGestureRecognizer()..onTap = _showPrivacyPolicy,
                                           ),
                                         ],
                                       ),
@@ -1121,10 +1048,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           SizedBox(height: isTablet ? 24 : 20),
 
-                          // Нижняя часть: ошибка и кнопки
+                          // Сообщение об ошибке и кнопка регистрации
                           Column(
                             children: [
-                              // Сообщение об ошибке - компактная версия
                               if (_errorMessage.isNotEmpty)
                                 Container(
                                   padding: EdgeInsets.all(isTablet ? 12 : 8),
@@ -1140,7 +1066,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       fontSize: (isTablet ? 12 * 1.2 : 12) * adaptiveTextScale,
                                     ),
                                     textAlign: TextAlign.center,
-                                    maxLines: 3, // ✅ Защита от overflow
+                                    maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -1152,14 +1078,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: Container(
                                   width: double.infinity,
                                   constraints: BoxConstraints(
-                                    minHeight: isTablet ? 56 : 48, // ✅ Минимум для touch target
-                                    maxHeight: (isTablet ? 56 : 48) * 1.5, // ✅ Позволяем расти
+                                    minHeight: isTablet ? 56 : 48,
+                                    maxHeight: (isTablet ? 56 : 48) * 1.5,
                                   ),
                                   child: ElevatedButton(
-                                    onPressed:
-                                    (_isLoading || !_acceptedTermsAndPrivacy)
-                                        ? null
-                                        : _register,
+                                    onPressed: (_isLoading || !_acceptedTermsAndPrivacy) ? null : _register,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.transparent,
                                       foregroundColor: AppConstants.textColor,
@@ -1174,20 +1097,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       disabledBackgroundColor: Colors.transparent,
                                       elevation: 0,
                                     ),
-                                    child:
-                                    _isLoading
+                                    child: _isLoading
                                         ? SizedBox(
                                       width: isTablet ? 28 : 24,
                                       height: isTablet ? 28 : 24,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor:
-                                        AlwaysStoppedAnimation<Color>(
-                                          AppConstants.textColor,
-                                        ),
+                                        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
                                       ),
                                     )
-                                        : FittedBox( // ✅ КРИТИЧНО для длинного текста
+                                        : FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
                                         localizations.translate('register'),
@@ -1210,28 +1129,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      localizations
-                                          .translate('already_have_account')
-                                          .split('?')[0] +
-                                          '? ',
+                                      localizations.translate('already_have_account').split('?')[0] + '? ',
                                       style: TextStyle(
-                                        color: AppConstants.textColor.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                        color: AppConstants.textColor.withValues(alpha: 0.7),
                                         fontSize: (isTablet ? 14 * 1.2 : 14) * adaptiveTextScale,
                                       ),
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.pushReplacementNamed(
-                                          context,
-                                          '/login',
-                                        );
+                                        Navigator.pushReplacementNamed(context, '/login');
                                       },
                                       child: Text(
-                                        localizations
-                                            .translate('already_have_account')
-                                            .split('? ')[1],
+                                        localizations.translate('already_have_account').split('? ')[1],
                                         style: TextStyle(
                                           color: AppConstants.textColor,
                                           fontSize: (isTablet ? 14 * 1.2 : 14) * adaptiveTextScale,
@@ -1248,7 +1157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ],
                       ),
 
-                      SizedBox(height: isTablet ? 20 : 16), // Нижний отступ
+                      SizedBox(height: isTablet ? 20 : 16),
                     ],
                   ),
                 ),
