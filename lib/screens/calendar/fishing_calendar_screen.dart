@@ -2,9 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:provider/provider.dart'; // ✅ ДОБАВЛЕНО для Provider
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
+import '../../constants/subscription_constants.dart'; // ✅ ДОБАВЛЕНО для ContentType
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../repositories/fishing_note_repository.dart';
@@ -15,6 +17,11 @@ import '../fishing_note/add_fishing_note_screen.dart';
 import '../../services/calendar_event_service.dart';
 import '../tournaments/tournament_detail_screen.dart';
 import '../../services/tournament_service.dart';
+// ✅ ДОБАВЛЕНО для системы лимитов
+import '../../services/subscription/subscription_service.dart';
+import '../../providers/subscription_provider.dart';
+import '../../services/user_consent_service.dart';
+import '../subscription/paywall_screen.dart';
 
 class FishingCalendarScreen extends StatefulWidget {
   const FishingCalendarScreen({super.key});
@@ -27,6 +34,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     with SingleTickerProviderStateMixin {
   final _fishingNoteRepository = FishingNoteRepository();
   final CalendarEventService _calendarEventService = CalendarEventService();
+  final _subscriptionService = SubscriptionService(); // ✅ ДОБАВЛЕНО
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -39,6 +47,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  // ✅ ДОБАВЛЕНО для проверки политики
+  bool _policyAccepted = true;
+  bool _hasPolicyBeenChecked = false;
+
   // Цвета для разных состояний
   final Color _pastFishingColor = const Color(0xFF2E7D32);
   final Color _futureFishingColor = const Color(0xFFFF8F00);
@@ -49,6 +61,98 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     super.initState();
     _setupAnimation();
     _loadFishingNotes();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasPolicyBeenChecked) {
+      _hasPolicyBeenChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkPolicyCompliance();
+      });
+    }
+  }
+
+  // ✅ ДОБАВЛЕНО: Проверка политики
+  Future<void> _checkPolicyCompliance() async {
+    try {
+      if (!mounted) return;
+
+      String languageCode = 'ru';
+      try {
+        final localizations = AppLocalizations.of(context);
+        languageCode = localizations.translate('language_code') ?? 'ru';
+      } catch (e) {
+        debugPrint('⚠️ Локализация недоступна, используем русский язык');
+      }
+
+      final consentResult = await UserConsentService().checkUserConsents(languageCode);
+      _policyAccepted = consentResult.allValid;
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке политики: $e');
+      _policyAccepted = false;
+    }
+  }
+
+  // ✅ ДОБАВЛЕНО: Проверка лимитов перед созданием
+  Future<bool> _checkLimitsBeforeCreating() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      // Проверяем политику
+      if (!_policyAccepted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                localizations.translate('create_note_blocked') ??
+                    'Создание заметок заблокировано. Примите политику конфиденциальности.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return false;
+      }
+
+      // Проверяем лимиты подписки
+      final canCreate = await _subscriptionService.canCreateContentOffline(ContentType.fishingNotes);
+
+      if (!canCreate) {
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaywallScreen(
+                contentType: 'fishing_notes',
+                blockedFeature: 'Заметки рыбалки',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке лимитов: $e');
+      return true; // При ошибке разрешаем создание
+    }
+  }
+
+  // ✅ ДОБАВЛЕНО: Обновление Provider
+  Future<void> _refreshProviderData() async {
+    try {
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      await subscriptionProvider.refreshUsageData();
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления Provider: $e');
+    }
   }
 
   void _setupAnimation() {
@@ -159,7 +263,11 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     });
   }
 
+  // ✅ ИСПРАВЛЕНО: Добавлена проверка лимитов
   void _planNewFishing() async {
+    final canCreate = await _checkLimitsBeforeCreating();
+    if (!canCreate) return;
+
     final selectedDate = _selectedDay ?? DateTime.now();
 
     final result = await Navigator.push(
@@ -173,11 +281,16 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     );
 
     if (result == true) {
-      _loadFishingNotes();
+      await _refreshProviderData();
+      await _loadFishingNotes();
     }
   }
 
+  // ✅ ИСПРАВЛЕНО: Добавлена проверка лимитов
   void _planNewFishingForDate(DateTime date) async {
+    final canCreate = await _checkLimitsBeforeCreating();
+    if (!canCreate) return;
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -189,7 +302,8 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     );
 
     if (result == true) {
-      _loadFishingNotes();
+      await _refreshProviderData();
+      await _loadFishingNotes();
     }
   }
 
@@ -478,10 +592,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           localizations.translate('fishing_calendar'),
           style: TextStyle(
             color: AppConstants.textColor,
-            fontSize: 18.0, // Фиксированный размер без масштабирования
+            fontSize: 18.0,
             fontWeight: FontWeight.bold,
           ),
-          overflow: TextOverflow.ellipsis, // Обрезаем если не помещается
+          overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),
         backgroundColor: Colors.transparent,
@@ -490,19 +604,89 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           icon: Icon(
             Icons.arrow_back,
             color: AppConstants.textColor,
-            size: 22.0, // Фиксированный размер
+            size: 22.0,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.add,
-              color: AppConstants.textColor,
-              size: 22.0, // Фиксированный размер
-            ),
-            tooltip: localizations.translate('plan_fishing'),
-            onPressed: _planNewFishing,
+          // ✅ ИСПРАВЛЕНО: Кнопка с индикаторами лимитов
+          Consumer<SubscriptionProvider>(
+            builder: (context, subscriptionProvider, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.add,
+                      color: AppConstants.textColor,
+                      size: 22.0,
+                    ),
+                    tooltip: localizations.translate('plan_fishing'),
+                    onPressed: _planNewFishing,
+                  ),
+                  // Красный замок для политики
+                  if (!_policyAccepted)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 16.0,
+                        height: 16.0,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock,
+                          color: Colors.white,
+                          size: 10.0,
+                        ),
+                      ),
+                    ),
+                  // Оранжевый замок для лимитов
+                  if (_policyAccepted &&
+                      !subscriptionProvider.canCreateContentSync(ContentType.fishingNotes))
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 16.0,
+                        height: 16.0,
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock,
+                          color: Colors.white,
+                          size: 10.0,
+                        ),
+                      ),
+                    ),
+                  // Мини-бейдж использования
+                  if (subscriptionProvider.canCreateContentSync(ContentType.fishingNotes) &&
+                      !subscriptionProvider.hasPremiumAccess)
+                    Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: subscriptionProvider.getUsageIndicatorColor(ContentType.fishingNotes),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          subscriptionProvider.getUsageText(ContentType.fishingNotes),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -543,12 +727,11 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Рассчитываем доступную ширину для каждого элемента
           final availableWidth = constraints.maxWidth;
-          final itemWidth = (availableWidth - 32) / 3; // 32 = отступы между элементами
+          final itemWidth = (availableWidth - 32) / 3;
 
           return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Равномерно распределяем
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildCompactLegendItem(
                 localizations.translate('past'),
@@ -590,7 +773,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
               label,
               style: TextStyle(
                 color: AppConstants.textColor.withOpacity(0.8),
-                fontSize: 10.0, // Фиксированный маленький размер
+                fontSize: 10.0,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -598,27 +781,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: ResponsiveUtils.getResponsiveValue(context, mobile: 8.0, tablet: 10.0),
-          height: ResponsiveUtils.getResponsiveValue(context, mobile: 8.0, tablet: 10.0),
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        SizedBox(width: ResponsiveConstants.spacingXS),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.8),
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 11).clamp(10.0, 14.0), // Ограничиваем
-          ),
-        ),
-      ],
     );
   }
 
@@ -663,25 +825,25 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         calendarStyle: CalendarStyle(
           defaultTextStyle: TextStyle(
             color: AppConstants.textColor,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0),
           ),
           weekendTextStyle: TextStyle(
             color: AppConstants.textColor,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0),
           ),
           selectedTextStyle: TextStyle(
             color: Colors.white,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0),
             fontWeight: FontWeight.w600,
           ),
           todayTextStyle: TextStyle(
             color: Colors.white,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0),
             fontWeight: FontWeight.w600,
           ),
           outsideTextStyle: TextStyle(
             color: AppConstants.textColor.withOpacity(0.3),
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 14).clamp(12.0, 16.0),
           ),
           defaultDecoration: const BoxDecoration(shape: BoxShape.circle),
           weekendDecoration: const BoxDecoration(shape: BoxShape.circle),
@@ -705,30 +867,30 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           titleTextFormatter: (date, locale) => _getTitleText(),
           titleTextStyle: TextStyle(
             color: AppConstants.textColor,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 18).clamp(16.0, 22.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 18).clamp(16.0, 22.0),
             fontWeight: FontWeight.bold,
           ),
           leftChevronIcon: Icon(
             Icons.chevron_left,
             color: AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context, baseSize: 24).clamp(20.0, 28.0), // Ограничиваем
+            size: ResponsiveUtils.getIconSize(context, baseSize: 24).clamp(20.0, 28.0),
           ),
           rightChevronIcon: Icon(
             Icons.chevron_right,
             color: AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context, baseSize: 24).clamp(20.0, 28.0), // Ограничиваем
+            size: ResponsiveUtils.getIconSize(context, baseSize: 24).clamp(20.0, 28.0),
           ),
           headerPadding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingS),
         ),
         daysOfWeekStyle: DaysOfWeekStyle(
           weekdayStyle: TextStyle(
             color: AppConstants.textColor.withOpacity(0.7),
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 12).clamp(10.0, 14.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 12).clamp(10.0, 14.0),
             fontWeight: FontWeight.w500,
           ),
           weekendStyle: TextStyle(
             color: AppConstants.textColor.withOpacity(0.7),
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 12).clamp(10.0, 14.0), // Ограничиваем
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 12).clamp(10.0, 14.0),
             fontWeight: FontWeight.w500,
           ),
           decoration: BoxDecoration(
@@ -759,7 +921,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                       _getTitleText(),
                       style: TextStyle(
                         color: AppConstants.textColor,
-                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 18).clamp(16.0, 22.0), // Ограничиваем
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 18).clamp(16.0, 22.0),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -837,16 +999,16 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
     final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
 
     return Container(
-      height: ResponsiveUtils.getResponsiveValue(context, mobile: 20.0, tablet: 24.0), // Еще меньше высота
+      height: ResponsiveUtils.getResponsiveValue(context, mobile: 20.0, tablet: 24.0),
       alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(vertical: 1), // Минимальный отступ
+      padding: EdgeInsets.symmetric(vertical: 1),
       child: Text(
         text,
         style: TextStyle(
           color: isWeekend
               ? AppConstants.textColor.withOpacity(0.9)
               : AppConstants.textColor.withOpacity(0.7),
-          fontSize: ResponsiveUtils.getOptimalFontSize(context, 9.0).clamp(8.0, 12.0), // Еще меньше шрифт дней недели
+          fontSize: ResponsiveUtils.getOptimalFontSize(context, 9.0).clamp(8.0, 12.0),
           fontWeight: isWeekend ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
@@ -883,31 +1045,101 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
               ),
               if (_selectedDay != null && _selectedDay!.isAfter(DateTime.now())) ...[
                 SizedBox(height: ResponsiveConstants.spacingL),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    foregroundColor: AppConstants.textColor,
-                    minimumSize: Size(
-                      ResponsiveConstants.minTouchTarget,
-                      ResponsiveConstants.minTouchTarget,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusL),
-                      ),
-                    ),
-                  ),
-                  onPressed: () => _planNewFishingForDate(_selectedDay!),
-                  icon: Icon(
-                    Icons.add,
-                    size: ResponsiveUtils.getIconSize(context, baseSize: 18).clamp(16.0, 20.0),
-                  ),
-                  label: Text(
-                    localizations.translate('plan_fishing_for_date'),
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getOptimalFontSize(context, 13).clamp(11.0, 15.0),
-                    ),
-                  ),
+                // ✅ ИСПРАВЛЕНО: Кнопка с индикаторами лимитов
+                Consumer<SubscriptionProvider>(
+                  builder: (context, subscriptionProvider, child) {
+                    return Stack(
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppConstants.primaryColor,
+                            foregroundColor: AppConstants.textColor,
+                            minimumSize: Size(
+                              ResponsiveConstants.minTouchTarget,
+                              ResponsiveConstants.minTouchTarget,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusL),
+                              ),
+                            ),
+                          ),
+                          onPressed: () => _planNewFishingForDate(_selectedDay!),
+                          icon: Icon(
+                            Icons.add,
+                            size: ResponsiveUtils.getIconSize(context, baseSize: 18).clamp(16.0, 20.0),
+                          ),
+                          label: Text(
+                            localizations.translate('plan_fishing_for_date'),
+                            style: TextStyle(
+                              fontSize: ResponsiveUtils.getOptimalFontSize(context, 13).clamp(11.0, 15.0),
+                            ),
+                          ),
+                        ),
+                        // Красный замок для политики
+                        if (!_policyAccepted)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18.0,
+                              height: 18.0,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock,
+                                color: Colors.white,
+                                size: 12.0,
+                              ),
+                            ),
+                          ),
+                        // Оранжевый замок для лимитов
+                        if (_policyAccepted &&
+                            !subscriptionProvider.canCreateContentSync(ContentType.fishingNotes))
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18.0,
+                              height: 18.0,
+                              decoration: const BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock,
+                                color: Colors.white,
+                                size: 12.0,
+                              ),
+                            ),
+                          ),
+                        // Мини-бейдж использования
+                        if (subscriptionProvider.canCreateContentSync(ContentType.fishingNotes) &&
+                            !subscriptionProvider.hasPremiumAccess)
+                          Positioned(
+                            bottom: 6,
+                            right: 6,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: subscriptionProvider.getUsageIndicatorColor(ContentType.fishingNotes),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                subscriptionProvider.getUsageText(ContentType.fishingNotes),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ],
@@ -921,12 +1153,10 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         ResponsiveUtils.getHorizontalPadding(context),
         ResponsiveConstants.spacingXS,
         ResponsiveUtils.getHorizontalPadding(context),
-        ResponsiveConstants.spacingL, // Меньше отступ снизу
+        ResponsiveConstants.spacingL,
       ),
       children: [
-        // Рыбалки
         ...eventsForDay.map((note) => _buildEventCard(note)),
-        // Турниры
         ...calendarEventsForDay.map((event) => _buildTournamentEventCard(event)),
       ],
     );
@@ -941,7 +1171,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         : localizations.translate('planned');
 
     return Container(
-      margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingS), // Меньше отступ
+      margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
       child: Card(
         color: const Color(0xFF12332E),
         shape: RoundedRectangleBorder(
@@ -956,12 +1186,12 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           ),
           child: Container(
             constraints: BoxConstraints(
-              minHeight: ResponsiveConstants.minTouchTarget, // Минимальная высота для touch
+              minHeight: ResponsiveConstants.minTouchTarget,
             ),
-            padding: EdgeInsets.all(ResponsiveConstants.spacingS), // Меньше padding
+            padding: EdgeInsets.all(ResponsiveConstants.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Важно!
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
@@ -1065,7 +1295,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
         : localizations.translate('tournament');
 
     return Container(
-      margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingS), // Меньше отступ
+      margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
       child: Card(
         color: const Color(0xFF12332E),
         shape: RoundedRectangleBorder(
@@ -1081,12 +1311,12 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           ),
           child: Container(
             constraints: BoxConstraints(
-              minHeight: ResponsiveConstants.minTouchTarget, // Минимальная высота для touch
+              minHeight: ResponsiveConstants.minTouchTarget,
             ),
-            padding: EdgeInsets.all(ResponsiveConstants.spacingS), // Меньше padding
+            padding: EdgeInsets.all(ResponsiveConstants.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Важно!
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
@@ -1151,7 +1381,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                   SizedBox(height: ResponsiveConstants.spacingXS),
                   Text(
                     event.description!,
-                    maxLines: 1, // Только одна строка
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppConstants.textColor.withOpacity(0.6),
@@ -1198,7 +1428,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Заголовок
               Container(
                 width: 40,
                 height: 4,
@@ -1220,8 +1449,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: ResponsiveConstants.spacingL),
-
-              // Кнопка просмотра деталей
               ListTile(
                 leading: Icon(
                   Icons.info,
@@ -1241,8 +1468,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                   _viewTournamentDetails(event);
                 },
               ),
-
-              // Кнопка удаления из календаря
               ListTile(
                 leading: Icon(
                   Icons.event_busy,
@@ -1262,10 +1487,7 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                   _removeTournamentFromCalendar(context, event, localizations);
                 },
               ),
-
               SizedBox(height: ResponsiveConstants.spacingS),
-
-              // Кнопка отмены
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -1285,7 +1507,6 @@ class _FishingCalendarScreenState extends State<FishingCalendarScreen>
                   ),
                 ),
               ),
-
               SizedBox(height: ResponsiveConstants.spacingS),
             ],
           ),
