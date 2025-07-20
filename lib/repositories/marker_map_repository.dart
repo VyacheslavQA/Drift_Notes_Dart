@@ -261,7 +261,7 @@ class MarkerMapRepository {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Добавление новой маркерной карты (убрано двойное увеличение счетчиков)
+  // 🔥 КРИТИЧЕСКИ ИСПРАВЛЕНО: Добавление новой маркерной карты с передачей кастомного ID
   Future<String> addMarkerMap(MarkerMapModel map) async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -296,10 +296,14 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // ✅ ИСПРАВЛЕНО: Используем FirebaseService для добавления в НОВУЮ структуру
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Передаем кастомный ID в FirebaseService
         try {
-          await _firebaseService.addMarkerMap(mapToAdd.toJson());
-          debugPrint('✅ Маркерная карта добавлена в НОВУЮ структуру: $mapId');
+          final savedMapId = await _firebaseService.addMarkerMap(
+            mapToAdd.toJson(),
+            customId: mapId,  // 🔥 ПЕРЕДАЕМ КАСТОМНЫЙ ID
+          );
+
+          debugPrint('✅ Маркерная карта добавлена в НОВУЮ структуру с ID: $savedMapId');
 
           // 🔥 ИСПРАВЛЕНО: Кэшируем новую карту через ПРАВИЛЬНЫЙ метод
           try {
@@ -396,8 +400,12 @@ class MarkerMapRepository {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Обновление маркерной карты в НОВОЙ структуре
+  // 🔥 ПОЛНОСТЬЮ ПЕРЕПИСАННЫЙ метод updateMarkerMap() с ОБНОВЛЕНИЕМ КЭША
   Future<void> updateMarkerMap(MarkerMapModel map) async {
+    debugPrint('🔥🔥🔥 ВЫЗВАН updateMarkerMap() для карты: ${map.id}');
+    debugPrint('🔥🔥🔥 Количество маркеров в карте: ${map.markers.length}');
+    debugPrint('🔥🔥🔥 Последний маркер: ${map.markers.isNotEmpty ? map.markers.last['id'] ?? "БЕЗ ID" : "НЕТ МАРКЕРОВ"}');
+
     try {
       if (map.id.isEmpty) {
         throw Exception('ID карты не может быть пустым');
@@ -413,63 +421,164 @@ class MarkerMapRepository {
       // Создаем копию карты с установленным UserID
       final mapToUpdate = map.copyWith(userId: userId);
 
-      // ✅ ИСПРАВЛЕНО: Правильные флаги для обновления
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Подготавливаем данные карты
       final mapJson = mapToUpdate.toJson();
       mapJson['id'] = map.id;
       mapJson['userId'] = userId;
-      mapJson['isSynced'] = false;  // Требует синхронизации
-      mapJson['isOffline'] = false; // Обновлена, но не создана офлайн
       mapJson['updatedAt'] = DateTime.now().toIso8601String();
 
-      // Всегда сначала сохраняем локально
-      await _offlineStorage.saveOfflineMarkerMap(mapJson);
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Обновляем КЭШ FIREBASE первым делом!
+      debugPrint('💾 Обновляем кэш Firebase карт с новыми маркерами...');
 
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // Загружаем существующий кэш
+      final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+      debugPrint('📋 Найдено в кэше карт: ${cachedMaps.length}');
 
-      if (isOnline) {
-        // ✅ ИСПРАВЛЕНО: Используем FirebaseService для обновления в НОВОЙ структуре
-        try {
-          await _firebaseService.updateMarkerMap(map.id, mapToUpdate.toJson());
-          debugPrint('✅ Маркерная карта обновлена в НОВОЙ структуре: ${map.id}');
+      // Обновляем нужную карту в кэше или добавляем новую
+      bool mapFoundInCache = false;
+      final updatedCachedMaps = <Map<String, dynamic>>[];
 
-          // 🔥 ИСПРАВЛЕНО: Обновляем в ПРАВИЛЬНОМ кэше
-          try {
-            mapJson['userId'] = userId;
-            mapJson['isSynced'] = true;   // Синхронизирована
-            mapJson['isOffline'] = false; // Не офлайн карта
-
-            // Обновляем в общем кэше Firebase карт
-            await _offlineStorage.cacheMarkerMaps([mapJson]);
-
-            // Также обновляем в офлайн хранилище
-            await _offlineStorage.saveOfflineMarkerMap(mapJson);
-
-            debugPrint('💾 Карта обновлена в кэше правильно');
-          } catch (e) {
-            debugPrint('⚠️ Ошибка обновления в кэше: $e');
-          }
-        } catch (e) {
-          debugPrint('❌ Ошибка обновления в Firebase, сохраняем офлайн: $e');
-          await _offlineStorage.saveMarkerMapUpdate(map.id, mapToUpdate.toJson());
+      for (final cachedMap in cachedMaps) {
+        if (cachedMap['id'] == map.id) {
+          // 🔥 ОБНОВЛЯЕМ существующую карту в кэше
+          final updatedCachedMap = Map<String, dynamic>.from(mapJson);
+          updatedCachedMap['isSynced'] = true;   // В кэше - синхронизированные
+          updatedCachedMap['isOffline'] = false; // Не офлайн карты
+          updatedCachedMaps.add(updatedCachedMap);
+          mapFoundInCache = true;
+          debugPrint('✅ Карта обновлена в кэше Firebase: ${map.id}');
+        } else {
+          updatedCachedMaps.add(cachedMap);
         }
-      } else {
-        // Если нет интернета, сохраняем обновление локально
-        await _offlineStorage.saveMarkerMapUpdate(map.id, mapToUpdate.toJson());
-
-        debugPrint('✅ Маркерная карта обновлена офлайн: ${map.id}');
       }
 
-      // ✅ ДОБАВЛЕНО: Очищаем кэш после обновления карты
+      if (!mapFoundInCache) {
+        // 🔥 ДОБАВЛЯЕМ новую карту в кэш
+        final newCachedMap = Map<String, dynamic>.from(mapJson);
+        newCachedMap['isSynced'] = true;   // В кэше - синхронизированные
+        newCachedMap['isOffline'] = false; // Не офлайн карты
+        updatedCachedMaps.add(newCachedMap);
+        debugPrint('✅ Карта добавлена в кэш Firebase: ${map.id}');
+      }
+
+      // 🔥 СОХРАНЯЕМ обновленный кэш
+      await _offlineStorage.cacheMarkerMaps(updatedCachedMaps);
+      debugPrint('💾 Кэш Firebase карт обновлен с новыми маркерами');
+
+      // 🔥 БЫСТРОЕ офлайн сохранение (для синхронизации)
+      mapJson['isSynced'] = false;  // Требует синхронизации с сервером
+      mapJson['isOffline'] = true;  // Офлайн обновление
+      await _offlineStorage.saveOfflineMarkerMap(mapJson);
+      debugPrint('💾 Карта сохранена в офлайн хранилище для синхронизации');
+
+      // Очищаем кэш Repository для обновления UI
       clearCache();
+      debugPrint('🗑️ Кэш Repository очищен после сохранения');
+
+      // 🔥 АСИНХРОННАЯ синхронизация в фоне (не блокирует UI)
+      _syncMapInBackground(map.id, mapToUpdate);
+
     } catch (e) {
       debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
 
       // В случае ошибки, сохраняем обновление локально
       try {
         await _offlineStorage.saveMarkerMapUpdate(map.id, map.toJson());
+        debugPrint('💾 Карта сохранена в fallback режиме');
       } catch (_) {
         rethrow;
+      }
+    }
+  }
+
+  // 🔥 ИСПРАВЛЕННЫЙ метод: Фоновая синхронизация с правильными флагами
+  void _syncMapInBackground(String mapId, MarkerMapModel mapToUpdate) async {
+    try {
+      debugPrint('🌊 Запуск фоновой синхронизации для карты: $mapId');
+
+      // Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        // ✅ Пытаемся синхронизировать с Firebase в фоне
+        try {
+          await _firebaseService.updateMarkerMap(mapId, mapToUpdate.toJson());
+          debugPrint('✅ Карта синхронизирована с Firebase в фоне: $mapId');
+
+          // 🔥 ИСПРАВЛЕНО: Обновляем кэш после успешной синхронизации
+          final mapJson = mapToUpdate.toJson();
+          mapJson['id'] = mapId;
+          mapJson['userId'] = mapToUpdate.userId;
+          mapJson['isSynced'] = true;   // Синхронизирована
+          mapJson['isOffline'] = false; // Не офлайн карта
+          mapJson['updatedAt'] = DateTime.now().toIso8601String();
+
+          // Обновляем кэш Firebase
+          final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+          final updatedCachedMaps = <Map<String, dynamic>>[];
+
+          bool foundInCache = false;
+          for (final cachedMap in cachedMaps) {
+            if (cachedMap['id'] == mapId) {
+              updatedCachedMaps.add(mapJson);
+              foundInCache = true;
+            } else {
+              updatedCachedMaps.add(cachedMap);
+            }
+          }
+
+          if (!foundInCache) {
+            updatedCachedMaps.add(mapJson);
+          }
+
+          await _offlineStorage.cacheMarkerMaps(updatedCachedMaps);
+          debugPrint('💾 Карта обновлена в кэше после синхронизации');
+        } catch (e) {
+          debugPrint('❌ Фоновая синхронизация не удалась, карта остается локальной: $e');
+
+          // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: В офлайн режиме помечаем как офлайн карту
+          final mapJson = mapToUpdate.toJson();
+          mapJson['id'] = mapId;
+          mapJson['userId'] = mapToUpdate.userId;
+          mapJson['isSynced'] = false;  // Требует синхронизации
+          mapJson['isOffline'] = true;  // 🔥 ИЗМЕНЕНО: true вместо false - это ОФЛАЙН карта!
+          mapJson['updatedAt'] = DateTime.now().toIso8601String();
+
+          await _offlineStorage.saveOfflineMarkerMap(mapJson);
+          debugPrint('💾 Карта помечена как офлайн после неудачной синхронизации');
+        }
+      } else {
+        debugPrint('📱 Нет сети - карта остается в офлайн режиме');
+
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: В офлайн режиме помечаем как офлайн карту
+        final mapJson = mapToUpdate.toJson();
+        mapJson['id'] = mapId;
+        mapJson['userId'] = mapToUpdate.userId;
+        mapJson['isSynced'] = false;  // Требует синхронизации
+        mapJson['isOffline'] = true;  // 🔥 ИЗМЕНЕНО: true вместо false - это ОФЛАЙН карта!
+        mapJson['updatedAt'] = DateTime.now().toIso8601String();
+
+        await _offlineStorage.saveOfflineMarkerMap(mapJson);
+        debugPrint('💾 Карта помечена как офлайн в отсутствие сети');
+      }
+
+      debugPrint('🌊 Фоновая синхронизация завершена для карты: $mapId');
+    } catch (e) {
+      debugPrint('❌ Ошибка фоновой синхронизации: $e');
+
+      // 🔥 ДОБАВЛЕНО: В случае ошибки тоже помечаем как офлайн
+      try {
+        final mapJson = mapToUpdate.toJson();
+        mapJson['id'] = mapId;
+        mapJson['userId'] = mapToUpdate.userId;
+        mapJson['isSynced'] = false;  // Требует синхронизации
+        mapJson['isOffline'] = true;  // Это офлайн карта
+        mapJson['updatedAt'] = DateTime.now().toIso8601String();
+
+        await _offlineStorage.saveOfflineMarkerMap(mapJson);
+        debugPrint('💾 Карта помечена как офлайн после ошибки синхронизации');
+      } catch (saveError) {
+        debugPrint('❌ Критическая ошибка сохранения: $saveError');
       }
     }
   }

@@ -603,27 +603,50 @@ class FirebaseService {
   }
 
   // ========================================
-  // МАРКЕРНЫЕ КАРТЫ
+  // 🔥 КРИТИЧЕСКИ ИСПРАВЛЕНО: МАРКЕРНЫЕ КАРТЫ
   // ========================================
 
-  /// Добавление маркерной карты
-  Future<String> addMarkerMap(Map<String, dynamic> mapData) async {
+  /// 🔥 ИСПРАВЛЕНО: Добавление маркерной карты с использованием кастомного ID
+  Future<String> addMarkerMap(Map<String, dynamic> mapData, {String? customId}) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      final docRef = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection(SubscriptionConstants.markerMapsSubcollection)
-          .add({
-        ...mapData,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем кастомный ID если передан
+      if (customId != null && customId.isNotEmpty) {
+        debugPrint('📍 Создаем маркерную карту с кастомным ID: $customId');
 
-      debugPrint('✅ Маркерная карта добавлена с ID: ${docRef.id}');
-      return docRef.id;
+        // Используем .set() с кастомным ID вместо .add()
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection(SubscriptionConstants.markerMapsSubcollection)
+            .doc(customId)  // 🔥 ИСПОЛЬЗУЕМ ПЕРЕДАННЫЙ ID
+            .set({
+          ...mapData,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('✅ Маркерная карта создана с кастомным ID: $customId');
+        return customId;  // 🔥 ВОЗВРАЩАЕМ КАСТОМНЫЙ ID
+      } else {
+        // Если ID не передан - используем автогенерацию (для обратной совместимости)
+        debugPrint('📍 Создаем маркерную карту с автогенерированным ID');
+
+        final docRef = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection(SubscriptionConstants.markerMapsSubcollection)
+            .add({
+          ...mapData,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('✅ Маркерная карта создана с автогенерированным ID: ${docRef.id}');
+        return docRef.id;
+      }
     } catch (e) {
       debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
       rethrow;

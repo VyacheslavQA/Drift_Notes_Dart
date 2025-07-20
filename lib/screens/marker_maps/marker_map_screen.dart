@@ -18,6 +18,8 @@ import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/offline_usage_result.dart';
 import '../subscription/paywall_screen.dart';
+// 🔥 ДОБАВЛЕНО: Импорт Repository для очистки кэша
+import '../../repositories/marker_map_repository.dart';
 
 class MarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;
@@ -37,10 +39,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   // ✅ ДОБАВЛЕНО: Сервис для проверки лимитов
   final _subscriptionService = SubscriptionService();
 
+  final _markerMapRepository = MarkerMapRepository();
+
   late MarkerMapModel _markerMap;
   List<FishingNoteModel> _availableNotes = [];
   bool _isLoading = false;
-  bool _hasChanges = false;
+  // ✅ УДАЛЕНО: _hasChanges больше не нужен с автосохранением
+
+  // 🔥 ДОБАВЛЕНО: Индикатор автосохранения
+  bool _isAutoSaving = false;
+  String _saveMessage = '';
 
   // Сохранение последнего выбранного луча
   int _lastSelectedRayIndex = 0;
@@ -300,6 +308,92 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     final angleStep = totalAngle / (_raysCount - 1);
     return (_leftAngle - (rayIndex * angleStep)) *
         (math.pi / 180); // конвертируем в радианы
+  }
+
+  // 🔥 ДОБАВЛЕНО: Автосохранение с индикатором
+  Future<void> _autoSaveChanges(String action) async {
+    if (!mounted) return;
+
+    try {
+      setState(() {
+        _isAutoSaving = true;
+        _saveMessage = action;
+      });
+
+      debugPrint('💾 Автосохранение: $action');
+
+      // Создаем полную копию модели карты для сохранения
+      final markerMapToSave = _markerMap.copyWith(
+        // Очищаем временные поля с объектами Offset из маркеров
+        markers: _markerMap.markers.map((marker) {
+          // Создаем копию маркера без полей для UI
+          final cleanMarker = Map<String, dynamic>.from(marker);
+          // Удаляем поля хитбоксов, которые не должны сохраняться
+          cleanMarker.remove('_hitboxCenter');
+          cleanMarker.remove('_hitboxRadius');
+          return cleanMarker;
+        }).toList(),
+      );
+
+      // Сохраняем ВСЕ поля карты, включая все обязательные поля
+      final mapData = {
+        'name': markerMapToSave.name,                    // Название карты
+        'date': markerMapToSave.date.millisecondsSinceEpoch, // Дата создания
+        'sector': markerMapToSave.sector,                // Сектор
+        'noteIds': markerMapToSave.noteIds,              // ID привязанных заметок
+        'noteNames': markerMapToSave.noteNames,          // Названия привязанных заметок
+        'markers': markerMapToSave.markers,              // Список маркеров
+        'userId': markerMapToSave.userId,                // ID пользователя (для совместимости)
+        'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // Время создания
+        'updatedAt': DateTime.now().millisecondsSinceEpoch, // Время обновления
+      };
+
+      await _markerMapRepository.updateMarkerMap(markerMapToSave);
+
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Очищаем кэш Repository после автосохранения
+      try {
+        MarkerMapRepository.clearCache();
+        debugPrint('💾 Кэш Repository очищен после автосохранения');
+      } catch (e) {
+        debugPrint('⚠️ Не удалось очистить кэш Repository: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          _isAutoSaving = false;
+          _saveMessage = '';
+        });
+
+        // Показываем краткое уведомление об успешном сохранении
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$action - сохранено'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+
+        debugPrint('✅ Автосохранение завершено: $action');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка автосохранения: $e');
+      if (mounted) {
+        setState(() {
+          _isAutoSaving = false;
+          _saveMessage = '';
+        });
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка сохранения: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   // Показ информации о маркерах
@@ -705,11 +799,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     return _bottomTypeIcons[newType] ?? Icons.terrain;
   }
 
-  // ✅ ИСПРАВЛЕНО: Диалог добавления нового маркера БЕЗ проверки лимитов
+  // 🔥 ИСПРАВЛЕНО: Диалог добавления нового маркера с автосохранением
   Future<void> _showAddMarkerDialog() async {
     final localizations = AppLocalizations.of(context);
 
-    debugPrint('✅ Открываем диалог добавления маркера БЕЗ проверки лимитов');
+    debugPrint('✅ Открываем диалог добавления маркера с автосохранением');
 
     // Сбрасываем поля формы
     _depthController.text = '';
@@ -992,23 +1086,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     this.setState(() {
                       // Вместо модификации списка создаем новую модель
                       _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-                      _hasChanges = true;
                     });
 
                     Navigator.pop(context);
 
-                    // Показываем сообщение
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(localizations.translate('marker_added')),
-                        backgroundColor: Colors.green,
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
+                    debugPrint('✅ Добавлен новый маркер: ${newMarker['id']}');
 
-                    debugPrint('✅ Добавлен новый маркер БЕЗ проверки лимитов: ${newMarker['id']}');
+                    // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после добавления маркера
+                    await _autoSaveChanges('Маркер добавлен');
 
-                    // Обновляем UI чтобы кнопка сохранения стала активной
+                    // Обновляем UI
                     Future.microtask(() => this.setState(() {}));
                   },
                   child: Text(
@@ -1024,7 +1111,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // Диалог редактирования маркера
+  // 🔥 ИСПРАВЛЕНО: Диалог редактирования маркера с автосохранением
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
     _depthController.text =
@@ -1244,7 +1331,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     backgroundColor: AppConstants.primaryColor,
                     foregroundColor: AppConstants.textColor,
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1306,20 +1393,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
                     Navigator.pop(context);
 
-                    // Показываем сообщение
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          localizations.translate('marker_updated'),
-                        ),
-                        backgroundColor: Colors.green,
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-
                     debugPrint('✅ Маркер обновлен: ${marker['id']}');
 
-                    // Обновляем UI чтобы кнопка сохранения стала активной
+                    // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после редактирования маркера
+                    await _autoSaveChanges('Маркер обновлен');
+
+                    // Обновляем UI
                     Future.microtask(() => this.setState(() {}));
                   },
                   child: Text(
@@ -1346,12 +1425,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
       setState(() {
         _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-        _hasChanges = true;
       });
     }
   }
 
-  // Диалог подтверждения удаления маркера
+  // 🔥 ИСПРАВЛЕНО: Диалог подтверждения удаления маркера с автосохранением
   void _confirmDeleteMarker(Map<String, dynamic> marker) {
     final localizations = AppLocalizations.of(context);
     showDialog(
@@ -1381,18 +1459,19 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                _deleteMarker(marker);
+              onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Показываем сообщение
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(localizations.translate('marker_deleted')),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 1),
-                  ),
-                );
+                // Удаляем маркер
+                _deleteMarker(marker);
+
+                debugPrint('🗑️ Маркер удален: ${marker['id']}');
+
+                // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после удаления маркера
+                await _autoSaveChanges('Маркер удален');
+
+                // Обновляем UI
+                Future.microtask(() => setState(() {}));
               },
               child: Text(
                 localizations.translate('delete'),
@@ -1412,13 +1491,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
     setState(() {
       _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-      _hasChanges = true;
     });
-
-    debugPrint('🗑️ Маркер удален: ${marker['id']}');
-
-    // Обновляем UI чтобы кнопка сохранения стала активная
-    Future.microtask(() => setState(() {}));
   }
 
   // ✅ ИСПРАВЛЕНО: Переход к экрану графиков глубин с правильной проверкой подписки
@@ -1468,91 +1541,9 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  /// Полное сохранение всей маркерной карты с всеми полями
-  Future<void> _saveChanges() async {
-    final localizations = AppLocalizations.of(context);
-    if (!mounted) return;
-
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      debugPrint('💾 Сохраняем изменения в маркерной карте...');
-
-      // Создаем полную копию модели карты для сохранения
-      final markerMapToSave = _markerMap.copyWith(
-        // Очищаем временные поля с объектами Offset из маркеров
-        markers: _markerMap.markers.map((marker) {
-          // Создаем копию маркера без полей для UI
-          final cleanMarker = Map<String, dynamic>.from(marker);
-          // Удаляем поля хитбоксов, которые не должны сохраняться
-          cleanMarker.remove('_hitboxCenter');
-          cleanMarker.remove('_hitboxRadius');
-          return cleanMarker;
-        }).toList(),
-      );
-
-      // Сохраняем ВСЕ поля карты, включая все обязательные поля
-      final mapData = {
-        'name': markerMapToSave.name,                    // Название карты
-        'date': markerMapToSave.date.millisecondsSinceEpoch, // Дата создания
-        'sector': markerMapToSave.sector,                // Сектор
-        'noteIds': markerMapToSave.noteIds,              // ID привязанных заметок
-        'noteNames': markerMapToSave.noteNames,          // Названия привязанных заметок
-        'markers': markerMapToSave.markers,              // Список маркеров
-        'userId': markerMapToSave.userId,                // ID пользователя (для совместимости)
-        'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // Время создания
-        'updatedAt': DateTime.now().millisecondsSinceEpoch, // Время обновления
-      };
-
-      debugPrint('🔥 Обновляем маркерную карту через updateMarkerMap()');
-      debugPrint('📍 Путь: /users/{currentUserId}/marker_maps/${markerMapToSave.id}');
-      debugPrint('📋 Данные для сохранения: $mapData');
-
-      await _firebaseService.updateMarkerMap(markerMapToSave.id, mapData);
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasChanges = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('save_changes')),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 1),
-          ),
-        );
-
-        debugPrint('✅ Маркерная карта успешно сохранена в Firebase');
-      }
-    } catch (e) {
-      debugPrint('❌ Ошибка при сохранении маркерной карты: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${localizations.translate('error_saving_changes')}: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Кнопка выхода с сохранением
-  Future<void> _exitWithSave() async {
-    debugPrint('🚪 Выходим из экрана маркерной карты...');
-    if (_hasChanges || _markerMap.markers.isNotEmpty) {
-      await _saveChanges();
-    }
+  // 🔥 ИСПРАВЛЕНО: Простой выход без автосохранения
+  Future<void> _exitScreen() async {
+    debugPrint('🚪 Выходим из экрана маркерной карты (автосохранение уже работает)');
     if (mounted) {
       Navigator.pop(context, true);
     }
@@ -1599,6 +1590,57 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
+            // 🔥 ДОБАВЛЕНО: Индикатор автосохранения в верхнем центре
+            if (_isAutoSaving)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Сохранение...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // Информационная кнопка в левом нижнем углу
             Positioned(
               left: 16,
@@ -1618,26 +1660,26 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
-            // Три кнопки справа
+            // 🔥 ИСПРАВЛЕНО: Три кнопки справа с равномерными промежутками и улучшенными иконками
             Positioned(
               right: 16,
               bottom:
-              180 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка
+              205 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка (130 + 75 = 205)
               child: FloatingActionButton(
                 heroTag: "exit_button",
-                onPressed: _exitWithSave,
+                onPressed: _exitScreen, // 🔥 ИЗМЕНЕНО: простой выход без сохранения
                 backgroundColor: AppConstants.primaryColor.withValues(
                   alpha: 0.9,
                 ),
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.arrow_back),
+                child: const Icon(Icons.arrow_back), // 🔥 ИЗМЕНЕНО: более понятная иконка выхода
               ),
             ),
 
             Positioned(
               right: 16,
               bottom:
-              105 + MediaQuery.of(context).padding.bottom, // Средняя кнопка
+              130 + MediaQuery.of(context).padding.bottom, // Средняя кнопка (55 + 75 = 130)
               child: FloatingActionButton(
                 heroTag: "charts_button",
                 onPressed: _showDepthCharts,
@@ -1649,10 +1691,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
             ),
 
+            // 🔥 ИСПРАВЛЕНО: Кнопка добавления маркера на том же уровне что и кнопка информации с иконкой маркера
             Positioned(
               right: 16,
               bottom:
-              30 + MediaQuery.of(context).padding.bottom, // Нижняя кнопка
+              55 + MediaQuery.of(context).padding.bottom, // На том же уровне что и кнопка информации (left: 55)
               child: FloatingActionButton(
                 heroTag: "add_marker_button",
                 onPressed: _showAddMarkerDialog,
@@ -1660,7 +1703,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                   alpha: 0.9,
                 ),
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.add),
+                child: const Icon(Icons.add_location), // 🔥 ИЗМЕНЕНО: иконка маркера вместо простого плюса
               ),
             ),
           ],
