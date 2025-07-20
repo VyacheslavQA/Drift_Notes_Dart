@@ -35,7 +35,7 @@ class BudgetNotesRepository {
   static DateTime? _cacheTimestamp;
   static const Duration _cacheValidity = Duration(minutes: 2);
 
-  /// ✅ ИСПРАВЛЕНО: Получить все заметки бюджета пользователя с кэшированием
+  /// ✅ ИСПРАВЛЕНО: Получить все заметки бюджета пользователя с ПРАВИЛЬНЫМ кэшированием
   Future<List<FishingTripModel>> getUserTrips() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -58,125 +58,222 @@ class BudgetNotesRepository {
         }
       }
 
+      // Всегда получаем офлайн заметки первыми (теперь включает кэшированные)
+      final offlineTrips = await _getOfflineTrips(userId);
+      debugPrint('📱 Офлайн заметок найдено: ${offlineTrips.length}');
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+
+      List<FishingTripModel> onlineTrips = [];
 
       if (isOnline) {
-        debugPrint('📥 Загружаем заметки бюджета из Firebase...');
+        try {
+          debugPrint('📥 Загружаем заметки бюджета из Firebase...');
 
-        // ✅ ИСПРАВЛЕНО: Используем существующий метод getUserBudgetNotes()
-        final notesSnapshot = await _firebaseService.getUserBudgetNotes();
-        debugPrint('📥 Получено ${notesSnapshot.docs.length} заметок бюджета из Firebase');
+          // ✅ ИСПРАВЛЕНО: Используем существующий метод getUserBudgetNotes()
+          final notesSnapshot = await _firebaseService.getUserBudgetNotes();
+          debugPrint('📥 Получено ${notesSnapshot.docs.length} заметок бюджета из Firebase');
 
-        final onlineTrips = <FishingTripModel>[];
-
-        // Парсим каждую заметку бюджета как поездку с расходами
-        for (var noteDoc in notesSnapshot.docs) {
-          try {
-            final noteData = noteDoc.data() as Map<String, dynamic>;
-            noteData['id'] = noteDoc.id;
-
-            // Создаем модель поездки с расходами из данных заметки бюджета
-            final trip = FishingTripModel.fromMapWithExpenses(noteData);
-            onlineTrips.add(trip);
-
-            debugPrint('✅ Заметка бюджета ${noteDoc.id} загружена с ${trip.expenses.length} расходами');
-          } catch (e) {
-            debugPrint('❌ Ошибка парсинга заметки бюджета ${noteDoc.id}: $e');
-
-            // Если ошибка парсинга, создаем заметку без расходов
+          // Парсим каждую заметку бюджета как поездку с расходами
+          for (var noteDoc in notesSnapshot.docs) {
             try {
               final noteData = noteDoc.data() as Map<String, dynamic>;
               noteData['id'] = noteDoc.id;
-              noteData['expenses'] = []; // Пустой список расходов
 
+              // Создаем модель поездки с расходами из данных заметки бюджета
               final trip = FishingTripModel.fromMapWithExpenses(noteData);
               onlineTrips.add(trip);
 
-              debugPrint('⚠️ Заметка бюджета ${noteDoc.id} загружена без расходов');
-            } catch (e2) {
-              debugPrint('❌ Критическая ошибка парсинга заметки бюджета ${noteDoc.id}: $e2');
+              debugPrint('✅ Заметка бюджета ${noteDoc.id} загружена с ${trip.expenses.length} расходами');
+            } catch (e) {
+              debugPrint('❌ Ошибка парсинга заметки бюджета ${noteDoc.id}: $e');
+
+              // Если ошибка парсинга, создаем заметку без расходов
+              try {
+                final noteData = noteDoc.data() as Map<String, dynamic>;
+                noteData['id'] = noteDoc.id;
+                noteData['expenses'] = []; // Пустой список расходов
+
+                final trip = FishingTripModel.fromMapWithExpenses(noteData);
+                onlineTrips.add(trip);
+
+                debugPrint('⚠️ Заметка бюджета ${noteDoc.id} загружена без расходов');
+              } catch (e2) {
+                debugPrint('❌ Критическая ошибка парсинга заметки бюджета ${noteDoc.id}: $e2');
+              }
             }
           }
-        }
 
-        // ✅ ИСПРАВЛЕНО: Получаем офлайн заметки через правильный метод
-        final offlineTrips = await _getOfflineTrips(userId);
+          debugPrint('☁️ Заметок бюджета из Firebase: ${onlineTrips.length}');
 
-        // Объединяем списки, избегая дубликатов
-        final allTrips = [...onlineTrips];
+          // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Кэшируем Firebase заметки бюджета через ПРАВИЛЬНЫЙ метод
+          if (onlineTrips.isNotEmpty) {
+            try {
+              debugPrint('💾 Кэшируем Firebase заметки бюджета через cacheBudgetNotes...');
+              final tripsToCache = onlineTrips.map((trip) {
+                final tripJson = trip.toMapWithExpenses();
+                tripJson['id'] = trip.id;
+                tripJson['userId'] = userId;
+                // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ для совместимости с кэшем
+                tripJson['isSynced'] = true;   // Из Firebase - синхронизированы
+                tripJson['isOffline'] = false; // Не офлайн заметки
+                return tripJson;
+              }).toList();
 
-        for (var offlineTrip in offlineTrips) {
-          // Проверяем, что такой заметки еще нет в списке
-          if (!allTrips.any((trip) => trip.id == offlineTrip.id)) {
-            allTrips.add(offlineTrip);
+              await _offlineStorage.cacheBudgetNotes(tripsToCache);
+              debugPrint('✅ ${onlineTrips.length} Firebase заметок бюджета кэшированы правильно');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка кэширования Firebase заметок бюджета: $e');
+              debugPrint('⚠️ Детали ошибки: ${e.toString()}');
+            }
           }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при получении заметок бюджета из Firebase: $e');
         }
+      }
 
-        // Удаляем дубликаты на основе ID
-        final Map<String, FishingTripModel> uniqueTrips = {};
-        for (var trip in allTrips) {
+      // ✅ ИСПРАВЛЕНО: Объединяем списки правильно, избегая дубликатов
+      final Map<String, FishingTripModel> uniqueTrips = {};
+
+      // Сначала добавляем онлайн заметки (приоритет)
+      for (var trip in onlineTrips) {
+        uniqueTrips[trip.id] = trip;
+      }
+
+      // Затем добавляем офлайн заметки, которых нет в онлайн списке
+      for (var trip in offlineTrips) {
+        if (!uniqueTrips.containsKey(trip.id)) {
           uniqueTrips[trip.id] = trip;
         }
-
-        // Сортируем локально по дате (от новых к старым)
-        final result = uniqueTrips.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-
-        debugPrint('✅ Получено ${result.length} уникальных заметок бюджета');
-
-        // Кэшируем результат
-        _cachedTrips = result;
-        _cacheTimestamp = DateTime.now();
-
-        // Запускаем синхронизацию в фоне ТОЛЬКО если есть офлайн данные
-        if (offlineTrips.isNotEmpty) {
-          debugPrint('🔄 Запуск фоновой синхронизации (есть офлайн данные)');
-          // НЕ БЛОКИРУЕМ выполнение
-          Future.microtask(() => _syncService.syncAll());
-        }
-
-        return result;
-      } else {
-        debugPrint('📱 Получение заметок бюджета из офлайн хранилища');
-
-        // Если нет подключения, получаем заметки из офлайн хранилища
-        final result = await _getOfflineTrips(userId);
-
-        // Кэшируем офлайн результат
-        _cachedTrips = result;
-        _cacheTimestamp = DateTime.now();
-
-        return result;
       }
+
+      // Преобразуем в список и сортируем по дате
+      final allTrips = uniqueTrips.values.toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      debugPrint('📊 Итого заметок бюджета: ${allTrips.length}');
+      debugPrint('📊 Онлайн: ${onlineTrips.length}, Офлайн: ${offlineTrips.length}');
+
+      // Кэшируем результат
+      _cachedTrips = allTrips;
+      _cacheTimestamp = DateTime.now();
+
+      // Запускаем синхронизацию в фоне
+      if (isOnline) {
+        _syncService.syncAll();
+      }
+
+      return allTrips;
     } catch (e) {
-      debugPrint('❌ Ошибка при получении заметок бюджета: $e');
+      debugPrint('❌ Ошибка в getUserTrips: $e');
 
       // В случае ошибки, пытаемся вернуть хотя бы офлайн заметки
       try {
         return await _getOfflineTrips(_firebaseService.currentUserId ?? '');
       } catch (_) {
-        rethrow;
+        // В крайнем случае возвращаем пустой список
+        return [];
       }
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение заметок из офлайн хранилища
+  /// 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получение заметок из ВСЕХ источников
   Future<List<FishingTripModel>> _getOfflineTrips(String userId) async {
     try {
-      // ✅ ИСПРАВЛЕНО: Используем правильный метод для бюджетных заметок
-      final offlineTrips = await _offlineStorage.getOfflineBudgetNotes(userId);
+      final List<FishingTripModel> result = [];
+      final Set<String> processedIds = <String>{};
 
-      // Фильтруем и преобразуем данные в модели
-      final offlineTripModels = offlineTrips
-          .where((trip) => trip['userId'] == userId) // Фильтруем по userId
-          .map((trip) => FishingTripModel.fromMapWithExpenses(trip))
-          .toList();
+      debugPrint('📱 Загружаем кэшированные Firebase заметки бюджета...');
 
-      // Сортируем по дате (от новых к старым)
-      offlineTripModels.sort((a, b) => b.date.compareTo(a.date));
+      // 1. ✅ ИСПРАВЛЕНО: Загружаем кэшированные Firebase заметки бюджета
+      try {
+        final cachedNotes = await _offlineStorage.getCachedBudgetNotes();
+        debugPrint('💾 Найдено кэшированных Firebase заметок бюджета: ${cachedNotes.length}');
 
-      return offlineTripModels;
+        for (final noteData in cachedNotes) {
+          try {
+            final noteId = noteData['id']?.toString() ?? '';
+            final noteUserId = noteData['userId']?.toString() ?? '';
+
+            if (noteId.isEmpty) continue;
+
+            // Проверяем принадлежность пользователю
+            if (noteUserId == userId) {
+              final trip = FishingTripModel.fromMapWithExpenses(noteData);
+              result.add(trip);
+              processedIds.add(noteId);
+              debugPrint('✅ Кэшированная заметка бюджета загружена: $noteId');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обработки кэшированной заметки бюджета: $e');
+            continue;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при загрузке кэшированных заметок бюджета: $e');
+      }
+
+      debugPrint('📱 Загружаем офлайн созданные заметки бюджета...');
+
+      // 2. ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн заметки
+      try {
+        final allOfflineTrips = await _offlineStorage.getAllOfflineBudgetNotes();
+        debugPrint('📱 Найдено офлайн созданных заметок бюджета: ${allOfflineTrips.length}');
+
+        for (final tripData in allOfflineTrips) {
+          try {
+            final tripId = tripData['id']?.toString() ?? '';
+            final tripUserId = tripData['userId']?.toString() ?? '';
+            final isSynced = tripData['isSynced'] == true;
+            final isOffline = tripData['isOffline'] == true;
+
+            // ✅ ИСПРАВЛЕНО: Пропускаем уже обработанные заметки
+            if (tripId.isEmpty || processedIds.contains(tripId)) {
+              continue;
+            }
+
+            // ✅ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн заметки
+            if (!isSynced && isOffline) {
+              // Проверяем принадлежность пользователю
+              bool belongsToUser = false;
+
+              if (tripUserId.isNotEmpty && tripUserId == userId) {
+                belongsToUser = true;
+              } else if (tripUserId.isEmpty) {
+                // Заметка без userId - добавляем userId
+                tripData['userId'] = userId;
+                belongsToUser = true;
+                _offlineStorage.saveOfflineBudgetNote(tripData).catchError((error) {
+                  debugPrint('⚠️ Ошибка при исправлении заметки бюджета: $error');
+                });
+              }
+
+              if (belongsToUser) {
+                final trip = FishingTripModel.fromMapWithExpenses(tripData);
+                result.add(trip);
+                processedIds.add(tripId);
+                debugPrint('✅ Несинхронизированная офлайн заметка бюджета загружена: $tripId');
+              }
+            } else {
+              debugPrint('⏭️ Пропускаем синхронизированную заметку бюджета: $tripId (isSynced: $isSynced, isOffline: $isOffline)');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обработки офлайн заметки бюджета: $e');
+            continue;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при загрузке офлайн заметок бюджета: $e');
+      }
+
+      // Сортируем по дате
+      result.sort((a, b) => b.date.compareTo(a.date));
+
+      debugPrint('✅ Всего заметок бюджета загружено из офлайн источников: ${result.length}');
+
+      return result;
     } catch (e) {
       debugPrint('❌ Ошибка при получении офлайн заметок бюджета: $e');
       return [];
@@ -284,6 +381,23 @@ class BudgetNotesRepository {
           currency: currency,
         ).copyWith(id: noteId).markAsSynced().withExpenses(syncedExpenses);
 
+        // 🔥 ИСПРАВЛЕНО: Кэшируем новую заметку через ПРАВИЛЬНЫЙ метод
+        try {
+          final tripJson = syncedTrip.toMapWithExpenses();
+          tripJson['id'] = noteId;
+          tripJson['userId'] = userId;
+          // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ
+          tripJson['isSynced'] = true;   // Синхронизирована с Firebase
+          tripJson['isOffline'] = false; // Не офлайн заметка
+
+          // Кэшируем в общий кэш Firebase заметок бюджета
+          await _offlineStorage.cacheBudgetNotes([tripJson]);
+
+          debugPrint('💾 Новая заметка бюджета кэширована правильно');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка кэширования новой заметки бюджета: $e');
+        }
+
         // ✅ ИСПРАВЛЕНО: Увеличиваем счетчик budgetNotes через Firebase
         try {
           final success = await _firebaseService.incrementUsageCount('budgetNotesCount');  // ✅ ИСПРАВЛЕНО!
@@ -334,11 +448,25 @@ class BudgetNotesRepository {
   /// ✅ ИСПРАВЛЕНО: Сохранение заметки в офлайн режиме
   Future<void> _saveTripOffline(FishingTripModel trip) async {
     try {
+      if (trip.id.isEmpty) {
+        throw Exception('ID заметки бюджета не может быть пустым');
+      }
+
+      debugPrint('📱 Сохранение офлайн заметки бюджета: ${trip.id}');
+
+      // ✅ ИСПРАВЛЕНО: Устанавливаем правильные флаги для офлайн заметки
+      final tripJson = trip.toMapWithExpenses();
+      tripJson['id'] = trip.id;
+      tripJson['userId'] = trip.userId;
+      tripJson['isSynced'] = false;  // Требует синхронизации
+      tripJson['isOffline'] = true;  // Создана офлайн
+      tripJson['offlineCreatedAt'] = DateTime.now().toIso8601String();
+
       // ✅ ИСПРАВЛЕНО: Используем правильный метод для бюджетных заметок
-      await _offlineStorage.saveOfflineBudgetNote(trip.toMapWithExpenses());
-      debugPrint('Заметка бюджета ${trip.id} сохранена в офлайн режиме');
+      await _offlineStorage.saveOfflineBudgetNote(tripJson);
+      debugPrint('✅ Заметка бюджета сохранена в офлайн режиме');
     } catch (e) {
-      debugPrint('Ошибка при сохранении заметки бюджета офлайн: $e');
+      debugPrint('❌ Ошибка при сохранении офлайн заметки бюджета: $e');
       rethrow;
     }
   }
@@ -355,49 +483,71 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🔥 Обновление заметки бюджета: ${trip.id}');
+      debugPrint('🔄 Обновление заметки бюджета: ${trip.id}');
 
       // Создаем копию заметки с установленным UserID
       final tripToUpdate = trip.copyWith(userId: userId).touch();
+
+      // ✅ ИСПРАВЛЕНО: Правильные флаги для обновления
+      final tripJson = tripToUpdate.toMapWithExpenses();
+      tripJson['id'] = trip.id;
+      tripJson['userId'] = userId;
+      tripJson['isSynced'] = false;  // Требует синхронизации
+      tripJson['isOffline'] = false; // Обновлена, но не создана офлайн
+      tripJson['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Всегда сначала сохраняем локально
+      await _offlineStorage.saveOfflineBudgetNote(tripJson);
 
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // ✅ ИСПРАВЛЕНО: Обновляем заметку бюджета через существующий метод
+        try {
+          // ✅ ИСПРАВЛЕНО: Обновляем заметку бюджета через существующий метод
 
-        // 1. Обновляем заметку бюджета (включая расходы в одном документе)
-        final budgetData = {
-          'userId': userId,
-          'date': Timestamp.fromDate(tripToUpdate.date),
-          'locationName': tripToUpdate.locationName,
-          'notes': tripToUpdate.notes,
-          'currency': tripToUpdate.currency,
-          'totalAmount': tripToUpdate.totalAmount,
-          'expenseCount': tripToUpdate.expenses.length,
-          'expenses': tripToUpdate.expenses.map((expense) => expense.toMap()).toList(),
-        };
+          // Обновляем заметку бюджета (включая расходы в одном документе)
+          final budgetData = {
+            'userId': userId,
+            'date': Timestamp.fromDate(tripToUpdate.date),
+            'locationName': tripToUpdate.locationName,
+            'notes': tripToUpdate.notes,
+            'currency': tripToUpdate.currency,
+            'totalAmount': tripToUpdate.totalAmount,
+            'expenseCount': tripToUpdate.expenses.length,
+            'expenses': tripToUpdate.expenses.map((expense) => expense.toMap()).toList(),
+          };
 
-        // ✅ ИСПРАВЛЕНО: Используем существующий метод updateBudgetNote()
-        await _firebaseService.updateBudgetNote(trip.id, budgetData);
+          // ✅ ИСПРАВЛЕНО: Используем существующий метод updateBudgetNote()
+          await _firebaseService.updateBudgetNote(trip.id, budgetData);
 
-        debugPrint('✅ Заметка бюджета обновлена онлайн: ${trip.id}');
+          debugPrint('✅ Заметка бюджета обновлена в Firebase');
 
-        // Очищаем кэш после обновления заметки
-        clearCache();
+          // 🔥 ИСПРАВЛЕНО: Обновляем в ПРАВИЛЬНОМ кэше
+          try {
+            tripJson['userId'] = userId;
+            tripJson['isSynced'] = true;   // Синхронизирована
+            tripJson['isOffline'] = false; // Не офлайн заметка
 
-        return tripToUpdate.markAsSynced();
-      } else {
-        // ✅ ИСПРАВЛЕНО: Если нет интернета, сохраняем обновление локально
-        await _offlineStorage.saveOfflineBudgetNote(tripToUpdate.toMapWithExpenses());
+            // Обновляем в общем кэше Firebase заметок бюджета
+            await _offlineStorage.cacheBudgetNotes([tripJson]);
 
-        debugPrint('✅ Заметка бюджета обновлена офлайн: ${trip.id}');
+            // Также обновляем в офлайн хранилище
+            await _offlineStorage.saveOfflineBudgetNote(tripJson);
 
-        // Очищаем кэш после обновления заметки
-        clearCache();
-
-        return tripToUpdate;
+            debugPrint('💾 Заметка бюджета обновлена в кэше правильно');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обновления в кэше: $e');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при обновлении в Firebase: $e');
+        }
       }
+
+      // Очищаем кэш после обновления заметки
+      clearCache();
+
+      return tripToUpdate.markAsSynced();
     } catch (e) {
       debugPrint('❌ Ошибка при обновлении заметки бюджета: $e');
 
@@ -411,6 +561,76 @@ class BudgetNotesRepository {
     }
   }
 
+  /// ✅ ИСПРАВЛЕНО: Получение заметки бюджета по ID
+  Future<FishingTripModel?> getTripById(String tripId) async {
+    try {
+      if (tripId.isEmpty) {
+        throw Exception('ID заметки бюджета не может быть пустым');
+      }
+
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      debugPrint('🔍 Получение заметки бюджета по ID: $tripId');
+
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        try {
+          final doc = await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('budget_notes')
+              .doc(tripId)
+              .get();
+
+          if (doc.exists) {
+            final data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id;
+
+            // 🔥 ИСПРАВЛЕНО: Добавляем обязательные поля если их нет
+            data['createdAt'] ??= Timestamp.now();
+            data['updatedAt'] ??= Timestamp.now();
+            data['isSynced'] ??= true; // Из Firebase - синхронизировано
+
+            final trip = FishingTripModel.fromMapWithExpenses(data);
+
+            // 🔥 ИСПРАВЛЕНО: Кэшируем через ПРАВИЛЬНЫЙ метод
+            try {
+              final tripJson = trip.toMapWithExpenses();
+              tripJson['id'] = trip.id;
+              tripJson['userId'] = userId;
+              tripJson['isSynced'] = true;   // Из Firebase
+              tripJson['isOffline'] = false; // Не офлайн заметка
+
+              // Кэшируем в общий кэш Firebase заметок бюджета
+              await _offlineStorage.cacheBudgetNotes([tripJson]);
+
+              // Также сохраняем в офлайн хранилище
+              await _offlineStorage.saveOfflineBudgetNote(tripJson);
+
+              debugPrint('✅ Заметка бюджета получена из Firebase и кэширована правильно');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка кэширования полученной заметки бюджета: $e');
+            }
+
+            return trip;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при получении из Firebase: $e');
+        }
+      }
+
+      // Если не нашли онлайн - ищем в офлайн хранилище
+      return await _getOfflineTripById(tripId);
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении заметки бюджета: $e');
+      rethrow;
+    }
+  }
+
   /// ✅ ИСПРАВЛЕНО: Удалить заметку бюджета
   Future<void> deleteTrip(String tripId) async {
     try {
@@ -418,122 +638,93 @@ class BudgetNotesRepository {
         throw Exception('ID заметки бюджета не может быть пустым');
       }
 
-      debugPrint('🔥 Удаление заметки бюджета: $tripId');
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Пользователь не авторизован');
+      }
 
-      // Проверяем подключение к интернету
+      debugPrint('🗑️ Удаление заметки бюджета: $tripId');
+
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
       if (isOnline) {
-        // ✅ ИСПРАВЛЕНО: Удаляем заметку бюджета через существующий метод
-        await _firebaseService.deleteBudgetNote(tripId);
-
-        // ✅ ИСПРАВЛЕНО: Удаляем локальную копию, если она есть
         try {
-          await _offlineStorage.removeOfflineBudgetNote(tripId);
-        } catch (e) {
-          debugPrint('Ошибка при удалении локальной копии заметки бюджета: $e');
-        }
+          // Удаляем из Firebase
+          await _firebaseService.deleteBudgetNote(tripId);
+          debugPrint('✅ Заметка бюджета удалена из Firebase');
 
-        debugPrint('✅ Заметка бюджета удалена онлайн: $tripId');
+          // ✅ УПРОЩЕНО: Уменьшаем счетчик ТОЛЬКО один раз
+          try {
+            await _firebaseService.incrementUsageCount('budgetNotesCount', increment: -1);
+            debugPrint('✅ Счетчик заметок бюджета уменьшен через Firebase');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+          }
+
+          // ✅ ИСПРАВЛЕНО: Удаляем из кэша Firebase заметок бюджета
+          try {
+            final cachedNotes = await _offlineStorage.getCachedBudgetNotes();
+            final updatedCachedNotes = cachedNotes.where((note) => note['id'] != tripId).toList();
+            await _offlineStorage.cacheBudgetNotes(updatedCachedNotes);
+            debugPrint('✅ Заметка бюджета удалена из кэша Firebase заметок');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка удаления из кэша Firebase заметок бюджета: $e');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при удалении из Firebase: $e');
+          // Отмечаем для удаления при появлении соединения
+          await _offlineStorage.markForDeletion(tripId, false); // false для budget notes
+        }
       } else {
-        // Если нет интернета, отмечаем заметку для удаления
+        // Офлайн - отмечаем для удаления
         await _offlineStorage.markForDeletion(tripId, false); // false для budget notes
-
-        // ✅ ИСПРАВЛЕНО: Удаляем локальную копию
-        try {
-          await _offlineStorage.removeOfflineBudgetNote(tripId);
-        } catch (e) {
-          debugPrint('Ошибка при удалении локальной копии заметки бюджета: $e');
-        }
-
-        debugPrint('✅ Заметка бюджета отмечена для удаления: $tripId');
       }
 
-      // ✅ ИСПРАВЛЕНО: Уменьшаем счетчик использования budgetNotes
+      // Удаляем локальную копию
       try {
-        await _subscriptionService.decrementUsage(ContentType.budgetNotes);  // ✅ ИСПРАВЛЕНО!
-        debugPrint('✅ Счетчик заметок бюджета уменьшен');
+        await _offlineStorage.removeOfflineBudgetNote(tripId);
+        debugPrint('✅ Локальная копия заметки бюджета удалена');
       } catch (e) {
-        debugPrint('❌ Ошибка уменьшения счетчика заметок бюджета: $e');
-        // Не прерываем выполнение, заметка уже удалена
+        debugPrint('⚠️ Ошибка при удалении локальной копии: $e');
       }
 
       // Очищаем кэш после удаления заметки
       clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при удалении заметки бюджета: $e');
-
-      // В случае ошибки, отмечаем заметку для удаления
-      try {
-        await _offlineStorage.markForDeletion(tripId, false);
-      } catch (_) {
-        rethrow;
-      }
+      rethrow;
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получить заметку бюджета по ID
-  Future<FishingTripModel?> getTripById(String tripId) async {
-    try {
-      if (tripId.isEmpty) {
-        throw Exception('ID заметки бюджета не может быть пустым');
-      }
-
-      debugPrint('🔥 Получение заметки бюджета по ID: $tripId');
-
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        // ✅ ИСПРАВЛЕНО: Получаем заметки бюджета через существующий метод
-        final budgetNotesSnapshot = await _firebaseService.getUserBudgetNotes();
-
-        // Ищем нужную заметку по ID
-        final noteDoc = budgetNotesSnapshot.docs.where((doc) => doc.id == tripId).firstOrNull;
-
-        if (noteDoc != null) {
-          final noteData = noteDoc.data() as Map<String, dynamic>;
-          noteData['id'] = noteDoc.id;
-
-          debugPrint('✅ Заметка бюджета найдена в Firebase: $tripId');
-          return FishingTripModel.fromMapWithExpenses(noteData);
-        } else {
-          // Если заметка не найдена в Firebase, пробуем найти в офлайн хранилище
-          debugPrint('⚠️ Заметка бюджета не найдена в Firebase, ищем в офлайн хранилище: $tripId');
-          return await _getOfflineTripById(tripId);
-        }
-      } else {
-        // Если нет интернета, ищем заметку в офлайн хранилище
-        debugPrint('📱 Получение заметки бюджета из офлайн хранилища: $tripId');
-        return await _getOfflineTripById(tripId);
-      }
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении заметки бюджета по ID: $e');
-
-      // В случае ошибки, пытаемся получить заметку из офлайн хранилища
-      try {
-        return await _getOfflineTripById(tripId);
-      } catch (_) {
-        return null;
-      }
-    }
-  }
-
-  /// ✅ ИСПРАВЛЕНО: Получение заметки из офлайн хранилища по ID
+  /// 🔥 ИСПРАВЛЕНО: Получение заметки из офлайн хранилища по ID
   Future<FishingTripModel?> _getOfflineTripById(String tripId) async {
     try {
-      // ✅ ИСПРАВЛЕНО: Используем правильный метод для бюджетных заметок
+      // Сначала ищем в кэшированных Firebase заметках бюджета
+      try {
+        final cachedNotes = await _offlineStorage.getCachedBudgetNotes();
+        final cachedNote = cachedNotes.where((note) => note['id'] == tripId).firstOrNull;
+
+        if (cachedNote != null) {
+          debugPrint('✅ Заметка бюджета найдена в кэше Firebase заметок');
+          return FishingTripModel.fromMapWithExpenses(cachedNote);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка поиска в кэше Firebase заметок бюджета: $e');
+      }
+
+      // Если не найдена в кэше - ищем в офлайн заметках бюджета
       final allOfflineTrips = await _offlineStorage.getAllOfflineBudgetNotes();
+      final tripDataList = allOfflineTrips.where((trip) => trip['id'] == tripId).toList();
 
-      // Ищем заметку по ID
-      final tripData = allOfflineTrips.firstWhere(
-            (trip) => trip['id'] == tripId,
-        orElse: () => throw Exception('Заметка бюджета не найдена в офлайн хранилище'),
-      );
+      if (tripDataList.isEmpty) {
+        throw Exception('Заметка бюджета не найдена в офлайн хранилище');
+      }
 
+      final tripData = tripDataList.first;
+      debugPrint('✅ Заметка бюджета найдена в офлайн хранилище');
       return FishingTripModel.fromMapWithExpenses(tripData);
     } catch (e) {
-      debugPrint('❌ Ошибка при получении заметки бюджета из офлайн хранилища: $e');
+      debugPrint('❌ Ошибка при получении офлайн заметки бюджета: $e');
       return null;
     }
   }

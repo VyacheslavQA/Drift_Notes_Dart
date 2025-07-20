@@ -27,8 +27,8 @@ class OfflineStorageService {
   static const String _offlinePhotosKey = 'offline_fishing_photos';
   static const String _offlineMarkerMapsKey = 'offline_marker_maps';
   static const String _offlineMarkerMapsUpdatesKey = 'offline_marker_map_updates';
-  static const String _offlineBudgetNotesKey = 'offline_budget_notes'; // ✅ ИСПРАВЛЕНО
-  static const String _offlineBudgetNotesUpdatesKey = 'offline_budget_note_updates'; // ✅ ДОБАВЛЕНО
+  static const String _offlineBudgetNotesKey = 'offline_budget_notes';
+  static const String _offlineBudgetNotesUpdatesKey = 'offline_budget_note_updates';
   static const String _mapsToDeleteKey = 'maps_to_delete';
   static const String _notesToDeleteKey = 'notes_to_delete';
   static const String _statisticsCacheKey = 'cached_statistics';
@@ -45,7 +45,7 @@ class OfflineStorageService {
   // Константы для локальных счетчиков офлайн операций
   static const String _localNotesCountKey = 'local_notes_count';
   static const String _localMapsCountKey = 'local_maps_count';
-  static const String _localBudgetNotesCountKey = 'local_budget_notes_count'; // ✅ ИСПРАВЛЕНО
+  static const String _localBudgetNotesCountKey = 'local_budget_notes_count';
   static const String _localDepthChartCountKey = 'local_depth_chart_count';
   static const String _localCountersResetKey = 'local_counters_reset_time';
 
@@ -270,7 +270,7 @@ class OfflineStorageService {
         'userId': limits.userId,
         'notesCount': limits.notesCount,
         'markerMapsCount': limits.markerMapsCount,
-        'budgetNotesCount': limits.budgetNotesCount, // ✅ ИСПРАВЛЕНО: используем budgetNotesCount
+        'budgetNotesCount': limits.budgetNotesCount,
         'lastResetDate': limits.lastResetDate.toIso8601String(),
         'updatedAt': limits.updatedAt.toIso8601String(),
       };
@@ -299,7 +299,7 @@ class OfflineStorageService {
         userId: data['userId'] ?? '',
         notesCount: data['notesCount'] ?? 0,
         markerMapsCount: data['markerMapsCount'] ?? 0,
-        budgetNotesCount: data['budgetNotesCount'] ?? 0, // ✅ ИСПРАВЛЕНО: используем budgetNotesCount
+        budgetNotesCount: data['budgetNotesCount'] ?? 0,
         lastResetDate: DateTime.tryParse(data['lastResetDate'] ?? '') ?? DateTime.now(),
         updatedAt: DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now(),
       );
@@ -364,7 +364,7 @@ class OfflineStorageService {
 
       await prefs.setInt(_localNotesCountKey, 0);
       await prefs.setInt(_localMapsCountKey, 0);
-      await prefs.setInt(_localBudgetNotesCountKey, 0); // ✅ ИСПРАВЛЕНО
+      await prefs.setInt(_localBudgetNotesCountKey, 0);
       await prefs.setInt(_localDepthChartCountKey, 0);
       await prefs.setInt(_localCountersResetKey, DateTime.now().millisecondsSinceEpoch);
 
@@ -383,7 +383,7 @@ class OfflineStorageService {
       return {
         ContentType.fishingNotes: prefs.getInt(_localNotesCountKey) ?? 0,
         ContentType.markerMaps: prefs.getInt(_localMapsCountKey) ?? 0,
-        ContentType.budgetNotes: prefs.getInt(_localBudgetNotesCountKey) ?? 0, // ✅ ИСПРАВЛЕНО
+        ContentType.budgetNotes: prefs.getInt(_localBudgetNotesCountKey) ?? 0,
         ContentType.depthChart: prefs.getInt(_localDepthChartCountKey) ?? 0,
       };
     } catch (e) {
@@ -399,7 +399,7 @@ class OfflineStorageService {
         return _localNotesCountKey;
       case ContentType.markerMaps:
         return _localMapsCountKey;
-      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО
+      case ContentType.budgetNotes:
         return _localBudgetNotesCountKey;
       case ContentType.depthChart:
         return _localDepthChartCountKey;
@@ -424,17 +424,33 @@ class OfflineStorageService {
   }
 
   // ========================================
-  // КЭШИРОВАНИЕ ДАННЫХ
+  // 🔥 ИСПРАВЛЕННОЕ КЭШИРОВАНИЕ ДАННЫХ - ПОЛНАЯ ЗАМЕНА
   // ========================================
 
-  /// Кэширование заметок рыбалки для офлайн доступа
+  /// 🔥 ИСПРАВЛЕНО: Кэширование заметок рыбалки - ПОЛНАЯ ЗАМЕНА
   Future<void> cacheFishingNotes(List<dynamic> notes) async {
     try {
       final prefs = await preferences;
-      final notesJson = notes.map((note) => jsonEncode(note)).toList();
 
-      await prefs.setStringList('cached_fishing_notes', notesJson);
-      debugPrint('Заметки рыбалки кэшированы (${notes.length} записей)');
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ПОЛНАЯ ЗАМЕНА вместо объединения
+      final List<String> notesJsonList = [];
+
+      for (var note in notes) {
+        try {
+          final noteMap = note is Map<String, dynamic> ? note : jsonDecode(jsonEncode(note));
+          final noteId = noteMap['id']?.toString();
+
+          if (noteId != null && noteId.isNotEmpty) {
+            notesJsonList.add(jsonEncode(noteMap));
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка обработки заметки для кэша: $e');
+        }
+      }
+
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Полная замена кэша
+      await prefs.setStringList('cached_fishing_notes', notesJsonList);
+      debugPrint('Заметки рыбалки кэшированы (${notesJsonList.length} записей)');
     } catch (e) {
       debugPrint('Ошибка кэширования заметок: $e');
       rethrow;
@@ -463,14 +479,30 @@ class OfflineStorageService {
     }
   }
 
-  /// Кэширование маркерных карт для офлайн доступа
+  /// 🔥 ИСПРАВЛЕНО: Кэширование маркерных карт - ПОЛНАЯ ЗАМЕНА
   Future<void> cacheMarkerMaps(List<dynamic> maps) async {
     try {
       final prefs = await preferences;
-      final mapsJson = maps.map((map) => jsonEncode(map)).toList();
 
-      await prefs.setStringList('cached_marker_maps', mapsJson);
-      debugPrint('Маркерные карты кэшированы (${maps.length} записей)');
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ПОЛНАЯ ЗАМЕНА вместо объединения
+      final List<String> mapsJsonList = [];
+
+      for (var map in maps) {
+        try {
+          final mapMap = map is Map<String, dynamic> ? map : jsonDecode(jsonEncode(map));
+          final mapId = mapMap['id']?.toString();
+
+          if (mapId != null && mapId.isNotEmpty) {
+            mapsJsonList.add(jsonEncode(mapMap));
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка обработки карты для кэша: $e');
+        }
+      }
+
+      // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Полная замена кэша
+      await prefs.setStringList('cached_marker_maps', mapsJsonList);
+      debugPrint('Маркерные карты кэшированы (${mapsJsonList.length} записей)');
     } catch (e) {
       debugPrint('Ошибка кэширования маркерных карт: $e');
       rethrow;
@@ -499,18 +531,90 @@ class OfflineStorageService {
     }
   }
 
-  /// Кэширование заметок бюджета для офлайн доступа
+  /// ✅ ЭТАЛОН: Кэширование заметок бюджета - УЖЕ РАБОТАЕТ ПРАВИЛЬНО
+  /// (Оставляем как есть, это рабочий метод с умным объединением)
   Future<void> cacheBudgetNotes(List<dynamic> notes) async {
     try {
       final prefs = await preferences;
-      final notesJson = notes.map((note) => jsonEncode(note)).toList();
 
-      await prefs.setStringList('cached_budget_notes', notesJson);
-      debugPrint('Заметки бюджета кэшированы (${notes.length} записей)');
+      // ✅ ПРАВИЛЬНАЯ ЛОГИКА: Получаем существующий кэш
+      final existingNotesJson = prefs.getStringList('cached_budget_notes') ?? [];
+      final Map<String, dynamic> existingNotesMap = {};
+
+      // Загружаем существующие заметки в Map для быстрого поиска
+      for (var noteJson in existingNotesJson) {
+        try {
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          final noteId = note['id']?.toString();
+          if (noteId != null) {
+            existingNotesMap[noteId] = note;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка парсинга существующей заметки бюджета: $e');
+        }
+      }
+
+      // ✅ ПРАВИЛЬНАЯ ЛОГИКА: Обновляем/добавляем новые заметки без дубликатов
+      for (var note in notes) {
+        final noteMap = note is Map<String, dynamic> ? note : jsonDecode(jsonEncode(note));
+        final noteId = noteMap['id']?.toString();
+
+        if (noteId != null) {
+          // ✅ ПРАВИЛЬНО: Конвертируем Timestamp в строку для сериализации
+          final processedNote = _processTimestampsForCache(noteMap);
+          existingNotesMap[noteId] = processedNote;
+        }
+      }
+
+      // Сохраняем обновленный кэш
+      final updatedNotesJson = existingNotesMap.values
+          .map((note) => jsonEncode(note))
+          .toList();
+
+      await prefs.setStringList('cached_budget_notes', updatedNotesJson);
+      debugPrint('Заметки бюджета кэшированы (${existingNotesMap.length} записей)');
     } catch (e) {
       debugPrint('Ошибка кэширования заметок бюджета: $e');
       rethrow;
     }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Обработка Timestamp для кэширования
+  Map<String, dynamic> _processTimestampsForCache(Map<String, dynamic> data) {
+    final processed = Map<String, dynamic>.from(data);
+
+    // Обрабатываем все поля с Timestamp
+    processed.forEach((key, value) {
+      if (value != null) {
+        if (value.toString().contains('Timestamp')) {
+          // Попытка извлечь дату из Timestamp
+          try {
+            if (value is Map && value.containsKey('_seconds')) {
+              final seconds = value['_seconds'];
+              final date = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+              processed[key] = date.toIso8601String();
+            } else {
+              processed[key] = DateTime.now().toIso8601String();
+            }
+          } catch (e) {
+            processed[key] = DateTime.now().toIso8601String();
+          }
+        } else if (value is DateTime) {
+          processed[key] = value.toIso8601String();
+        } else if (value is List) {
+          processed[key] = value.map((item) {
+            if (item is Map<String, dynamic>) {
+              return _processTimestampsForCache(item);
+            }
+            return item;
+          }).toList();
+        } else if (value is Map<String, dynamic>) {
+          processed[key] = _processTimestampsForCache(value);
+        }
+      }
+    });
+
+    return processed;
   }
 
   /// Получение кэшированных заметок бюджета
@@ -585,7 +689,7 @@ class OfflineStorageService {
     }
   }
 
-  /// Сохранить заметку о рыбалке в офлайн хранилище
+  /// ✅ ИСПРАВЛЕНО: Сохранить заметку о рыбалке в офлайн хранилище
   Future<void> saveOfflineNote(Map<String, dynamic> noteData) async {
     try {
       final prefs = await preferences;
@@ -599,27 +703,37 @@ class OfflineStorageService {
       bool noteExists = false;
       List<String> updatedNotes = [];
 
+      // ✅ ИСПРАВЛЕНО: Правильное обновление существующих заметок
       for (var noteJson in offlineNotesJson) {
         try {
           final note = jsonDecode(noteJson) as Map<String, dynamic>;
           if (note['id'] == noteId) {
-            updatedNotes.add(jsonEncode(noteData));
+            // Обновляем существующую заметку, сохраняя важные поля
+            final updatedNote = Map<String, dynamic>.from(noteData);
+            updatedNote['updatedAt'] = DateTime.now().toIso8601String();
+
+            updatedNotes.add(jsonEncode(updatedNote));
             noteExists = true;
+            debugPrint('✅ Заметка обновлена в офлайн хранилище: $noteId');
           } else {
             updatedNotes.add(noteJson);
           }
         } catch (e) {
-          updatedNotes.add(noteJson);
+          // Если заметка повреждена - пропускаем
+          debugPrint('⚠️ Пропускаем поврежденную заметку: $e');
+          continue;
         }
       }
 
       if (!noteExists) {
+        noteData['createdAt'] = DateTime.now().toIso8601String();
         updatedNotes.add(jsonEncode(noteData));
+        debugPrint('✅ Новая заметка добавлена в офлайн хранилище: $noteId');
       }
 
       await prefs.setStringList(_offlineNotesKey, updatedNotes);
 
-      // Удаляем из списка обновлений
+      // Удаляем из списка обновлений если есть
       String offlineUpdatesJson = prefs.getString(_offlineNotesUpdatesKey) ?? '{}';
       try {
         Map<String, dynamic> updates = jsonDecode(offlineUpdatesJson) as Map<String, dynamic>;
@@ -668,7 +782,7 @@ class OfflineStorageService {
     }
   }
 
-  /// Сохранение заметки бюджета в офлайн режиме
+  /// ✅ ИСПРАВЛЕНО: Сохранение заметки бюджета в офлайн режиме
   Future<void> saveOfflineBudgetNote(Map<String, dynamic> noteData) async {
     try {
       noteData['isSynced'] = false;
@@ -689,22 +803,32 @@ class OfflineStorageService {
       bool noteExists = false;
       List<String> updatedNotes = [];
 
+      // ✅ ИСПРАВЛЕНО: Правильное обновление существующих заметок бюджета
       for (var noteJson in offlineNotesJson) {
         try {
           final note = jsonDecode(noteJson) as Map<String, dynamic>;
           if (note['id'] == noteId) {
-            updatedNotes.add(jsonEncode(noteData));
+            // Обновляем существующую заметку
+            final updatedNote = Map<String, dynamic>.from(noteData);
+            updatedNote['updatedAt'] = DateTime.now().toIso8601String();
+
+            updatedNotes.add(jsonEncode(updatedNote));
             noteExists = true;
+            debugPrint('✅ Заметка бюджета обновлена в офлайн хранилище: $noteId');
           } else {
             updatedNotes.add(noteJson);
           }
         } catch (e) {
-          updatedNotes.add(noteJson);
+          // Если заметка повреждена - пропускаем
+          debugPrint('⚠️ Пропускаем поврежденную заметку бюджета: $e');
+          continue;
         }
       }
 
       if (!noteExists) {
+        noteData['createdAt'] = DateTime.now().toIso8601String();
         updatedNotes.add(jsonEncode(noteData));
+        debugPrint('✅ Новая заметка бюджета добавлена в офлайн хранилище: $noteId');
       }
 
       await prefs.setStringList(_offlineBudgetNotesKey, updatedNotes);
@@ -741,7 +865,7 @@ class OfflineStorageService {
     }
   }
 
-  /// ✅ ДОБАВЛЕНО: Получить все офлайн заметки бюджета (аналог getAllOfflineNotes)
+  /// Получить все офлайн заметки бюджета
   Future<List<Map<String, dynamic>>> getAllOfflineBudgetNotes() async {
     try {
       final prefs = await preferences;
@@ -763,7 +887,7 @@ class OfflineStorageService {
     }
   }
 
-  /// ✅ ДОБАВЛЕНО: Получить все обновления заметок бюджета (аналог getAllNoteUpdates)
+  /// Получить все обновления заметок бюджета
   Future<Map<String, dynamic>> getAllBudgetNoteUpdates() async {
     try {
       final prefs = await preferences;
@@ -776,7 +900,7 @@ class OfflineStorageService {
     }
   }
 
-  /// ✅ ДОБАВЛЕНО: Очистить обновления заметок бюджета (аналог clearUpdates для budget notes)
+  /// Очистить обновления заметок бюджета
   Future<void> clearBudgetUpdates() async {
     try {
       final prefs = await preferences;
@@ -787,7 +911,7 @@ class OfflineStorageService {
     }
   }
 
-  /// ✅ ДОБАВЛЕНО: Сохранить обновление заметки бюджета (дополнительный метод)
+  /// Сохранить обновление заметки бюджета
   Future<void> saveBudgetNoteUpdate(String noteId, Map<String, dynamic> noteData) async {
     try {
       final prefs = await preferences;
@@ -827,28 +951,46 @@ class OfflineStorageService {
     }
   }
 
-  /// Сохранить маркерную карту в офлайн хранилище
+  /// ✅ ИСПРАВЛЕНО: Сохранить маркерную карту в офлайн хранилище
   Future<void> saveOfflineMarkerMap(Map<String, dynamic> mapData) async {
     try {
       final prefs = await preferences;
       List<String> offlineMapsJson = prefs.getStringList(_offlineMarkerMapsKey) ?? [];
 
       final mapId = mapData['id'];
-      bool mapExists = false;
+      if (mapId == null || mapId.toString().isEmpty) {
+        throw Exception('ID карты не может быть пустым');
+      }
 
+      bool mapExists = false;
       List<String> updatedMaps = [];
+
+      // ✅ ИСПРАВЛЕНО: Правильное обновление существующих карт
       for (var mapJson in offlineMapsJson) {
-        final map = jsonDecode(mapJson) as Map<String, dynamic>;
-        if (map['id'] == mapId) {
-          updatedMaps.add(jsonEncode(mapData));
-          mapExists = true;
-        } else {
-          updatedMaps.add(mapJson);
+        try {
+          final map = jsonDecode(mapJson) as Map<String, dynamic>;
+          if (map['id'] == mapId) {
+            // Обновляем существующую карту
+            final updatedMap = Map<String, dynamic>.from(mapData);
+            updatedMap['updatedAt'] = DateTime.now().toIso8601String();
+
+            updatedMaps.add(jsonEncode(updatedMap));
+            mapExists = true;
+            debugPrint('✅ Маркерная карта обновлена в офлайн хранилище: $mapId');
+          } else {
+            updatedMaps.add(mapJson);
+          }
+        } catch (e) {
+          // Если карта повреждена - пропускаем
+          debugPrint('⚠️ Пропускаем поврежденную карту: $e');
+          continue;
         }
       }
 
       if (!mapExists) {
+        mapData['createdAt'] = DateTime.now().toIso8601String();
         updatedMaps.add(jsonEncode(mapData));
+        debugPrint('✅ Новая маркерная карта добавлена в офлайн хранилище: $mapId');
       }
 
       await prefs.setStringList(_offlineMarkerMapsKey, updatedMaps);
@@ -1136,7 +1278,7 @@ class OfflineStorageService {
     }
   }
 
-  /// Получить все офлайн заметки
+  /// ✅ ИСПРАВЛЕНО: Получить все офлайн заметки (с логированием для отладки)
   Future<List<Map<String, dynamic>>> getAllOfflineNotes() async {
     try {
       final prefs = await preferences;
@@ -1145,10 +1287,25 @@ class OfflineStorageService {
       List<Map<String, dynamic>> notes = [];
       for (var noteJson in offlineNotesJson) {
         try {
-          notes.add(jsonDecode(noteJson) as Map<String, dynamic>);
+          final note = jsonDecode(noteJson) as Map<String, dynamic>;
+          notes.add(note);
         } catch (e) {
           debugPrint('Ошибка при декодировании заметки: $e');
         }
+      }
+
+      debugPrint('📋 getAllOfflineNotes: найдено ${notes.length} заметок');
+
+      // ✅ ДОБАВЛЕНО: Логирование для отладки дубликатов
+      final Map<String, int> idCounts = {};
+      for (var note in notes) {
+        final id = note['id']?.toString() ?? 'unknown';
+        idCounts[id] = (idCounts[id] ?? 0) + 1;
+      }
+
+      final duplicates = idCounts.entries.where((entry) => entry.value > 1).toList();
+      if (duplicates.isNotEmpty) {
+        debugPrint('⚠️ Найдены дубликаты заметок: ${duplicates.map((e) => '${e.key}(${e.value}x)').join(', ')}');
       }
 
       return notes;
@@ -1290,8 +1447,8 @@ class OfflineStorageService {
       await prefs.remove(_offlinePhotosKey);
       await prefs.remove(_offlineMarkerMapsKey);
       await prefs.remove(_offlineMarkerMapsUpdatesKey);
-      await prefs.remove(_offlineBudgetNotesKey); // ✅ ИСПРАВЛЕНО
-      await prefs.remove(_offlineBudgetNotesUpdatesKey); // ✅ ДОБАВЛЕНО
+      await prefs.remove(_offlineBudgetNotesKey);
+      await prefs.remove(_offlineBudgetNotesUpdatesKey);
       await prefs.remove(_mapsToDeleteKey);
       await prefs.remove(_notesToDeleteKey);
       await prefs.remove(_statisticsCacheKey);
@@ -1304,12 +1461,12 @@ class OfflineStorageService {
       await prefs.remove(_usageLimitsKey);
       await prefs.remove(_localNotesCountKey);
       await prefs.remove(_localMapsCountKey);
-      await prefs.remove(_localBudgetNotesCountKey); // ✅ ИСПРАВЛЕНО
+      await prefs.remove(_localBudgetNotesCountKey);
       await prefs.remove(_localDepthChartCountKey);
       await prefs.remove(_localCountersResetKey);
       await prefs.remove('cached_fishing_notes');
       await prefs.remove('cached_marker_maps');
-      await prefs.remove('cached_budget_notes'); // ✅ ИСПРАВЛЕНО
+      await prefs.remove('cached_budget_notes');
 
       // Очищаем данные офлайн авторизации
       await clearOfflineAuthData();

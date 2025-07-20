@@ -12,13 +12,26 @@ import '../services/subscription/subscription_service.dart';
 import '../constants/subscription_constants.dart';
 
 class MarkerMapRepository {
+  static final MarkerMapRepository _instance = MarkerMapRepository._internal();
+
+  factory MarkerMapRepository() {
+    return _instance;
+  }
+
+  MarkerMapRepository._internal();
+
   final FirebaseService _firebaseService = FirebaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final SyncService _syncService = SyncService();
   final SubscriptionService _subscriptionService = SubscriptionService();
 
-  // ✅ ИСПРАВЛЕНО: Получить все маркерные карты пользователя из НОВОЙ структуры
+  // ✅ ДОБАВЛЕНО: Кэш для предотвращения повторных загрузок (как в BudgetNotesRepository)
+  static List<MarkerMapModel>? _cachedMaps;
+  static DateTime? _cacheTimestamp;
+  static const Duration _cacheValidity = Duration(minutes: 2);
+
+  // ✅ ИСПРАВЛЕНО: Получить все маркерные карты пользователя с ПРАВИЛЬНЫМ кэшированием
   Future<List<MarkerMapModel>> getUserMarkerMaps() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -28,70 +41,109 @@ class MarkerMapRepository {
 
       debugPrint('📍 Запрос маркерных карт для пользователя: $userId');
 
+      // ✅ ДОБАВЛЕНО: Проверяем кэш
+      if (_cachedMaps != null && _cacheTimestamp != null) {
+        final cacheAge = DateTime.now().difference(_cacheTimestamp!);
+        if (cacheAge < _cacheValidity) {
+          debugPrint('💾 Возвращаем карты из кэша (возраст: ${cacheAge.inSeconds}с)');
+          return _cachedMaps!;
+        } else {
+          debugPrint('💾 Кэш карт устарел, очищаем');
+          _cachedMaps = null;
+          _cacheTimestamp = null;
+        }
+      }
+
+      // Всегда получаем офлайн карты первыми (теперь включает кэшированные)
+      final offlineMaps = await _getOfflineMarkerMaps(userId);
+      debugPrint('📱 Офлайн карт найдено: ${offlineMaps.length}');
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+
+      List<MarkerMapModel> onlineMaps = [];
 
       if (isOnline) {
-        debugPrint('📍 Загружаем карты из НОВОЙ структуры Firebase...');
+        try {
+          debugPrint('📍 Загружаем карты из НОВОЙ структуры Firebase...');
 
-        // ✅ ИСПРАВЛЕНО: Используем НОВУЮ структуру через FirebaseService
-        final snapshot = await _firebaseService.getUserMarkerMaps();
-        debugPrint('📍 Получено ${snapshot.docs.length} карт из Firebase');
+          // ✅ ИСПРАВЛЕНО: Используем НОВУЮ структуру через FirebaseService
+          final snapshot = await _firebaseService.getUserMarkerMaps();
+          debugPrint('📍 Получено ${snapshot.docs.length} карт из Firebase');
 
-        // Преобразуем документы в модели
-        final onlineMaps = snapshot.docs
-            .map((doc) {
-          try {
-            final data = doc.data() as Map<String, dynamic>;
-            return MarkerMapModel.fromJson(data, id: doc.id);
-          } catch (e) {
-            debugPrint('❌ Ошибка парсинга карты ${doc.id}: $e');
-            return null;
+          // Преобразуем документы в модели
+          for (var doc in snapshot.docs) {
+            try {
+              final data = doc.data() as Map<String, dynamic>;
+              final map = MarkerMapModel.fromJson(data, id: doc.id);
+              onlineMaps.add(map);
+            } catch (e) {
+              debugPrint('❌ Ошибка парсинга карты ${doc.id}: $e');
+              continue;
+            }
           }
-        })
-            .where((map) => map != null)
-            .cast<MarkerMapModel>()
-            .toList();
 
-        debugPrint('📍 Успешно обработано ${onlineMaps.length} карт');
+          debugPrint('📍 Успешно обработано ${onlineMaps.length} карт');
 
-        // Получаем офлайн карты, которые еще не были синхронизированы
-        final offlineMaps = await _getOfflineMarkerMaps(userId);
+          // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Кэшируем Firebase карты через ПРАВИЛЬНЫЙ метод
+          if (onlineMaps.isNotEmpty) {
+            try {
+              debugPrint('💾 Кэшируем Firebase карты через cacheMarkerMaps...');
+              final mapsToCache = onlineMaps.map((map) {
+                final mapJson = map.toJson();
+                mapJson['id'] = map.id;
+                mapJson['userId'] = userId;
+                // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ для совместимости с кэшем
+                mapJson['isSynced'] = true;   // Из Firebase - синхронизированы
+                mapJson['isOffline'] = false; // Не офлайн карты
+                return mapJson;
+              }).toList();
 
-        // Объединяем списки, избегая дубликатов
-        final allMaps = [...onlineMaps];
-
-        for (var offlineMap in offlineMaps) {
-          // Проверяем, что такой карты еще нет в списке
-          if (!allMaps.any((map) => map.id == offlineMap.id)) {
-            allMaps.add(offlineMap);
+              await _offlineStorage.cacheMarkerMaps(mapsToCache);
+              debugPrint('✅ ${onlineMaps.length} Firebase карт кэшированы правильно');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка кэширования Firebase карт: $e');
+              debugPrint('⚠️ Детали ошибки: ${e.toString()}');
+            }
           }
+        } catch (e) {
+          debugPrint('⚠️ Ошибка при получении карт из Firebase: $e');
         }
+      }
 
-        // Удаляем дубликаты на основе ID
-        final Map<String, MarkerMapModel> uniqueMaps = {};
-        for (var map in allMaps) {
+      // ✅ ИСПРАВЛЕНО: Объединяем списки правильно, избегая дубликатов
+      final Map<String, MarkerMapModel> uniqueMaps = {};
+
+      // Сначала добавляем онлайн карты (приоритет)
+      for (var map in onlineMaps) {
+        uniqueMaps[map.id] = map;
+      }
+
+      // Затем добавляем офлайн карты, которых нет в онлайн списке
+      for (var map in offlineMaps) {
+        if (!uniqueMaps.containsKey(map.id)) {
           uniqueMaps[map.id] = map;
         }
-
-        // Сортируем локально по дате (от новых к старым)
-        final result = uniqueMaps.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-
-        debugPrint('✅ Получено ${result.length} уникальных карт');
-
-        // Запускаем синхронизацию в фоне
-        _syncService.syncAll();
-
-        // ✅ ИСПРАВЛЕНО: УДАЛЕН вызов refreshUsageLimits() - метода не существует
-
-        return result;
-      } else {
-        debugPrint('📱 Получение маркерных карт из офлайн хранилища');
-
-        // Если нет подключения, получаем карты из офлайн хранилища
-        return await _getOfflineMarkerMaps(userId);
       }
+
+      // Преобразуем в список и сортируем по дате
+      final allMaps = uniqueMaps.values.toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      debugPrint('📊 Итого карт: ${allMaps.length}');
+      debugPrint('📊 Онлайн: ${onlineMaps.length}, Офлайн: ${offlineMaps.length}');
+
+      // ✅ ДОБАВЛЕНО: Кэшируем результат
+      _cachedMaps = allMaps;
+      _cacheTimestamp = DateTime.now();
+
+      // Запускаем синхронизацию в фоне
+      if (isOnline) {
+        _syncService.syncAll();
+      }
+
+      return allMaps;
     } catch (e) {
       debugPrint('❌ Ошибка при получении маркерных карт: $e');
 
@@ -101,35 +153,108 @@ class MarkerMapRepository {
           _firebaseService.currentUserId ?? '',
         );
       } catch (_) {
-        rethrow;
+        // В крайнем случае возвращаем пустой список
+        return [];
       }
     }
   }
 
-  // Получение маркерных карт из офлайн хранилища
+  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получение карт из ВСЕХ источников
   Future<List<MarkerMapModel>> _getOfflineMarkerMaps(String userId) async {
     try {
-      final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
+      final List<MarkerMapModel> result = [];
+      final Set<String> processedIds = <String>{};
 
-      // Фильтруем и преобразуем данные в модели
-      final offlineMapModels = offlineMaps
-          .where((map) => map['userId'] == userId) // Фильтруем по userId
-          .map((map) {
-        try {
-          return MarkerMapModel.fromJson(map, id: map['id'] as String);
-        } catch (e) {
-          debugPrint('❌ Ошибка парсинга офлайн карты: $e');
-          return null;
+      debugPrint('📱 Загружаем кэшированные Firebase карты...');
+
+      // 1. ✅ ИСПРАВЛЕНО: Загружаем кэшированные Firebase карты
+      try {
+        final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+        debugPrint('💾 Найдено кэшированных Firebase карт: ${cachedMaps.length}');
+
+        for (final mapData in cachedMaps) {
+          try {
+            final mapId = mapData['id']?.toString() ?? '';
+            final mapUserId = mapData['userId']?.toString() ?? '';
+
+            if (mapId.isEmpty) continue;
+
+            // Проверяем принадлежность пользователю
+            if (mapUserId == userId) {
+              final map = MarkerMapModel.fromJson(mapData, id: mapId);
+              result.add(map);
+              processedIds.add(mapId);
+              debugPrint('✅ Кэшированная карта загружена: $mapId');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обработки кэшированной карты: $e');
+            continue;
+          }
         }
-      })
-          .where((map) => map != null)
-          .cast<MarkerMapModel>()
-          .toList();
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при загрузке кэшированных карт: $e');
+      }
+
+      debugPrint('📱 Загружаем офлайн созданные карты...');
+
+      // 2. ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн карты
+      try {
+        final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
+        debugPrint('📱 Найдено офлайн созданных карт: ${offlineMaps.length}');
+
+        // Фильтруем и преобразуем данные в модели
+        for (final mapData in offlineMaps) {
+          try {
+            final mapId = mapData['id']?.toString() ?? '';
+            final mapUserId = mapData['userId']?.toString() ?? '';
+            final isSynced = mapData['isSynced'] == true;
+            final isOffline = mapData['isOffline'] == true;
+
+            // ✅ ИСПРАВЛЕНО: Пропускаем уже обработанные карты
+            if (mapId.isEmpty || processedIds.contains(mapId)) {
+              continue;
+            }
+
+            // ✅ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн карты
+            if (!isSynced && isOffline) {
+              // Проверяем принадлежность пользователю
+              bool belongsToUser = false;
+
+              if (mapUserId.isNotEmpty && mapUserId == userId) {
+                belongsToUser = true;
+              } else if (mapUserId.isEmpty) {
+                // Карта без userId - добавляем userId
+                mapData['userId'] = userId;
+                belongsToUser = true;
+                _offlineStorage.saveOfflineMarkerMap(mapData).catchError((error) {
+                  debugPrint('⚠️ Ошибка при исправлении карты: $error');
+                });
+              }
+
+              if (belongsToUser) {
+                final map = MarkerMapModel.fromJson(mapData, id: mapId);
+                result.add(map);
+                processedIds.add(mapId);
+                debugPrint('✅ Несинхронизированная офлайн карта загружена: $mapId');
+              }
+            } else {
+              debugPrint('⏭️ Пропускаем синхронизированную карту: $mapId (isSynced: $isSynced, isOffline: $isOffline)');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обработки офлайн карты: $e');
+            continue;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при загрузке офлайн карт: $e');
+      }
 
       // Сортируем по дате (от новых к старым)
-      offlineMapModels.sort((a, b) => b.date.compareTo(a.date));
+      result.sort((a, b) => b.date.compareTo(a.date));
 
-      return offlineMapModels;
+      debugPrint('✅ Всего карт загружено из офлайн источников: ${result.length}');
+
+      return result;
     } catch (e) {
       debugPrint('❌ Ошибка при получении офлайн маркерных карт: $e');
       return [];
@@ -176,6 +301,23 @@ class MarkerMapRepository {
           await _firebaseService.addMarkerMap(mapToAdd.toJson());
           debugPrint('✅ Маркерная карта добавлена в НОВУЮ структуру: $mapId');
 
+          // 🔥 ИСПРАВЛЕНО: Кэшируем новую карту через ПРАВИЛЬНЫЙ метод
+          try {
+            final mapJson = mapToAdd.toJson();
+            mapJson['id'] = mapId;
+            mapJson['userId'] = userId;
+            // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ
+            mapJson['isSynced'] = true;   // Синхронизирована с Firebase
+            mapJson['isOffline'] = false; // Не офлайн карта
+
+            // Кэшируем в общий кэш Firebase карт
+            await _offlineStorage.cacheMarkerMaps([mapJson]);
+
+            debugPrint('💾 Новая карта кэширована правильно');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка кэширования новой карты: $e');
+          }
+
           // ✅ ИСПРАВЛЕНИЕ: Увеличиваем счетчик ТОЛЬКО через FirebaseService (онлайн режим)
           try {
             await _firebaseService.incrementUsageCount('markerMapsCount');
@@ -219,6 +361,9 @@ class MarkerMapRepository {
         debugPrint('✅ Маркерная карта добавлена офлайн: $mapId');
       }
 
+      // ✅ ДОБАВЛЕНО: Очищаем кэш после создания новой карты
+      clearCache();
+
       return mapId;
     } catch (e) {
       debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
@@ -226,11 +371,25 @@ class MarkerMapRepository {
     }
   }
 
-  // Сохранение карты в офлайн режиме
+  // ✅ ИСПРАВЛЕНО: Сохранение карты в офлайн режиме
   Future<void> _saveMapOffline(MarkerMapModel map) async {
     try {
-      await _offlineStorage.saveOfflineMarkerMap(map.toJson());
-      debugPrint('📱 Маркерная карта ${map.id} сохранена в офлайн режиме');
+      if (map.id.isEmpty) {
+        throw Exception('ID карты не может быть пустым');
+      }
+
+      debugPrint('📱 Сохранение офлайн карты: ${map.id}');
+
+      // ✅ ИСПРАВЛЕНО: Устанавливаем правильные флаги для офлайн карты
+      final mapJson = map.toJson();
+      mapJson['id'] = map.id;
+      mapJson['userId'] = map.userId;
+      mapJson['isSynced'] = false;  // Требует синхронизации
+      mapJson['isOffline'] = true;  // Создана офлайн
+      mapJson['offlineCreatedAt'] = DateTime.now().toIso8601String();
+
+      await _offlineStorage.saveOfflineMarkerMap(mapJson);
+      debugPrint('✅ Карта сохранена в офлайн режиме');
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении карты офлайн: $e');
       rethrow;
@@ -254,6 +413,17 @@ class MarkerMapRepository {
       // Создаем копию карты с установленным UserID
       final mapToUpdate = map.copyWith(userId: userId);
 
+      // ✅ ИСПРАВЛЕНО: Правильные флаги для обновления
+      final mapJson = mapToUpdate.toJson();
+      mapJson['id'] = map.id;
+      mapJson['userId'] = userId;
+      mapJson['isSynced'] = false;  // Требует синхронизации
+      mapJson['isOffline'] = false; // Обновлена, но не создана офлайн
+      mapJson['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Всегда сначала сохраняем локально
+      await _offlineStorage.saveOfflineMarkerMap(mapJson);
+
       // Проверяем подключение к интернету
       final isOnline = await NetworkUtils.isNetworkAvailable();
 
@@ -262,6 +432,23 @@ class MarkerMapRepository {
         try {
           await _firebaseService.updateMarkerMap(map.id, mapToUpdate.toJson());
           debugPrint('✅ Маркерная карта обновлена в НОВОЙ структуре: ${map.id}');
+
+          // 🔥 ИСПРАВЛЕНО: Обновляем в ПРАВИЛЬНОМ кэше
+          try {
+            mapJson['userId'] = userId;
+            mapJson['isSynced'] = true;   // Синхронизирована
+            mapJson['isOffline'] = false; // Не офлайн карта
+
+            // Обновляем в общем кэше Firebase карт
+            await _offlineStorage.cacheMarkerMaps([mapJson]);
+
+            // Также обновляем в офлайн хранилище
+            await _offlineStorage.saveOfflineMarkerMap(mapJson);
+
+            debugPrint('💾 Карта обновлена в кэше правильно');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка обновления в кэше: $e');
+          }
         } catch (e) {
           debugPrint('❌ Ошибка обновления в Firebase, сохраняем офлайн: $e');
           await _offlineStorage.saveMarkerMapUpdate(map.id, mapToUpdate.toJson());
@@ -272,6 +459,9 @@ class MarkerMapRepository {
 
         debugPrint('✅ Маркерная карта обновлена офлайн: ${map.id}');
       }
+
+      // ✅ ДОБАВЛЕНО: Очищаем кэш после обновления карты
+      clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
 
@@ -291,6 +481,11 @@ class MarkerMapRepository {
         throw Exception('ID карты не может быть пустым');
       }
 
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Пользователь не авторизован');
+      }
+
       debugPrint('📍 Удаление маркерной карты: $mapId');
 
       // Проверяем подключение к интернету
@@ -303,8 +498,22 @@ class MarkerMapRepository {
           debugPrint('✅ Маркерная карта удалена из НОВОЙ структуры: $mapId');
 
           // ✅ ИСПРАВЛЕНИЕ: Уменьшаем счетчик ТОЛЬКО через FirebaseService (онлайн режим)
-          // НЕ через SubscriptionService чтобы избежать двойного уменьшения
-          // FirebaseService уже обрабатывает счетчики в онлайн режиме
+          try {
+            await _firebaseService.incrementUsageCount('markerMapsCount', increment: -1);
+            debugPrint('✅ Счетчик маркерных карт уменьшен через Firebase');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка уменьшения счетчика через Firebase: $e');
+          }
+
+          // ✅ ДОБАВЛЕНО: Удаляем из кэша Firebase карт
+          try {
+            final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+            final updatedCachedMaps = cachedMaps.where((map) => map['id'] != mapId).toList();
+            await _offlineStorage.cacheMarkerMaps(updatedCachedMaps);
+            debugPrint('✅ Карта удалена из кэша Firebase карт');
+          } catch (e) {
+            debugPrint('⚠️ Ошибка удаления из кэша Firebase карт: $e');
+          }
 
         } catch (e) {
           debugPrint('❌ Ошибка удаления из Firebase, отмечаем для удаления: $e');
@@ -320,24 +529,10 @@ class MarkerMapRepository {
           }
         }
 
-        // Удаляем локальную копию, если она есть
-        try {
-          await _offlineStorage.removeOfflineMarkerMap(mapId);
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при удалении локальной копии карты: $e');
-        }
-
         debugPrint('✅ Маркерная карта удалена онлайн: $mapId');
       } else {
         // Если нет интернета, отмечаем карту для удаления
         await _offlineStorage.markForDeletion(mapId, true);
-
-        // Удаляем локальную копию
-        try {
-          await _offlineStorage.removeOfflineMarkerMap(mapId);
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при удалении локальной копии карты: $e');
-        }
 
         // ✅ ИСПРАВЛЕНИЕ: Уменьшаем счетчик ТОЛЬКО через SubscriptionService (офлайн режим)
         try {
@@ -350,6 +545,17 @@ class MarkerMapRepository {
 
         debugPrint('✅ Маркерная карта отмечена для удаления: $mapId');
       }
+
+      // Удаляем локальную копию, если она есть
+      try {
+        await _offlineStorage.removeOfflineMarkerMap(mapId);
+        debugPrint('✅ Локальная копия карты удалена');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка при удалении локальной копии карты: $e');
+      }
+
+      // ✅ ДОБАВЛЕНО: Очищаем кэш после удаления карты
+      clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при удалении маркерной карты: $e');
 
@@ -390,8 +596,28 @@ class MarkerMapRepository {
               .get();
 
           if (doc.exists) {
-            debugPrint('✅ Карта найдена в НОВОЙ структуре: $mapId');
-            return MarkerMapModel.fromJson(doc.data()!, id: doc.id);
+            final map = MarkerMapModel.fromJson(doc.data()!, id: doc.id);
+
+            // 🔥 ИСПРАВЛЕНО: Кэшируем полученную карту через ПРАВИЛЬНЫЙ метод
+            try {
+              final mapJson = map.toJson();
+              mapJson['id'] = map.id;
+              mapJson['userId'] = userId;
+              mapJson['isSynced'] = true;   // Из Firebase
+              mapJson['isOffline'] = false; // Не офлайн карта
+
+              // Кэшируем в общий кэш Firebase карт
+              await _offlineStorage.cacheMarkerMaps([mapJson]);
+
+              // Также сохраняем в офлайн хранилище
+              await _offlineStorage.saveOfflineMarkerMap(mapJson);
+
+              debugPrint('✅ Карта найдена в НОВОЙ структуре и кэширована правильно: $mapId');
+            } catch (e) {
+              debugPrint('⚠️ Ошибка кэширования полученной карты: $e');
+            }
+
+            return map;
           } else {
             debugPrint('⚠️ Карта не найдена в НОВОЙ структуре, ищем офлайн: $mapId');
           }
@@ -416,9 +642,23 @@ class MarkerMapRepository {
     }
   }
 
-  // Получение маркерной карты из офлайн хранилища по ID
+  // 🔥 ИСПРАВЛЕНО: Получение маркерной карты из офлайн хранилища по ID
   Future<MarkerMapModel> _getOfflineMarkerMapById(String mapId) async {
     try {
+      // Сначала ищем в кэшированных Firebase картах
+      try {
+        final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+        final cachedMap = cachedMaps.where((map) => map['id'] == mapId).firstOrNull;
+
+        if (cachedMap != null) {
+          debugPrint('✅ Карта найдена в кэше Firebase карт');
+          return MarkerMapModel.fromJson(cachedMap, id: mapId);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка поиска в кэше Firebase карт: $e');
+      }
+
+      // Если не найдена в кэше - ищем в офлайн картах
       final allOfflineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
 
       // Ищем карту по ID
@@ -429,6 +669,7 @@ class MarkerMapRepository {
         ),
       );
 
+      debugPrint('✅ Карта найдена в офлайн хранилище');
       return MarkerMapModel.fromJson(mapData, id: mapId);
     } catch (e) {
       debugPrint(
@@ -486,6 +727,9 @@ class MarkerMapRepository {
       } catch (e) {
         debugPrint('❌ Ошибка при очистке локального хранилища карт: $e');
       }
+
+      // ✅ ДОБАВЛЕНО: Очищаем кэш после удаления всех карт
+      clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при удалении всех маркерных карт: $e');
 
@@ -551,5 +795,12 @@ class MarkerMapRepository {
   // Получить статус синхронизации
   Future<Map<String, dynamic>> getSyncStatus() async {
     return await _syncService.getSyncStatus();
+  }
+
+  // ✅ ДОБАВЛЕНО: Очистить кеш данных (как в BudgetNotesRepository)
+  static void clearCache() {
+    _cachedMaps = null;
+    _cacheTimestamp = null;
+    debugPrint('💾 Кэш маркерных карт очищен');
   }
 }

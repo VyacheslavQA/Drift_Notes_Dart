@@ -305,10 +305,10 @@ class SubscriptionService {
   }
 
   // ========================================
-  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК С КЭШОМ
+  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК С КЭШОМ
   // ========================================
 
-  /// ✅ ИСПРАВЛЕНО: Получение текущего использования с кэшем для офлайн режима
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Получение текущего использования БЕЗ РЕКУРСИИ
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
       debugPrint('🔍 getCurrentUsage: начинаем подсчет для $contentType');
@@ -321,69 +321,69 @@ class SubscriptionService {
 
       final hasNetwork = await NetworkUtils.isNetworkAvailable();
 
-      // ✅ ИСПРАВЛЕНО: В офлайн режиме СНАЧАЛА проверяем кэш
+      // ✅ ИСПРАВЛЕНО: В офлайн режиме используем ПРЯМОЙ подсчет локальных данных
       if (!hasNetwork) {
-        debugPrint('📱 getCurrentUsage: офлайн режим, проверяем кэш...');
-
-        final cachedLimits = await _offlineStorage.getCachedUsageLimits();
-        if (cachedLimits != null) {
-          final cachedCount = cachedLimits.getCountForType(contentType);
-          debugPrint('✅ getCurrentUsage: из кэша $contentType = $cachedCount');
-          return cachedCount;
-        }
-
-        debugPrint('⚠️ getCurrentUsage: кэш пуст, считаем локальные данные');
+        debugPrint('📱 getCurrentUsage: офлайн режим, считаем ПРЯМО из локальных данных...');
+        return await _countDirectFromLocalStorage(contentType, userId);
       }
 
       int totalCount = 0;
 
       // 1. ✅ ИСПРАВЛЕНО: Считаем РЕАЛЬНЫЕ заметки из Firebase subcollections
-      if (hasNetwork) {
-        try {
-          int onlineCount = 0;
+      try {
+        int onlineCount = 0;
 
-          switch (contentType) {
-            case ContentType.fishingNotes:
-              final snapshot = await firebaseService.getUserFishingNotesNew();
-              onlineCount = snapshot.docs.length;
-              break;
-            case ContentType.markerMaps:
-              final snapshot = await firebaseService.getUserMarkerMaps();
-              onlineCount = snapshot.docs.length;
-              break;
-            case ContentType.budgetNotes:
-              final snapshot = await firebaseService.getUserBudgetNotes();
-              onlineCount = snapshot.docs.length;
-              break;
-            case ContentType.depthChart:
-              onlineCount = 0; // Пока не реализовано
-              break;
-          }
-
-          totalCount += onlineCount;
-          debugPrint('📊 getCurrentUsage: онлайн $contentType = $onlineCount');
-        } catch (e) {
-          debugPrint('❌ getCurrentUsage: ошибка подсчета онлайн заметок: $e');
+        switch (contentType) {
+          case ContentType.fishingNotes:
+            final snapshot = await firebaseService.getUserFishingNotesNew();
+            onlineCount = snapshot.docs.length;
+            break;
+          case ContentType.markerMaps:
+            final snapshot = await firebaseService.getUserMarkerMaps();
+            onlineCount = snapshot.docs.length;
+            break;
+          case ContentType.budgetNotes:
+            final snapshot = await firebaseService.getUserBudgetNotes();
+            onlineCount = snapshot.docs.length;
+            break;
+          case ContentType.depthChart:
+            onlineCount = 0; // Пока не реализовано
+            break;
         }
+
+        totalCount += onlineCount;
+        debugPrint('📊 getCurrentUsage: онлайн $contentType = $onlineCount');
+      } catch (e) {
+        debugPrint('❌ getCurrentUsage: ошибка подсчета онлайн заметок: $e');
       }
 
-      // 2. ✅ ИСПРАВЛЕНО: Считаем ОФЛАЙН заметки из локального хранилища
+      // 2. ✅ ИСПРАВЛЕНО: Считаем ТОЛЬКО не синхронизированные офлайн заметки
       try {
         int offlineCount = 0;
 
         switch (contentType) {
           case ContentType.fishingNotes:
             final offlineNotes = await _offlineStorage.getOfflineFishingNotes(userId);
-            offlineCount = offlineNotes.length;
+            // Считаем только НЕ синхронизированные заметки
+            offlineCount = offlineNotes.where((note) =>
+            note['isSynced'] != true && note['isOffline'] == true
+            ).length;
             break;
           case ContentType.markerMaps:
             final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
-            // Фильтруем по userId
-            offlineCount = offlineMaps.where((map) => map['userId'] == userId).length;
+            // Фильтруем по userId и считаем только НЕ синхронизированные
+            offlineCount = offlineMaps.where((map) =>
+            map['userId'] == userId &&
+                map['isSynced'] != true &&
+                map['isOffline'] == true
+            ).length;
             break;
           case ContentType.budgetNotes:
             final offlineBudgetNotes = await _offlineStorage.getOfflineBudgetNotes(userId);
-            offlineCount = offlineBudgetNotes.length;
+            // Считаем только НЕ синхронизированные заметки
+            offlineCount = offlineBudgetNotes.where((note) =>
+            note['isSynced'] != true && note['isOffline'] == true
+            ).length;
             break;
           case ContentType.depthChart:
             offlineCount = 0; // Пока не реализовано
@@ -400,6 +400,71 @@ class SubscriptionService {
       return totalCount;
     } catch (e) {
       debugPrint('❌ getCurrentUsage: критическая ошибка подсчета: $e');
+      return 0;
+    }
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД: Прямой подсчет из локального хранилища для офлайн режима
+  Future<int> _countDirectFromLocalStorage(ContentType contentType, String userId) async {
+    try {
+      int totalCount = 0;
+
+      // 1. Считаем кэшированные Firebase данные
+      try {
+        switch (contentType) {
+          case ContentType.fishingNotes:
+            final cachedNotes = await _offlineStorage.getCachedFishingNotes();
+            totalCount += cachedNotes.where((note) => note['userId'] == userId).length;
+            break;
+          case ContentType.markerMaps:
+            final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
+            totalCount += cachedMaps.where((map) => map['userId'] == userId).length;
+            break;
+          case ContentType.budgetNotes:
+            final cachedNotes = await _offlineStorage.getCachedBudgetNotes();
+            totalCount += cachedNotes.where((note) => note['userId'] == userId).length;
+            break;
+          case ContentType.depthChart:
+            break; // Пока не реализовано
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка подсчета кэшированных данных: $e');
+      }
+
+      // 2. Добавляем ТОЛЬКО не синхронизированные офлайн данные
+      try {
+        switch (contentType) {
+          case ContentType.fishingNotes:
+            final offlineNotes = await _offlineStorage.getOfflineFishingNotes(userId);
+            totalCount += offlineNotes.where((note) =>
+            note['isSynced'] != true && note['isOffline'] == true
+            ).length;
+            break;
+          case ContentType.markerMaps:
+            final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
+            totalCount += offlineMaps.where((map) =>
+            map['userId'] == userId &&
+                map['isSynced'] != true &&
+                map['isOffline'] == true
+            ).length;
+            break;
+          case ContentType.budgetNotes:
+            final offlineBudgetNotes = await _offlineStorage.getOfflineBudgetNotes(userId);
+            totalCount += offlineBudgetNotes.where((note) =>
+            note['isSynced'] != true && note['isOffline'] == true
+            ).length;
+            break;
+          case ContentType.depthChart:
+            break; // Пока не реализовано
+        }
+      } catch (e) {
+        debugPrint('⚠️ Ошибка подсчета офлайн данных: $e');
+      }
+
+      debugPrint('📱 _countDirectFromLocalStorage: $contentType = $totalCount');
+      return totalCount;
+    } catch (e) {
+      debugPrint('❌ _countDirectFromLocalStorage: ошибка: $e');
       return 0;
     }
   }
@@ -517,7 +582,7 @@ class SubscriptionService {
         return 'notesCount';
       case ContentType.markerMaps:
         return 'markerMapsCount';
-      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+      case ContentType.budgetNotes:
         return 'budgetNotesCount';
       case ContentType.depthChart:
         return 'depthChartCount';
@@ -531,7 +596,7 @@ class SubscriptionService {
         return 'заметок';
       case ContentType.markerMaps:
         return 'карт';
-      case ContentType.budgetNotes: // ✅ ИСПРАВЛЕНО: было expenses
+      case ContentType.budgetNotes:
         return 'заметок бюджета';
       case ContentType.depthChart:
         return 'графиков глубин';
@@ -600,7 +665,7 @@ class SubscriptionService {
   // ✅ ИСПРАВЛЕННОЕ КЭШИРОВАНИЕ И ОФЛАЙН МЕТОДЫ
   // ========================================
 
-  /// ✅ ИСПРАВЛЕНО: Кэширование данных подписки при онлайн режиме
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Кэширование данных подписки БЕЗ РЕКУРСИИ
   Future<void> cacheSubscriptionDataOnline() async {
     try {
       if (kDebugMode) {
@@ -621,9 +686,9 @@ class SubscriptionService {
       // Кэшируем подписку
       await _offlineStorage.cacheSubscriptionStatus(subscription);
 
-      // ✅ ИСПРАВЛЕНО: Кэшируем РЕАЛЬНЫЕ счетчики заметок
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Создаем лимиты БЕЗ вызова getCurrentUsage()
       try {
-        final usageLimits = await _loadUsageLimitsFromFirebase();
+        final usageLimits = await _loadUsageLimitsDirectFromFirebase();
         if (usageLimits != null) {
           await _offlineStorage.cacheUsageLimits(usageLimits);
           debugPrint('✅ Реальные счетчики заметок кэшированы');
@@ -688,30 +753,44 @@ class SubscriptionService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение UsageLimitsModel из Firebase с реальными подсчетами
-  Future<UsageLimitsModel?> _loadUsageLimitsFromFirebase() async {
+  /// 🔥 НОВЫЙ МЕТОД: Прямая загрузка лимитов из Firebase БЕЗ рекурсии
+  Future<UsageLimitsModel?> _loadUsageLimitsDirectFromFirebase() async {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) return null;
 
-      // ✅ ИСПРАВЛЕНО: Используем реальные подсчеты вместо счетчиков Firebase
-      final fishingNotesCount = await getCurrentUsage(ContentType.fishingNotes);
-      final markerMapsCount = await getCurrentUsage(ContentType.markerMaps);
-      final budgetNotesCount = await getCurrentUsage(ContentType.budgetNotes);
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Считаем НАПРЯМУЮ из Firebase БЕЗ вызова getCurrentUsage()
+      int fishingNotesCount = 0;
+      int markerMapsCount = 0;
+      int budgetNotesCount = 0;
 
-      debugPrint('📊 Кэшируем реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
+      try {
+        // Прямые запросы к Firebase
+        final fishingSnapshot = await firebaseService.getUserFishingNotesNew();
+        fishingNotesCount = fishingSnapshot.docs.length;
+
+        final mapsSnapshot = await firebaseService.getUserMarkerMaps();
+        markerMapsCount = mapsSnapshot.docs.length;
+
+        final budgetSnapshot = await firebaseService.getUserBudgetNotes();
+        budgetNotesCount = budgetSnapshot.docs.length;
+      } catch (e) {
+        debugPrint('⚠️ Ошибка прямого подсчета из Firebase: $e');
+      }
+
+      debugPrint('📊 Прямой подсчет из Firebase: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
 
       return UsageLimitsModel(
         userId: userId,
         notesCount: fishingNotesCount,
         markerMapsCount: markerMapsCount,
-        budgetNotesCount: budgetNotesCount, // ✅ ИСПРАВЛЕНО: используем budgetNotesCount
+        budgetNotesCount: budgetNotesCount,
         lastResetDate: DateTime.now(),
         updatedAt: DateTime.now(),
       );
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка загрузки лимитов из Firebase: $e');
+        debugPrint('❌ Ошибка прямой загрузки лимитов из Firebase: $e');
       }
       return null;
     }
@@ -744,7 +823,7 @@ class SubscriptionService {
   }
 
   // ========================================
-  // УПРАВЛЕНИЕ ПОДПИСКАМИ
+  // УПРАВЛЕНИЕ ПОДПИСКАМИ (Остальные методы без изменений)
   // ========================================
 
   /// Загрузка текущей подписки пользователя

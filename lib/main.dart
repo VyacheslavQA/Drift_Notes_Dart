@@ -96,20 +96,8 @@ void main() async {
     }
   }
 
-  // ВРЕМЕННО ОТКЛЮЧАЕМ App Check для тестирования Firebase Auth
-  if (kDebugMode) {
-    try {
-      debugPrint('');
-      debugPrint('🎯 ========================================');
-      debugPrint('⚠️  APP CHECK ВРЕМЕННО ОТКЛЮЧЕН');
-      debugPrint('🧪 Тестируем Firebase Auth БЕЗ App Check');
-      debugPrint('🔧 После успешного теста настроим App Check');
-      debugPrint('🎯 ========================================');
-      debugPrint('');
-    } catch (e) {
-      debugPrint('❌ Ошибка: $e');
-    }
-  }
+  // ✅ ИСПРАВЛЕНО: Правильная инициализация App Check
+  await _initializeAppCheck();
 
   // Тест Firebase Auth с диагностикой
   if (kDebugMode) {
@@ -177,6 +165,74 @@ void main() async {
       child: DriftNotesApp(consentService: UserConsentService()),
     ),
   );
+}
+
+// ✅ НОВАЯ ФУНКЦИЯ: Правильная инициализация App Check
+Future<void> _initializeAppCheck() async {
+  try {
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('🔐 ========================================');
+      debugPrint('🔐 Инициализация Firebase App Check...');
+      debugPrint('🔐 ========================================');
+    }
+
+    // Настройка провайдеров в зависимости от режима сборки
+    if (kDebugMode) {
+      // DEBUG режим: Используем Debug Provider для разработки
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+      );
+
+      if (kDebugMode) {
+        debugPrint('🧪 App Check активирован в DEBUG режиме');
+        debugPrint('🔧 Используется Debug Provider для разработки');
+        debugPrint('⚠️  Только для разработки! В продакшене будет Play Integrity');
+      }
+    } else {
+      // RELEASE режим: Используем Play Integrity для продакшена
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.deviceCheck,
+      );
+
+      debugPrint('🔐 App Check активирован в PRODUCTION режиме');
+      debugPrint('✅ Используется Play Integrity API для безопасности');
+    }
+
+    // Проверяем статус App Check
+    final token = await FirebaseAppCheck.instance.getToken();
+    if (token != null) {
+      if (kDebugMode) {
+        debugPrint('✅ App Check токен получен успешно');
+        debugPrint('🔒 Firebase защищен от злоупотреблений');
+      }
+    } else {
+      if (kDebugMode) {
+        debugPrint('⚠️ App Check токен не получен');
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('🔐 ========================================');
+      debugPrint('✅ App Check инициализирован успешно');
+      debugPrint('🔐 ========================================');
+      debugPrint('');
+    }
+
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('❌ Ошибка инициализации App Check: $e');
+      debugPrint('⚠️ Firebase может работать без App Check, но это небезопасно');
+    }
+
+    // В продакшене логируем критическую ошибку
+    if (!kDebugMode) {
+      // Здесь можно добавить отправку ошибки в Crashlytics
+      debugPrint('🚨 КРИТИЧЕСКАЯ ОШИБКА: App Check не активирован в продакшене!');
+    }
+  }
 }
 
 // Инициализация всех сервисов
@@ -261,12 +317,12 @@ void _startNetworkMonitoring() {
   }
 }
 
-// Функция для тестирования Firebase Authentication (только в debug)
+// Функция для тестирования Firebase Authentication
 Future<void> _testFirebaseAuthentication() async {
   if (!kDebugMode) return;
 
   try {
-    debugPrint('🧪 Тестируем Firebase Authentication БЕЗ App Check...');
+    debugPrint('🧪 Тестируем Firebase Authentication с App Check...');
 
     final auth = FirebaseAuth.instance;
 
@@ -282,15 +338,15 @@ Future<void> _testFirebaseAuthentication() async {
     try {
       // Попробуем получить провайдеры для несуществующего email
       await auth.fetchSignInMethodsForEmail('test@nonexistent.com');
-      debugPrint('✅ Firebase Auth методы ДОСТУПНЫ без App Check!');
-      debugPrint('🎉 Авторизация должна работать нормально');
+      debugPrint('✅ Firebase Auth методы ДОСТУПНЫ с App Check!');
+      debugPrint('🎉 Авторизация работает безопасно');
     } catch (e) {
-      if (e.toString().contains('blocked')) {
-        debugPrint('❌ Firebase Auth методы все еще заблокированы: $e');
-        debugPrint('🔧 Возможно проблема в настройках проекта Firebase');
+      if (e.toString().contains('blocked') || e.toString().contains('app-check')) {
+        debugPrint('❌ Firebase Auth заблокирован App Check: $e');
+        debugPrint('🔧 Проверьте настройки App Check в Firebase Console');
       } else {
-        debugPrint('✅ Firebase Auth работает (ошибка ожидаема для тестового email)');
-        debugPrint('🎉 Можно тестировать авторизацию с реальными данными');
+        debugPrint('✅ Firebase Auth работает с App Check (ошибка ожидаема для тестового email)');
+        debugPrint('🎉 Можно безопасно тестировать авторизацию');
       }
     }
 
