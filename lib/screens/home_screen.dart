@@ -38,6 +38,7 @@ import 'tournaments/tournaments_screen.dart';
 import 'shops/shops_screen.dart';
 import 'budget/fishing_budget_screen.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -1903,6 +1904,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 }
               },
             ),
+
           ],
         ),
       ),

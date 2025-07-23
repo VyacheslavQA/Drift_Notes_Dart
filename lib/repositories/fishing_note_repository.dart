@@ -1,17 +1,17 @@
 // Путь: lib/repositories/fishing_note_repository.dart
 
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/fishing_note_model.dart';
-import '../services/firebase/firebase_service.dart';
-import '../utils/network_utils.dart';
-import '../services/offline/offline_storage_service.dart';
+import '../models/isar/fishing_note_entity.dart';
+import '../services/isar_service.dart';
 import '../services/offline/sync_service.dart';
+import '../services/firebase/firebase_service.dart';
 import '../services/local/local_file_service.dart';
-import '../services/subscription/subscription_service.dart';
-import '../constants/subscription_constants.dart';
+import '../utils/network_utils.dart';
+import '../services/calendar_event_service.dart';
 
 class FishingNoteRepository {
   static final FishingNoteRepository _instance = FishingNoteRepository._internal();
@@ -22,19 +22,54 @@ class FishingNoteRepository {
 
   FishingNoteRepository._internal();
 
+  final IsarService _isarService = IsarService.instance;
+  final SyncService _syncService = SyncService.instance;
   final FirebaseService _firebaseService = FirebaseService();
-  final OfflineStorageService _offlineStorage = OfflineStorageService();
-  final SyncService _syncService = SyncService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LocalFileService _localFileService = LocalFileService();
-  final SubscriptionService _subscriptionService = SubscriptionService();
 
-  // ✅ ДОБАВЛЕНО: Кэш для предотвращения повторных загрузок (как в BudgetNotesRepository)
+  // Кэш для предотвращения повторных загрузок
   static List<FishingNoteModel>? _cachedNotes;
   static DateTime? _cacheTimestamp;
   static const Duration _cacheValidity = Duration(minutes: 2);
 
-  // ✅ ИСПРАВЛЕНО: Получение заметок с ПРАВИЛЬНЫМ кэшированием Firebase заметок
+  /// Инициализация репозитория
+  Future<void> initialize() async {
+    try {
+      await _isarService.init();
+      debugPrint('✅ FishingNoteRepository инициализирован');
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации FishingNoteRepository: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Синхронизация офлайн данных при запуске
+  Future<void> syncOfflineDataOnStartup() async {
+    try {
+      debugPrint('🔄 Синхронизация офлайн данных при запуске');
+
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      if (isOnline) {
+        // Запускаем полную синхронизацию в фоне
+        _syncService.fullSync().then((result) {
+          if (result) {
+            debugPrint('✅ Синхронизация при запуске завершена успешно');
+            clearCache(); // Обновляем кэш после синхронизации
+          } else {
+            debugPrint('⚠️ Синхронизация при запуске завершена с ошибками');
+          }
+        }).catchError((e) {
+          debugPrint('❌ Ошибка синхронизации при запуске: $e');
+        });
+      } else {
+        debugPrint('📱 Офлайн режим - синхронизация пропущена');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка в syncOfflineDataOnStartup: $e');
+    }
+  }
+
+  /// Получение всех заметок пользователя
   Future<List<FishingNoteModel>> getUserFishingNotes() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -45,7 +80,7 @@ class FishingNoteRepository {
 
       debugPrint('📝 Загрузка заметок для пользователя: $userId');
 
-      // ✅ ДОБАВЛЕНО: Проверяем кэш
+      // Проверяем кэш
       if (_cachedNotes != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
@@ -53,209 +88,41 @@ class FishingNoteRepository {
           return _cachedNotes!;
         } else {
           debugPrint('💾 Кэш заметок устарел, очищаем');
-          _cachedNotes = null;
-          _cacheTimestamp = null;
+          clearCache();
         }
       }
 
-      // Всегда получаем офлайн заметки первыми (теперь включает кэшированные)
-      final offlineNotes = await _getOfflineNotes(userId);
-      debugPrint('📱 Офлайн заметок найдено: ${offlineNotes.length}');
+      // Получаем данные из Isar (локальная БД)
+      final isarNotes = await _isarService.getAllFishingNotes();
+      debugPrint('📱 Найдено заметок в Isar: ${isarNotes.length}');
 
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+      // Конвертируем в модели приложения
+      final notes = isarNotes.map((entity) => _entityToModel(entity)).toList();
 
-      List<FishingNoteModel> onlineNotes = [];
-
-      if (isOnline) {
-        try {
-          debugPrint('☁️ Загружаем заметки из Firebase');
-          final snapshot = await _firebaseService.getUserFishingNotesNew();
-
-          for (var doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>?;
-            if (data != null && data.isNotEmpty) {
-              final note = FishingNoteModel.fromJson(data, id: doc.id);
-              onlineNotes.add(note);
-            }
-          }
-
-          debugPrint('☁️ Заметок из Firebase: ${onlineNotes.length}');
-
-          // 🔥 ИСПРАВЛЕНО: Используем ПРАВИЛЬНЫЙ метод кэширования
-          if (onlineNotes.isNotEmpty) {
-            try {
-              debugPrint('💾 Кэшируем Firebase заметки через cacheFishingNotes...');
-              final notesToCache = onlineNotes.map((note) {
-                final noteJson = note.toJson();
-                noteJson['id'] = note.id;
-                noteJson['userId'] = userId;
-                // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ для совместимости с кэшем
-                noteJson['isSynced'] = true;   // Из Firebase - синхронизированы
-                noteJson['isOffline'] = false; // Не офлайн заметки
-                return noteJson;
-              }).toList();
-
-              await _offlineStorage.cacheFishingNotes(notesToCache);
-              debugPrint('✅ ${onlineNotes.length} Firebase заметок кэшированы правильно');
-            } catch (e) {
-              debugPrint('⚠️ Ошибка кэширования Firebase заметок: $e');
-              debugPrint('⚠️ Детали ошибки: ${e.toString()}');
-            }
-          }
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при получении заметок из Firebase: $e');
-        }
-      }
-
-      // ✅ ИСПРАВЛЕНО: Объединяем списки правильно, избегая дубликатов
-      final Map<String, FishingNoteModel> uniqueNotes = {};
-
-      // Сначала добавляем онлайн заметки (приоритет)
-      for (var note in onlineNotes) {
-        uniqueNotes[note.id] = note;
-      }
-
-      // Затем добавляем офлайн заметки, которых нет в онлайн списке
-      for (var note in offlineNotes) {
-        if (!uniqueNotes.containsKey(note.id)) {
-          uniqueNotes[note.id] = note;
-        }
-      }
-
-      // Преобразуем в список и сортируем по дате
-      final allNotes = uniqueNotes.values.toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
-
-      debugPrint('📊 Итого заметок: ${allNotes.length}');
-      debugPrint('📊 Онлайн: ${onlineNotes.length}, Офлайн: ${offlineNotes.length}');
-
-      // ✅ ДОБАВЛЕНО: Кэшируем результат
-      _cachedNotes = allNotes;
+      // Кэшируем результат
+      _cachedNotes = notes;
       _cacheTimestamp = DateTime.now();
 
-      // Запускаем синхронизацию в фоне
+      // Запускаем синхронизацию в фоне, если есть интернет
+      final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        _syncService.syncAll();
+        _syncService.syncFishingNotesFromFirebase().then((_) {
+          // После синхронизации обновляем кэш
+          clearCache();
+        }).catchError((e) {
+          debugPrint('⚠️ Ошибка фоновой синхронизации: $e');
+        });
       }
 
-      return allNotes;
+      debugPrint('📊 Итого заметок возвращено: ${notes.length}');
+      return notes;
     } catch (e) {
       debugPrint('❌ Ошибка в getUserFishingNotes: $e');
-
-      // В случае ошибки, пытаемся вернуть хотя бы офлайн заметки
-      try {
-        return await _getOfflineNotes(_firebaseService.currentUserId ?? '');
-      } catch (_) {
-        // В крайнем случае возвращаем пустой список
-        return [];
-      }
-    }
-  }
-
-  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная загрузка без дублирования
-  Future<List<FishingNoteModel>> _getOfflineNotes(String userId) async {
-    try {
-      final List<FishingNoteModel> result = [];
-      final Set<String> processedIds = <String>{};
-
-      debugPrint('📱 Загружаем кэшированные Firebase заметки...');
-
-      // 1. ✅ ИСПРАВЛЕНО: Загружаем кэшированные Firebase заметки
-      try {
-        final cachedNotes = await _offlineStorage.getCachedFishingNotes();
-        debugPrint('💾 Найдено кэшированных Firebase заметок: ${cachedNotes.length}');
-
-        for (final noteData in cachedNotes) {
-          try {
-            final noteId = noteData['id']?.toString() ?? '';
-            final noteUserId = noteData['userId']?.toString() ?? '';
-
-            if (noteId.isEmpty) continue;
-
-            // Проверяем принадлежность пользователю
-            if (noteUserId == userId) {
-              final noteModel = FishingNoteModel.fromJson(noteData, id: noteId);
-              result.add(noteModel);
-              processedIds.add(noteId);
-              debugPrint('✅ Кэшированная заметка загружена: $noteId');
-            }
-          } catch (e) {
-            debugPrint('⚠️ Ошибка обработки кэшированной заметки: $e');
-            continue;
-          }
-        }
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при загрузке кэшированных заметок: $e');
-      }
-
-      debugPrint('📱 Загружаем офлайн созданные заметки...');
-
-      // 2. ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн заметки
-      try {
-        final allOfflineNotes = await _offlineStorage.getAllOfflineNotes();
-        debugPrint('📱 Найдено офлайн созданных заметок: ${allOfflineNotes.length}');
-
-        for (final note in allOfflineNotes) {
-          try {
-            final noteId = note['id']?.toString() ?? '';
-            final noteUserId = note['userId']?.toString() ?? '';
-            final isSynced = note['isSynced'] == true;
-            final isOffline = note['isOffline'] == true;
-
-            // ✅ ИСПРАВЛЕНО: Пропускаем уже обработанные заметки
-            if (noteId.isEmpty || processedIds.contains(noteId)) {
-              continue;
-            }
-
-            // ✅ ИСПРАВЛЕНО: Загружаем ТОЛЬКО несинхронизированные офлайн заметки
-            if (!isSynced && isOffline) {
-              // Проверяем принадлежность пользователю
-              bool belongsToUser = false;
-
-              if (noteUserId.isNotEmpty && noteUserId == userId) {
-                belongsToUser = true;
-              } else if (noteUserId.isEmpty) {
-                // Заметка без userId - добавляем userId
-                note['userId'] = userId;
-                belongsToUser = true;
-                _offlineStorage.saveOfflineNote(note).catchError((error) {
-                  debugPrint('⚠️ Ошибка при исправлении заметки: $error');
-                });
-              }
-
-              if (belongsToUser) {
-                final noteModel = FishingNoteModel.fromJson(note, id: noteId);
-                result.add(noteModel);
-                processedIds.add(noteId);
-                debugPrint('✅ Несинхронизированная офлайн заметка загружена: $noteId');
-              }
-            } else {
-              debugPrint('⏭️ Пропускаем синхронизированную заметку: $noteId (isSynced: $isSynced, isOffline: $isOffline)');
-            }
-          } catch (e) {
-            debugPrint('⚠️ Ошибка обработки офлайн заметки: $e');
-            continue;
-          }
-        }
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при загрузке офлайн заметок: $e');
-      }
-
-      // Сортируем по дате
-      result.sort((a, b) => b.date.compareTo(a.date));
-
-      debugPrint('✅ Всего заметок загружено из офлайн источников: ${result.length}');
-
-      return result;
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении офлайн заметок: $e');
       return [];
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Добавление заметки с правильным кэшированием
+  /// Создание новой заметки
   Future<String> addFishingNote(
       FishingNoteModel note,
       List<File>? photos,
@@ -268,136 +135,64 @@ class FishingNoteRepository {
 
       // Генерируем ID, если его нет
       final noteId = note.id.isEmpty ? const Uuid().v4() : note.id;
-      debugPrint('📝 Добавление заметки с ID: $noteId');
+      debugPrint('📝 Создание заметки с ID: $noteId');
 
       // Создаем копию заметки с установленным ID и UserID
       final noteToAdd = note.copyWith(id: noteId, userId: userId);
 
-      // Проверяем подключение к интернету
+      // Обрабатываем фотографии
+      List<String> photoUrls = [];
       final isOnline = await NetworkUtils.isNetworkAvailable();
-      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
+      if (isOnline && photos != null && photos.isNotEmpty) {
+        // Онлайн: загружаем фото в Firebase Storage
+        debugPrint('🖼️ Загрузка ${photos.length} фото в Firebase Storage');
+        for (var photo in photos) {
+          try {
+            final bytes = await photo.readAsBytes();
+            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photos.indexOf(photo)}.jpg';
+            final path = 'users/$userId/photos/$fileName';
+            final url = await _firebaseService.uploadImage(path, bytes);
+            photoUrls.add(url);
+          } catch (e) {
+            debugPrint('⚠️ Ошибка загрузки фото: $e');
+          }
+        }
+      } else if (photos != null && photos.isNotEmpty) {
+        // Офлайн: сохраняем локальные копии
+        debugPrint('📱 Сохранение ${photos.length} фото локально');
+        photoUrls = await _localFileService.saveLocalCopies(photos);
+      }
+
+      final noteWithPhotos = noteToAdd.copyWith(photoUrls: photoUrls);
+
+      // Конвертируем в Isar entity и сохраняем в Isar
+      final entity = _modelToEntity(noteWithPhotos);
+      entity.isSynced = false; // Помечаем как несинхронизированную
+
+      await _isarService.insertFishingNote(entity);
+      debugPrint('✅ Заметка сохранена в Isar');
+
+      // Если онлайн, запускаем синхронизацию
       if (isOnline) {
-        // ОНЛАЙН: Загружаем фото и сохраняем в Firebase
-        List<String> photoUrls = [];
-
-        if (photos != null && photos.isNotEmpty) {
-          debugPrint('🖼️ Загрузка ${photos.length} фото');
-          for (var photo in photos) {
-            try {
-              final bytes = await photo.readAsBytes();
-              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photos.indexOf(photo)}.jpg';
-              final path = 'users/$userId/photos/$fileName';
-              final url = await _firebaseService.uploadImage(path, bytes);
-              photoUrls.add(url);
-            } catch (e) {
-              debugPrint('⚠️ Ошибка при загрузке фото: $e');
-            }
-          }
-        }
-
-        final noteWithPhotos = noteToAdd.copyWith(photoUrls: photoUrls);
-
-        try {
-          // ✅ ИСПРАВЛЕНО: Используем правильный метод addFishingNoteNew
-          await _firebaseService.addFishingNoteNew(noteWithPhotos.toJson());
-          debugPrint('✅ Заметка сохранена в Firebase');
-
-          // 🔥 ИСПРАВЛЕНО: Кэшируем через ПРАВИЛЬНЫЙ метод
-          try {
-            final noteJson = noteWithPhotos.toJson();
-            noteJson['id'] = noteId;
-            noteJson['userId'] = userId;
-            // 🔥 ДОБАВЛЯЕМ ОБЯЗАТЕЛЬНЫЕ ПОЛЯ
-            noteJson['isSynced'] = true;   // Синхронизирована с Firebase
-            noteJson['isOffline'] = false; // Не офлайн заметка
-
-            // Кэшируем в общий кэш Firebase заметок
-            await _offlineStorage.cacheFishingNotes([noteJson]);
-            debugPrint('💾 Новая заметка кэширована правильно');
-          } catch (e) {
-            debugPrint('⚠️ Ошибка кэширования новой заметки: $e');
-          }
-
-          // ✅ УПРОЩЕНО: Увеличиваем счетчик ТОЛЬКО один раз
-          try {
-            await _firebaseService.incrementUsageCount('notesCount');
-            debugPrint('✅ Счетчик увеличен через Firebase');
-          } catch (e) {
-            debugPrint('⚠️ Ошибка увеличения счетчика: $e');
-          }
-
-          // ✅ ДОБАВЛЕНО: Очищаем кэш после создания новой заметки
-          clearCache();
-
-          return noteId;
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при сохранении в Firebase: $e');
-          // Если ошибка - сохраняем локально
-          await _saveOfflineNote(noteWithPhotos, photos);
-
-          // ✅ ДОБАВЛЕНО: Очищаем кэш после создания новой заметки
-          clearCache();
-
-          return noteId;
-        }
-      } else {
-        // ОФЛАЙН: Создаем локальные копии фото
-        List<String> localPhotoUris = [];
-        if (photos != null && photos.isNotEmpty) {
-          localPhotoUris = await _localFileService.saveLocalCopies(photos);
-        }
-
-        final noteWithLocalPhotos = noteToAdd.copyWith(photoUrls: localPhotoUris);
-        await _saveOfflineNote(noteWithLocalPhotos, photos);
-
-        // ✅ ДОБАВЛЕНО: Очищаем кэш после создания новой заметки
-        clearCache();
-
-        return noteId;
+        _syncService.syncFishingNotesToFirebase().then((_) {
+          debugPrint('✅ Синхронизация с Firebase завершена');
+        }).catchError((e) {
+          debugPrint('⚠️ Ошибка синхронизации с Firebase: $e');
+        });
       }
+
+      // Очищаем кэш
+      clearCache();
+
+      return noteId;
     } catch (e) {
-      debugPrint('❌ Ошибка при добавлении заметки: $e');
+      debugPrint('❌ Ошибка при создании заметки: $e');
       rethrow;
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Сохранение офлайн заметки с правильными флагами
-  Future<void> _saveOfflineNote(
-      FishingNoteModel note,
-      List<File>? photos,
-      ) async {
-    try {
-      if (note.id.isEmpty) {
-        throw Exception('ID заметки не может быть пустым');
-      }
-
-      debugPrint('📱 Сохранение офлайн заметки: ${note.id}');
-
-      // ✅ ИСПРАВЛЕНО: Устанавливаем правильные флаги для офлайн заметки
-      final noteJson = note.toJson();
-      noteJson['id'] = note.id;
-      noteJson['userId'] = note.userId;
-      noteJson['isSynced'] = false;  // Требует синхронизации
-      noteJson['isOffline'] = true;  // Создана офлайн
-      noteJson['offlineCreatedAt'] = DateTime.now().toIso8601String();
-
-      await _offlineStorage.saveOfflineNote(noteJson);
-
-      // Сохраняем пути к фотографиям
-      if (photos != null && photos.isNotEmpty) {
-        final photoPaths = photos.map((file) => file.path).toList();
-        await _offlineStorage.saveOfflinePhotoPaths(note.id, photoPaths);
-      }
-
-      debugPrint('✅ Заметка сохранена в офлайн режиме');
-    } catch (e) {
-      debugPrint('❌ Ошибка при сохранении офлайн заметки: $e');
-      rethrow;
-    }
-  }
-
-  // ✅ ИСПРАВЛЕНО: Обновление заметки с правильным кэшированием
+  /// Обновление существующей заметки
   Future<void> updateFishingNote(FishingNoteModel note) async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -411,46 +206,33 @@ class FishingNoteRepository {
 
       debugPrint('🔄 Обновление заметки: ${note.id}');
 
-      // ✅ ИСПРАВЛЕНО: Правильные флаги для обновления
-      final noteJson = note.toJson();
-      noteJson['id'] = note.id;
-      noteJson['userId'] = userId;
-      noteJson['isSynced'] = false;  // Требует синхронизации
-      noteJson['isOffline'] = false; // Обновлена, но не создана офлайн
-      noteJson['updatedAt'] = DateTime.now().toIso8601String();
-
-      // Всегда сначала сохраняем локально
-      await _offlineStorage.saveOfflineNote(noteJson);
-
-      // Если онлайн - пытаемся обновить в Firebase
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-      if (isOnline) {
-        try {
-          await _firebaseService.updateFishingNoteNew(note.id, note.toJson());
-          debugPrint('✅ Заметка обновлена в Firebase');
-
-          // 🔥 ИСПРАВЛЕНО: Обновляем в ПРАВИЛЬНОМ кэше
-          try {
-            noteJson['userId'] = userId;
-            noteJson['isSynced'] = true;   // Синхронизирована
-            noteJson['isOffline'] = false; // Не офлайн заметка
-
-            // Обновляем в общем кэше Firebase заметок
-            await _offlineStorage.cacheFishingNotes([noteJson]);
-
-            // Также обновляем в офлайн хранилище
-            await _offlineStorage.saveOfflineNote(noteJson);
-
-            debugPrint('💾 Заметка обновлена в кэше правильно');
-          } catch (e) {
-            debugPrint('⚠️ Ошибка обновления в кэше: $e');
-          }
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при обновлении в Firebase: $e');
-        }
+      // Находим существующую запись в Isar
+      final existingEntity = await _isarService.getFishingNoteByFirebaseId(note.id);
+      if (existingEntity == null) {
+        throw Exception('Заметка не найдена в локальной базе');
       }
 
-      // ✅ ДОБАВЛЕНО: Очищаем кэш после обновления заметки
+      // Обновляем данные
+      final updatedEntity = _modelToEntity(note);
+      updatedEntity.id = existingEntity.id; // Сохраняем локальный ID
+      updatedEntity.firebaseId = note.id; // Firebase ID
+      updatedEntity.isSynced = false; // Помечаем как несинхронизированную
+      updatedEntity.updatedAt = DateTime.now();
+
+      await _isarService.updateFishingNote(updatedEntity);
+      debugPrint('✅ Заметка обновлена в Isar');
+
+      // Если онлайн, запускаем синхронизацию
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      if (isOnline) {
+        _syncService.syncFishingNotesToFirebase().then((_) {
+          debugPrint('✅ Синхронизация обновления с Firebase завершена');
+        }).catchError((e) {
+          debugPrint('⚠️ Ошибка синхронизации обновления: $e');
+        });
+      }
+
+      // Очищаем кэш
       clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при обновлении заметки: $e');
@@ -458,185 +240,53 @@ class FishingNoteRepository {
     }
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Получение заметки по ID с ПРАВИЛЬНЫМ порядком поиска
+  /// Получение заметки по ID
   Future<FishingNoteModel> getFishingNoteById(String noteId) async {
     try {
-      final userId = _firebaseService.currentUserId;
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Пользователь не авторизован');
-      }
-
       if (noteId.isEmpty) {
         throw Exception('ID заметки не может быть пустым');
       }
 
       debugPrint('🔍 Получение заметки по ID: $noteId');
 
-      // 🔥 ИСПРАВЛЕНО: ШАГ 1 - СНАЧАЛА ищем в кэшированных Firebase заметках
-      try {
-        debugPrint('🔍 Ищем в кэшированных Firebase заметках...');
-        final cachedNotes = await _offlineStorage.getCachedFishingNotes();
-        final cachedNote = cachedNotes.where((note) => note['id'] == noteId).firstOrNull;
+      // Сначала ищем по Firebase ID
+      FishingNoteEntity? entity = await _isarService.getFishingNoteByFirebaseId(noteId);
 
-        if (cachedNote != null) {
-          debugPrint('✅ Заметка найдена в кэше Firebase заметок');
-          return FishingNoteModel.fromJson(cachedNote, id: noteId);
-        } else {
-          debugPrint('⚠️ Заметка НЕ найдена в кэше Firebase заметок');
+      // Если не найдена, пробуем найти по локальному ID
+      if (entity == null) {
+        final localId = int.tryParse(noteId);
+        if (localId != null) {
+          entity = await _isarService.getFishingNoteById(localId);
         }
-      } catch (e) {
-        debugPrint('⚠️ Ошибка поиска в кэше Firebase заметок: $e');
       }
 
-      // 🔥 ИСПРАВЛЕНО: ШАГ 2 - Если не найдена в кэше, ищем в Firebase онлайн
-      final isOnline = await NetworkUtils.isNetworkAvailable();
-
-      if (isOnline) {
-        try {
-          debugPrint('🔍 Ищем в Firebase онлайн...');
-          final doc = await _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('fishing_notes')
-              .doc(noteId)
-              .get();
-
-          if (doc.exists) {
-            final note = FishingNoteModel.fromJson(
-              doc.data() as Map<String, dynamic>,
-              id: doc.id,
-            );
-
-            // 🔥 ИСПРАВЛЕНО: Кэшируем полученную заметку через ПРАВИЛЬНЫЙ метод
-            try {
-              final noteJson = note.toJson();
-              noteJson['id'] = note.id;
-              noteJson['userId'] = userId;
-              noteJson['isSynced'] = true;   // Из Firebase
-              noteJson['isOffline'] = false; // Не офлайн заметка
-
-              // Кэшируем в общий кэш Firebase заметок
-              await _offlineStorage.cacheFishingNotes([noteJson]);
-
-              // Также сохраняем в офлайн хранилище
-              await _offlineStorage.saveOfflineNote(noteJson);
-
-              debugPrint('✅ Заметка найдена в Firebase и кэширована правильно: $noteId');
-            } catch (e) {
-              debugPrint('⚠️ Ошибка кэширования полученной заметки: $e');
-            }
-
-            return note;
-          } else {
-            debugPrint('⚠️ Заметка НЕ найдена в Firebase: $noteId');
-          }
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при получении из Firebase: $e');
-        }
-      } else {
-        debugPrint('📱 Офлайн режим: пропускаем поиск в Firebase');
+      if (entity == null) {
+        throw Exception('Заметка не найдена');
       }
 
-      // 🔥 ИСПРАВЛЕНО: ШАГ 3 - В конце ищем в офлайн хранилище
-      debugPrint('🔍 Ищем в офлайн хранилище...');
-      return await _getOfflineNoteByIdFromStorage(noteId);
-
+      debugPrint('✅ Заметка найдена в Isar');
+      return _entityToModel(entity);
     } catch (e) {
       debugPrint('❌ Ошибка при получении заметки: $e');
       rethrow;
     }
   }
 
-  /// 🔥 НОВЫЙ МЕТОД: Поиск ТОЛЬКО в офлайн хранилище (без кэша Firebase)
-  Future<FishingNoteModel> _getOfflineNoteByIdFromStorage(String noteId) async {
-    try {
-      debugPrint('🔍 Поиск в офлайн хранилище заметок...');
-
-      // Ищем ТОЛЬКО в офлайн заметках (не в кэше Firebase)
-      final allOfflineNotes = await _offlineStorage.getAllOfflineNotes();
-      final noteDataList = allOfflineNotes.where((note) => note['id'] == noteId).toList();
-
-      if (noteDataList.isEmpty) {
-        throw Exception('Заметка не найдена ни в кэше, ни в Firebase, ни в офлайн хранилище');
-      }
-
-      final noteData = noteDataList.first;
-      debugPrint('✅ Заметка найдена в офлайн хранилище');
-      return FishingNoteModel.fromJson(noteData, id: noteId);
-    } catch (e) {
-      debugPrint('❌ Ошибка при получении заметки из офлайн хранилища: $e');
-      rethrow;
-    }
-  }
-
-  // ✅ ИСПРАВЛЕННЫЙ метод deleteFishingNote() с правильным удалением из кэша
+  /// Удаление заметки
   Future<void> deleteFishingNote(String noteId) async {
     try {
-      final userId = _firebaseService.currentUserId;
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Пользователь не авторизован');
-      }
-
-      if (noteId.isEmpty) {
-        throw Exception('ID заметки не может быть пустым');
-      }
-
       debugPrint('🗑️ Удаление заметки: $noteId');
 
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // 🔥 ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Удаление по Firebase ID
+      final result = await _syncService.deleteNoteByFirebaseId(noteId);
 
-      if (isOnline) {
-        try {
-          // Удаляем из Firebase
-          await _firebaseService.deleteFishingNoteNew(noteId);
-          debugPrint('✅ Заметка удалена из Firebase');
-
-          // ✅ УПРОЩЕНО: Уменьшаем счетчик ТОЛЬКО один раз
-          try {
-            await _firebaseService.incrementUsageCount('notesCount', increment: -1);
-            debugPrint('✅ Счетчик уменьшен через Firebase');
-          } catch (e) {
-            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
-          }
-
-          // 🔥 ИСПРАВЛЕНО: Удаляем из кэша Firebase заметок ПРАВИЛЬНО
-          try {
-            debugPrint('🔍 Удаляем заметку $noteId из кэша Firebase заметок...');
-
-            final cachedNotes = await _offlineStorage.getCachedFishingNotes();
-            debugPrint('🔍 Всего заметок в кэше: ${cachedNotes.length}');
-
-            // ✅ ПРАВИЛЬНАЯ фильтрация
-            final updatedCachedNotes = cachedNotes.where((note) => note['id']?.toString() != noteId).toList();
-
-            debugPrint('🔍 После фильтрации: ${updatedCachedNotes.length} заметок');
-
-            // Сохраняем обновленный кэш
-            await _offlineStorage.cacheFishingNotes(updatedCachedNotes);
-            debugPrint('✅ Заметка удалена из кэша Firebase заметок (было: ${cachedNotes.length}, стало: ${updatedCachedNotes.length})');
-
-          } catch (e) {
-            debugPrint('⚠️ Ошибка удаления из кэша Firebase заметок: $e');
-          }
-        } catch (e) {
-          debugPrint('⚠️ Ошибка при удалении из Firebase: $e');
-          // Отмечаем для удаления при появлении соединения
-          await _offlineStorage.markForDeletion(noteId, false);
-        }
+      if (result) {
+        debugPrint('✅ Заметка удалена успешно');
       } else {
-        // Офлайн - отмечаем для удаления
-        await _offlineStorage.markForDeletion(noteId, false);
+        debugPrint('⚠️ Удаление выполнено с предупреждениями');
       }
 
-      // Удаляем локальную копию
-      try {
-        await _offlineStorage.removeOfflineNote(noteId);
-        debugPrint('✅ Локальная копия удалена');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка при удалении локальной копии: $e');
-      }
-
-      // ✅ ДОБАВЛЕНО: Очищаем кэш после удаления заметки
+      // Очищаем кэш
       clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при удалении заметки: $e');
@@ -644,57 +294,179 @@ class FishingNoteRepository {
     }
   }
 
-  // Синхронизация при запуске приложения
-  Future<void> syncOfflineDataOnStartup() async {
-    try {
-      await _syncService.syncAll();
-    } catch (e) {
-      debugPrint('⚠️ Ошибка при синхронизации: $e');
-    }
-  }
-
-  // Принудительная синхронизация данных
+  /// Принудительная синхронизация
   Future<bool> forceSyncData() async {
     try {
-      return await _syncService.forceSyncAll();
+      debugPrint('🔄 Принудительная синхронизация данных');
+      final result = await _syncService.fullSync();
+
+      if (result) {
+        // Очищаем кэш для обновления данных
+        clearCache();
+        debugPrint('✅ Принудительная синхронизация завершена успешно');
+      } else {
+        debugPrint('⚠️ Принудительная синхронизация завершена с ошибками');
+      }
+
+      return result;
     } catch (e) {
-      debugPrint('⚠️ Ошибка при принудительной синхронизации: $e');
+      debugPrint('❌ Ошибка принудительной синхронизации: $e');
       return false;
     }
   }
 
-  // Получить статус синхронизации
+  /// Получение статуса синхронизации
   Future<Map<String, dynamic>> getSyncStatus() async {
     try {
-      return await _syncService.getSyncStatus();
+      final syncStatus = await _syncService.getSyncStatus();
+      final fishingStatus = syncStatus['fishingNotes'] as Map<String, dynamic>? ?? {};
+
+      return {
+        'total': fishingStatus['total'] ?? 0,
+        'synced': fishingStatus['synced'] ?? 0,
+        'unsynced': fishingStatus['unsynced'] ?? 0,
+        'hasInternet': await NetworkUtils.isNetworkAvailable(),
+      };
     } catch (e) {
-      return {'error': e.toString()};
+      debugPrint('❌ Ошибка получения статуса синхронизации: $e');
+      return {
+        'total': 0,
+        'synced': 0,
+        'unsynced': 0,
+        'hasInternet': false,
+        'error': e.toString(),
+      };
     }
   }
 
-  // Очистка кэша локальных файлов
-  Future<void> clearLocalFilesCache() async {
-    try {
-      await _localFileService.clearCache();
-    } catch (e) {
-      debugPrint('⚠️ Ошибка при очистке кэша: $e');
-      rethrow;
+  /// ✅ ИСПРАВЛЕНО: Конвертация FishingNoteModel в FishingNoteEntity
+  FishingNoteEntity _modelToEntity(FishingNoteModel model) {
+    final entity = FishingNoteEntity()
+      ..firebaseId = model.id.isNotEmpty ? model.id : null
+      ..title = model.title.isNotEmpty ? model.title : model.location // Если title пустой, используем location
+      ..date = model.date
+      ..location = model.location
+      ..createdAt = DateTime.now() // У старой модели нет createdAt
+      ..updatedAt = DateTime.now();
+
+    // ✅ ИСПРАВЛЕНО: description = notes из старой модели
+    if (model.notes.isNotEmpty) {
+      entity.description = model.notes;
     }
+
+    // ✅ ИСПРАВЛЕНО: Конвертируем погодные данные с правильными полями
+    if (model.weather != null) {
+      entity.weatherData = WeatherDataEntity()
+        ..temperature = model.weather!.temperature
+        ..humidity = model.weather!.humidity.toDouble()
+        ..windSpeed = model.weather!.windSpeed
+        ..windDirection = model.weather!.windDirection
+        ..pressure = model.weather!.pressure
+        ..condition = model.weather!.weatherDescription // weatherDescription -> condition
+        ..recordedAt = model.weather!.observationTime;
+    }
+
+    // ✅ ИСПРАВЛЕНО: Конвертируем записи о поклевках с правильными полями
+    if (model.biteRecords.isNotEmpty) {
+      entity.biteRecords = model.biteRecords.map((bite) {
+        return BiteRecordEntity()
+          ..time = bite.time
+          ..fishType = bite.fishType
+          ..baitUsed = '' // У старой модели нет baitUsed, ставим пустую строку
+          ..success = bite.weight > 0 // Считаем успешной, если есть вес рыбы
+          ..fishWeight = bite.weight
+          ..fishLength = bite.length
+          ..notes = bite.notes;
+      }).toList();
+    }
+
+    return entity;
   }
 
-  // Получить размер кэша локальных файлов
-  Future<int> getLocalFilesCacheSize() async {
-    try {
-      return await _localFileService.getCacheSize();
-    } catch (e) {
-      return 0;
+  /// ✅ ИСПРАВЛЕНО: Конвертация FishingNoteEntity в FishingNoteModel
+  FishingNoteModel _entityToModel(FishingNoteEntity entity) {
+    // Конвертируем погодные данные
+    FishingWeather? weather;
+    if (entity.weatherData != null) {
+      weather = FishingWeather(
+        temperature: entity.weatherData!.temperature ?? 0.0,
+        feelsLike: entity.weatherData!.temperature ?? 0.0, // Используем temperature
+        humidity: entity.weatherData!.humidity?.toInt() ?? 0,
+        pressure: entity.weatherData!.pressure ?? 0.0,
+        windSpeed: entity.weatherData!.windSpeed ?? 0.0,
+        windDirection: entity.weatherData!.windDirection ?? '',
+        weatherDescription: entity.weatherData!.condition ?? '', // condition -> weatherDescription
+        cloudCover: 0, // У Entity нет cloudCover
+        moonPhase: '', // У Entity нет moonPhase
+        observationTime: entity.weatherData!.recordedAt ?? DateTime.now(),
+        sunrise: '', // У Entity нет sunrise
+        sunset: '', // У Entity нет sunset
+        isDay: true, // По умолчанию день
+      );
     }
+
+    // Конвертируем записи о поклевках
+    List<BiteRecord> biteRecords = [];
+    if (entity.biteRecords.isNotEmpty) {
+      biteRecords = entity.biteRecords.map((bite) {
+        return BiteRecord(
+          id: const Uuid().v4(), // Генерируем ID для старой модели
+          time: bite.time ?? DateTime.now(),
+          fishType: bite.fishType ?? '',
+          weight: bite.fishWeight ?? 0.0, // fishWeight -> weight
+          length: bite.fishLength ?? 0.0, // fishLength -> length
+          notes: bite.notes ?? '',
+          dayIndex: 0, // У Entity нет dayIndex
+          spotIndex: 0, // У Entity нет spotIndex
+          photoUrls: [], // У Entity нет photoUrls для bite records
+        );
+      }).toList();
+    }
+
+    return FishingNoteModel(
+      id: entity.firebaseId ?? entity.id.toString(),
+      userId: _firebaseService.currentUserId ?? '',
+      location: entity.location ?? '',
+      latitude: 0.0, // У Entity нет latitude
+      longitude: 0.0, // У Entity нет longitude
+      date: entity.date,
+      endDate: null, // У Entity нет endDate
+      isMultiDay: false, // У Entity нет isMultiDay
+      tackle: '', // У Entity нет tackle
+      notes: entity.description ?? '', // description -> notes
+      photoUrls: [], // TODO: Реализовать получение URL фотографий
+      fishingType: '', // У Entity нет fishingType
+      weather: weather,
+      biteRecords: biteRecords,
+      dayBiteMaps: const {}, // У Entity нет dayBiteMaps
+      fishingSpots: const ['Основная точка'], // У Entity нет fishingSpots
+      mapMarkers: const [], // У Entity нет mapMarkers
+      coverPhotoUrl: '', // У Entity нет coverPhotoUrl
+      coverCropSettings: null, // У Entity нет coverCropSettings
+      title: entity.title,
+      aiPrediction: null, // У Entity нет aiPrediction
+      reminderEnabled: false, // У Entity нет reminderEnabled
+      reminderType: ReminderType.none, // У Entity нет reminderType
+      reminderTime: null, // У Entity нет reminderTime
+    );
   }
 
-  // ✅ ДОБАВЛЕНО: Очистить кеш данных (как в BudgetNotesRepository)
+  /// Очистка кэша
   static void clearCache() {
     _cachedNotes = null;
     _cacheTimestamp = null;
     debugPrint('💾 Кэш заметок рыбалки очищен');
+  }
+
+  /// Очистка всех локальных данных (для отладки)
+  Future<void> clearAllLocalData() async {
+    try {
+      await _isarService.clearAllData();
+      clearCache();
+      debugPrint('✅ Все локальные данные очищены');
+    } catch (e) {
+      debugPrint('❌ Ошибка очистки локальных данных: $e');
+      rethrow;
+    }
   }
 }

@@ -18,6 +18,9 @@ import '../../providers/subscription_provider.dart';
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../subscription/paywall_screen.dart';
+// ✅ ДОБАВЛЕНО: Импорты для Isar синхронизации
+import '../../services/offline/sync_service.dart';
+import '../../utils/network_utils.dart';
 
 class FishingNotesListScreen extends StatefulWidget {
   const FishingNotesListScreen({super.key});
@@ -31,10 +34,15 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
   // ✅ ИСПРАВЛЕНО: Добавляем сервис для проверки лимитов
   final _fishingNoteRepository = FishingNoteRepository();
   final _subscriptionService = SubscriptionService();
+  // ✅ ДОБАВЛЕНО: Новый SyncService для Isar
+  final _syncService = SyncService.instance;
 
   List<FishingNoteModel> _notes = [];
   bool _isLoading = true;
   String? _errorMessage;
+  // ✅ ДОБАВЛЕНО: Состояние синхронизации
+  bool _isSyncing = false;
+  Map<String, dynamic>? _syncStatus;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -53,12 +61,151 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     );
 
     _loadNotes();
+    // ✅ ДОБАВЛЕНО: Запускаем синхронизацию при открытии экрана
+    _performInitialSync();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Начальная синхронизация при открытии экрана
+  Future<void> _performInitialSync() async {
+    try {
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (isOnline) {
+        debugPrint('🔄 FishingNotesListScreen: Запуск начальной синхронизации...');
+
+        setState(() {
+          _isSyncing = true;
+        });
+
+        // Запускаем полную синхронизацию
+        final success = await _syncService.fullSync();
+
+        if (success) {
+          debugPrint('✅ FishingNotesListScreen: Синхронизация завершена успешно');
+          // Обновляем список после синхронизации
+          await _loadNotes();
+        } else {
+          debugPrint('⚠️ FishingNotesListScreen: Синхронизация завершена с ошибками');
+        }
+
+        // Получаем статус синхронизации
+        final syncStatus = await _syncService.getSyncStatus();
+
+        if (mounted) {
+          setState(() {
+            _syncStatus = syncStatus;
+            _isSyncing = false;
+          });
+        }
+      } else {
+        debugPrint('📱 FishingNotesListScreen: Офлайн режим - синхронизация пропущена');
+      }
+    } catch (e) {
+      debugPrint('❌ FishingNotesListScreen: Ошибка синхронизации: $e');
+
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Принудительная синхронизация
+  Future<void> _forceSyncData() async {
+    try {
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+
+      if (!isOnline) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).translate('no_internet_connection'),
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _isSyncing = true;
+      });
+
+      debugPrint('🔄 FishingNotesListScreen: Принудительная синхронизация...');
+
+      final success = await _fishingNoteRepository.forceSyncData();
+
+      if (success) {
+        debugPrint('✅ FishingNotesListScreen: Принудительная синхронизация успешна');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).translate('sync_completed'),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Обновляем список
+        await _loadNotes();
+      } else {
+        debugPrint('⚠️ FishingNotesListScreen: Принудительная синхронизация с ошибками');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).translate('sync_error'),
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+
+      // Обновляем статус синхронизации
+      final syncStatus = await _fishingNoteRepository.getSyncStatus();
+
+      if (mounted) {
+        setState(() {
+          _syncStatus = syncStatus;
+          _isSyncing = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ FishingNotesListScreen: Ошибка принудительной синхронизации: $e');
+
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).translate('sync_error')}: ${e.toString()}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadNotes() async {
@@ -176,6 +323,9 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
         // Обновляем список заметок
         await _loadNotes();
+
+        // ✅ ДОБАВЛЕНО: Обновляем статус синхронизации после создания
+        _updateSyncStatus();
       }
     } catch (e) {
       debugPrint('❌ FishingNotesListScreen: Ошибка при создании заметки: $e');
@@ -194,6 +344,20 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     }
   }
 
+  // ✅ НОВЫЙ МЕТОД: Обновление статуса синхронизации
+  Future<void> _updateSyncStatus() async {
+    try {
+      final syncStatus = await _fishingNoteRepository.getSyncStatus();
+      if (mounted) {
+        setState(() {
+          _syncStatus = syncStatus;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка обновления статуса синхронизации: $e');
+    }
+  }
+
   void _viewNoteDetails(FishingNoteModel note) {
     Navigator.push(
       context,
@@ -203,6 +367,7 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
     ).then((value) {
       if (value == true && mounted) {
         _loadNotes();
+        _updateSyncStatus();
       }
     });
   }
@@ -241,12 +406,49 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
             minHeight: ResponsiveConstants.minTouchTarget,
           ),
         ),
+        // ✅ ДОБАВЛЕНО: Кнопка синхронизации в AppBar
+        actions: [
+          // Индикатор статуса синхронизации
+          if (_syncStatus != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Center(
+                child: _buildSyncStatusIndicator(),
+              ),
+            ),
+          // Кнопка принудительной синхронизации
+          IconButton(
+            icon: _isSyncing
+                ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
+              ),
+            )
+                : Icon(
+              Icons.sync,
+              color: AppConstants.textColor,
+              size: isSmallScreen ? 24 : 28,
+            ),
+            onPressed: _isSyncing ? null : _forceSyncData,
+            tooltip: localizations.translate('sync_data'),
+            constraints: BoxConstraints(
+              minWidth: ResponsiveConstants.minTouchTarget,
+              minHeight: ResponsiveConstants.minTouchTarget,
+            ),
+          ),
+        ],
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: localizations.translate('loading'),
         child: RefreshIndicator(
-          onRefresh: _loadNotes,
+          onRefresh: () async {
+            await _loadNotes();
+            await _performInitialSync();
+          },
           color: AppConstants.primaryColor,
           backgroundColor: AppConstants.surfaceColor,
           child: _errorMessage != null
@@ -330,6 +532,67 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
             ],
           );
         },
+      ),
+    );
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Индикатор статуса синхронизации
+  Widget _buildSyncStatusIndicator() {
+    if (_syncStatus == null) return const SizedBox.shrink();
+
+    final total = _syncStatus!['total'] as int? ?? 0;
+    final unsynced = _syncStatus!['unsynced'] as int? ?? 0;
+    final hasInternet = _syncStatus!['hasInternet'] as bool? ?? false;
+
+    Color statusColor;
+    IconData statusIcon;
+    String tooltip;
+
+    if (!hasInternet) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.cloud_off;
+      tooltip = 'Офлайн режим';
+    } else if (unsynced > 0) {
+      statusColor = Colors.yellow;
+      statusIcon = Icons.sync_problem;
+      tooltip = 'Не синхронизировано: $unsynced';
+    } else if (total > 0) {
+      statusColor = Colors.green;
+      statusIcon = Icons.cloud_done;
+      tooltip = 'Все синхронизировано';
+    } else {
+      statusColor = Colors.grey;
+      statusIcon = Icons.cloud_queue;
+      tooltip = 'Нет данных';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            statusIcon,
+            color: statusColor,
+            size: 16,
+          ),
+          if (unsynced > 0) ...[
+            const SizedBox(width: 4),
+            Text(
+              unsynced.toString(),
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

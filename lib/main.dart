@@ -50,6 +50,11 @@ import 'services/tournament_service.dart';
 import 'services/timer/timer_service.dart';
 import 'screens/tournaments/tournament_detail_screen.dart';
 import 'services/location_service.dart';
+// ✅ ОБНОВЛЕНО: Импорты для новых Isar сервисов
+import 'services/isar_service.dart';
+import 'repositories/fishing_note_repository.dart';
+import 'repositories/budget_notes_repository.dart';
+import 'repositories/marker_map_repository.dart';
 
 // Глобальная переменная для flutter_local_notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -133,21 +138,17 @@ void main() async {
     debugPrint('🌐 LanguageProvider инициализирован с языком: ${languageProvider.languageCode}');
   }
 
+  // ✅ ИСПРАВЛЕНО: Инициализация новых Isar сервисов с MarkerMap
+  await _initializeIsarServices();
+
   // Инициализация сервисов уведомлений
   await _initializeServices();
 
-  // Инициализация сервисов для офлайн режима
+  // Инициализация сервисов для офлайн режима (старые)
   await _initializeOfflineServices();
 
   // Запуск мониторинга сети
   _startNetworkMonitoring();
-
-  // ✅ ИСПРАВЛЕНО: Убираем исправление счетчиков лимитов при запуске
-  // (так как метод forceRecalculateUsageLimits больше не существует)
-  if (kDebugMode) {
-    debugPrint('ℹ️ Исправление счетчиков лимитов при запуске убрано');
-    debugPrint('ℹ️ Лимиты будут инициализированы автоматически через SubscriptionService');
-  }
 
   if (kDebugMode) {
     debugPrint('🚀 Все сервисы инициализированы, запускаем приложение');
@@ -165,6 +166,70 @@ void main() async {
       child: DriftNotesApp(consentService: UserConsentService()),
     ),
   );
+}
+
+// ✅ ИСПРАВЛЕНО: Инициализация Isar сервисов с поддержкой MarkerMap
+Future<void> _initializeIsarServices() async {
+  try {
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('💾 ========================================');
+      debugPrint('💾 Инициализация Isar сервисов...');
+      debugPrint('💾 ========================================');
+    }
+
+    // Инициализация IsarService (теперь поддерживает MarkerMap)
+    await IsarService.instance.init();
+    if (kDebugMode) {
+      debugPrint('✅ IsarService инициализирован с поддержкой MarkerMap');
+    }
+
+    // Инициализация FishingNoteRepository
+    await FishingNoteRepository().initialize();
+    if (kDebugMode) {
+      debugPrint('✅ FishingNoteRepository инициализирован');
+    }
+
+    // Инициализация BudgetNotesRepository
+    await BudgetNotesRepository().initialize();
+    if (kDebugMode) {
+      debugPrint('✅ BudgetNotesRepository инициализирован');
+    }
+
+    // ✅ ИСПРАВЛЕНО: Инициализация MarkerMapRepository (создадим если нет)
+    try {
+      await MarkerMapRepository().initialize();
+      if (kDebugMode) {
+        debugPrint('✅ MarkerMapRepository инициализирован');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('⚠️ MarkerMapRepository не найден или ошибка инициализации: $e');
+        debugPrint('ℹ️ Маркерные карты могут работать через старую систему');
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('💾 ========================================');
+      debugPrint('✅ Все Isar сервисы инициализированы');
+      debugPrint('💾 - FishingNotes: ✅');
+      debugPrint('💾 - BudgetNotes: ✅');
+      debugPrint('💾 - MarkerMaps: ✅ (или старая система)');
+      debugPrint('💾 ========================================');
+      debugPrint('');
+    }
+
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('❌ Ошибка инициализации Isar сервисов: $e');
+      debugPrint('❌ Приложение может работать, но офлайн режим может быть недоступен');
+    }
+
+    // В продакшене логируем критическую ошибку
+    if (!kDebugMode) {
+      debugPrint('🚨 КРИТИЧЕСКАЯ ОШИБКА: Isar сервисы не инициализированы!');
+    }
+  }
 }
 
 // ✅ НОВАЯ ФУНКЦИЯ: Правильная инициализация App Check
@@ -279,22 +344,22 @@ Future<void> _initializeServices() async {
   }
 }
 
-// Инициализация офлайн сервисов
+// Инициализация офлайн сервисов (СТАРЫЕ - для совместимости)
 Future<void> _initializeOfflineServices() async {
   try {
     final offlineStorage = OfflineStorageService();
     await offlineStorage.initialize();
     if (kDebugMode) {
-      debugPrint('✅ OfflineStorageService инициализирован');
+      debugPrint('✅ OfflineStorageService (старый) инициализирован для совместимости');
     }
   } catch (e) {
     if (kDebugMode) {
-      debugPrint('⚠️ OfflineStorageService не удалось инициализировать: $e');
+      debugPrint('⚠️ OfflineStorageService (старый) не удалось инициализировать: $e');
     }
   }
 }
 
-// Запуск мониторинга сети
+// ✅ ИСПРАВЛЕНО: Запуск мониторинга сети с новым SyncService
 void _startNetworkMonitoring() {
   try {
     final networkMonitor = NetworkUtils();
@@ -302,13 +367,24 @@ void _startNetworkMonitoring() {
 
     networkMonitor.addConnectionListener((isConnected) {
       if (isConnected) {
-        SyncService().syncAll();
+        // ✅ ИСПРАВЛЕНО: Используем новый SyncService.instance для Isar
+        SyncService.instance.fullSync().then((_) {
+          if (kDebugMode) {
+            debugPrint('✅ Автоматическая синхронизация (Isar) выполнена при подключении к сети');
+          }
+        }).catchError((e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Ошибка автоматической синхронизации (Isar): $e');
+          }
+        });
       }
     });
 
-    SyncService().startPeriodicSync();
+    // ✅ ИСПРАВЛЕНО: Запускаем периодическую синхронизацию через новый SyncService
+    SyncService.instance.startPeriodicSync();
+
     if (kDebugMode) {
-      debugPrint('✅ Мониторинг сети запущен');
+      debugPrint('✅ Мониторинг сети запущен с поддержкой Isar');
     }
   } catch (e) {
     if (kDebugMode) {
@@ -766,20 +842,12 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
   void _checkDocumentUpdatesAfterAuth() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
-      // 🔥 ДОБАВЛЯЕМ ОТЛАДКУ ДЛЯ ПОИСКА ПРОБЛЕМЫ
       if (kDebugMode) {
         if (user != null) {
           debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ АВТОРИЗОВАН - ${user.email}');
           debugPrint('🔐 User UID: ${user.uid}');
-
-          // ✅ ИСПРАВЛЕНО: Убираем исправление счетчиков лимитов при авторизации
-          // (так как метод forceRecalculateUsageLimits больше не существует)
-          debugPrint('ℹ️ Исправление счетчиков при авторизации убрано');
-          debugPrint('ℹ️ Лимиты будут инициализированы автоматически через SubscriptionService');
         } else {
           debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ ВЫШЕЛ ИЗ СИСТЕМЫ');
-          debugPrint('🔐 Stack trace для отладки:');
-          debugPrint(StackTrace.current.toString());
         }
       }
 

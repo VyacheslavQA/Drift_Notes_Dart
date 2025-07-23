@@ -1,5 +1,6 @@
 // Путь: lib/screens/fishing_note/fishing_note_detail_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -54,18 +55,55 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   // ИИ-анализ
   AIBitePrediction? _aiPrediction;
 
+  // 🔥 ОПТИМИЗАЦИЯ: Debounce для предотвращения частых обновлений
+  Timer? _debounceTimer;
+
+  // 🔥 ОПТИМИЗАЦИЯ: Кеширование вычисленных значений
+  int? _cachedCaughtFishCount;
+  int? _cachedMissedBitesCount;
+  BiteRecord? _cachedBiggestFish;
+
   @override
   void initState() {
     super.initState();
     _loadNote();
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  // 🔥 ОПТИМИЗАЦИЯ: Debounced setState для предотвращения частых перерисовок
+  void _debouncedSetState(VoidCallback fn) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(fn);
+      }
+    });
+  }
+
+  // 🔥 ОПТИМИЗАЦИЯ: Кеширование вычислений
+  void _updateCachedValues() {
+    if (_note == null) return;
+
+    _cachedCaughtFishCount = _note!.biteRecords
+        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
+        .length;
+    _cachedMissedBitesCount = _note!.biteRecords.length - _cachedCaughtFishCount!;
+    _cachedBiggestFish = _note!.biggestFish;
+  }
+
   // 🔥 УПРОЩЕНО: Загрузка заметки без сложных проверок
   Future<void> _loadNote() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       debugPrint('🔍 Загружаем заметку с ID: ${widget.noteId}');
@@ -76,12 +114,14 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       debugPrint('✅ Заметка загружена: ${note.id} - ${note.location}');
 
       if (mounted) {
+        _note = note;
+        _updateCachedValues(); // 🔥 ОПТИМИЗАЦИЯ: Обновляем кеш
+
         setState(() {
-          _note = note;
           _isLoading = false;
         });
 
-        // Загружаем ИИ-анализ и маркерные карты
+        // Загружаем ИИ-анализ и маркерные карты асинхронно
         _loadAIFromNote();
         _loadLinkedMarkerMaps();
       }
@@ -135,6 +175,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       );
 
       debugPrint('🧠 ИИ-анализ загружен: ${_aiPrediction!.overallScore} баллов');
+
+      // 🔥 ОПТИМИЗАЦИЯ: Debounced update
+      _debouncedSetState(() {});
     } catch (e) {
       debugPrint('❌ Ошибка загрузки ИИ-анализа: $e');
     }
@@ -144,7 +187,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   Future<void> _loadLinkedMarkerMaps() async {
     if (_note == null) return;
 
-    setState(() {
+    _debouncedSetState(() {
       _isLoadingMarkerMaps = true;
     });
 
@@ -188,7 +231,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       final linkedMaps = allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
 
       if (mounted) {
-        setState(() {
+        _debouncedSetState(() {
           _linkedMarkerMaps = linkedMaps;
           _isLoadingMarkerMaps = false;
         });
@@ -196,7 +239,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     } catch (e) {
       debugPrint('❌ Ошибка при загрузке маркерных карт: $e');
       if (mounted) {
-        setState(() {
+        _debouncedSetState(() {
           _isLoadingMarkerMaps = false;
         });
       }
@@ -239,8 +282,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       );
       return;
     }
-
-    final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -491,8 +532,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
       if (mounted) {
         final localizations = AppLocalizations.of(context);
+
+        _note = updatedNote;
+        _updateCachedValues(); // 🔥 ОПТИМИЗАЦИЯ: Обновляем кеш
+
         setState(() {
-          _note = updatedNote;
           _isSaving = false;
         });
 
@@ -535,8 +579,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         if (mounted) {
           final localizations = AppLocalizations.of(context);
+
+          _note = updatedNote;
+          _updateCachedValues(); // 🔥 ОПТИМИЗАЦИЯ: Обновляем кеш
+
           setState(() {
-            _note = updatedNote;
             _isSaving = false;
           });
 
@@ -578,8 +625,11 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
       if (mounted) {
         final localizations = AppLocalizations.of(context);
+
+        _note = updatedNote;
+        _updateCachedValues(); // 🔥 ОПТИМИЗАЦИЯ: Обновляем кеш
+
         setState(() {
-          _note = updatedNote;
           _isSaving = false;
         });
 
@@ -935,10 +985,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
     final localizations = AppLocalizations.of(context);
 
-    final caughtFishCount = _note!.biteRecords
-        .where((record) => record.fishType.isNotEmpty && record.weight > 0)
-        .length;
-    final missedBitesCount = _note!.biteRecords.length - caughtFishCount;
+    // 🔥 ОПТИМИЗАЦИЯ: Используем кешированные значения
+    final caughtFishCount = _cachedCaughtFishCount ?? 0;
+    final missedBitesCount = _cachedMissedBitesCount ?? 0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
@@ -1013,7 +1062,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
           const SizedBox(height: 20),
 
-          // Поклевки
+          // 🔥 ОПТИМИЗАЦИЯ: BiteRecordsSection без лишних Consumer
           BiteRecordsSection(
             note: _note!,
             onAddRecord: _addBiteRecord,
@@ -1026,6 +1075,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
   }
+
+  // Остальные методы остаются без изменений...
+  // (Продолжение следует с остальными методами _buildAIAnalysisCard, _buildInfoCard и т.д.)
 
   // Построение карточки ИИ-анализа
   Widget _buildAIAnalysisCard() {
@@ -1415,7 +1467,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     final localizations = AppLocalizations.of(context);
     final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
 
-    final biggestFish = _note!.biggestFish;
+    // 🔥 ОПТИМИЗАЦИЯ: Используем кешированное значение
+    final biggestFish = _cachedBiggestFish;
 
     return Card(
       color: const Color(0xFF12332E),

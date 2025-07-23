@@ -27,8 +27,8 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
   bool _isLoading = true;
   Set<Marker> _markers = {};
 
-  // Переменные для переключателя типов карты
-  MapType _currentMapType = MapType.hybrid;
+  // ✅ ИСПРАВЛЕНО: MapType.normal по умолчанию вместо hybrid
+  MapType _currentMapType = MapType.normal;
   bool _showCoordinates = false; // Для показа/скрытия координат
 
   @override
@@ -44,17 +44,23 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
       );
       _updateMarker();
     } else {
-      // Иначе пытаемся определить текущее местоположение
       _determinePosition();
     }
+  }
+
+  // ✅ ДОБАВЛЕНО: dispose() для очистки контроллера
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   // Загрузка сохраненного типа карты
   Future<void> _loadSavedMapType() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedMapTypeIndex =
-          prefs.getInt('location_map_type') ?? 2; // По умолчанию hybrid
+      // ✅ ИСПРАВЛЕНО: По умолчанию 0 (normal) вместо 2 (hybrid)
+      final savedMapTypeIndex = prefs.getInt('location_map_type') ?? 0;
 
       setState(() {
         _currentMapType = MapType.values[savedMapTypeIndex];
@@ -74,203 +80,18 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
     }
   }
 
-  // Переключение типа карты
-  void _changeMapType(MapType newMapType) {
+  // ✅ РАДИКАЛЬНО УПРОЩЕНО: Простое переключение Normal ↔ Hybrid
+  void _toggleMapType() {
     setState(() {
-      _currentMapType = newMapType;
+      _currentMapType = _currentMapType == MapType.normal
+          ? MapType.hybrid
+          : MapType.normal;
     });
-    _saveMapType(newMapType);
-    Navigator.pop(context); // Закрываем BottomSheet
-  }
-
-  // Показ селектора типов карты
-  void _showMapTypeSelector() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildMapTypeSelectorSheet(),
-    );
-  }
-
-  // BottomSheet с выбором типов карты
-  Widget _buildMapTypeSelectorSheet() {
-    final localizations = AppLocalizations.of(context);
-
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Заголовок
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  localizations.translate('map_type'),
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: AppConstants.textColor),
-                ),
-              ],
-            ),
-          ),
-
-          // Разделитель
-          Divider(
-            color: AppConstants.textColor.withValues(alpha: 0.2),
-            height: 1,
-          ),
-
-          // Список типов карт
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildMapTypeOption(
-                  MapType.normal,
-                  localizations.translate('normal_map'),
-                  localizations.translate('normal_map_desc'),
-                  Icons.map_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.satellite,
-                  localizations.translate('satellite_map'),
-                  localizations.translate('satellite_map_desc'),
-                  Icons.satellite_alt,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.hybrid,
-                  localizations.translate('hybrid_map'),
-                  localizations.translate('hybrid_map_desc'),
-                  Icons.layers,
-                ),
-                const SizedBox(height: 12),
-                _buildMapTypeOption(
-                  MapType.terrain,
-                  localizations.translate('terrain_map'),
-                  localizations.translate('terrain_map_desc'),
-                  Icons.terrain,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Опция выбора типа карты
-  Widget _buildMapTypeOption(
-    MapType mapType,
-    String title,
-    String description,
-    IconData icon,
-  ) {
-    final isSelected = _currentMapType == mapType;
-
-    return InkWell(
-      onTap: () => _changeMapType(mapType),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? AppConstants.primaryColor.withValues(alpha: 0.1)
-                  : const Color(0xFF12332E),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Превью/иконка
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? AppConstants.primaryColor
-                        : AppConstants.textColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color:
-                    isSelected
-                        ? AppConstants.textColor
-                        : AppConstants.textColor.withValues(alpha: 0.7),
-                size: 30,
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Текст
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Индикатор выбора
-            if (isSelected)
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check,
-                  color: AppConstants.textColor,
-                  size: 20,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
+    _saveMapType(_currentMapType);
   }
 
   // Определение текущего местоположения
   Future<void> _determinePosition() async {
-    final localizations = AppLocalizations.of(context);
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -285,6 +106,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
         setState(() {
           _isLoading = false;
         });
+        if (mounted) {
+          _showLocationError('Location services are disabled');
+        }
         return;
       }
 
@@ -296,6 +120,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
           setState(() {
             _isLoading = false;
           });
+          if (mounted) {
+            _showLocationError('Location permissions are denied');
+          }
           return;
         }
       }
@@ -304,6 +131,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
         setState(() {
           _isLoading = false;
         });
+        if (mounted) {
+          _showLocationError('Location permissions are permanently denied');
+        }
         return;
       }
 
@@ -331,14 +161,43 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
         setState(() {
           _isLoading = false;
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.translate('error_loading')}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showLocationError('Error getting location: $e');
       }
+    }
+  }
+
+  // Умная обработка ошибок с локализацией
+  void _showLocationError(String fallbackMessage) {
+    try {
+      final localizations = AppLocalizations.of(context);
+      final localizedMessage = _getLocalizedError(fallbackMessage, localizations);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(localizedMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(fallbackMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Помощник для получения локализованных ошибок
+  String _getLocalizedError(String fallbackMessage, AppLocalizations localizations) {
+    if (fallbackMessage.contains('disabled')) {
+      return localizations.translate('location_services_disabled') ?? 'Location services are disabled';
+    } else if (fallbackMessage.contains('denied')) {
+      return localizations.translate('location_permissions_denied') ?? 'Location permissions denied';
+    } else if (fallbackMessage.contains('permanently')) {
+      return localizations.translate('location_permissions_permanently_denied') ?? 'Location permissions permanently denied';
+    } else {
+      return localizations.translate('error_loading') ?? fallbackMessage;
     }
   }
 
@@ -408,7 +267,7 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
       ),
       body: Stack(
         children: [
-          // Google Maps
+          // ✅ ИСПРАВЛЕНО: Google Maps с оптимизированными настройками
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: _selectedPosition,
@@ -416,11 +275,9 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
             ),
             onMapCreated: (controller) {
               _mapController = controller;
-
               setState(() {
                 _isLoading = false;
               });
-
               _updateMarker();
             },
             markers: _markers,
@@ -430,46 +287,48 @@ class _MapLocationScreenState extends State<MapLocationScreen> {
               });
               _updateMarker();
             },
-            zoomControlsEnabled: false, // Отключаем стандартные кнопки зума
+            // ✅ ИСПРАВЛЕНО: Отключаем GPU-тяжелые функции
+            tiltGesturesEnabled: false,        // Нет 3D наклонов
+            rotateGesturesEnabled: false,      // Нет поворотов
+            zoomControlsEnabled: false,        // Кастомные кнопки зума
             myLocationEnabled: true,
-            myLocationButtonEnabled:
-                false, // Отключаем стандартную кнопку местоположения
-            compassEnabled: true,
-            mapType: _currentMapType, // Используем выбранный тип карты
+            myLocationButtonEnabled: false,    // Кастомная кнопка местоположения
+            compassEnabled: true,              // Компас оставляем
+            mapToolbarEnabled: false,          // Убираем Google Maps toolbar
+            mapType: _currentMapType,          // Используем выбранный тип карты
           ),
 
-          // Кнопка выбора типа карты (справа вверху, под AppBar)
+          // ✅ УПРОЩЕНО: Простая кнопка переключения Normal ↔ Hybrid
           Positioned(
             top: 20,
             right: 16,
             child: Container(
               decoration: BoxDecoration(
                 color: AppConstants.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: _showMapTypeSelector,
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: _toggleMapType,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.layers, color: Colors.white, size: 20),
+                        Icon(
+                          _currentMapType == MapType.normal
+                              ? Icons.map_outlined
+                              : Icons.layers,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          localizations.translate('layers'),
+                          _currentMapType == MapType.normal ? 'Обычная' : 'Гибрид',
                           style: TextStyle(
-                            color: AppConstants.textColor,
+                            color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),

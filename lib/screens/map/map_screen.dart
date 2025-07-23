@@ -28,7 +28,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _errorLoadingMap = false;
   String _errorMessage = '';
 
-  // Переменная для типа карты
+  // ✅ УЖЕ ПРАВИЛЬНО: MapType.normal по умолчанию
   MapType _currentMapType = MapType.normal;
 
   // Начальная позиция для карты (будет заменена текущей геолокацией)
@@ -37,7 +37,7 @@ class _MapScreenState extends State<MapScreen> {
     zoom: 11.0,
   );
 
-  // НОВОЕ: Список заметок для построения маршрутов
+  // Список заметок для построения маршрутов
   List<FishingNoteModel> _fishingNotes = [];
 
   @override
@@ -47,17 +47,22 @@ class _MapScreenState extends State<MapScreen> {
 
     // Проверяем API ключ при инициализации
     if (ApiKeys.hasGoogleMapsKey) {
-      // Не вызываем методы с локализацией здесь
       _loadUserLocationWithoutLocalization();
       _loadFishingSpotsWithoutLocalization();
     } else {
-      // Если ключа нет, сразу показываем ошибку
       setState(() {
         _isLoading = false;
         _errorLoadingMap = true;
         _errorMessage = 'Google Maps API ключ не настроен';
       });
     }
+  }
+
+  // ✅ ДОБАВЛЕНО: dispose() для очистки контроллера
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -97,203 +102,17 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Переключение типа карты
-  void _changeMapType(MapType newMapType) {
+  // ✅ РАДИКАЛЬНО УПРОЩЕНО: Простое переключение Normal ↔ Hybrid
+  void _toggleMapType() {
     setState(() {
-      _currentMapType = newMapType;
+      _currentMapType = _currentMapType == MapType.normal
+          ? MapType.hybrid
+          : MapType.normal;
     });
-    _saveMapType(newMapType);
-    Navigator.pop(context); // Закрываем BottomSheet
+    _saveMapType(_currentMapType);
   }
 
-  // Показ селектора типов карты
-  void _showMapTypeSelector() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildMapTypeSelectorSheet(),
-    );
-  }
-
-  // BottomSheet с выбором типов карты
-  Widget _buildMapTypeSelectorSheet() {
-    final localizations = AppLocalizations.of(context);
-
-    return SafeArea(
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: AppConstants.backgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // Заголовок
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    localizations.translate('map_type'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: AppConstants.textColor),
-                  ),
-                ],
-              ),
-            ),
-
-            // Разделитель
-            Divider(
-              color: AppConstants.textColor.withValues(alpha: 0.2),
-              height: 1,
-            ),
-
-            // Список типов карт
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  _buildMapTypeOption(
-                    MapType.normal,
-                    localizations.translate('normal_map'),
-                    localizations.translate('normal_map_desc'),
-                    Icons.map_outlined,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMapTypeOption(
-                    MapType.satellite,
-                    localizations.translate('satellite_map'),
-                    localizations.translate('satellite_map_desc'),
-                    Icons.satellite_alt,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMapTypeOption(
-                    MapType.hybrid,
-                    localizations.translate('hybrid_map'),
-                    localizations.translate('hybrid_map_desc'),
-                    Icons.layers,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMapTypeOption(
-                    MapType.terrain,
-                    localizations.translate('terrain_map'),
-                    localizations.translate('terrain_map_desc'),
-                    Icons.terrain,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Опция выбора типа карты
-  Widget _buildMapTypeOption(
-      MapType mapType,
-      String title,
-      String description,
-      IconData icon,
-      ) {
-    final isSelected = _currentMapType == mapType;
-
-    return InkWell(
-      onTap: () => _changeMapType(mapType),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color:
-          isSelected
-              ? AppConstants.primaryColor.withValues(alpha: 0.1)
-              : const Color(0xFF12332E),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppConstants.primaryColor : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Превью/иконка
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color:
-                isSelected
-                    ? AppConstants.primaryColor
-                    : AppConstants.textColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color:
-                isSelected
-                    ? AppConstants.textColor
-                    : AppConstants.textColor.withValues(alpha: 0.7),
-                size: 30,
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Текст
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Индикатор выбора
-            if (isSelected)
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check,
-                  color: AppConstants.textColor,
-                  size: 20,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // НОВЫЙ МЕТОД: Показ информации о заметке рыбалки с возможностью построения маршрута
+  // Показ информации о заметке рыбалки с возможностью построения маршрута
   void _showFishingNoteInfo(FishingNoteModel note) {
     final localizations = AppLocalizations.of(context);
 
@@ -427,7 +246,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: Построение строки информации
+  // Построение строки информации
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
@@ -458,12 +277,12 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: Форматирование даты
+  // Форматирование даты
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
-  // НОВЫЙ МЕТОД: Склонение слова "поклевка"
+  // Склонение слова "поклевка"
   String _getBiteRecordsText(int count) {
     if (count % 10 == 1 && count % 100 != 11) {
       return 'поклевка';
@@ -475,7 +294,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // НОВЫЙ МЕТОД: Построение маршрута до места рыбалки
+  // Построение маршрута до места рыбалки
   Future<void> _navigateToFishingSpot(FishingNoteModel note) async {
     final localizations = AppLocalizations.of(context);
 
@@ -490,7 +309,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: BottomSheet с выбором навигационных приложений
+  // BottomSheet с выбором навигационных приложений
   Widget _buildNavigationOptionsSheet(FishingNoteModel note) {
     final localizations = AppLocalizations.of(context);
 
@@ -566,7 +385,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // НОВЫЙ МЕТОД: Построение опции навигации
+  // Построение опции навигации
   Widget _buildNavigationOption({
     required String title,
     required String subtitle,
@@ -635,7 +454,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // НОВЫЕ МЕТОДЫ: Открытие различных навигационных приложений
+  // Открытие различных навигационных приложений
   Future<void> _openGoogleMaps(FishingNoteModel note) async {
     Navigator.pop(context);
     final url = 'https://www.google.com/maps/dir/?api=1&destination=${note.latitude},${note.longitude}';
@@ -660,7 +479,7 @@ class _MapScreenState extends State<MapScreen> {
     await _launchURL(url, '2GIS');
   }
 
-  // НОВЫЙ МЕТОД: Универсальный запуск URL
+  // Универсальный запуск URL
   Future<void> _launchURL(String url, String appName) async {
     final localizations = AppLocalizations.of(context);
 
@@ -704,7 +523,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // НОВЫЙ МЕТОД: Открытие магазина приложений
+  // Открытие магазина приложений
   Future<void> _openAppStore(String appName) async {
     String storeUrl = '';
 
@@ -917,7 +736,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // ОБНОВЛЕНО: Загрузка точек рыбалки пользователя БЕЗ локализации (для initState)
+  // Загрузка точек рыбалки пользователя БЕЗ локализации (для initState)
   Future<void> _loadFishingSpotsWithoutLocalization() async {
     try {
       final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
@@ -928,7 +747,7 @@ class _MapScreenState extends State<MapScreen> {
           .where((note) => note.latitude != 0 && note.longitude != 0)
           .toList();
 
-      // НОВОЕ: Сохраняем заметки для построения маршрутов
+      // Сохраняем заметки для построения маршрутов
       _fishingNotes = notesWithCoordinates;
 
       // Создаем маркеры для каждой точки рыбалки
@@ -947,7 +766,7 @@ class _MapScreenState extends State<MapScreen> {
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
-            // НОВОЕ: Обработчик нажатия на маркер
+            // Обработчик нажатия на маркер
             onTap: () {
               _showFishingNoteInfo(note);
             },
@@ -963,7 +782,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // ОБНОВЛЕНО: Загрузка точек рыбалки пользователя С локализацией
+  // Загрузка точек рыбалки пользователя С локализацией
   Future<void> _loadFishingSpots() async {
     final localizations = AppLocalizations.of(context);
 
@@ -976,7 +795,7 @@ class _MapScreenState extends State<MapScreen> {
           .where((note) => note.latitude != 0 && note.longitude != 0)
           .toList();
 
-      // НОВОЕ: Сохраняем заметки для построения маршрутов
+      // Сохраняем заметки для построения маршрутов
       _fishingNotes = notesWithCoordinates;
 
       // Очищаем старые маркеры рыбалки
@@ -1000,7 +819,7 @@ class _MapScreenState extends State<MapScreen> {
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueGreen,
             ),
-            // НОВОЕ: Обработчик нажатия на маркер
+            // Обработчик нажатия на маркер
             onTap: () {
               _showFishingNoteInfo(note);
             },
@@ -1135,7 +954,6 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
       body: SafeArea(
-        // ИСПРАВЛЕНИЕ: Используем SafeArea для учета системных зон
         child: Stack(
           children: [
             // Основное содержимое
@@ -1234,11 +1052,15 @@ class _MapScreenState extends State<MapScreen> {
               initialCameraPosition: _initialPosition,
               markers: _markers,
               myLocationEnabled: true,
-              myLocationButtonEnabled: false, // Отключаем стандартную кнопку
-              mapType: _currentMapType, // Используем выбранный тип карты
-              zoomControlsEnabled: true, // Включаем стандартные кнопки зума
-              compassEnabled: true,
-              // ИСПРАВЛЕНИЕ: Добавляем отступы для кнопок зума
+              // ✅ ИСПРАВЛЕНО: Оптимизированные настройки
+              myLocationButtonEnabled: false,      // Кастомная кнопка местоположения
+              tiltGesturesEnabled: false,          // Нет 3D наклонов
+              rotateGesturesEnabled: false,        // Нет поворотов
+              zoomControlsEnabled: false,          // Кастомные кнопки зума
+              compassEnabled: true,                // Компас оставляем
+              mapToolbarEnabled: false,            // Убираем Google Maps toolbar
+              mapType: _currentMapType,            // Используем выбранный тип карты
+              // Добавляем отступы для кнопок зума
               padding: EdgeInsets.only(
                 top: 80, // Отступ сверху для кнопки "Слои"
                 bottom: MediaQuery.of(context).padding.bottom + 80, // Отступ снизу для навигации + FAB
@@ -1246,7 +1068,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
 
-            // Кнопка выбора типа карты (поверх карты, справа вверху)
+            // ✅ УПРОЩЕНО: Простая кнопка переключения Normal ↔ Hybrid
             if (!_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
               Positioned(
                 top: 20,
@@ -1254,35 +1076,30 @@ class _MapScreenState extends State<MapScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppConstants.surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: _showMapTypeSelector,
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _toggleMapType,
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.layers,
+                            Icon(
+                              _currentMapType == MapType.normal
+                                  ? Icons.map_outlined
+                                  : Icons.layers,
                               color: Colors.white,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              localizations.translate('layers'),
+                              _currentMapType == MapType.normal ? 'Обычная' : 'Гибрид',
                               style: TextStyle(
-                                color: AppConstants.textColor,
+                                color: Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1302,7 +1119,6 @@ class _MapScreenState extends State<MapScreen> {
       floatingActionButton:
       !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey
           ? Padding(
-        // ИСПРАВЛЕНИЕ: Добавляем отступ снизу для FAB
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).padding.bottom + 10, // Отступ от навигации
         ),

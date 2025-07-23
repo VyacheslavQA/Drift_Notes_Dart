@@ -59,7 +59,7 @@ dependencies:
   # Календарь
   table_calendar: ^3.0.9
 
-  package_info_plus: ^4.0.2  # Для получения информации о приложении
+  package_info_plus: ^8.0.0  # Последняя версия
 
   crypto: ^3.0.3
 
@@ -76,6 +76,10 @@ dependencies:
 
   fl_chart: ^0.68.0
 
+  # ДОБАВЛЕНО: Isar для офлайн базы данных (проверенные версии)
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -85,6 +89,9 @@ dev_dependencies:
   # Безопасные dev-зависимости
   mockito: ^5.4.2
   build_runner: ^2.4.7
+
+  # ДОБАВЛЕНО: Isar генератор кода (проверенная версия)
+  isar_generator: ^3.1.0+1
 
 flutter:
   uses-material-design: true
