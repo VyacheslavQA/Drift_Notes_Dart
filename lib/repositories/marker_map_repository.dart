@@ -197,7 +197,7 @@ class MarkerMapRepository {
     }
   }
 
-  // ✅ ОБНОВЛЕНИЕ: Обновить маркерную карту
+  // ✅ ОБНОВЛЕНИЕ: Обновить маркерную карту (БЕЗ полей связей)
   Future<void> updateMarkerMap(MarkerMapModel map) async {
     try {
       if (kDebugMode) {
@@ -223,12 +223,10 @@ class MarkerMapRepository {
         // Если не найдена по Firebase ID, создаем новую
         existingEntity = _modelToEntity(map.copyWith(userId: userId));
       } else {
-        // Обновляем существующую entity
+        // 🔥 ИСПРАВЛЕНО: Обновляем существующую entity БЕЗ полей связей
         existingEntity.name = map.name;
         existingEntity.date = map.date;
         existingEntity.sector = map.sector;
-        existingEntity.noteIds = map.noteIds;
-        existingEntity.noteNames = map.noteNames;
         existingEntity.markers = map.markers;
         existingEntity.markAsModified(); // Помечаем как измененную
       }
@@ -489,7 +487,7 @@ class MarkerMapRepository {
     }
   }
 
-  /// Преобразование Entity в Model
+  /// 🔥 ИСПРАВЛЕНО: Преобразование Entity в Model БЕЗ полей связей
   MarkerMapModel _entityToModel(MarkerMapEntity entity) {
     return MarkerMapModel(
       id: entity.firebaseId ?? '',
@@ -497,13 +495,11 @@ class MarkerMapRepository {
       name: entity.name,
       date: entity.date,
       sector: entity.sector,
-      noteIds: entity.noteIds,
-      noteNames: entity.noteNames,
       markers: entity.markers,
     );
   }
 
-  /// Преобразование Model в Entity
+  /// 🔥 ИСПРАВЛЕНО: Преобразование Model в Entity БЕЗ полей связей
   MarkerMapEntity _modelToEntity(MarkerMapModel model) {
     return MarkerMapEntity()
       ..firebaseId = model.id.isNotEmpty ? model.id : null
@@ -511,8 +507,6 @@ class MarkerMapRepository {
       ..name = model.name
       ..date = model.date
       ..sector = model.sector
-      ..noteIds = model.noteIds
-      ..noteNames = model.noteNames
       ..markers = model.markers
       ..isSynced = false
       ..markedForDeletion = false

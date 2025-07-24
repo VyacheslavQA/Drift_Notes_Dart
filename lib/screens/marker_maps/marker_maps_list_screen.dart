@@ -9,9 +9,7 @@ import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/marker_map_model.dart';
-import '../../models/fishing_note_model.dart';
 import '../../repositories/marker_map_repository.dart';
-import '../../repositories/fishing_note_repository.dart';
 import '../../services/subscription/subscription_service.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/subscription/usage_badge.dart';
@@ -28,11 +26,9 @@ class MarkerMapsListScreen extends StatefulWidget {
 
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   final _markerMapRepository = MarkerMapRepository();
-  final _fishingNoteRepository = FishingNoteRepository();
   final _subscriptionService = SubscriptionService();
 
   List<MarkerMapModel> _maps = [];
-  Map<String, FishingNoteModel> _notesMap = {}; // Оптимизация: Map для O(1) поиска
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -103,17 +99,14 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       }
 
       final maps = await _markerMapRepository.getUserMarkerMaps();
-      final notes = await _fishingNoteRepository.getUserFishingNotes();
 
       if (mounted) {
         setState(() {
           _maps = maps;
-          // Оптимизация: Создаем Map для быстрого поиска заметок
-          _notesMap = {for (var note in notes) note.id: note};
         });
 
         if (kDebugMode) {
-          debugPrint('✅ Загружено ${maps.length} маркерных карт и ${notes.length} заметок через Repository');
+          debugPrint('✅ Загружено ${maps.length} маркерных карт через Repository');
         }
       }
     }, errorPrefix: 'Ошибка загрузки данных');
@@ -256,7 +249,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
-  // Оптимизация: Универсальный диалог для создания/редактирования
+  // Упрощенный диалог для создания/редактирования БЕЗ выбора заметок
   Future<void> _showMapFormDialog({MarkerMapModel? existingMap}) async {
     final localizations = AppLocalizations.of(context);
     final isEditing = existingMap != null;
@@ -265,16 +258,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     final sectorController = TextEditingController(text: existingMap?.sector ?? '');
 
     DateTime selectedDate = existingMap?.date ?? DateTime.now();
-    List<FishingNoteModel> selectedNotes = [];
-
-    // Предварительно выбираем привязанные заметки для редактирования
-    if (isEditing) {
-      selectedNotes = existingMap!.noteIds
-          .map((noteId) => _notesMap[noteId])
-          .where((note) => note != null)
-          .cast<FishingNoteModel>()
-          .toList();
-    }
 
     final result = await showDialog<MarkerMapModel>(
       context: context,
@@ -310,9 +293,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                             _buildDateField(selectedDate, dialogSetState, localizations),
                             const SizedBox(height: 20),
                             _buildSectorField(sectorController, localizations),
-                            const SizedBox(height: 20),
-                            if (_notesMap.isNotEmpty)
-                              _buildNotesSelection(selectedNotes, dialogSetState, localizations),
                           ],
                         ),
                       ),
@@ -321,7 +301,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                       nameController,
                       selectedDate,
                       sectorController,
-                      selectedNotes,
                       existingMap,
                       localizations,
                     ),
@@ -463,83 +442,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
-  Widget _buildNotesSelection(List<FishingNoteModel> selectedNotes, StateSetter dialogSetState, AppLocalizations localizations) {
-    final notes = _notesMap.values.toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${localizations.translate('my_notes')}',
-          style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          constraints: const BoxConstraints(maxHeight: 200),
-          decoration: BoxDecoration(
-            color: AppConstants.backgroundColor.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppConstants.textColor.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              final title = note.title.isNotEmpty ? note.title : note.location;
-              final isSelected = selectedNotes.contains(note);
-
-              return CheckboxListTile(
-                title: Text(
-                  title,
-                  style: TextStyle(color: AppConstants.textColor, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  dialogSetState(() {
-                    if (value == true) {
-                      selectedNotes.add(note);
-                    } else {
-                      selectedNotes.remove(note);
-                    }
-                  });
-                },
-                activeColor: AppConstants.primaryColor,
-                checkColor: AppConstants.textColor,
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-              );
-            },
-          ),
-        ),
-        if (selectedNotes.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            '${localizations.translate('selected')}: ${selectedNotes.length}',
-            style: TextStyle(
-              color: AppConstants.primaryColor,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildDialogButtons(
       TextEditingController nameController,
       DateTime selectedDate,
       TextEditingController sectorController,
-      List<FishingNoteModel> selectedNotes,
       MarkerMapModel? existingMap,
       AppLocalizations localizations,
       ) {
@@ -583,20 +489,12 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                 name: nameController.text.trim(),
                 date: selectedDate,
                 sector: sectorController.text.trim().isEmpty ? null : sectorController.text.trim(),
-                noteIds: selectedNotes.map((note) => note.id).toList(),
-                noteNames: selectedNotes
-                    .map((note) => note.title.isNotEmpty ? note.title : note.location)
-                    .toList(),
               ) ?? MarkerMapModel(
                 id: const Uuid().v4(),
                 userId: '',
                 name: nameController.text.trim(),
                 date: selectedDate,
                 sector: sectorController.text.trim().isEmpty ? null : sectorController.text.trim(),
-                noteIds: selectedNotes.map((note) => note.id).toList(),
-                noteNames: selectedNotes
-                    .map((note) => note.title.isNotEmpty ? note.title : note.location)
-                    .toList(),
                 markers: [],
               );
 
@@ -1037,28 +935,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  if (map.noteNames.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.note,
-                          color: AppConstants.textColor.withOpacity(0.7),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${localizations.translate('notes')}: ${map.attachedNotesText}',
-                            style: TextStyle(
-                              color: AppConstants.textColor,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
                     ),
                 ],
               ),

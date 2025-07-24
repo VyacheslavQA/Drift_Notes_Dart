@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
-import '../../models/fishing_note_model.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../widgets/loading_overlay.dart';
 import 'dart:math' as math;
@@ -42,9 +41,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   final _markerMapRepository = MarkerMapRepository();
 
   late MarkerMapModel _markerMap;
-  List<FishingNoteModel> _availableNotes = [];
   bool _isLoading = false;
-  // ✅ УДАЛЕНО: _hasChanges больше не нужен с автосохранением
 
   // 🔥 ДОБАВЛЕНО: Индикатор автосохранения
   bool _isAutoSaving = false;
@@ -109,7 +106,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
-    _loadAvailableNotes();
 
     // Скрываем системные панели для полноэкранного режима
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
@@ -126,118 +122,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     // Восстанавливаем системные панели при выходе
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
-  }
-
-  // Загрузка доступных заметок через новую структуру Firebase с защитой от null
-  Future<void> _loadAvailableNotes() async {
-    try {
-      debugPrint('📝 Загружаем доступные заметки для привязки...');
-
-      // Используем новый метод для получения заметок из subcollections
-      final notesSnapshot = await _firebaseService.getUserFishingNotesNew();
-
-      // Конвертируем QuerySnapshot в список моделей FishingNoteModel
-      final notesList = <FishingNoteModel>[];
-      for (final doc in notesSnapshot.docs) {
-        try {
-          final data = doc.data() as Map<String, dynamic>;
-
-          // Добавляем проверки на null для всех полей
-          final String title = data['title']?.toString() ?? '';
-          final String location = data['location']?.toString() ?? '';
-          final String notesText = data['notes']?.toString() ?? '';
-          final String tackle = data['tackle']?.toString() ?? '';
-          final String fishingType = data['fishingType']?.toString() ?? 'shore_fishing';
-
-          // Создаем список BiteRecord вручную с проверкой на null
-          final biteRecords = <BiteRecord>[];
-          final biteRecordsData = data['biteRecords'] as List<dynamic>? ?? [];
-          for (final recordData in biteRecordsData) {
-            try {
-              final record = recordData as Map<String, dynamic>;
-              biteRecords.add(BiteRecord(
-                id: record['id']?.toString() ?? '',
-                time: DateTime.fromMillisecondsSinceEpoch(record['time'] ?? 0),
-                fishType: record['fishType']?.toString() ?? '',
-                weight: (record['weight'] ?? 0).toDouble(),
-                length: (record['length'] ?? 0).toDouble(),
-                notes: record['notes']?.toString() ?? '',
-                photoUrls: List<String>.from(record['photoUrls'] ?? []),
-              ));
-            } catch (e) {
-              debugPrint('❌ Ошибка при обработке записи о поклевке: $e');
-            }
-          }
-
-          // Создаем FishingWeather вручную, если есть данные с проверкой на null
-          FishingWeather? weather;
-          if (data['weather'] != null) {
-            try {
-              final weatherData = data['weather'] as Map<String, dynamic>;
-              weather = FishingWeather(
-                temperature: (weatherData['temperature'] ?? 0).toDouble(),
-                feelsLike: (weatherData['feelsLike'] ?? 0).toDouble(),
-                humidity: (weatherData['humidity'] ?? 0).toInt(),
-                pressure: (weatherData['pressure'] ?? 0).toDouble(),
-                windSpeed: (weatherData['windSpeed'] ?? 0).toDouble(),
-                windDirection: weatherData['windDirection']?.toString() ?? '',
-                cloudCover: (weatherData['cloudCover'] ?? 0).toInt(),
-                sunrise: weatherData['sunrise']?.toString() ?? '',
-                sunset: weatherData['sunset']?.toString() ?? '',
-                isDay: weatherData['isDay'] ?? true,
-                observationTime: DateTime.fromMillisecondsSinceEpoch(
-                    weatherData['observationTime'] ?? 0
-                ),
-              );
-            } catch (e) {
-              debugPrint('❌ Ошибка при обработке погодных данных: $e');
-            }
-          }
-
-          // Создаем модель заметки с userId (пустой, так как теперь в пути)
-          final note = FishingNoteModel(
-            id: doc.id,
-            userId: '', // Пустой, так как теперь userId часть пути коллекции
-            title: title,
-            location: location,
-            date: DateTime.fromMillisecondsSinceEpoch(data['date'] ?? 0),
-            endDate: data['endDate'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(data['endDate'])
-                : null,
-            isMultiDay: data['isMultiDay'] ?? false,
-            fishingType: fishingType,
-            tackle: tackle,
-            notes: notesText,
-            photoUrls: List<String>.from(data['photoUrls'] ?? []),
-            coverPhotoUrl: data['coverPhotoUrl']?.toString() ?? '',
-            coverCropSettings: data['coverCropSettings'] != null
-                ? Map<String, dynamic>.from(data['coverCropSettings'])
-                : null,
-            biteRecords: biteRecords,
-            weather: weather,
-            latitude: (data['latitude'] ?? 0).toDouble(),
-            longitude: (data['longitude'] ?? 0).toDouble(),
-            aiPrediction: data['aiPrediction'] != null
-                ? Map<String, dynamic>.from(data['aiPrediction'])
-                : null,
-          );
-
-          notesList.add(note);
-        } catch (e) {
-          debugPrint('❌ Ошибка при обработке заметки ${doc.id}: $e');
-          // Продолжаем обработку остальных заметок
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _availableNotes = notesList;
-        });
-        debugPrint('✅ Загружено ${notesList.length} доступных заметок');
-      }
-    } catch (e) {
-      debugPrint('❌ Ошибка при загрузке заметок: $e');
-    }
   }
 
   // Получение названия типа дна
@@ -310,7 +194,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         (math.pi / 180); // конвертируем в радианы
   }
 
-  // 🔥 ДОБАВЛЕНО: Автосохранение с индикатором
+  // 🔥 ИСПРАВЛЕНО: Автосохранение БЕЗ полей связей с заметками
   Future<void> _autoSaveChanges(String action) async {
     if (!mounted) return;
 
@@ -335,13 +219,11 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         }).toList(),
       );
 
-      // Сохраняем ВСЕ поля карты, включая все обязательные поля
+      // 🔥 ИСПРАВЛЕНО: Сохраняем только основные поля карты БЕЗ привязок к заметкам
       final mapData = {
         'name': markerMapToSave.name,                    // Название карты
         'date': markerMapToSave.date.millisecondsSinceEpoch, // Дата создания
         'sector': markerMapToSave.sector,                // Сектор
-        'noteIds': markerMapToSave.noteIds,              // ID привязанных заметок
-        'noteNames': markerMapToSave.noteNames,          // Названия привязанных заметок
         'markers': markerMapToSave.markers,              // Список маркеров
         'userId': markerMapToSave.userId,                // ID пользователя (для совместимости)
         'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // Время создания

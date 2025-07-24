@@ -9,7 +9,6 @@ import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
-import '../../models/marker_map_model.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../repositories/fishing_note_repository.dart';
 import '../../utils/date_formatter.dart';
@@ -19,7 +18,6 @@ import 'photo_gallery_screen.dart';
 import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
 import '../../screens/fishing_note/edit_fishing_note_screen.dart';
-import '../marker_maps/marker_map_screen.dart';
 import '../map/universal_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
@@ -47,10 +45,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   String? _errorMessage;
-
-  // Список маркерных карт, привязанных к этой заметке
-  List<MarkerMapModel> _linkedMarkerMaps = [];
-  bool _isLoadingMarkerMaps = false;
 
   // ИИ-анализ
   AIBitePrediction? _aiPrediction;
@@ -121,9 +115,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           _isLoading = false;
         });
 
-        // Загружаем ИИ-анализ и маркерные карты асинхронно
+        // Загружаем ИИ-анализ асинхронно
         _loadAIFromNote();
-        //_loadLinkedMarkerMaps();
       }
     } catch (e) {
       debugPrint('❌ Ошибка загрузки заметки: $e');
@@ -180,69 +173,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       _debouncedSetState(() {});
     } catch (e) {
       debugPrint('❌ Ошибка загрузки ИИ-анализа: $e');
-    }
-  }
-
-  // 🔥 УПРОЩЕНО: Загрузка связанных маркерных карт
-  Future<void> _loadLinkedMarkerMaps() async {
-    if (_note == null) return;
-
-    _debouncedSetState(() {
-      _isLoadingMarkerMaps = true;
-    });
-
-    try {
-      final querySnapshot = await _firebaseService.getUserMarkerMaps();
-      final allMaps = <MarkerMapModel>[];
-
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        if (data['date'] is int) {
-          data['date'] = DateTime.fromMillisecondsSinceEpoch(data['date']);
-        }
-
-        final map = MarkerMapModel(
-          id: doc.id,
-          userId: _firebaseService.currentUserId!,
-          name: data['name'] ?? '',
-          date: data['date'] ?? DateTime.now(),
-          markers: (data['markers'] as List?)?.map((marker) {
-            return {
-              'id': marker['id'] ?? '',
-              'latitude': (marker['latitude'] ?? 0).toDouble(),
-              'longitude': (marker['longitude'] ?? 0).toDouble(),
-              'title': marker['title'] ?? '',
-              'description': marker['description'] ?? '',
-              'type': marker['type'] ?? '',
-              'color': marker['color'] ?? 'blue',
-              'timestamp': marker['timestamp'] is int
-                  ? DateTime.fromMillisecondsSinceEpoch(marker['timestamp'])
-                  : DateTime.now(),
-            };
-          }).toList().cast<Map<String, dynamic>>() ?? [],
-          noteIds: List<String>.from(data['noteIds'] ?? []),
-          sector: data['sector'],
-        );
-
-        allMaps.add(map);
-      }
-
-      final linkedMaps = allMaps.where((map) => map.noteIds.contains(_note!.id)).toList();
-
-      if (mounted) {
-        _debouncedSetState(() {
-          _linkedMarkerMaps = linkedMaps;
-          _isLoadingMarkerMaps = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Ошибка при загрузке маркерных карт: $e');
-      if (mounted) {
-        _debouncedSetState(() {
-          _isLoadingMarkerMaps = false;
-        });
-      }
     }
   }
 
@@ -654,16 +584,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Переход к просмотру маркерной карты
-  void _viewMarkerMap(MarkerMapModel map) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MarkerMapScreen(markerMap: map)),
-    ).then((_) {
-      _loadLinkedMarkerMaps();
-    });
-  }
-
   // Переход к редактированию заметки
   Future<void> _editNote() async {
     if (_note == null) return;
@@ -1040,12 +960,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
-          // Маркерные карты
-          if (_linkedMarkerMaps.isNotEmpty || _isLoadingMarkerMaps) ...[
-            _buildMarkerMapsSection(),
-            const SizedBox(height: 20),
-          ],
-
           // Снасти
           if (_note!.tackle.isNotEmpty) ...[
             _buildSectionHeader(localizations.translate('tackle')),
@@ -1075,9 +989,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
   }
-
-  // Остальные методы остаются без изменений...
-  // (Продолжение следует с остальными методами _buildAIAnalysisCard, _buildInfoCard и т.д.)
 
   // Построение карточки ИИ-анализа
   Widget _buildAIAnalysisCard() {
@@ -1208,242 +1119,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         ),
       ],
     );
-  }
-
-  // Секция маркерных карт
-  Widget _buildMarkerMapsSection() {
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(localizations.translate('marker_maps')),
-
-        if (_isLoadingMarkerMaps)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.textColor),
-              ),
-            ),
-          )
-        else
-          Column(
-            children: _linkedMarkerMaps.map((map) => _buildMarkerMapCard(map)).toList(),
-          ),
-      ],
-    );
-  }
-
-  // Карточка для маркерной карты
-  Widget _buildMarkerMapCard(MarkerMapModel map) {
-    final localizations = AppLocalizations.of(context);
-    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: const Color(0xFF12332E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _viewMarkerMap(map),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: isSmallScreen
-              ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.map,
-                      color: AppConstants.primaryColor,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      map.name,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('dd.MM.yyyy').format(map.date),
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      '${map.markers.length} ${_getMarkerText(map.markers.length)}',
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (map.sector != null && map.sector!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.grid_on,
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${localizations.translate('sector')}: ${map.sector}',
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          )
-              : Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.map,
-                  color: AppConstants.primaryColor,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      map.name,
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat('dd.MM.yyyy').format(map.date),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (map.sector != null && map.sector!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.grid_on,
-                            color: AppConstants.textColor.withValues(alpha: 0.7),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${localizations.translate('sector')}: ${map.sector}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  '${map.markers.length} ${_getMarkerText(map.markers.length)}',
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getMarkerText(int count) {
-    final localizations = AppLocalizations.of(context);
-
-    if (localizations.locale.languageCode == 'en') {
-      return count == 1
-          ? localizations.translate('marker')
-          : localizations.translate('markers');
-    }
-
-    if (count % 10 == 1 && count % 100 != 11) {
-      return localizations.translate('marker');
-    } else if ((count % 10 >= 2 && count % 10 <= 4) &&
-        (count % 100 < 10 || count % 100 >= 20)) {
-      return localizations.translate('markers_2_4');
-    } else {
-      return localizations.translate('markers');
-    }
   }
 
   Widget _buildSectionHeader(String title) {
