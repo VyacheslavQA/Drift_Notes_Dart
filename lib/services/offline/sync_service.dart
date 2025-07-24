@@ -1,6 +1,7 @@
 // Путь: lib/services/offline/sync_service.dart
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -60,93 +61,234 @@ class SyncService {
   // МЕТОДЫ ДЛЯ FISHING NOTES
   // ========================================
 
-  /// Конвертация FishingNoteEntity в Map для Firestore
+  /// ✅ ИСПРАВЛЕНО: Полная конвертация FishingNoteEntity в Map для Firestore
   Map<String, dynamic> _fishingNoteEntityToFirestore(FishingNoteEntity entity) {
-    return {
+    final map = <String, dynamic>{
       'title': entity.title,
       'description': entity.description,
-      'date': Timestamp.fromDate(entity.date),
+      'date': entity.date.millisecondsSinceEpoch, // Используем int для совместимости
       'location': entity.location,
       'createdAt': Timestamp.fromDate(entity.createdAt),
       'updatedAt': Timestamp.fromDate(entity.updatedAt),
-      'weatherData': entity.weatherData != null ? {
+
+      // ✅ ДОБАВЛЕНО: Основные недостающие поля
+      'tackle': entity.tackle,
+      'fishingType': entity.fishingType,
+      'notes': entity.notes,
+      'latitude': entity.latitude,
+      'longitude': entity.longitude,
+      'photoUrls': entity.photoUrls,
+      'isOffline': false, // Пометка что заметка синхронизирована
+
+      // ✅ ДОБАВЛЕНО: Многодневные рыбалки
+      'isMultiDay': entity.isMultiDay,
+    };
+
+    // Добавляем endDate если есть
+    if (entity.endDate != null) {
+      map['endDate'] = entity.endDate!.millisecondsSinceEpoch;
+    }
+
+    // ✅ ДОБАВЛЕНО: Обработка mapMarkers из JSON
+    if (entity.mapMarkersJson != null && entity.mapMarkersJson!.isNotEmpty) {
+      try {
+        map['mapMarkers'] = jsonDecode(entity.mapMarkersJson!);
+      } catch (e) {
+        log('Ошибка декодирования mapMarkers: $e');
+        map['mapMarkers'] = [];
+      }
+    } else {
+      map['mapMarkers'] = [];
+    }
+
+    // ✅ ИСПРАВЛЕНО: Обработка погоды (правильное поле weather)
+    if (entity.weatherData != null) {
+      map['weather'] = {
         'temperature': entity.weatherData!.temperature,
+        'feelsLike': entity.weatherData!.feelsLike,
         'humidity': entity.weatherData!.humidity,
         'windSpeed': entity.weatherData!.windSpeed,
         'windDirection': entity.weatherData!.windDirection,
         'pressure': entity.weatherData!.pressure,
+        'cloudCover': entity.weatherData!.cloudCover,
+        'isDay': entity.weatherData!.isDay,
+        'sunrise': entity.weatherData!.sunrise,
+        'sunset': entity.weatherData!.sunset,
         'condition': entity.weatherData!.condition,
-        'recordedAt': entity.weatherData!.recordedAt != null
-            ? Timestamp.fromDate(entity.weatherData!.recordedAt!)
-            : null,
-      } : null,
-      'biteRecords': entity.biteRecords.map((bite) => {
-        'time': bite.time != null ? Timestamp.fromDate(bite.time!) : null,
+      };
+
+      // Добавляем observationTime (НЕ recordedAt!)
+      if (entity.weatherData!.recordedAt != null) {
+        map['weather']['observationTime'] = Timestamp.fromDate(entity.weatherData!.recordedAt!);
+      }
+
+      // Добавляем timestamp если есть
+      if (entity.weatherData!.timestamp != null) {
+        map['weather']['timestamp'] = entity.weatherData!.timestamp;
+      }
+    }
+
+    // ✅ ИСПРАВЛЕНО: Обработка поклевок (правильные поля weight/length)
+    map['biteRecords'] = entity.biteRecords.map((bite) {
+      final biteMap = <String, dynamic>{
         'fishType': bite.fishType,
-        'baitUsed': bite.baitUsed,
-        'success': bite.success,
-        'fishWeight': bite.fishWeight,
-        'fishLength': bite.fishLength,
         'notes': bite.notes,
-      }).toList(),
-    };
+        'weight': bite.fishWeight, // fishWeight -> weight для Firebase
+        'length': bite.fishLength, // fishLength -> length для Firebase
+        'photoUrls': bite.photoUrls,
+      };
+
+      // Добавляем время если есть
+      if (bite.time != null) {
+        biteMap['time'] = bite.time!.millisecondsSinceEpoch;
+      }
+
+      // Добавляем ID если есть
+      if (bite.biteId != null && bite.biteId!.isNotEmpty) {
+        biteMap['id'] = bite.biteId;
+      }
+
+      return biteMap;
+    }).toList();
+
+    // ✅ ДОБАВЛЕНО: AI предсказание
+    if (entity.aiPrediction != null) {
+      map['aiPrediction'] = {
+        'activityLevel': entity.aiPrediction!.activityLevel,
+        'confidencePercent': entity.aiPrediction!.confidencePercent,
+        'fishingType': entity.aiPrediction!.fishingType,
+        'overallScore': entity.aiPrediction!.overallScore,
+        'recommendation': entity.aiPrediction!.recommendation,
+        'timestamp': entity.aiPrediction!.timestamp,
+      };
+
+      // Добавляем советы из JSON
+      if (entity.aiPrediction!.tipsJson != null && entity.aiPrediction!.tipsJson!.isNotEmpty) {
+        try {
+          map['aiPrediction']['tips'] = jsonDecode(entity.aiPrediction!.tipsJson!);
+        } catch (e) {
+          log('Ошибка декодирования AI tips: $e');
+          map['aiPrediction']['tips'] = [];
+        }
+      }
+    }
+
+    return map;
   }
 
-  /// Конвертация данных из Firestore в FishingNoteEntity
+  /// ✅ ИСПРАВЛЕНО: Полная конвертация данных из Firestore в FishingNoteEntity
   FishingNoteEntity _firestoreToFishingNoteEntity(String firebaseId, Map<String, dynamic> data) {
     final entity = FishingNoteEntity()
       ..firebaseId = firebaseId
       ..title = data['title'] ?? ''
       ..description = data['description']
-      ..date = _parseTimestamp(data['date'])  // ✅ ИСПРАВЛЕНО
+      ..date = _parseTimestamp(data['date'])
       ..location = data['location']
-      ..createdAt = _parseTimestamp(data['createdAt'])  // ✅ ИСПРАВЛЕНО
-      ..updatedAt = _parseTimestamp(data['updatedAt'])  // ✅ ИСПРАВЛЕНО
+      ..createdAt = _parseTimestamp(data['createdAt'])
+      ..updatedAt = _parseTimestamp(data['updatedAt'])
       ..isSynced = true;
 
-    // 🔥 ИСПРАВЛЕНИЕ: Добавляем поля endDate и isMultiDay
+    // ✅ ДОБАВЛЕНО: Основные недостающие поля
+    entity.tackle = data['tackle'];
+    entity.fishingType = data['fishingType'];
+    entity.notes = data['notes'];
+    entity.latitude = data['latitude']?.toDouble();
+    entity.longitude = data['longitude']?.toDouble();
+
+    // ✅ ДОБАВЛЕНО: Фото заметки
+    if (data['photoUrls'] != null) {
+      entity.photoUrls = List<String>.from(data['photoUrls']);
+    }
+
+    // ✅ ДОБАВЛЕНО: Многодневные рыбалки
+    entity.isMultiDay = data['isMultiDay'] ?? false;
     if (data['endDate'] != null) {
       entity.endDate = _parseTimestamp(data['endDate']);
     }
-    entity.isMultiDay = data['isMultiDay'] ?? false;
 
-    // 🔥 ИСПРАВЛЕНИЕ: Добавляем обработку weather данных
+    // ✅ ДОБАВЛЕНО: Маркеры карты как JSON
+    if (data['mapMarkers'] != null) {
+      try {
+        entity.mapMarkersJson = jsonEncode(data['mapMarkers']);
+      } catch (e) {
+        log('Ошибка кодирования mapMarkers: $e');
+        entity.mapMarkersJson = '[]';
+      }
+    }
+
+    // ✅ ИСПРАВЛЕНО: Обработка погоды (правильное поле weather)
     if (data['weather'] != null) {
       final weatherMap = data['weather'] as Map<String, dynamic>;
       entity.weatherData = WeatherDataEntity()
         ..temperature = weatherMap['temperature']?.toDouble()
-        ..humidity = weatherMap['humidity'].toDouble()
+        ..feelsLike = weatherMap['feelsLike']?.toDouble()
+        ..humidity = weatherMap['humidity']?.toDouble()
         ..windSpeed = weatherMap['windSpeed']?.toDouble()
         ..windDirection = weatherMap['windDirection']
         ..pressure = weatherMap['pressure']?.toDouble()
-        ..condition = weatherMap['condition']
-        ..recordedAt = weatherMap['observationTime'] != null
-            ? _parseTimestamp(weatherMap['observationTime'])
-            : null
-      // Дополнительные поля из Firebase
-        ..feelsLike = weatherMap['feelsLike']?.toDouble()
         ..cloudCover = weatherMap['cloudCover']?.toDouble()
         ..isDay = weatherMap['isDay'] ?? true
         ..sunrise = weatherMap['sunrise']
-        ..sunset = weatherMap['sunset'];
+        ..sunset = weatherMap['sunset']
+        ..condition = weatherMap['condition'];
+
+      // Правильное поле observationTime (НЕ recordedAt!)
+      if (weatherMap['observationTime'] != null) {
+        entity.weatherData!.recordedAt = _parseTimestamp(weatherMap['observationTime']);
+      }
+
+      // Дополнительный timestamp
+      if (weatherMap['timestamp'] != null) {
+        entity.weatherData!.timestamp = weatherMap['timestamp'];
+      }
     }
 
-    // Конвертация записей о поклевках
+    // ✅ ИСПРАВЛЕНО: Обработка поклевок (правильные поля weight/length)
     if (data['biteRecords'] != null) {
       final List<dynamic> biteList = data['biteRecords'];
       entity.biteRecords = biteList.map((bite) {
         final biteMap = bite as Map<String, dynamic>;
-        return BiteRecordEntity()
-          ..time = biteMap['time'] != null
-              ? _parseTimestamp(biteMap['time'])  // ✅ ИСПРАВЛЕНО
-              : null
+        final biteEntity = BiteRecordEntity()
+          ..biteId = biteMap['id'] // ID поклевки из Firebase
           ..fishType = biteMap['fishType']
-          ..baitUsed = biteMap['baitUsed']
-          ..success = biteMap['success'] ?? false
-          ..fishWeight = biteMap['weight']?.toDouble()  // ✅ ИСПРАВЛЕНО: weight вместо fishWeight
-          ..fishLength = biteMap['length']?.toDouble()  // ✅ ИСПРАВЛЕНО: length вместо fishLength
-          ..notes = biteMap['notes'];
+          ..notes = biteMap['notes']
+          ..fishWeight = biteMap['weight']?.toDouble() // weight -> fishWeight
+          ..fishLength = biteMap['length']?.toDouble(); // length -> fishLength
+
+        // Время поклевки
+        if (biteMap['time'] != null) {
+          biteEntity.time = _parseTimestamp(biteMap['time']);
+        }
+
+        // Фото поклевки
+        if (biteMap['photoUrls'] != null) {
+          biteEntity.photoUrls = List<String>.from(biteMap['photoUrls']);
+        }
+
+        return biteEntity;
       }).toList();
+    }
+
+    // ✅ ДОБАВЛЕНО: AI предсказание
+    if (data['aiPrediction'] != null) {
+      final aiMap = data['aiPrediction'] as Map<String, dynamic>;
+      entity.aiPrediction = AiPredictionEntity()
+        ..activityLevel = aiMap['activityLevel']
+        ..confidencePercent = aiMap['confidencePercent']
+        ..fishingType = aiMap['fishingType']
+        ..overallScore = aiMap['overallScore']
+        ..recommendation = aiMap['recommendation']
+        ..timestamp = aiMap['timestamp'];
+
+      // Советы как JSON
+      if (aiMap['tips'] != null) {
+        try {
+          entity.aiPrediction!.tipsJson = jsonEncode(aiMap['tips']);
+        } catch (e) {
+          log('Ошибка кодирования AI tips: $e');
+          entity.aiPrediction!.tipsJson = '[]';
+        }
+      }
     }
 
     return entity;
@@ -168,24 +310,26 @@ class SyncService {
 
       for (final note in unsyncedNotes) {
         try {
+          final firebaseData = _fishingNoteEntityToFirestore(note);
+
           if (note.firebaseId != null) {
-            await collection.doc(note.firebaseId).update(_fishingNoteEntityToFirestore(note));
-            log('Обновлена заметка: ${note.firebaseId}');
+            await collection.doc(note.firebaseId).update(firebaseData);
+            log('✅ Обновлена заметка: ${note.firebaseId}');
           } else {
-            final docRef = await collection.add(_fishingNoteEntityToFirestore(note));
+            final docRef = await collection.add(firebaseData);
             await _isarService.markAsSynced(note.id, docRef.id);
-            log('Создана новая заметка: ${docRef.id}');
+            log('✅ Создана новая заметка: ${docRef.id}');
             continue;
           }
           await _isarService.markAsSynced(note.id, note.firebaseId!);
         } catch (e) {
-          log('Ошибка синхронизации заметки ${note.id}: $e');
+          log('❌ Ошибка синхронизации заметки ${note.id}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('Ошибка syncFishingNotesToFirebase: $e');
+      log('❌ Ошибка syncFishingNotesToFirebase: $e');
       return false;
     }
   }
@@ -214,24 +358,24 @@ class SyncService {
           if (existingNote == null) {
             final entity = _firestoreToFishingNoteEntity(firebaseId, data);
             await _isarService.insertFishingNote(entity);
-            log('Добавлена новая заметка из Firebase: $firebaseId');
+            log('✅ Добавлена новая заметка из Firebase: $firebaseId');
           } else {
-            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);  // ✅ ИСПРАВЛЕНО
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingNote.updatedAt)) {
               final updatedEntity = _firestoreToFishingNoteEntity(firebaseId, data);
               updatedEntity.id = existingNote.id;
               await _isarService.updateFishingNote(updatedEntity);
-              log('Обновлена заметка из Firebase: $firebaseId');
+              log('✅ Обновлена заметка из Firebase: $firebaseId');
             }
           }
         } catch (e) {
-          log('Ошибка обработки документа ${doc.id}: $e');
+          log('❌ Ошибка обработки документа ${doc.id}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('Ошибка syncFishingNotesFromFirebase: $e');
+      log('❌ Ошибка syncFishingNotesFromFirebase: $e');
       return false;
     }
   }
@@ -306,7 +450,7 @@ class SyncService {
             await _isarService.insertBudgetNote(entity);
             log('Добавлена новая бюджетная заметка из Firebase: $firebaseId');
           } else {
-            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);  // ✅ ИСПРАВЛЕНО
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingNote.updatedAt)) {
               final updatedEntity = BudgetNoteEntity.fromFirestoreMap(firebaseId, data);
               updatedEntity.id = existingNote.id;
@@ -396,7 +540,7 @@ class SyncService {
             await _isarService.insertMarkerMap(entity);
             log('Добавлена новая карта из Firebase: $firebaseId');
           } else {
-            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);  // ✅ ИСПРАВЛЕНО
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingMap.updatedAt)) {
               final updatedEntity = MarkerMapEntity.fromFirestoreMap(firebaseId, data);
               updatedEntity.id = existingMap.id;
@@ -483,7 +627,7 @@ class SyncService {
     });
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Удаление заметки по Firebase ID (новый метод)
+  /// Удаление заметки по Firebase ID
   Future<bool> deleteNoteByFirebaseId(String firebaseId) async {
     try {
       log('🗑️ Удаление заметки по Firebase ID: $firebaseId');
@@ -522,12 +666,11 @@ class SyncService {
       final note = await _isarService.getFishingNoteById(localId);
       if (note == null) return false;
 
-      // 🔥 ИСПРАВЛЕНО: Сначала удаляем из Firebase, потом из Isar
+      // Сначала удаляем из Firebase, потом из Isar
       if (note.firebaseId != null && await _hasInternetConnection()) {
         final collection = _getUserCollection('fishing_notes');
         if (collection != null) {
           try {
-            // 🔥 ИСПРАВЛЕНО: Правильное удаление из Firebase
             await collection.doc(note.firebaseId).delete();
             log('✅ Заметка удалена из Firebase: ${note.firebaseId}');
           } catch (e) {

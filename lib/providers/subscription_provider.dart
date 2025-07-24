@@ -12,7 +12,7 @@ import '../utils/network_utils.dart';
 import 'package:flutter/foundation.dart';
 
 /// ✅ ИСПРАВЛЕННЫЙ Provider для управления состоянием подписки
-/// Синхронизируется с кэшем лимитов из SubscriptionService
+/// Правильно синхронизируется с Isar через SubscriptionService
 class SubscriptionProvider extends ChangeNotifier {
   final SubscriptionService _subscriptionService = SubscriptionService();
   final FirebaseService _firebaseService = FirebaseService();
@@ -39,9 +39,23 @@ class SubscriptionProvider extends ChangeNotifier {
   // ✅ УПРОЩЕННЫЕ стримы - только SubscriptionService
   StreamSubscription<SubscriptionModel>? _subscriptionSubscription;
 
-  // ✅ ИСПРАВЛЕНО: Кэш для реальных подсчетов заметок (синхронизируется с SubscriptionService)
+  // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Кэш синхронизирован с SubscriptionService
   Map<ContentType, int> _realUsageCache = {};
   DateTime? _lastUsageUpdateTime;
+
+  // ✅ ДОБАВЛЕНО: Защита от слишком частых обновлений
+  Timer? _debounceTimer;
+  static const Duration _debounceDelay = Duration(milliseconds: 300);
+
+  // ========================================
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Метод для DebugPrint
+  // ========================================
+
+  void _debugPrint(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
 
   // ========================================
   // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Метод для установки FirebaseService
@@ -51,13 +65,9 @@ class SubscriptionProvider extends ChangeNotifier {
   void setFirebaseService(FirebaseService firebaseService) {
     try {
       _subscriptionService.setFirebaseService(firebaseService);
-      if (kDebugMode) {
-        debugPrint('✅ FirebaseService установлен в SubscriptionService через Provider');
-      }
+      _debugPrint('✅ FirebaseService установлен в SubscriptionService через Provider');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка установки FirebaseService в Provider: $e');
-      }
+      _debugPrint('❌ Ошибка установки FirebaseService в Provider: $e');
     }
   }
 
@@ -90,7 +100,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      debugPrint('🔄 Инициализация SubscriptionProvider...');
+      _debugPrint('🔄 Инициализация SubscriptionProvider...');
 
       _isLoading = true;
       _lastError = null;
@@ -111,9 +121,9 @@ class SubscriptionProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      debugPrint('✅ SubscriptionProvider инициализирован');
+      _debugPrint('✅ SubscriptionProvider инициализирован');
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации SubscriptionProvider: $e');
+      _debugPrint('❌ Ошибка инициализации SubscriptionProvider: $e');
       _lastError = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -132,32 +142,33 @@ class SubscriptionProvider extends ChangeNotifier {
       await _loadLocalizedPrices();
       await loadAvailableProducts();
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки начальных данных: $e');
+      _debugPrint('❌ Ошибка загрузки начальных данных: $e');
       // Устанавливаем дефолтные значения
       _subscription ??= SubscriptionModel.defaultSubscription('unknown');
       _usageLimits ??= UsageLimitsModel.defaultLimits(_subscription?.userId ?? 'unknown');
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Загружаем лимиты через правильный подсчет реальных заметок
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Загружаем лимиты с актуальными данными из Isar
   Future<void> _loadUsageLimitsWithRealCount() async {
     try {
-      debugPrint('🔄 Загружаем лимиты через правильный подсчет заметок...');
+      _debugPrint('🔄 Загружаем лимиты через правильный подсчет заметок...');
 
       if (!_firebaseService.isUserLoggedIn) {
         // Для неавторизованных пользователей - дефолтные лимиты
         _usageLimits = UsageLimitsModel.defaultLimits('offline');
+        _realUsageCache.clear();
         return;
       }
 
       final userId = _firebaseService.currentUserId!;
 
-      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService.getCurrentUsage (с кэшем)
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Используем SubscriptionService.getCurrentUsage (читает из Isar)
       final fishingNotesCount = await _subscriptionService.getCurrentUsage(ContentType.fishingNotes);
       final markerMapsCount = await _subscriptionService.getCurrentUsage(ContentType.markerMaps);
       final budgetNotesCount = await _subscriptionService.getCurrentUsage(ContentType.budgetNotes);
 
-      debugPrint('📊 Реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
+      _debugPrint('📊 Реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
 
       // Создаем UsageLimitsModel с реальными данными
       _usageLimits = UsageLimitsModel(
@@ -169,23 +180,37 @@ class SubscriptionProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
 
-      // ✅ ИСПРАВЛЕНО: Обновляем кэш реальных подсчетов
-      _realUsageCache = {
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Обновляем кэш актуальными данными
+      _updateUsageCache({
         ContentType.fishingNotes: fishingNotesCount,
         ContentType.markerMaps: markerMapsCount,
         ContentType.budgetNotes: budgetNotesCount,
-      };
-      _lastUsageUpdateTime = DateTime.now();
+      });
 
-      debugPrint('✅ Лимиты загружены с реальными подсчетами');
+      _debugPrint('✅ Лимиты загружены с реальными подсчетами');
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки лимитов: $e');
+      _debugPrint('❌ Ошибка загрузки лимитов: $e');
       _usageLimits = UsageLimitsModel.defaultLimits(_subscription?.userId ?? 'unknown');
+      _realUsageCache.clear();
     }
   }
 
+  /// ✅ НОВЫЙ МЕТОД: Обновление кэша использования
+  void _updateUsageCache(Map<ContentType, int> newCounts) {
+    _realUsageCache = Map.from(newCounts);
+    _lastUsageUpdateTime = DateTime.now();
+    _debugPrint('🔄 Кэш использования обновлен: $_realUsageCache');
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Проверка актуальности кэша
+  bool _isCacheValid() {
+    if (_lastUsageUpdateTime == null) return false;
+    final cacheAge = DateTime.now().difference(_lastUsageUpdateTime!);
+    return cacheAge < const Duration(minutes: 2);
+  }
+
   // ========================================
-  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ
+  // ✅ КРИТИЧЕСКИ ИСПРАВЛЕННЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Проверка возможности создания контента
@@ -200,7 +225,7 @@ class SubscriptionProvider extends ChangeNotifier {
       return false;
     }
 
-    // ✅ ИСПРАВЛЕНО: Используем SubscriptionService с кэшем
+    // ✅ ИСПРАВЛЕНО: Используем SubscriptionService напрямую (он читает из Isar)
     final hasNetwork = await NetworkUtils.isNetworkAvailable();
 
     if (hasNetwork) {
@@ -210,7 +235,7 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Синхронная проверка (используем кэш)
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Синхронная проверка без старого кэша
   bool canCreateContentSync(ContentType contentType) {
     // Если премиум - разрешаем все
     if (isPremium) {
@@ -222,25 +247,39 @@ class SubscriptionProvider extends ChangeNotifier {
       return false;
     }
 
-    // ✅ ИСПРАВЛЕНО: Используем кэш реальных подсчетов
-    final currentUsage = _realUsageCache[contentType] ?? 0;
+    // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Используем актуальные данные из кэша
+    int currentUsage;
+
+    if (_isCacheValid() && _realUsageCache.containsKey(contentType)) {
+      // Используем кэш если он свежий
+      currentUsage = _realUsageCache[contentType]!;
+    } else {
+      // Используем данные из UsageLimitsModel как fallback
+      currentUsage = _usageLimits?.getCountForType(contentType) ?? 0;
+    }
+
     final limit = getLimit(contentType);
     final canCreate = currentUsage < limit;
 
-    debugPrint('🔍 canCreateContentSync: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
+    _debugPrint('🔍 canCreateContentSync: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
     return canCreate;
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение использования для типа контента
   int? getUsage(ContentType contentType) {
-    // ✅ ИСПРАВЛЕНО: Используем кэш реальных подсчетов
-    return _realUsageCache[contentType] ?? _usageLimits?.getCountForType(contentType) ?? 0;
+    // ✅ ИСПРАВЛЕНО: Приоритет кэшу, если он актуальный
+    if (_isCacheValid() && _realUsageCache.containsKey(contentType)) {
+      return _realUsageCache[contentType];
+    }
+
+    // Fallback к UsageLimitsModel
+    return _usageLimits?.getCountForType(contentType) ?? 0;
   }
 
   /// ✅ ИСПРАВЛЕНО: Получение лимита для типа контента
   int getLimit(ContentType contentType) {
     if (isPremium) {
-      return SubscriptionConstants.unlimitedValue; // ✅ ИСПРАВЛЕНО: Используем константу
+      return SubscriptionConstants.unlimitedValue;
     }
 
     return SubscriptionConstants.getContentLimit(contentType);
@@ -248,7 +287,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
   /// ✅ ИСПРАВЛЕНО: Получение оставшегося количества
   int getRemainingCount(ContentType contentType) {
-    if (isPremium) return SubscriptionConstants.unlimitedValue; // Безлимитно
+    if (isPremium) return SubscriptionConstants.unlimitedValue;
 
     final currentUsage = getUsage(contentType) ?? 0;
     final limit = getLimit(contentType);
@@ -266,41 +305,46 @@ class SubscriptionProvider extends ChangeNotifier {
     return (currentUsage / limit).clamp(0.0, 1.0);
   }
 
-  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Увеличение счетчика с обновлением кэша
   Future<void> incrementUsage(ContentType contentType) async {
     try {
-      debugPrint('📈 Увеличиваем счетчик $contentType...');
+      _debugPrint('📈 Увеличиваем счетчик $contentType...');
 
       // ✅ ИСПРАВЛЕНО: Сначала обновляем локальный кэш
       final currentUsage = _realUsageCache[contentType] ?? 0;
       _realUsageCache[contentType] = currentUsage + 1;
+      _lastUsageUpdateTime = DateTime.now();
 
       // Обновляем модель лимитов
       if (_usageLimits != null) {
         _usageLimits = _usageLimits!.incrementCounter(contentType);
       }
 
-      // Уведомляем UI об изменениях
-      notifyListeners();
+      // ✅ ДОБАВЛЕНО: Дебаунсинг для частых обновлений
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(_debounceDelay, () {
+        notifyListeners();
+      });
 
-      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService (который теперь не работает со счетчиками)
+      // ✅ ИСПРАВЛЕНО: SubscriptionService больше не ведет счетчики
       await _subscriptionService.incrementUsage(contentType);
 
-      debugPrint('✅ Счетчик $contentType увеличен локально до ${_realUsageCache[contentType]}');
+      _debugPrint('✅ Счетчик $contentType увеличен локально до ${_realUsageCache[contentType]}');
     } catch (e) {
-      debugPrint('❌ Ошибка увеличения счетчика: $e');
+      _debugPrint('❌ Ошибка увеличения счетчика: $e');
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика через SubscriptionService
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Уменьшение счетчика с обновлением кэша
   Future<void> decrementUsage(ContentType contentType) async {
     try {
-      debugPrint('📉 Уменьшаем счетчик $contentType...');
+      _debugPrint('📉 Уменьшаем счетчик $contentType...');
 
-      // ✅ ИСПРАВЛЕНО: Сначала обновляем локальный кэш
+      // ✅ ИСПРАВЛЕНО: Обновляем локальный кэш
       final currentUsage = _realUsageCache[contentType] ?? 0;
       if (currentUsage > 0) {
         _realUsageCache[contentType] = currentUsage - 1;
+        _lastUsageUpdateTime = DateTime.now();
       }
 
       // Обновляем модель лимитов
@@ -308,15 +352,18 @@ class SubscriptionProvider extends ChangeNotifier {
         _usageLimits = _usageLimits!.decrementCounter(contentType);
       }
 
-      // Уведомляем UI об изменениях
-      notifyListeners();
+      // ✅ ДОБАВЛЕНО: Дебаунсинг для частых обновлений
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(_debounceDelay, () {
+        notifyListeners();
+      });
 
-      // ✅ ИСПРАВЛЕНО: Используем SubscriptionService
+      // ✅ ИСПРАВЛЕНО: SubscriptionService больше не ведет счетчики
       await _subscriptionService.decrementUsage(contentType);
 
-      debugPrint('✅ Счетчик $contentType уменьшен локально до ${_realUsageCache[contentType]}');
+      _debugPrint('✅ Счетчик $contentType уменьшен локально до ${_realUsageCache[contentType]}');
     } catch (e) {
-      debugPrint('❌ Ошибка уменьшения счетчика: $e');
+      _debugPrint('❌ Ошибка уменьшения счетчика: $e');
     }
   }
 
@@ -354,6 +401,8 @@ class SubscriptionProvider extends ChangeNotifier {
       _availableProducts = products;
       _isLoadingProducts = false;
       notifyListeners();
+
+      _debugPrint('✅ Загружено продуктов: ${products.length}');
     } catch (e) {
       _lastError = 'Не удалось загрузить продукты: $e';
       _isLoadingProducts = false;
@@ -436,7 +485,7 @@ class SubscriptionProvider extends ChangeNotifier {
   /// ✅ КРИТИЧЕСКИ ВАЖНО: Принудительное обновление данных
   Future<void> refreshUsageData() async {
     try {
-      debugPrint('🔄 SubscriptionProvider: Обновление данных...');
+      _debugPrint('🔄 SubscriptionProvider: Обновление данных...');
 
       // Загружаем актуальные данные
       _subscription = await _subscriptionService.loadCurrentSubscription();
@@ -446,15 +495,15 @@ class SubscriptionProvider extends ChangeNotifier {
         await _subscriptionService.cacheSubscriptionDataOnline();
       }
 
-      // ✅ ИСПРАВЛЕНО: Загружаем лимиты с правильным подсчетом
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Загружаем лимиты с обновлением кэша
       await _loadUsageLimitsWithRealCount();
 
       // 🚨 КРИТИЧЕСКИ ВАЖНО: Уведомляем всех слушателей
       notifyListeners();
 
-      debugPrint('✅ SubscriptionProvider: Данные обновлены');
+      _debugPrint('✅ SubscriptionProvider: Данные обновлены');
     } catch (e) {
-      debugPrint('❌ SubscriptionProvider: Ошибка обновления: $e');
+      _debugPrint('❌ SubscriptionProvider: Ошибка обновления: $e');
       _lastError = e.toString();
       notifyListeners();
     }
@@ -463,20 +512,20 @@ class SubscriptionProvider extends ChangeNotifier {
   /// ✅ НОВЫЙ МЕТОД: Принудительное обновление при переходе в офлайн
   Future<void> refreshUsageDataOffline() async {
     try {
-      debugPrint('🔄 SubscriptionProvider: Обновление данных для офлайн...');
+      _debugPrint('🔄 SubscriptionProvider: Обновление данных для офлайн...');
 
       // Загружаем актуальные данные
       _subscription = await _subscriptionService.loadCurrentSubscription();
 
-      // ✅ КРИТИЧЕСКИ ВАЖНО: Загружаем лимиты из кэша
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Загружаем лимиты с обновлением кэша
       await _loadUsageLimitsWithRealCount();
 
       // 🚨 КРИТИЧЕСКИ ВАЖНО: Уведомляем всех слушателей
       notifyListeners();
 
-      debugPrint('✅ SubscriptionProvider: Данные обновлены для офлайн');
+      _debugPrint('✅ SubscriptionProvider: Данные обновлены для офлайн');
     } catch (e) {
-      debugPrint('❌ SubscriptionProvider: Ошибка обновления для офлайн: $e');
+      _debugPrint('❌ SubscriptionProvider: Ошибка обновления для офлайн: $e');
       _lastError = e.toString();
       notifyListeners();
     }
@@ -500,14 +549,14 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ НОВЫЙ МЕТОД: Обновление кэша при успешной авторизации
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Обновление кэша при успешной авторизации
   Future<void> updateCacheAfterAuth() async {
     try {
-      debugPrint('🔄 SubscriptionProvider: Обновление кэша после авторизации...');
+      _debugPrint('🔄 SubscriptionProvider: Обновление кэша после авторизации...');
 
       // Проверяем что пользователь авторизован
       if (!_firebaseService.isUserLoggedIn) {
-        debugPrint('❌ Пользователь не авторизован');
+        _debugPrint('❌ Пользователь не авторизован');
         return;
       }
 
@@ -516,15 +565,32 @@ class SubscriptionProvider extends ChangeNotifier {
       if (hasNetwork) {
         // Кэшируем данные для офлайн
         await _subscriptionService.cacheSubscriptionDataOnline();
-        debugPrint('✅ Данные кэшированы для офлайн');
+        _debugPrint('✅ Данные кэшированы для офлайн');
       }
 
-      // Обновляем данные
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Обновляем данные с новым кэшем
       await refreshUsageData();
 
-      debugPrint('✅ SubscriptionProvider: Кэш обновлен после авторизации');
+      _debugPrint('✅ SubscriptionProvider: Кэш обновлен после авторизации');
     } catch (e) {
-      debugPrint('❌ SubscriptionProvider: Ошибка обновления кэша: $e');
+      _debugPrint('❌ SubscriptionProvider: Ошибка обновления кэша: $e');
+    }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Обновление кэша после синхронизации
+  Future<void> refreshCacheAfterSync() async {
+    try {
+      _debugPrint('🔄 SubscriptionProvider: Обновление кэша после синхронизации...');
+
+      // ✅ КРИТИЧЕСКИ ВАЖНО: Перезагружаем данные из Isar после синхронизации
+      await _loadUsageLimitsWithRealCount();
+
+      // Уведомляем UI
+      notifyListeners();
+
+      _debugPrint('✅ SubscriptionProvider: Кэш обновлен после синхронизации');
+    } catch (e) {
+      _debugPrint('❌ SubscriptionProvider: Ошибка обновления после синхронизации: $e');
     }
   }
 
@@ -571,7 +637,7 @@ class SubscriptionProvider extends ChangeNotifier {
         return discount.clamp(0.0, 100.0);
       }
     } catch (e) {
-      debugPrint('❌ Ошибка расчета скидки: $e');
+      _debugPrint('❌ Ошибка расчета скидки: $e');
     }
 
     return 33.0; // Дефолтная скидка
@@ -590,7 +656,7 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение статистики использования
+  /// ✅ ИСПРАВЛЕНО: Получение статистики использования с актуальным кэшем
   Map<String, dynamic> getUsageStats() {
     return {
       'notes': {
@@ -647,6 +713,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _subscriptionSubscription?.cancel();
     _subscriptionService.dispose();
     super.dispose();

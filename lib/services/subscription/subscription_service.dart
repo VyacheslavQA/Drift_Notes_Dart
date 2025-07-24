@@ -13,6 +13,7 @@ import '../../models/usage_limits_model.dart';
 import '../../models/offline_usage_result.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../services/offline/offline_storage_service.dart';
+import '../../services/isar_service.dart'; // ✅ ДОБАВЛЕНО: Импорт IsarService
 import '../../utils/network_utils.dart';
 
 /// Сервис для управления подписками и покупками
@@ -26,7 +27,10 @@ class SubscriptionService {
   // FirebaseService инжектируется извне
   FirebaseService? _firebaseService;
 
-  // Офлайн сторадж для кэширования
+  // ✅ ДОБАВЛЕНО: IsarService для работы с локальными данными
+  final IsarService _isarService = IsarService.instance;
+
+  // Офлайн сторадж для кэширования (только для подписок, не для заметок)
   final OfflineStorageService _offlineStorage = OfflineStorageService();
 
   // Кэш текущей подписки
@@ -159,7 +163,7 @@ class SubscriptionService {
     }
   }
 
-  /// Инициализация системы лимитов через новую Firebase структуру
+  /// Инициализация системы лимитов через новую Firebase структуре
   Future<void> _initializeUsageLimits() async {
     try {
       debugPrint('🔄 Инициализация системы лимитов через Firebase...');
@@ -181,7 +185,7 @@ class SubscriptionService {
   }
 
   // ========================================
-  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ
+  // ✅ ИСПРАВЛЕННЫЕ МЕТОДЫ ПРОВЕРКИ ЛИМИТОВ (ТЕПЕРЬ ИСПОЛЬЗУЮТ ISAR)
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Основной метод проверки возможности создания контента
@@ -197,13 +201,13 @@ class SubscriptionService {
         return false;
       }
 
-      // ✅ ИСПРАВЛЕНО: Используем новый метод с правильным подсчетом
+      // ✅ ИСПРАВЛЕНО: Используем новый метод с Isar
       final currentUsage = await getCurrentUsage(contentType);
       final limit = getLimit(contentType);
 
       final canCreate = currentUsage < limit;
 
-      debugPrint('🔍 canCreateContent: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
+      debugPrint('🔍 canCreateContentSync: $contentType, usage=$currentUsage, limit=$limit, canCreate=$canCreate');
       return canCreate;
     } catch (e) {
       if (kDebugMode) {
@@ -235,7 +239,7 @@ class SubscriptionService {
         }
       }
 
-      // 3. ✅ ИСПРАВЛЕНО: Используем новый метод правильного подсчета
+      // 3. ✅ ИСПРАВЛЕНО: Используем новый метод правильного подсчета через Isar
       final currentUsage = await getCurrentUsage(contentType);
       final limit = getLimit(contentType);
 
@@ -255,7 +259,7 @@ class SubscriptionService {
   /// ✅ ИСПРАВЛЕНО: Получение детальной информации о статусе использования
   Future<OfflineUsageResult> checkOfflineUsage(ContentType contentType) async {
     try {
-      // ✅ ИСПРАВЛЕНО: Используем правильный подсчет вместо Firebase canCreateItem
+      // ✅ ИСПРАВЛЕНО: Используем правильный подсчет через Isar
       final currentUsage = await getCurrentUsage(contentType);
       final maxLimit = getLimit(contentType);
       final remaining = maxLimit - currentUsage;
@@ -305,10 +309,10 @@ class SubscriptionService {
   }
 
   // ========================================
-  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК С КЭШОМ
+  // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОДСЧЕТ ЗАМЕТОК ЧЕРЕЗ ISAR
   // ========================================
 
-  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Получение текущего использования БЕЗ РЕКУРСИИ
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Получение текущего использования ЧЕРЕЗ ISAR
   Future<int> getCurrentUsage(ContentType contentType) async {
     try {
       debugPrint('🔍 getCurrentUsage: начинаем подсчет для $contentType');
@@ -321,10 +325,10 @@ class SubscriptionService {
 
       final hasNetwork = await NetworkUtils.isNetworkAvailable();
 
-      // ✅ ИСПРАВЛЕНО: В офлайн режиме используем ПРЯМОЙ подсчет локальных данных
+      // ✅ ИСПРАВЛЕНО: В офлайн режиме используем ПРЯМОЙ подсчет из Isar
       if (!hasNetwork) {
         debugPrint('📱 getCurrentUsage: офлайн режим, считаем ПРЯМО из локальных данных...');
-        return await _countDirectFromLocalStorage(contentType, userId);
+        return await _countDirectFromIsar(contentType, userId);
       }
 
       int totalCount = 0;
@@ -357,33 +361,22 @@ class SubscriptionService {
         debugPrint('❌ getCurrentUsage: ошибка подсчета онлайн заметок: $e');
       }
 
-      // 2. ✅ ИСПРАВЛЕНО: Считаем ТОЛЬКО не синхронизированные офлайн заметки
+      // 2. ✅ ИСПРАВЛЕНО: Считаем ТОЛЬКО не синхронизированные заметки из Isar
       try {
         int offlineCount = 0;
 
         switch (contentType) {
           case ContentType.fishingNotes:
-            final offlineNotes = await _offlineStorage.getOfflineFishingNotes(userId);
-            // Считаем только НЕ синхронизированные заметки
-            offlineCount = offlineNotes.where((note) =>
-            note['isSynced'] != true && note['isOffline'] == true
-            ).length;
+            final unsyncedNotes = await _isarService.getUnsyncedNotes();
+            offlineCount = unsyncedNotes.length;
             break;
           case ContentType.markerMaps:
-            final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
-            // Фильтруем по userId и считаем только НЕ синхронизированные
-            offlineCount = offlineMaps.where((map) =>
-            map['userId'] == userId &&
-                map['isSynced'] != true &&
-                map['isOffline'] == true
-            ).length;
+            final unsyncedMaps = await _isarService.getUnsyncedMarkerMaps(userId);
+            offlineCount = unsyncedMaps.length;
             break;
           case ContentType.budgetNotes:
-            final offlineBudgetNotes = await _offlineStorage.getOfflineBudgetNotes(userId);
-            // Считаем только НЕ синхронизированные заметки
-            offlineCount = offlineBudgetNotes.where((note) =>
-            note['isSynced'] != true && note['isOffline'] == true
-            ).length;
+            final unsyncedBudgetNotes = await _isarService.getUnsyncedBudgetNotes(userId);
+            offlineCount = unsyncedBudgetNotes.length;
             break;
           case ContentType.depthChart:
             offlineCount = 0; // Пока не реализовано
@@ -393,7 +386,7 @@ class SubscriptionService {
         totalCount += offlineCount;
         debugPrint('📊 getCurrentUsage: офлайн $contentType = $offlineCount');
       } catch (e) {
-        debugPrint('❌ getCurrentUsage: ошибка подсчета офлайн заметок: $e');
+        debugPrint('❌ getCurrentUsage: ошибка подсчета офлайн заметок из Isar: $e');
       }
 
       debugPrint('✅ getCurrentUsage: итого $contentType = $totalCount');
@@ -404,61 +397,30 @@ class SubscriptionService {
     }
   }
 
-  /// 🔥 НОВЫЙ МЕТОД: Прямой подсчет из локального хранилища для офлайн режима
-  Future<int> _countDirectFromLocalStorage(ContentType contentType, String userId) async {
+  /// 🔥 НОВЫЙ МЕТОД: Прямой подсчет из Isar для офлайн режима
+  Future<int> _countDirectFromIsar(ContentType contentType, String userId) async {
     try {
+      debugPrint('📱 _countDirectFromLocalStorage: $contentType = подсчет начался');
+
       int totalCount = 0;
 
-      // 1. Считаем кэшированные Firebase данные
-      try {
-        switch (contentType) {
-          case ContentType.fishingNotes:
-            final cachedNotes = await _offlineStorage.getCachedFishingNotes();
-            totalCount += cachedNotes.where((note) => note['userId'] == userId).length;
-            break;
-          case ContentType.markerMaps:
-            final cachedMaps = await _offlineStorage.getCachedMarkerMaps();
-            totalCount += cachedMaps.where((map) => map['userId'] == userId).length;
-            break;
-          case ContentType.budgetNotes:
-            final cachedNotes = await _offlineStorage.getCachedBudgetNotes();
-            totalCount += cachedNotes.where((note) => note['userId'] == userId).length;
-            break;
-          case ContentType.depthChart:
-            break; // Пока не реализовано
-        }
-      } catch (e) {
-        debugPrint('⚠️ Ошибка подсчета кэшированных данных: $e');
-      }
-
-      // 2. Добавляем ТОЛЬКО не синхронизированные офлайн данные
-      try {
-        switch (contentType) {
-          case ContentType.fishingNotes:
-            final offlineNotes = await _offlineStorage.getOfflineFishingNotes(userId);
-            totalCount += offlineNotes.where((note) =>
-            note['isSynced'] != true && note['isOffline'] == true
-            ).length;
-            break;
-          case ContentType.markerMaps:
-            final offlineMaps = await _offlineStorage.getAllOfflineMarkerMaps();
-            totalCount += offlineMaps.where((map) =>
-            map['userId'] == userId &&
-                map['isSynced'] != true &&
-                map['isOffline'] == true
-            ).length;
-            break;
-          case ContentType.budgetNotes:
-            final offlineBudgetNotes = await _offlineStorage.getOfflineBudgetNotes(userId);
-            totalCount += offlineBudgetNotes.where((note) =>
-            note['isSynced'] != true && note['isOffline'] == true
-            ).length;
-            break;
-          case ContentType.depthChart:
-            break; // Пока не реализовано
-        }
-      } catch (e) {
-        debugPrint('⚠️ Ошибка подсчета офлайн данных: $e');
+      // ✅ ИСПРАВЛЕНО: Считаем ВСЕ заметки из Isar (синхронизированные + не синхронизированные)
+      switch (contentType) {
+        case ContentType.fishingNotes:
+          final allNotes = await _isarService.getAllFishingNotes();
+          totalCount = allNotes.length;
+          break;
+        case ContentType.markerMaps:
+          final allMaps = await _isarService.getAllMarkerMaps(userId);
+          totalCount = allMaps.length;
+          break;
+        case ContentType.budgetNotes:
+          final allBudgetNotes = await _isarService.getAllBudgetNotes(userId);
+          totalCount = allBudgetNotes.length;
+          break;
+        case ContentType.depthChart:
+          totalCount = 0; // Пока не реализовано
+          break;
       }
 
       debugPrint('📱 _countDirectFromLocalStorage: $contentType = $totalCount');
@@ -473,7 +435,7 @@ class SubscriptionService {
   // МЕТОДЫ РАБОТЫ СО СЧЕТЧИКАМИ
   // ========================================
 
-  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования
+  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика использования (теперь не нужно, так как считаем реальные заметки)
   Future<bool> incrementUsage(ContentType contentType) async {
     try {
       // Тестовые аккаунты Google Play - безлимитный доступ БЕЗ счетчиков
@@ -484,8 +446,7 @@ class SubscriptionService {
         return true;
       }
 
-      // ✅ ИСПРАВЛЕНО: Убираем увеличение счетчика в Firebase
-      // Теперь мы считаем реальные заметки, а не счетчики
+      // ✅ ИСПРАВЛЕНО: Теперь мы считаем реальные заметки из Isar, а не ведем счетчики
       debugPrint('✅ incrementUsage: счетчик $contentType (теперь считаем реальные заметки)');
       return true;
     } catch (e) {
@@ -496,11 +457,10 @@ class SubscriptionService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика использования
+  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика использования (теперь не нужно)
   Future<bool> decrementUsage(ContentType contentType) async {
     try {
-      // ✅ ИСПРАВЛЕНО: Убираем уменьшение счетчика
-      // Теперь мы считаем реальные заметки, а не счетчики
+      // ✅ ИСПРАВЛЕНО: Теперь мы считаем реальные заметки, а не ведем счетчики
       debugPrint('✅ decrementUsage: счетчик $contentType (теперь считаем реальные заметки)');
       return true;
     } catch (e) {
@@ -525,7 +485,7 @@ class SubscriptionService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение информации об использовании
+  /// ✅ ИСПРАВЛЕНО: Получение информации об использовании через Isar
   Future<Map<ContentType, Map<String, int>>> getUsageInfo() async {
     try {
       final result = <ContentType, Map<String, int>>{};
@@ -547,10 +507,10 @@ class SubscriptionService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение статистики использования
+  /// ✅ ИСПРАВЛЕНО: Получение статистики использования через Isar
   Future<Map<String, dynamic>> getUsageStatistics() async {
     try {
-      // ✅ ИСПРАВЛЕНО: Возвращаем реальные подсчеты вместо счетчиков Firebase
+      // ✅ ИСПРАВЛЕНО: Возвращаем реальные подсчеты через Isar вместо счетчиков Firebase
       final fishingNotesCount = await getCurrentUsage(ContentType.fishingNotes);
       final markerMapsCount = await getCurrentUsage(ContentType.markerMaps);
       final budgetNotesCount = await getCurrentUsage(ContentType.budgetNotes);
@@ -665,7 +625,7 @@ class SubscriptionService {
   // ✅ ИСПРАВЛЕННОЕ КЭШИРОВАНИЕ И ОФЛАЙН МЕТОДЫ
   // ========================================
 
-  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Кэширование данных подписки БЕЗ РЕКУРСИИ
+  /// ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Кэширование данных подписки с правильным подсчетом через Isar
   Future<void> cacheSubscriptionDataOnline() async {
     try {
       if (kDebugMode) {
@@ -685,12 +645,14 @@ class SubscriptionService {
 
       // Кэшируем подписку
       await _offlineStorage.cacheSubscriptionStatus(subscription);
+      debugPrint('Статус подписки кэширован');
 
-      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Создаем лимиты БЕЗ вызова getCurrentUsage()
+      // ✅ КРИТИЧЕСКИ ИСПРАВЛЕНО: Создаем лимиты через прямой подсчет из Firebase
       try {
         final usageLimits = await _loadUsageLimitsDirectFromFirebase();
         if (usageLimits != null) {
           await _offlineStorage.cacheUsageLimits(usageLimits);
+          debugPrint('Лимиты использования кэшированы');
           debugPrint('✅ Реальные счетчики заметок кэшированы');
         }
       } catch (e) {
@@ -753,7 +715,7 @@ class SubscriptionService {
     }
   }
 
-  /// 🔥 НОВЫЙ МЕТОД: Прямая загрузка лимитов из Firebase БЕЗ рекурсии
+  /// 🔥 ИСПРАВЛЕНО: Прямая загрузка лимитов из Firebase БЕЗ рекурсии
   Future<UsageLimitsModel?> _loadUsageLimitsDirectFromFirebase() async {
     try {
       final userId = firebaseService.currentUserId;
@@ -796,13 +758,11 @@ class SubscriptionService {
     }
   }
 
-  /// Очистка локальных счетчиков (для синхронизации)
+  /// Очистка локальных счетчиков (теперь не нужно, так как считаем из Isar)
   Future<void> clearLocalCounters() async {
     try {
-      await _offlineStorage.resetLocalUsageCounters();
-      if (kDebugMode) {
-        debugPrint('✅ Локальные счетчики очищены');
-      }
+      // ✅ ИСПРАВЛЕНО: Теперь не используем старые счетчики
+      debugPrint('✅ Локальные счетчики не используются (считаем из Isar)');
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка очистки локальных счетчиков: $e');
@@ -810,10 +770,17 @@ class SubscriptionService {
     }
   }
 
-  /// Получение всех локальных счетчиков
+  /// Получение всех локальных счетчиков (теперь из Isar)
   Future<Map<ContentType, int>> getAllLocalCounters() async {
     try {
-      return await _offlineStorage.getAllLocalUsageCounters();
+      final result = <ContentType, int>{};
+
+      for (final contentType in ContentType.values) {
+        final count = await getCurrentUsage(contentType);
+        result[contentType] = count;
+      }
+
+      return result;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Ошибка получения локальных счетчиков: $e');

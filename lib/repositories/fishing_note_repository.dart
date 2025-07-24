@@ -1,5 +1,6 @@
 // Путь: lib/repositories/fishing_note_repository.dart
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -43,7 +44,7 @@ class FishingNoteRepository {
     }
   }
 
-  /// ✅ НОВЫЙ МЕТОД: Синхронизация офлайн данных при запуске
+  /// Синхронизация офлайн данных при запуске
   Future<void> syncOfflineDataOnStartup() async {
     try {
       debugPrint('🔄 Синхронизация офлайн данных при запуске');
@@ -277,7 +278,6 @@ class FishingNoteRepository {
     try {
       debugPrint('🗑️ Удаление заметки: $noteId');
 
-      // 🔥 ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Удаление по Firebase ID
       final result = await _syncService.deleteNoteByFirebaseId(noteId);
 
       if (result) {
@@ -339,115 +339,211 @@ class FishingNoteRepository {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Конвертация FishingNoteModel в FishingNoteEntity
+  /// ✅ ПОЛНОСТЬЮ ИСПРАВЛЕНО: Конвертация FishingNoteModel в FishingNoteEntity
   FishingNoteEntity _modelToEntity(FishingNoteModel model) {
     final entity = FishingNoteEntity()
       ..firebaseId = model.id.isNotEmpty ? model.id : null
-      ..title = model.title.isNotEmpty ? model.title : model.location // Если title пустой, используем location
+      ..title = model.title.isNotEmpty ? model.title : model.location
       ..date = model.date
       ..location = model.location
-      ..createdAt = DateTime.now() // У старой модели нет createdAt
+      ..createdAt = DateTime.now()
       ..updatedAt = DateTime.now();
 
-    // ✅ ИСПРАВЛЕНО: description = notes из старой модели
+    // ✅ ИСПРАВЛЕНО: Сохраняем ВСЕ основные поля
+    entity.tackle = model.tackle;
+    entity.fishingType = model.fishingType;
+    entity.notes = model.notes;
+    entity.latitude = model.latitude;
+    entity.longitude = model.longitude;
+    entity.photoUrls = model.photoUrls;
+
+    // ✅ ИСПРАВЛЕНО: description как дополнительное поле (если notes пустые)
     if (model.notes.isNotEmpty) {
       entity.description = model.notes;
     }
 
-    // ✅ ИСПРАВЛЕНО: Конвертируем погодные данные с правильными полями
+    // ✅ ИСПРАВЛЕНО: Многодневные рыбалки
+    entity.isMultiDay = model.isMultiDay;
+    entity.endDate = model.endDate;
+
+    // ✅ ИСПРАВЛЕНО: Маркеры карты как JSON (model.mapMarkers уже Map)
+    if (model.mapMarkers.isNotEmpty) {
+      try {
+        entity.mapMarkersJson = jsonEncode(model.mapMarkers);
+      } catch (e) {
+        debugPrint('❌ Ошибка кодирования mapMarkers: $e');
+        entity.mapMarkersJson = '[]';
+      }
+    }
+
+    // ✅ ИСПРАВЛЕНО: Погодные данные с ВСЕМИ полями
     if (model.weather != null) {
       entity.weatherData = WeatherDataEntity()
         ..temperature = model.weather!.temperature
+        ..feelsLike = model.weather!.feelsLike
         ..humidity = model.weather!.humidity.toDouble()
         ..windSpeed = model.weather!.windSpeed
         ..windDirection = model.weather!.windDirection
         ..pressure = model.weather!.pressure
-        ..condition = model.weather!.weatherDescription // weatherDescription -> condition
+        ..cloudCover = model.weather!.cloudCover.toDouble()
+        ..isDay = model.weather!.isDay
+        ..sunrise = model.weather!.sunrise
+        ..sunset = model.weather!.sunset
+        ..condition = model.weather!.weatherDescription
         ..recordedAt = model.weather!.observationTime;
     }
 
-    // ✅ ИСПРАВЛЕНО: Конвертируем записи о поклевках с правильными полями
+    // ✅ ИСПРАВЛЕНО: Поклевки с ID и фото
     if (model.biteRecords.isNotEmpty) {
       entity.biteRecords = model.biteRecords.map((bite) {
         return BiteRecordEntity()
+          ..biteId = bite.id
           ..time = bite.time
           ..fishType = bite.fishType
-          ..baitUsed = '' // У старой модели нет baitUsed, ставим пустую строку
-          ..success = bite.weight > 0 // Считаем успешной, если есть вес рыбы
+          ..baitUsed = '' // У старой модели нет baitUsed
+          ..success = bite.weight > 0
           ..fishWeight = bite.weight
           ..fishLength = bite.length
-          ..notes = bite.notes;
+          ..notes = bite.notes
+          ..photoUrls = bite.photoUrls;
       }).toList();
+    }
+
+    // ✅ НОВОЕ: AI предсказание (model.aiPrediction это Map<String, dynamic>?)
+    if (model.aiPrediction != null) {
+      entity.aiPrediction = AiPredictionEntity()
+        ..activityLevel = model.aiPrediction!['activityLevel']
+        ..confidencePercent = model.aiPrediction!['confidencePercent']
+        ..fishingType = model.aiPrediction!['fishingType']
+        ..overallScore = model.aiPrediction!['overallScore']
+        ..recommendation = model.aiPrediction!['recommendation']
+        ..timestamp = model.aiPrediction!['timestamp'];
+
+      // Кодируем советы в JSON (tips это List)
+      if (model.aiPrediction!['tips'] != null) {
+        try {
+          entity.aiPrediction!.tipsJson = jsonEncode(model.aiPrediction!['tips']);
+        } catch (e) {
+          debugPrint('❌ Ошибка кодирования AI tips: $e');
+          entity.aiPrediction!.tipsJson = '[]';
+        }
+      }
     }
 
     return entity;
   }
 
-  /// ✅ ИСПРАВЛЕНО: Конвертация FishingNoteEntity в FishingNoteModel
+  /// ✅ ПОЛНОСТЬЮ ИСПРАВЛЕНО: Конвертация FishingNoteEntity в FishingNoteModel
   FishingNoteModel _entityToModel(FishingNoteEntity entity) {
-    // Конвертируем погодные данные
+    // ✅ ИСПРАВЛЕНО: Погодные данные со ВСЕМИ полями
     FishingWeather? weather;
     if (entity.weatherData != null) {
       weather = FishingWeather(
         temperature: entity.weatherData!.temperature ?? 0.0,
-        feelsLike: entity.weatherData!.temperature ?? 0.0, // Используем temperature
+        feelsLike: entity.weatherData!.feelsLike ?? entity.weatherData!.temperature ?? 0.0,
         humidity: entity.weatherData!.humidity?.toInt() ?? 0,
         pressure: entity.weatherData!.pressure ?? 0.0,
         windSpeed: entity.weatherData!.windSpeed ?? 0.0,
         windDirection: entity.weatherData!.windDirection ?? '',
-        weatherDescription: entity.weatherData!.condition ?? '', // condition -> weatherDescription
-        cloudCover: 0, // У Entity нет cloudCover
+        weatherDescription: entity.weatherData!.condition ?? '',
+        cloudCover: entity.weatherData!.cloudCover?.toInt() ?? 0,
         moonPhase: '', // У Entity нет moonPhase
         observationTime: entity.weatherData!.recordedAt ?? DateTime.now(),
-        sunrise: '', // У Entity нет sunrise
-        sunset: '', // У Entity нет sunset
-        isDay: true, // По умолчанию день
+        sunrise: entity.weatherData!.sunrise ?? '',
+        sunset: entity.weatherData!.sunset ?? '',
+        isDay: entity.weatherData!.isDay,
       );
     }
 
-    // Конвертируем записи о поклевках
+    // ✅ ИСПРАВЛЕНО: Поклевки с ID и фото из Entity
     List<BiteRecord> biteRecords = [];
     if (entity.biteRecords.isNotEmpty) {
       biteRecords = entity.biteRecords.map((bite) {
         return BiteRecord(
-          id: const Uuid().v4(), // Генерируем ID для старой модели
+          id: bite.biteId ?? const Uuid().v4(),
           time: bite.time ?? DateTime.now(),
           fishType: bite.fishType ?? '',
-          weight: bite.fishWeight ?? 0.0, // fishWeight -> weight
-          length: bite.fishLength ?? 0.0, // fishLength -> length
+          weight: bite.fishWeight ?? 0.0,
+          length: bite.fishLength ?? 0.0,
           notes: bite.notes ?? '',
           dayIndex: 0, // У Entity нет dayIndex
           spotIndex: 0, // У Entity нет spotIndex
-          photoUrls: [], // У Entity нет photoUrls для bite records
+          photoUrls: bite.photoUrls,
         );
       }).toList();
+    }
+
+    // ✅ ИСПРАВЛЕНО: Маркеры карты из JSON (возвращаем как List<Map<String, dynamic>>)
+    List<Map<String, dynamic>> mapMarkers = [];
+    if (entity.mapMarkersJson != null && entity.mapMarkersJson!.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(entity.mapMarkersJson!);
+        if (decoded is List) {
+          mapMarkers = List<Map<String, dynamic>>.from(decoded);
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка декодирования mapMarkers: $e');
+        mapMarkers = [];
+      }
+    }
+
+    // ✅ НОВОЕ: AI предсказание из Entity (возвращаем как Map<String, dynamic>?)
+    Map<String, dynamic>? aiPrediction;
+    if (entity.aiPrediction != null) {
+      List<String> tips = [];
+      if (entity.aiPrediction!.tipsJson != null && entity.aiPrediction!.tipsJson!.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(entity.aiPrediction!.tipsJson!);
+          if (decoded is List) {
+            tips = List<String>.from(decoded);
+          }
+        } catch (e) {
+          debugPrint('❌ Ошибка декодирования AI tips: $e');
+          tips = [];
+        }
+      }
+
+      aiPrediction = {
+        'activityLevel': entity.aiPrediction!.activityLevel ?? '',
+        'confidencePercent': entity.aiPrediction!.confidencePercent ?? 0,
+        'fishingType': entity.aiPrediction!.fishingType ?? '',
+        'overallScore': entity.aiPrediction!.overallScore ?? 0,
+        'recommendation': entity.aiPrediction!.recommendation ?? '',
+        'timestamp': entity.aiPrediction!.timestamp ?? DateTime.now().millisecondsSinceEpoch,
+        'tips': tips,
+      };
     }
 
     return FishingNoteModel(
       id: entity.firebaseId ?? entity.id.toString(),
       userId: _firebaseService.currentUserId ?? '',
       location: entity.location ?? '',
-      latitude: 0.0, // У Entity нет latitude
-      longitude: 0.0, // У Entity нет longitude
+
+      // ✅ ИСПРАВЛЕНО: Все основные поля из Entity
+      latitude: entity.latitude ?? 0.0,
+      longitude: entity.longitude ?? 0.0,
+      tackle: entity.tackle ?? '',
+      fishingType: entity.fishingType ?? '',
+      notes: entity.notes ?? entity.description ?? '',
+      photoUrls: entity.photoUrls,
+
       date: entity.date,
-      endDate: null, // У Entity нет endDate
-      isMultiDay: false, // У Entity нет isMultiDay
-      tackle: '', // У Entity нет tackle
-      notes: entity.description ?? '', // description -> notes
-      photoUrls: [], // TODO: Реализовать получение URL фотографий
-      fishingType: '', // У Entity нет fishingType
+      endDate: entity.endDate,
+      isMultiDay: entity.isMultiDay,
       weather: weather,
       biteRecords: biteRecords,
-      dayBiteMaps: const {}, // У Entity нет dayBiteMaps
-      fishingSpots: const ['Основная точка'], // У Entity нет fishingSpots
-      mapMarkers: const [], // У Entity нет mapMarkers
-      coverPhotoUrl: '', // У Entity нет coverPhotoUrl
-      coverCropSettings: null, // У Entity нет coverCropSettings
+      mapMarkers: mapMarkers,
       title: entity.title,
-      aiPrediction: null, // У Entity нет aiPrediction
-      reminderEnabled: false, // У Entity нет reminderEnabled
-      reminderType: ReminderType.none, // У Entity нет reminderType
-      reminderTime: null, // У Entity нет reminderTime
+      aiPrediction: aiPrediction,
+
+      // Поля которые есть только в старой модели
+      dayBiteMaps: const {},
+      fishingSpots: const ['Основная точка'],
+      coverPhotoUrl: '',
+      coverCropSettings: null,
+      reminderEnabled: false,
+      reminderType: ReminderType.none,
+      reminderTime: null,
     );
   }
 

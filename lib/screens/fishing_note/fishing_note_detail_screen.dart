@@ -123,7 +123,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         // Загружаем ИИ-анализ и маркерные карты асинхронно
         _loadAIFromNote();
-        _loadLinkedMarkerMaps();
+        //_loadLinkedMarkerMaps();
       }
     } catch (e) {
       debugPrint('❌ Ошибка загрузки заметки: $e');
