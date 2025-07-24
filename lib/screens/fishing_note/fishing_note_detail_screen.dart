@@ -20,7 +20,7 @@ import 'bite_records_section.dart';
 import 'cover_photo_selection_screen.dart';
 import '../../screens/fishing_note/edit_fishing_note_screen.dart';
 import '../marker_maps/marker_map_screen.dart';
-import '../map/map_location_screen.dart';
+import '../map/universal_map_screen.dart';
 import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
@@ -246,7 +246,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Открытие карты с местом рыбалки
   Future<void> _showLocationOnMap() async {
     if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
       final localizations = AppLocalizations.of(context);
@@ -262,7 +261,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MapLocationScreen(
+        builder: (context) => UniversalMapScreen(
+          mode: MapMode.homeView,
           initialLatitude: _note!.latitude,
           initialLongitude: _note!.longitude,
         ),

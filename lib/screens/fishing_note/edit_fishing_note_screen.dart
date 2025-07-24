@@ -16,7 +16,7 @@ import '../../utils/network_utils.dart';
 import '../../utils/date_formatter.dart';
 import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
-import '../map/map_location_screen.dart';
+import '../map/universal_map_screen.dart';
 import 'bite_record_screen.dart';
 import 'edit_bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
@@ -306,7 +306,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MapLocationScreen(
+        builder: (context) => UniversalMapScreen(
+          mode: MapMode.editLocation,
           initialLatitude: _hasLocation ? _latitude : null,
           initialLongitude: _hasLocation ? _longitude : null,
         ),

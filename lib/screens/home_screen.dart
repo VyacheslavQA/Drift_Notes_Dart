@@ -28,7 +28,7 @@ import 'fishing_note/fishing_type_selection_screen.dart';
 import 'fishing_note/fishing_notes_list_screen.dart';
 import 'calendar/fishing_calendar_screen.dart';
 import 'profile/profile_screen.dart';
-import 'map/map_screen.dart';
+import 'map/universal_map_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'statistics/statistics_screen.dart';
 import 'marker_maps/marker_maps_list_screen.dart';
@@ -633,7 +633,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 4:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const MapScreen()),
+          MaterialPageRoute(
+            builder: (context) => const UniversalMapScreen(
+              mode: MapMode.homeView,
+            ),
+          ),
         );
         break;
     }
