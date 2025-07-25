@@ -8,11 +8,12 @@ import '../models/fishing_trip_model.dart';
 import '../models/isar/budget_note_entity.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/isar_service.dart';
+import '../services/offline/sync_service.dart';
 import '../utils/network_utils.dart';
 import '../services/subscription/subscription_service.dart';
 import '../constants/subscription_constants.dart';
 
-/// ✅ ОБНОВЛЕННЫЙ Repository для управления заметками бюджета через Isar
+/// ✅ ИСПРАВЛЕННЫЙ Repository для управления заметками бюджета через Isar с правильной синхронизацией
 class BudgetNotesRepository {
   static final BudgetNotesRepository _instance = BudgetNotesRepository._internal();
 
@@ -25,6 +26,7 @@ class BudgetNotesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseService _firebaseService = FirebaseService();
   final IsarService _isarService = IsarService.instance;
+  final SyncService _syncService = SyncService.instance; // ✅ ДОБАВЛЕНО: Используем SyncService
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   // Кэш для предотвращения повторных загрузок
@@ -84,18 +86,24 @@ class BudgetNotesRepository {
       debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
-        // Запускаем синхронизацию в фоне если есть несинхронизированные данные
+        // ✅ ИСПРАВЛЕНО: Используем SyncService вместо собственной логики
         final hasUnsyncedData = budgetEntities.any((entity) => !entity.isSynced);
         if (hasUnsyncedData) {
-          debugPrint('🔄 Найдены несинхронизированные данные, запускаем синхронизацию');
-          _syncBudgetNotesInBackground();
+          debugPrint('🔄 Найдены несинхронизированные данные, запускаем синхронизацию через SyncService');
+          _triggerSyncServiceInBackground();
         }
 
         // Также синхронизируем данные из Firebase если нужно
-        _syncFromFirebaseInBackground(userId);
+        _triggerSyncFromFirebaseInBackground();
       }
 
       debugPrint('📊 Итого заметок бюджета: ${trips.length}');
+      for (final trip in trips) {
+        debugPrint('  📍 Поездка: ${trip.locationName}');
+        debugPrint('     Дата: ${trip.date}');
+        debugPrint('     Расходов: ${trip.expenses.length}');
+        debugPrint('     Общая сумма: ${trip.expenses.fold<double>(0, (sum, expense) => sum + expense.amount)}');
+      }
 
       // Кэшируем результат
       _cachedTrips = trips;
@@ -217,10 +225,10 @@ class BudgetNotesRepository {
       // Очищаем кэш после создания новой заметки
       clearCache();
 
-      // Запускаем синхронизацию в фоне
+      // ✅ ИСПРАВЛЕНО: Запускаем синхронизацию через SyncService
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        _syncBudgetNotesInBackground();
+        _triggerSyncServiceInBackground();
       }
 
       // Возвращаем FishingTripModel для совместимости
@@ -268,10 +276,10 @@ class BudgetNotesRepository {
       // Очищаем кэш после обновления заметки
       clearCache();
 
-      // Запускаем синхронизацию в фоне
+      // ✅ ИСПРАВЛЕНО: Запускаем синхронизацию через SyncService
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        _syncBudgetNotesInBackground();
+        _triggerSyncServiceInBackground();
       }
 
       return trip;
@@ -311,7 +319,7 @@ class BudgetNotesRepository {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Удалить заметку бюджета через Isar
+  /// ✅ ИСПРАВЛЕНО: Удалить заметку бюджета с правильным удалением из Firebase
   Future<void> deleteTrip(String tripId) async {
     try {
       if (tripId.isEmpty) {
@@ -325,36 +333,37 @@ class BudgetNotesRepository {
 
       debugPrint('🏦 Удаление заметки бюджета: $tripId');
 
-      // ✅ ИСПРАВЛЕНО: Находим и помечаем для удаления в Isar
-      final budgetEntity = await _isarService.getBudgetNoteByFirebaseId(tripId);
+      // ✅ ИСПРАВЛЕНО: Используем единый метод удаления через SyncService
+      final result = await _syncService.deleteBudgetNoteByFirebaseId(tripId);
 
-      if (budgetEntity != null) {
-        if (budgetEntity.isSynced) {
-          // Если синхронизирована, помечаем для удаления
-          await _isarService.markBudgetNoteForDeletion(tripId);
-          debugPrint('💾 Заметка бюджета помечена для удаления');
-        } else {
-          // Если не синхронизирована, удаляем сразу
-          await _isarService.deleteBudgetNote(budgetEntity.id);
-          debugPrint('💾 Несинхронизированная заметка бюджета удалена');
+      if (result) {
+        // ✅ Уменьшаем счетчик ТОЛЬКО если удаление прошло успешно
+        try {
+          await _subscriptionService.decrementUsage(ContentType.budgetNotes);
+          debugPrint('✅ Заметка бюджета удалена и счетчик уменьшен');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+          // Не прерываем выполнение, заметка уже удалена
         }
-      }
+      } else {
+        debugPrint('⚠️ Удаление заметки бюджета выполнено с предупреждениями');
 
-      // Уменьшаем счетчик
-      try {
-        await _subscriptionService.decrementUsage(ContentType.budgetNotes);
-        debugPrint('✅ Счетчик заметок бюджета уменьшен');
-      } catch (e) {
-        debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+        // Даже если были предупреждения, пытаемся уменьшить счетчик
+        try {
+          await _subscriptionService.decrementUsage(ContentType.budgetNotes);
+          debugPrint('✅ Счетчик заметок бюджета уменьшен (с предупреждениями)');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+        }
       }
 
       // Очищаем кэш после удаления заметки
       clearCache();
 
-      // Запускаем синхронизацию в фоне
+      // ✅ ИСПРАВЛЕНО: Запускаем синхронизацию через SyncService
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        _syncBudgetNotesInBackground();
+        _triggerSyncServiceInBackground();
       }
     } catch (e) {
       debugPrint('❌ Ошибка при удалении заметки бюджета: $e');
@@ -362,97 +371,45 @@ class BudgetNotesRepository {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Фоновая синхронизация заметок бюджета с Firebase
-  void _syncBudgetNotesInBackground() async {
+  /// ✅ ИСПРАВЛЕНО: Фоновая синхронизация через SyncService
+  void _triggerSyncServiceInBackground() async {
     try {
-      final userId = _firebaseService.currentUserId;
-      if (userId == null) return;
+      debugPrint('🔄 Запуск фоновой синхронизации BudgetNotes через SyncService...');
 
-      debugPrint('🔄 Запуск фоновой синхронизации заметок бюджета...');
+      // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ SyncService
+      final result = await _syncService.syncBudgetNotesToFirebase();
 
-      // Получаем несинхронизированные заметки
-      final unsyncedNotes = await _isarService.getUnsyncedBudgetNotes(userId);
-
-      for (final entity in unsyncedNotes) {
-        try {
-          if (entity.firebaseId != null) {
-            // Обновляем существующую заметку в Firebase
-            final budgetData = entity.toMapWithExpenses();
-            await _firebaseService.updateBudgetNote(entity.firebaseId!, budgetData);
-
-            // Помечаем как синхронизированную
-            await _isarService.markBudgetNoteAsSynced(entity.id, entity.firebaseId!);
-
-            debugPrint('✅ Заметка бюджета обновлена в Firebase: ${entity.firebaseId}');
-          } else {
-            // Создаем новую заметку в Firebase
-            final budgetData = entity.toMapWithExpenses();
-            final noteRef = await _firebaseService.addBudgetNote(budgetData);
-
-            // Помечаем как синхронизированную с новым Firebase ID
-            await _isarService.markBudgetNoteAsSynced(entity.id, noteRef.id);
-
-            debugPrint('✅ Заметка бюджета создана в Firebase: ${noteRef.id}');
-          }
-        } catch (e) {
-          debugPrint('❌ Ошибка синхронизации заметки бюджета ${entity.firebaseId}: $e');
-        }
-      }
-
-      debugPrint('✅ Фоновая синхронизация заметок бюджета завершена');
-    } catch (e) {
-      debugPrint('❌ Ошибка фоновой синхронизации заметок бюджета: $e');
-    }
-  }
-
-  /// ✅ ИСПРАВЛЕНО: Синхронизация данных из Firebase в Isar
-  void _syncFromFirebaseInBackground(String userId) async {
-    try {
-      debugPrint('🔄 Синхронизация заметок бюджета из Firebase...');
-
-      final snapshot = await _firebaseService.getUserBudgetNotes();
-
-      for (var doc in snapshot.docs) {
-        try {
-          final firebaseId = doc.id;
-          final data = doc.data() as Map<String, dynamic>;
-          data['id'] = firebaseId;
-
-          // Проверяем, есть ли уже такая заметка в Isar
-          final existingEntity = await _isarService.getBudgetNoteByFirebaseId(firebaseId);
-
-          if (existingEntity == null) {
-            // Создаем новую запись в Isar
-            final entity = BudgetNoteEntity.fromMapWithExpenses(data);
-            entity.markAsSynced();
-
-            await _isarService.insertBudgetNote(entity);
-            debugPrint('✅ Новая заметка бюджета добавлена в Isar: $firebaseId');
-          } else {
-            // Проверяем, нужно ли обновить существующую запись
-            final firebaseUpdatedAt = DateTime.fromMillisecondsSinceEpoch(data['updatedAt'] as int);
-
-            if (firebaseUpdatedAt.isAfter(existingEntity.updatedAt)) {
-              // Обновляем данными из Firebase
-              final updatedEntity = BudgetNoteEntity.fromMapWithExpenses(data);
-              updatedEntity.id = existingEntity.id; // Сохраняем Isar ID
-              updatedEntity.markAsSynced();
-
-              await _isarService.updateBudgetNote(updatedEntity);
-              debugPrint('✅ Заметка бюджета обновлена из Firebase: $firebaseId');
-            }
-          }
-        } catch (e) {
-          debugPrint('❌ Ошибка обработки заметки бюджета ${doc.id}: $e');
-        }
+      if (result) {
+        debugPrint('✅ Фоновая синхронизация BudgetNotes через SyncService завершена успешно');
+      } else {
+        debugPrint('⚠️ Фоновая синхронизация BudgetNotes через SyncService завершена с ошибками');
       }
 
       // Очищаем кэш после синхронизации
       clearCache();
-
-      debugPrint('✅ Синхронизация из Firebase завершена');
     } catch (e) {
-      debugPrint('❌ Ошибка синхронизации из Firebase: $e');
+      debugPrint('❌ Ошибка фоновой синхронизации BudgetNotes через SyncService: $e');
+    }
+  }
+
+  /// ✅ ИСПРАВЛЕНО: Синхронизация данных из Firebase через SyncService
+  void _triggerSyncFromFirebaseInBackground() async {
+    try {
+      debugPrint('🔄 Запуск синхронизации BudgetNotes из Firebase через SyncService...');
+
+      // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ SyncService
+      final result = await _syncService.syncBudgetNotesFromFirebase();
+
+      if (result) {
+        debugPrint('✅ Синхронизация BudgetNotes из Firebase через SyncService завершена успешно');
+      } else {
+        debugPrint('⚠️ Синхронизация BudgetNotes из Firebase через SyncService завершена с ошибками');
+      }
+
+      // Очищаем кэш после синхронизации
+      clearCache();
+    } catch (e) {
+      debugPrint('❌ Ошибка синхронизации BudgetNotes из Firebase через SyncService: $e');
     }
   }
 
@@ -660,45 +617,51 @@ class BudgetNotesRepository {
     }
   }
 
-  /// Принудительная синхронизация данных
+  /// ✅ ИСПРАВЛЕНО: Принудительная синхронизация данных через SyncService
   Future<bool> forceSyncData() async {
     try {
-      final userId = _firebaseService.currentUserId;
-      if (userId == null) return false;
+      debugPrint('🔄 Принудительная синхронизация заметок бюджета через SyncService...');
 
-      debugPrint('🔄 Принудительная синхронизация заметок бюджета...');
+      // ✅ ИСПОЛЬЗУЕМ ПОЛНУЮ СИНХРОНИЗАЦИЮ SyncService
+      final result = await _syncService.fullSync();
 
-      // Синхронизируем в обе стороны
-      _syncBudgetNotesInBackground();
-      _syncFromFirebaseInBackground(userId);
+      if (result) {
+        debugPrint('✅ Принудительная синхронизация BudgetNotes завершена успешно');
+      } else {
+        debugPrint('⚠️ Принудительная синхронизация BudgetNotes завершена с ошибками');
+      }
 
       // Очищаем кэш
       clearCache();
 
-      return true;
+      return result;
     } catch (e) {
-      debugPrint('❌ Ошибка при принудительной синхронизации: $e');
+      debugPrint('❌ Ошибка при принудительной синхронизации через SyncService: $e');
       return false;
     }
   }
 
-  /// Получить статус синхронизации
+  /// ✅ ИСПРАВЛЕНО: Получить статус синхронизации через SyncService
   Future<Map<String, dynamic>> getSyncStatus() async {
     try {
-      final userId = _firebaseService.currentUserId;
-      if (userId == null) return {};
-
-      final total = await _isarService.getBudgetNotesCount(userId);
-      final unsynced = await _isarService.getUnsyncedBudgetNotesCount(userId);
+      final syncStatus = await _syncService.getSyncStatus();
+      final budgetStatus = syncStatus['budgetNotes'] as Map<String, dynamic>? ?? {};
 
       return {
-        'total': total,
-        'unsynced': unsynced,
-        'synced': total - unsynced,
+        'total': budgetStatus['total'] ?? 0,
+        'unsynced': budgetStatus['unsynced'] ?? 0,
+        'synced': budgetStatus['synced'] ?? 0,
+        'hasInternet': await NetworkUtils.isNetworkAvailable(),
       };
     } catch (e) {
-      debugPrint('❌ Ошибка получения статуса синхронизации: $e');
-      return {};
+      debugPrint('❌ Ошибка получения статуса синхронизации через SyncService: $e');
+      return {
+        'total': 0,
+        'unsynced': 0,
+        'synced': 0,
+        'hasInternet': false,
+        'error': e.toString(),
+      };
     }
   }
 

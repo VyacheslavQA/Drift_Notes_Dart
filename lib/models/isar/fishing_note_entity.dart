@@ -11,6 +11,10 @@ class FishingNoteEntity {
   @Index(unique: true)
   String? firebaseId; // ID из Firestore
 
+  // 🔥 КРИТИЧНО ДОБАВЛЕНО: Поле userId для правильной фильтрации по пользователю
+  @Index()
+  late String userId; // ID пользователя, которому принадлежит заметка
+
   late String title;
 
   String? description;

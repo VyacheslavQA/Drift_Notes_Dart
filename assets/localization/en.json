@@ -2288,6 +2288,14 @@
   "agreement_consent_label": "Agreement with terms of service and privacy policy",
   "terms_of_service": "Terms of Service",
   "login_existing_account": "Login to existing account",
-  "privacy_policy": "Privacy Policy"
+  "privacy_policy": "Privacy Policy",
+
+  "policy_update_reminder": "Reminder: privacy policies have been updated. You can accept them at any time in settings.",
+  "remind_later": "Remind later",
+  "action_blocked_consents_required": "Accepting consents is required to perform this action",
+  "accept_consents": "Accept consents",
+  "action_failed": "Failed to perform action. Please try again.",
+  "content_requires_consents": "Content requires consent acceptance",
+  "accept_consents_to_unlock": "Accept user consents to access content"
 
 }

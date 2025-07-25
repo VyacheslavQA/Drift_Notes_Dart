@@ -11,6 +11,8 @@ import '../services/isar_service.dart';
 import '../services/offline/sync_service.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/local/local_file_service.dart';
+import '../services/subscription/subscription_service.dart'; // ✅ ДОБАВЛЕНО
+import '../constants/subscription_constants.dart'; // ✅ ДОБАВЛЕНО
 import '../utils/network_utils.dart';
 import '../services/calendar_event_service.dart';
 
@@ -27,6 +29,7 @@ class FishingNoteRepository {
   final SyncService _syncService = SyncService.instance;
   final FirebaseService _firebaseService = FirebaseService();
   final LocalFileService _localFileService = LocalFileService();
+  final SubscriptionService _subscriptionService = SubscriptionService(); // ✅ ДОБАВЛЕНО
 
   // Кэш для предотвращения повторных загрузок
   static List<FishingNoteModel>? _cachedNotes;
@@ -274,20 +277,28 @@ class FishingNoteRepository {
     }
   }
 
-  /// Удаление заметки
+  /// ✅ ИСПРАВЛЕНО: Удаление заметки с обновлением лимитов
   Future<void> deleteFishingNote(String noteId) async {
     try {
       debugPrint('🗑️ Удаление заметки: $noteId');
 
+      // 1. Удаляем через SyncService (Firebase + Isar)
       final result = await _syncService.deleteNoteByFirebaseId(noteId);
 
       if (result) {
-        debugPrint('✅ Заметка удалена успешно');
+        // 2. ✅ ДОБАВЛЕНО: Уменьшаем лимит через SubscriptionService
+        try {
+          await _subscriptionService.decrementUsage(ContentType.fishingNotes);
+          debugPrint('✅ Заметка удалена успешно и лимит обновлен');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка обновления лимита после удаления: $e');
+          // Не прерываем выполнение, заметка уже удалена
+        }
       } else {
         debugPrint('⚠️ Удаление выполнено с предупреждениями');
       }
 
-      // Очищаем кэш
+      // 3. Очищаем кэш
       clearCache();
     } catch (e) {
       debugPrint('❌ Ошибка при удалении заметки: $e');
@@ -344,6 +355,7 @@ class FishingNoteRepository {
   FishingNoteEntity _modelToEntity(FishingNoteModel model) {
     final entity = FishingNoteEntity()
       ..firebaseId = model.id.isNotEmpty ? model.id : null
+      ..userId = model.userId  // 🔥 КРИТИЧНО ДОБАВЛЕНО: заполняем userId!
       ..title = model.title.isNotEmpty ? model.title : model.location
       ..date = model.date
       ..location = model.location

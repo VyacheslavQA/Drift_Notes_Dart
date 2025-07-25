@@ -20,6 +20,7 @@ class MarkerMapRepository {
   MarkerMapRepository._internal();
 
   final SubscriptionService _subscriptionService = SubscriptionService();
+  final SyncService _syncService = SyncService.instance; // ✅ ДОБАВЛЕНО для правильного удаления
 
   // ✅ Кэш для предотвращения повторных загрузок
   static List<MarkerMapModel>? _cachedMaps;
@@ -258,7 +259,7 @@ class MarkerMapRepository {
     }
   }
 
-  // ✅ УДАЛЕНИЕ: Удалить маркерную карту
+  // ✅ ИСПРАВЛЕНО: Удалить маркерную карту с правильным удалением из Firebase
   Future<void> deleteMarkerMap(String mapId) async {
     try {
       if (mapId.isEmpty) {
@@ -275,44 +276,45 @@ class MarkerMapRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      // Проверяем подключение к интернету
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // ✅ ИСПРАВЛЕНО: Используем единый метод удаления через SyncService
+      final result = await _syncService.deleteMarkerMapByFirebaseId(mapId);
 
-      if (isOnline) {
-        // Онлайн режим: удаляем из Isar (синхронизация удалит из Firebase)
-        final success = await IsarService.instance.deleteMarkerMapByFirebaseId(mapId);
-
-        if (success) {
+      if (result) {
+        // ✅ Уменьшаем счетчик ТОЛЬКО если удаление прошло успешно
+        try {
+          await _subscriptionService.decrementUsage(ContentType.markerMaps);
           if (kDebugMode) {
-            debugPrint('✅ Маркерная карта удалена из Isar');
+            debugPrint('✅ Маркерная карта удалена и счетчик уменьшен');
           }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+          }
+          // Не прерываем выполнение, карта уже удалена
         }
       } else {
-        // Офлайн режим: помечаем для удаления
-        await IsarService.instance.markMarkerMapForDeletion(mapId);
+        if (kDebugMode) {
+          debugPrint('⚠️ Удаление маркерной карты выполнено с предупреждениями');
+        }
 
-        if (kDebugMode) {
-          debugPrint('✅ Маркерная карта помечена для удаления');
+        // Даже если были предупреждения, пытаемся уменьшить счетчик
+        try {
+          await _subscriptionService.decrementUsage(ContentType.markerMaps);
+          if (kDebugMode) {
+            debugPrint('✅ Счетчик маркерных карт уменьшен (с предупреждениями)');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+          }
         }
-      }
-
-      // Уменьшаем счетчик использования
-      try {
-        await _subscriptionService.decrementUsage(ContentType.markerMaps);
-        if (kDebugMode) {
-          debugPrint('✅ Счетчик маркерных карт уменьшен');
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
-        }
-        // Не прерываем выполнение
       }
 
       // Очищаем кэш
       clearCache();
 
       // Запускаем синхронизацию в фоне
+      final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
           if (kDebugMode) {

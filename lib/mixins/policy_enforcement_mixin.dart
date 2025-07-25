@@ -7,8 +7,8 @@ import '../widgets/user_agreements_dialog.dart';
 import '../localization/app_localizations.dart';
 import '../constants/app_constants.dart';
 
-/// ✅ УПРОЩЕННЫЙ миксин для проверки согласий пользователя
-/// Убрана сложная система ограничений - только простая проверка: согласия приняты ДА/НЕТ
+/// ✅ ИСПРАВЛЕННЫЙ миксин для проверки согласий пользователя
+/// ИСПРАВЛЕНИЕ: Убран принудительный signOut() при отклонении политик
 mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   final UserConsentService _consentService = UserConsentService();
   final FirebaseService _firebaseService = FirebaseService();
@@ -42,7 +42,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  /// ✅ ИСПРАВЛЕН: Показывает диалог принятия согласий с правильными параметрами
+  /// ✅ ИСПРАВЛЕН: Показывает диалог принятия согласий с мягким поведением при отклонении
   Future<void> _showMandatoryPolicyDialog() async {
     if (!mounted) return;
 
@@ -67,30 +67,39 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       },
     );
 
-    // ✅ УПРОЩЕННАЯ логика: принял - продолжаем, отказался - выход
+    // ✅ ИСПРАВЛЕНА логика: принял - продолжаем, отказался - мягкое уведомление
     if (agreementsAccepted == true) {
       _consentsValid = true;
       if (mounted) setState(() {}); // Обновляем UI
     } else {
-      // Если пользователь отказался - выходим из аккаунта
-      debugPrint('🚪 Выход из аккаунта из-за отказа от согласий');
-      await _firebaseService.signOut();
+      // ✅ ИСПРАВЛЕНО: НЕ выкидываем пользователя, только показываем уведомление
+      _consentsValid = false; // Отмечаем что согласия не приняты для будущих проверок
+
+      // ❌ УБРАНО: await _firebaseService.signOut(); // ← УБРАНА ЭТА ПРОБЛЕМНАЯ СТРОКА!
 
       if (mounted) {
-        // Показываем сообщение и возвращаемся на экран входа
+        // ✅ ДОБАВЛЕНО: Мягкое локализованное уведомление вместо выхода из системы
+        final localizations = AppLocalizations.of(context);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              AppLocalizations.of(context)?.translate('consents_required') ??
-                  'Для использования приложения необходимо принять согласия',
+              localizations?.translate('policy_update_reminder') ??
+                  'Напоминание: политики конфиденциальности обновлены. Вы можете принять их в любое время в настройках.',
             ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.orange, // Предупреждение, не ошибка
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: localizations?.translate('remind_later') ?? 'Напомнить позже',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
 
-        // Навигация на экран входа будет обработана автоматически
-        // через FirebaseAuth.authStateChanges в main.dart
+        debugPrint('⚠️ Пользователь отклонил политики - показано мягкое уведомление, доступ к приложению сохранен');
       }
     }
   }
@@ -101,7 +110,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     return _consentsValid;
   }
 
-  /// ✅ УПРОЩЕННОЕ сообщение о блокировке действия
+  /// ✅ ИСПРАВЛЕННОЕ сообщение о блокировке действия с локализацией
   void showActionBlockedMessage(String action) {
     if (!mounted) return;
 
@@ -142,10 +151,12 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       debugPrint('❌ Ошибка при выполнении действия $action: $e');
 
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              AppLocalizations.of(context)?.translate('action_failed') ??
+              localizations?.translate('action_failed') ??
                   'Не удалось выполнить действие. Попробуйте еще раз.',
             ),
             backgroundColor: Colors.red,
@@ -170,7 +181,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     return child;
   }
 
-  /// ✅ УПРОЩЕННАЯ заглушка для заблокированного контента
+  /// ✅ ИСПРАВЛЕННАЯ заглушка для заблокированного контента с локализацией
   Widget _buildRestrictedPlaceholder(String action) {
     final localizations = AppLocalizations.of(context);
 

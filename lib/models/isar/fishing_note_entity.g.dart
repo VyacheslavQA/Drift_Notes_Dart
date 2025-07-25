@@ -114,8 +114,13 @@ const FishingNoteEntitySchema = CollectionSchema(
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
-    r'weatherData': PropertySchema(
+    r'userId': PropertySchema(
       id: 19,
+      name: r'userId',
+      type: IsarType.string,
+    ),
+    r'weatherData': PropertySchema(
+      id: 20,
       name: r'weatherData',
       type: IsarType.object,
       target: r'WeatherDataEntity',
@@ -135,6 +140,19 @@ const FishingNoteEntitySchema = CollectionSchema(
       properties: [
         IndexPropertySchema(
           name: r'firebaseId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'userId': IndexSchema(
+      id: -2005826577402374815,
+      name: r'userId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'userId',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -226,6 +244,7 @@ int _fishingNoteEntityEstimateSize(
     }
   }
   bytesCount += 3 + object.title.length * 3;
+  bytesCount += 3 + object.userId.length * 3;
   {
     final value = object.weatherData;
     if (value != null) {
@@ -272,8 +291,9 @@ void _fishingNoteEntitySerialize(
   writer.writeString(offsets[16], object.tackle);
   writer.writeString(offsets[17], object.title);
   writer.writeDateTime(offsets[18], object.updatedAt);
+  writer.writeString(offsets[19], object.userId);
   writer.writeObject<WeatherDataEntity>(
-    offsets[19],
+    offsets[20],
     allOffsets,
     WeatherDataEntitySchema.serialize,
     object.weatherData,
@@ -317,8 +337,9 @@ FishingNoteEntity _fishingNoteEntityDeserialize(
   object.tackle = reader.readStringOrNull(offsets[16]);
   object.title = reader.readString(offsets[17]);
   object.updatedAt = reader.readDateTime(offsets[18]);
+  object.userId = reader.readString(offsets[19]);
   object.weatherData = reader.readObjectOrNull<WeatherDataEntity>(
-    offsets[19],
+    offsets[20],
     WeatherDataEntitySchema.deserialize,
     allOffsets,
   );
@@ -381,6 +402,8 @@ P _fishingNoteEntityDeserializeProp<P>(
     case 18:
       return (reader.readDateTime(offset)) as P;
     case 19:
+      return (reader.readString(offset)) as P;
+    case 20:
       return (reader.readObjectOrNull<WeatherDataEntity>(
         offset,
         WeatherDataEntitySchema.deserialize,
@@ -602,6 +625,51 @@ extension FishingNoteEntityQueryWhere
               indexName: r'firebaseId',
               lower: [],
               upper: [firebaseId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhereClause>
+      userIdEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'userId',
+        value: [userId],
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhereClause>
+      userIdNotEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
               includeUpper: false,
             ));
       }
@@ -2644,6 +2712,142 @@ extension FishingNoteEntityQueryFilter
   }
 
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'userId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'userId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      userIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'userId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
       weatherDataIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2914,6 +3118,20 @@ extension FishingNoteEntityQuerySortBy
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      sortByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      sortByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.desc);
+    });
+  }
 }
 
 extension FishingNoteEntityQuerySortThenBy
@@ -3154,6 +3372,20 @@ extension FishingNoteEntityQuerySortThenBy
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      thenByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      thenByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.desc);
+    });
+  }
 }
 
 extension FishingNoteEntityQueryWhereDistinct
@@ -3275,6 +3507,13 @@ extension FishingNoteEntityQueryWhereDistinct
       distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct>
+      distinctByUserId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'userId', caseSensitive: caseSensitive);
     });
   }
 }
@@ -3411,6 +3650,12 @@ extension FishingNoteEntityQueryProperty
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, String, QQueryOperations> userIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'userId');
     });
   }
 
