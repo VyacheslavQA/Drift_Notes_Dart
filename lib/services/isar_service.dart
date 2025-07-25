@@ -1,5 +1,6 @@
 // Путь: lib/services/isar_service.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -35,12 +36,24 @@ class IsarService {
       ],
       directory: dir.path,
     );
+
+    if (kDebugMode) {
+      debugPrint('✅ IsarService инициализирован в: ${dir.path}');
+    }
   }
 
   /// Получение экземпляра Isar
   Isar get isar {
     if (_isar == null) {
       throw Exception('IsarService не инициализирован. Вызовите init() сначала.');
+    }
+    return _isar!;
+  }
+
+  /// Получение базы данных (alias для isar)
+  Future<Isar> get database async {
+    if (_isar == null) {
+      await init();
     }
     return _isar!;
   }
@@ -55,16 +68,38 @@ class IsarService {
   // МЕТОДЫ ДЛЯ FISHING NOTES
   // ========================================
 
-  /// Вставка новой записи рыболовной заметки
+  /// ✅ ИСПРАВЛЕНО: Вставка новой записи рыболовной заметки с логированием
   Future<int> insertFishingNote(FishingNoteEntity note) async {
-    return await isar.writeTxn(() async {
+    // ✅ ДОБАВЛЕНО: Подробное логирование в начале
+    if (kDebugMode) {
+      debugPrint('💾 insertFishingNote: сохраняем заметку id=${note.id}, firebaseId=${note.firebaseId}, isSynced=${note.isSynced}');
+      debugPrint('💾 insertFishingNote: title="${note.title}", location="${note.location}"');
+    }
+
+    final result = await isar.writeTxn(() async {
       return await isar.fishingNoteEntitys.put(note);
     });
+
+    // ✅ ДОБАВЛЕНО: Подтверждение успешного сохранения
+    if (kDebugMode) {
+      debugPrint('✅ insertFishingNote: заметка успешно сохранена в Isar с ID: $result');
+    }
+
+    return result;
   }
 
   /// Получение всех рыболовных заметок
   Future<List<FishingNoteEntity>> getAllFishingNotes() async {
-    return await isar.fishingNoteEntitys.where().sortByDateDesc().findAll();
+    final notes = await isar.fishingNoteEntitys.where().sortByDateDesc().findAll();
+
+    if (kDebugMode) {
+      debugPrint('📋 getAllFishingNotes: найдено ${notes.length} заметок в Isar');
+      for (var note in notes.take(3)) { // Показываем первые 3 для отладки
+        debugPrint('📝 Заметка: id=${note.id}, firebaseId=${note.firebaseId}, isSynced=${note.isSynced}, title="${note.title}"');
+      }
+    }
+
+    return notes;
   }
 
   /// Получение заметки по ID
@@ -104,12 +139,28 @@ class IsarService {
     return false;
   }
 
-  /// Получение всех несинхронизированных заметок
+  /// ✅ ИСПРАВЛЕНО: Получение всех несинхронизированных заметок с подробным логированием
   Future<List<FishingNoteEntity>> getUnsyncedNotes() async {
-    return await isar.fishingNoteEntitys
+    // ✅ ДОБАВЛЕНО: Логирование общего количества заметок
+    final allNotes = await isar.fishingNoteEntitys.where().findAll();
+    if (kDebugMode) {
+      debugPrint('🔍 getUnsyncedNotes: всего заметок в Isar: ${allNotes.length}');
+    }
+
+    final unsyncedNotes = await isar.fishingNoteEntitys
         .filter()
         .isSyncedEqualTo(false)
         .findAll();
+
+    // ✅ ДОБАВЛЕНО: Подробные логи каждой несинхронизированной заметки
+    if (kDebugMode) {
+      debugPrint('🔍 getUnsyncedNotes: найдено несинхронизированных: ${unsyncedNotes.length}');
+      for (var note in unsyncedNotes) {
+        debugPrint('📝 Несинхронизированная заметка: id=${note.id}, firebaseId=${note.firebaseId}, title="${note.title}"');
+      }
+    }
+
+    return unsyncedNotes;
   }
 
   /// Помечает заметку как синхронизированную
@@ -121,6 +172,10 @@ class IsarService {
         note.firebaseId = firebaseId;
         note.updatedAt = DateTime.now();
         await isar.fishingNoteEntitys.put(note);
+
+        if (kDebugMode) {
+          debugPrint('✅ markAsSynced: заметка $id помечена как синхронизированная с Firebase ID: $firebaseId');
+        }
       }
     });
   }
@@ -133,6 +188,10 @@ class IsarService {
         note.isSynced = false;
         note.updatedAt = DateTime.now();
         await isar.fishingNoteEntitys.put(note);
+
+        if (kDebugMode) {
+          debugPrint('⚠️ markAsUnsynced: заметка $id помечена как несинхронизированная');
+        }
       }
     });
   }
@@ -435,6 +494,10 @@ class IsarService {
       await isar.budgetNoteEntitys.clear();
       await isar.markerMapEntitys.clear();
     });
+
+    if (kDebugMode) {
+      debugPrint('🗑️ Все данные Isar очищены');
+    }
   }
 
   /// Получение общей статистики
@@ -463,5 +526,9 @@ class IsarService {
     await _isar?.close();
     _isar = null;
     _instance = null;
+
+    if (kDebugMode) {
+      debugPrint('🔒 IsarService закрыт');
+    }
   }
 }

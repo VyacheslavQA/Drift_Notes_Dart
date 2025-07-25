@@ -26,11 +26,12 @@ import 'edit_bite_record_screen.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/subscription/subscription_service.dart';
-import '../../services/offline/offline_storage_service.dart';
+import '../../repositories/fishing_note_repository.dart';
 import '../../constants/subscription_constants.dart';
 import '../subscription/paywall_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
+import '../../services/calendar_event_service.dart';
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -54,7 +55,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   WeatherService? _weatherService;
   AIBitePredictionService? _aiService;
   SubscriptionService? _subscriptionService;
-  OfflineStorageService? _offlineStorage;
+  FishingNoteRepository? _repository;
 
   final _weatherSettings = WeatherSettingsService();
 
@@ -622,133 +623,22 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     });
 
     try {
-      // Создаем сервисы только когда нужно
+      // ✅ ИСПРАВЛЕНИЕ: Создаем Repository только когда нужно
+      _repository ??= FishingNoteRepository();
       _firebaseService ??= FirebaseService();
-      _offlineStorage ??= OfflineStorageService();
 
       final userId = _firebaseService!.currentUserId;
       if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
 
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // ✅ ИСПРАВЛЕНИЕ: Создаем FishingNoteModel из данных формы
+      final model = _createFishingNoteModel(userId, localizations);
 
-      Map<String, dynamic>? aiPredictionMap;
-      if (_aiPrediction != null) {
-        aiPredictionMap = {
-          'overallScore': _aiPrediction!.overallScore,
-          'activityLevel': _aiPrediction!.activityLevel.toString(),
-          'confidencePercent': _aiPrediction!.confidencePercent,
-          'recommendation': _aiPrediction!.recommendation,
-          'tips': _aiPrediction!.tips,
-          'fishingType': _aiPrediction!.fishingType,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        };
-      }
+      // ✅ ИСПРАВЛЕНИЕ: Repository сам решает онлайн/офлайн сохранение
+      final noteId = await _repository!.addFishingNote(model, _selectedPhotos);
 
-      Map<String, dynamic>? weatherMap;
-      if (_weather != null) {
-        weatherMap = {
-          'temperature': _weather!.temperature,
-          'feelsLike': _weather!.feelsLike,
-          'humidity': _weather!.humidity,
-          'pressure': _weather!.pressure,
-          'windSpeed': _weather!.windSpeed,
-          'windDirection': _weather!.windDirection,
-          'cloudCover': _weather!.cloudCover,
-          'sunrise': _weather!.sunrise,
-          'sunset': _weather!.sunset,
-          'isDay': _weather!.isDay,
-          'observationTime': _weather!.observationTime,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        };
-      }
-
-      List<Map<String, dynamic>> biteRecordsData = _biteRecords.map((record) => {
-        'id': record.id,
-        'time': record.time.millisecondsSinceEpoch,
-        'fishType': record.fishType,
-        'weight': record.weight,
-        'length': record.length,
-        'notes': record.notes,
-        'photoUrls': record.photoUrls,
-      }).toList();
-
-      final noteData = {
-        'id': const Uuid().v4(),
-        'userId': userId,
-        'location': _locationController.text.trim(),
-        'latitude': _latitude,
-        'longitude': _longitude,
-        'date': _startDate.millisecondsSinceEpoch,
-        'endDate': _isMultiDay ? _endDate.millisecondsSinceEpoch : null,
-        'isMultiDay': _isMultiDay,
-        'tackle': _tackleController.text.trim(),
-        'notes': _notesController.text.trim(),
-        'fishingType': _selectedFishingType,
-        'weather': weatherMap,
-        'biteRecords': biteRecordsData,
-        'aiPrediction': aiPredictionMap,
-        'photoUrls': <String>[],
-        'mapMarkers': <Map<String, dynamic>>[],
-        'isOffline': !isOnline,
-        'createdAt': DateTime.now().millisecondsSinceEpoch,
-      };
-
-      bool saveSuccessful = false;
-
-      if (isOnline) {
-        if (_selectedPhotos.isNotEmpty) {
-          final List<String> photoUrls = [];
-
-          for (int i = 0; i < _selectedPhotos.length; i++) {
-            final file = _selectedPhotos[i];
-            final fileName = '${noteData['id']}_photo_$i.jpg';
-            final path = 'fishing_notes/$userId/$fileName';
-
-            try {
-              final bytes = await file.readAsBytes();
-              final photoUrl = await _firebaseService!.uploadImage(path, bytes);
-              photoUrls.add(photoUrl);
-            } catch (e) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${localizations.translate('error_uploading_photo')} ${i + 1}'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-              }
-            }
-          }
-
-          noteData['photoUrls'] = photoUrls;
-        }
-
-        await _firebaseService!.addFishingNoteNew(noteData);
-        saveSuccessful = true;
-      } else {
-        if (_selectedPhotos.isNotEmpty) {
-          final List<String> localPhotoPaths = [];
-
-          for (int i = 0; i < _selectedPhotos.length; i++) {
-            final file = _selectedPhotos[i];
-            try {
-              localPhotoPaths.add(file.path);
-            } catch (e) {
-              // Handle error
-            }
-          }
-
-          noteData['photoUrls'] = localPhotoPaths;
-          noteData['localPhotoPaths'] = localPhotoPaths;
-        }
-
-        await _offlineStorage!.saveOfflineFishingNote(noteData);
-        saveSuccessful = true;
-      }
-
-      if (mounted && saveSuccessful) {
+      if (mounted) {
         try {
           final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
           await subscriptionProvider.incrementUsage(ContentType.fishingNotes);
@@ -757,6 +647,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
           // Handle error
         }
 
+        final isOnline = await NetworkUtils.isNetworkAvailable();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -813,6 +704,85 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         });
       }
     }
+  }
+
+  // ✅ ДОБАВИТЬ ЭТОТ НОВЫЙ МЕТОД:
+  FishingNoteModel _createFishingNoteModel(String userId, AppLocalizations localizations) {
+    // AI предсказание в правильном формате
+    Map<String, dynamic>? aiPredictionMap;
+    if (_aiPrediction != null) {
+      aiPredictionMap = {
+        'overallScore': _aiPrediction!.overallScore,
+        'activityLevel': _aiPrediction!.activityLevel.toString(),
+        'confidencePercent': _aiPrediction!.confidencePercent,
+        'recommendation': _aiPrediction!.recommendation,
+        'tips': _aiPrediction!.tips,
+        'fishingType': _aiPrediction!.fishingType,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    }
+
+    // Погода в правильном формате
+    FishingWeather? weather;
+    if (_weather != null) {
+      weather = FishingWeather(
+        temperature: _weather!.temperature,
+        feelsLike: _weather!.feelsLike,
+        humidity: _weather!.humidity,
+        pressure: _weather!.pressure,
+        windSpeed: _weather!.windSpeed,
+        windDirection: _weather!.windDirection,
+        weatherDescription: _weather!.weatherDescription,
+        cloudCover: _weather!.cloudCover,
+        sunrise: _weather!.sunrise,
+        sunset: _weather!.sunset,
+        isDay: _weather!.isDay,
+        observationTime: _weather!.observationTime,
+        moonPhase: '', // Пустое значение для совместимости
+      );
+    }
+
+    // Поклевки в правильном формате
+    List<BiteRecord> biteRecords = _biteRecords.map((record) => BiteRecord(
+      id: record.id,
+      time: record.time,
+      fishType: record.fishType,
+      weight: record.weight,
+      length: record.length,
+      notes: record.notes,
+      photoUrls: record.photoUrls,
+      dayIndex: 0, // Значение по умолчанию
+      spotIndex: 0, // Значение по умолчанию
+    )).toList();
+
+    return FishingNoteModel(
+      id: const Uuid().v4(),
+      userId: userId,
+      location: _locationController.text.trim(),
+      latitude: _latitude,
+      longitude: _longitude,
+      date: _startDate,
+      endDate: _isMultiDay ? _endDate : null,
+      isMultiDay: _isMultiDay,
+      tackle: _tackleController.text.trim(),
+      notes: _notesController.text.trim(),
+      fishingType: _selectedFishingType,
+      weather: weather,
+      biteRecords: biteRecords,
+      aiPrediction: aiPredictionMap,
+      photoUrls: const [], // Repository сам обработает фото
+      mapMarkers: const [], // Пустой список для совместимости
+      title: _locationController.text.trim(), // Используем локацию как заголовок
+
+      // Поля которые есть только в старой модели (значения по умолчанию)
+      dayBiteMaps: const {},
+      fishingSpots: const ['Основная точка'],
+      coverPhotoUrl: '',
+      coverCropSettings: null,
+      reminderEnabled: false,
+      reminderType: ReminderType.none,
+      reminderTime: null,
+    );
   }
 
   Future<bool> _onWillPop() async {

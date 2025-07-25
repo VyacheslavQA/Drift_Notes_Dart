@@ -167,12 +167,13 @@ class FishingNoteRepository {
 
       final noteWithPhotos = noteToAdd.copyWith(photoUrls: photoUrls);
 
-      // Конвертируем в Isar entity и сохраняем в Isar
+      // ✅ ИСПРАВЛЕНО: Конвертируем в Isar entity и сохраняем в Isar
       final entity = _modelToEntity(noteWithPhotos);
       entity.isSynced = false; // Помечаем как несинхронизированную
+      // ❌ УБРАНО: entity.userId = userId; (у FishingNoteEntity нет поля userId)
 
       await _isarService.insertFishingNote(entity);
-      debugPrint('✅ Заметка сохранена в Isar');
+      debugPrint('✅ Заметка сохранена в Isar с ID: ${entity.id}, firebaseId: ${entity.firebaseId}, isSynced: ${entity.isSynced}');
 
       // Если онлайн, запускаем синхронизацию
       if (isOnline) {
@@ -536,13 +537,13 @@ class FishingNoteRepository {
       title: entity.title,
       aiPrediction: aiPrediction,
 
-      // Поля которые есть только в старой модели
+      // ✅ ИСПРАВЛЕНО: Поля которые есть только в старой модели
       dayBiteMaps: const {},
       fishingSpots: const ['Основная точка'],
       coverPhotoUrl: '',
       coverCropSettings: null,
       reminderEnabled: false,
-      reminderType: ReminderType.none,
+      reminderType: ReminderType.none, // Использовать ReminderType.none
       reminderTime: null,
     );
   }

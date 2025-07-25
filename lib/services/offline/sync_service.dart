@@ -312,16 +312,28 @@ class SyncService {
         try {
           final firebaseData = _fishingNoteEntityToFirestore(note);
 
+          // ✅ ИСПРАВЛЕНО: Правильная логика для офлайн заметок
           if (note.firebaseId != null) {
-            await collection.doc(note.firebaseId).update(firebaseData);
-            log('✅ Обновлена заметка: ${note.firebaseId}');
+            // ✅ ПРОВЕРЯЕМ: Существует ли документ в Firebase
+            final docRef = collection.doc(note.firebaseId);
+            final docSnapshot = await docRef.get();
+
+            if (docSnapshot.exists) {
+              // Документ существует - обновляем
+              await docRef.update(firebaseData);
+              log('✅ Обновлена существующая заметка: ${note.firebaseId}');
+            } else {
+              // Документ не существует - создаем новый
+              await docRef.set(firebaseData);
+              log('✅ Создана заметка с существующим ID: ${note.firebaseId}');
+            }
+            await _isarService.markAsSynced(note.id, note.firebaseId!);
           } else {
+            // firebaseId == null - создаем новый документ
             final docRef = await collection.add(firebaseData);
             await _isarService.markAsSynced(note.id, docRef.id);
             log('✅ Создана новая заметка: ${docRef.id}');
-            continue;
           }
-          await _isarService.markAsSynced(note.id, note.firebaseId!);
         } catch (e) {
           log('❌ Ошибка синхронизации заметки ${note.id}: $e');
         }
