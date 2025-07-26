@@ -382,7 +382,6 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
 
         // Выполняем переход и коллбэк
         if (widget.onAuthSuccess != null) {
-          debugPrint('🎯 Вызываем коллбэк после успешной Google авторизации');
           Navigator.of(context).pushReplacementNamed('/home');
           Future.delayed(const Duration(milliseconds: 500), () {
             widget.onAuthSuccess!();
@@ -390,16 +389,13 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
         } else {
           Navigator.of(context).pushReplacementNamed('/home');
         }
-      } else if (mounted) {
-        debugPrint('❌ Google авторизация не завершена');
       }
     } catch (e) {
-      debugPrint('❌ Ошибка входа через Google: $e');
-
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка входа через Google: $e'),
+            content: Text(localizations.translate('google_login_error')),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 4),
           ),

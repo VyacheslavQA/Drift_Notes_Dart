@@ -47,6 +47,10 @@ class FishingNoteEntity {
 
   bool isSynced = false; // Флаг синхронизации с Firebase
 
+  // 🔥 НОВОЕ: Поддержка офлайн удаления
+  @Index()
+  bool markedForDeletion = false; // Помечено для удаления (офлайн режим)
+
   DateTime createdAt = DateTime.now();
   DateTime updatedAt = DateTime.now();
 }

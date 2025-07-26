@@ -8,7 +8,7 @@ import '../models/isar/fishing_note_entity.dart';
 import '../models/isar/budget_note_entity.dart';
 import '../models/isar/marker_map_entity.dart';
 import '../models/isar/policy_acceptance_entity.dart';
-import '../models/isar/user_usage_limits_entity.dart'; // 🆕 ДОБАВЛЕНО
+import '../models/isar/user_usage_limits_entity.dart';
 
 
 class IsarService {
@@ -37,15 +37,10 @@ class IsarService {
         BudgetNoteEntitySchema,
         MarkerMapEntitySchema,
         PolicyAcceptanceEntitySchema,
-        UserUsageLimitsEntitySchema, // 🆕 ДОБАВЛЕНО
+        UserUsageLimitsEntitySchema,
       ],
       directory: dir.path,
     );
-
-    if (kDebugMode) {
-      debugPrint('✅ IsarService инициализирован в: ${dir.path}');
-      debugPrint('✅ IsarService инициализирован с поддержкой PolicyAcceptance и UserUsageLimits'); // 🆕 ОБНОВЛЕНО
-    }
   }
 
   /// Получение экземпляра Isar
@@ -71,36 +66,49 @@ class IsarService {
   }
 
   // ========================================
-  // 🔥 ИСПРАВЛЕННЫЕ МЕТОДЫ ДЛЯ FISHING NOTES С ПОДДЕРЖКОЙ userId
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ДЛЯ FISHING NOTES С ПОДДЕРЖКОЙ ОФЛАЙН УДАЛЕНИЯ
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Вставка новой записи рыболовной заметки с логированием
   Future<int> insertFishingNote(FishingNoteEntity note) async {
-    // ✅ ДОБАВЛЕНО: Подробное логирование в начале
-    if (kDebugMode) {
-      debugPrint('💾 insertFishingNote: сохраняем заметку id=${note.id}, firebaseId=${note.firebaseId}, userId=${note.userId}, isSynced=${note.isSynced}');
-      debugPrint('💾 insertFishingNote: title="${note.title}", location="${note.location}"');
-    }
-
     final result = await isar.writeTxn(() async {
       return await isar.fishingNoteEntitys.put(note);
     });
 
-    // ✅ ДОБАВЛЕНО: Подтверждение успешного сохранения
-    if (kDebugMode) {
-      debugPrint('✅ insertFishingNote: заметка успешно сохранена в Isar с ID: $result');
-    }
-
+    debugPrint('📝 IsarService: Вставлена FishingNote с ID=$result, firebaseId=${note.firebaseId}, markedForDeletion=${note.markedForDeletion}');
     return result;
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение всех рыболовных заметок конкретного пользователя
+  /// ✅ ИСПРАВЛЕНО: Получение всех АКТИВНЫХ рыболовных заметок (исключая помеченные для удаления)
   Future<List<FishingNoteEntity>> getAllFishingNotes() async {
     final userId = getCurrentUserId();
     if (userId == null) {
-      if (kDebugMode) {
-        debugPrint('⚠️ getAllFishingNotes: пользователь не авторизован');
-      }
+      debugPrint('⚠️ IsarService: getCurrentUserId() вернул null');
+      return [];
+    }
+
+    // 🔥 ИСПРАВЛЕНО: Простой фильтр - исключаем только явно помеченные для удаления
+    final notes = await isar.fishingNoteEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
+        .sortByDateDesc()
+        .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${notes.length} активных FishingNotes для пользователя $userId');
+    debugPrint('📊 IsarService: Детали заметок:');
+    for (final note in notes) {
+      debugPrint('  - ID=${note.id}, firebaseId=${note.firebaseId}, markedForDeletion=${note.markedForDeletion}');
+    }
+    return notes;
+  }
+
+  /// ✅ НОВОЕ: Получение всех заметок включая помеченные для удаления (для синхронизации)
+  Future<List<FishingNoteEntity>> getAllFishingNotesIncludingDeleted() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
       return [];
     }
 
@@ -110,50 +118,95 @@ class IsarService {
         .sortByDateDesc()
         .findAll();
 
-    if (kDebugMode) {
-      debugPrint('📋 getAllFishingNotes: найдено ${notes.length} заметок для пользователя $userId');
-      for (var note in notes.take(3)) { // Показываем первые 3 для отладки
-        debugPrint('📝 Заметка: id=${note.id}, firebaseId=${note.firebaseId}, isSynced=${note.isSynced}, title="${note.title}"');
-      }
-    }
-
+    debugPrint('📋 IsarService: Найдено ${notes.length} ВСЕХ FishingNotes (включая удаленные) для пользователя $userId');
     return notes;
   }
 
   /// Получение заметки по ID
   Future<FishingNoteEntity?> getFishingNoteById(int id) async {
-    return await isar.fishingNoteEntitys.get(id);
+    final note = await isar.fishingNoteEntitys.get(id);
+    debugPrint('🔍 IsarService: getFishingNoteById($id) = ${note != null ? "найдена" : "не найдена"}');
+    return note;
   }
 
   /// Получение заметки по Firebase ID
   Future<FishingNoteEntity?> getFishingNoteByFirebaseId(String firebaseId) async {
-    return await isar.fishingNoteEntitys
+    final note = await isar.fishingNoteEntitys
         .filter()
         .firebaseIdEqualTo(firebaseId)
         .findFirst();
+
+    debugPrint('🔍 IsarService: getFishingNoteByFirebaseId($firebaseId) = ${note != null ? "найдена" : "не найдена"}');
+    if (note != null) {
+      debugPrint('📝 IsarService: Заметка markedForDeletion=${note.markedForDeletion}, isSynced=${note.isSynced}');
+    }
+    return note;
   }
 
   /// Обновление существующей заметки
   Future<int> updateFishingNote(FishingNoteEntity note) async {
     note.updatedAt = DateTime.now();
-    return await isar.writeTxn(() async {
+    final result = await isar.writeTxn(() async {
       return await isar.fishingNoteEntitys.put(note);
     });
+
+    debugPrint('🔄 IsarService: Обновлена FishingNote ID=${note.id}, firebaseId=${note.firebaseId}, markedForDeletion=${note.markedForDeletion}, isSynced=${note.isSynced}');
+    return result;
   }
 
-  /// Удаление заметки по ID
+  /// ✅ НОВОЕ: Пометить заметку для офлайн удаления
+  Future<void> markFishingNoteForDeletion(String firebaseId) async {
+    final note = await getFishingNoteByFirebaseId(firebaseId);
+    if (note == null) {
+      debugPrint('❌ IsarService: Заметка с firebaseId=$firebaseId не найдена для маркировки удаления');
+      throw Exception('Заметка не найдена в локальной базе');
+    }
+
+    note.markedForDeletion = true;
+    note.isSynced = false; // Требует синхронизации удаления
+    note.updatedAt = DateTime.now();
+
+    await updateFishingNote(note);
+    debugPrint('✅ IsarService: Заметка $firebaseId помечена для удаления');
+  }
+
+  /// ✅ НОВОЕ: Получение заметок помеченных для удаления (для синхронизации)
+  Future<List<FishingNoteEntity>> getMarkedForDeletionFishingNotes() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final notes = await isar.fishingNoteEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${notes.length} заметок помеченных для удаления');
+    return notes;
+  }
+
+  /// Удаление заметки по ID (физическое удаление)
   Future<bool> deleteFishingNote(int id) async {
-    return await isar.writeTxn(() async {
+    final result = await isar.writeTxn(() async {
       return await isar.fishingNoteEntitys.delete(id);
     });
+
+    debugPrint('🗑️ IsarService: Физически удалена FishingNote ID=$id, результат=$result');
+    return result;
   }
 
-  /// Удаление заметки по Firebase ID
+  /// Удаление заметки по Firebase ID (физическое удаление)
   Future<bool> deleteFishingNoteByFirebaseId(String firebaseId) async {
     final note = await getFishingNoteByFirebaseId(firebaseId);
     if (note != null) {
-      return await deleteFishingNote(note.id);
+      final result = await deleteFishingNote(note.id);
+      debugPrint('🗑️ IsarService: Физически удалена FishingNote firebaseId=$firebaseId, результат=$result');
+      return result;
     }
+    debugPrint('⚠️ IsarService: Заметка firebaseId=$firebaseId не найдена для физического удаления');
     return false;
   }
 
@@ -161,19 +214,7 @@ class IsarService {
   Future<List<FishingNoteEntity>> getUnsyncedNotes() async {
     final userId = getCurrentUserId();
     if (userId == null) {
-      if (kDebugMode) {
-        debugPrint('⚠️ getUnsyncedNotes: пользователь не авторизован');
-      }
       return [];
-    }
-
-    // ✅ ДОБАВЛЕНО: Логирование общего количества заметок пользователя
-    final allUserNotes = await isar.fishingNoteEntitys
-        .filter()
-        .userIdEqualTo(userId)
-        .findAll();
-    if (kDebugMode) {
-      debugPrint('🔍 getUnsyncedNotes: всего заметок пользователя $userId в Isar: ${allUserNotes.length}');
     }
 
     final unsyncedNotes = await isar.fishingNoteEntitys
@@ -183,19 +224,56 @@ class IsarService {
         .isSyncedEqualTo(false)
         .findAll();
 
-    // ✅ ДОБАВЛЕНО: Подробные логи каждой несинхронизированной заметки
-    if (kDebugMode) {
-      debugPrint('🔍 getUnsyncedNotes: найдено несинхронизированных для пользователя $userId: ${unsyncedNotes.length}');
-      for (var note in unsyncedNotes) {
-        debugPrint('📝 Несинхронизированная заметка: id=${note.id}, firebaseId=${note.firebaseId}, title="${note.title}"');
-      }
-    }
+    debugPrint('🔍 IsarService: getUnsyncedNotes найдено ${unsyncedNotes.length} несинхронизированных заметок');
+
+    // Разделяем на обычные и помеченные для удаления
+    final normalNotes = unsyncedNotes.where((note) => note.markedForDeletion != true).toList();
+    final deletedNotes = unsyncedNotes.where((note) => note.markedForDeletion == true).toList();
+
+    debugPrint('📊 IsarService: Из них ${normalNotes.length} обычных и ${deletedNotes.length} помеченных для удаления');
+
+    // 🔥 НОВОЕ: Запускаем очистку синхронизированных удаленных записей
+    cleanupSyncedDeletedNotes();
 
     return unsyncedNotes;
   }
 
+  /// ✅ НОВОЕ: Очистка синхронизированных удаленных записей
+  Future<void> cleanupSyncedDeletedNotes() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+
+    // Находим записи которые помечены для удаления И синхронизированы
+    final syncedDeletedNotes = await isar.fishingNoteEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .isSyncedEqualTo(true)
+        .findAll();
+
+    if (syncedDeletedNotes.isNotEmpty) {
+      debugPrint('🧹 IsarService: Найдено ${syncedDeletedNotes.length} синхронизированных удаленных записей для очистки');
+
+      // Физически удаляем каждую синхронизированную запись
+      for (final note in syncedDeletedNotes) {
+        await deleteFishingNote(note.id);
+        debugPrint('🗑️ IsarService: Физически удалена синхронизированная запись ID=${note.id}, firebaseId=${note.firebaseId}');
+      }
+
+      debugPrint('✅ IsarService: Очистка завершена - удалено ${syncedDeletedNotes.length} записей');
+    } else {
+      debugPrint('📝 IsarService: Нет синхронизированных удаленных записей для очистки');
+    }
+  }
+
   /// Помечает заметку как синхронизированную
   Future<void> markAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
     await isar.writeTxn(() async {
       final note = await isar.fishingNoteEntitys.get(id);
       if (note != null) {
@@ -203,12 +281,20 @@ class IsarService {
         note.firebaseId = firebaseId;
         note.updatedAt = DateTime.now();
         await isar.fishingNoteEntitys.put(note);
+        debugPrint('✅ IsarService: Заметка ID=$id помечена как синхронизированная с firebaseId=$firebaseId');
 
-        if (kDebugMode) {
-          debugPrint('✅ markAsSynced: заметка $id помечена как синхронизированная с Firebase ID: $firebaseId');
+        // 🔥 ИСПРАВЛЕНО: Проверяем нужно ли удалить, но НЕ удаляем внутри транзакции
+        if (note.markedForDeletion == true) {
+          shouldDelete = true;
         }
       }
     });
+
+    // 🔥 ИСПРАВЛЕНО: Физическое удаление ПОСЛЕ завершения транзакции
+    if (shouldDelete) {
+      await deleteFishingNote(id);
+      debugPrint('🧹 IsarService: Автоматически удалена синхронизированная помеченная запись ID=$id');
+    }
   }
 
   /// Помечает заметку как несинхронизированную (для обновлений)
@@ -219,10 +305,7 @@ class IsarService {
         note.isSynced = false;
         note.updatedAt = DateTime.now();
         await isar.fishingNoteEntitys.put(note);
-
-        if (kDebugMode) {
-          debugPrint('⚠️ markAsUnsynced: заметка $id помечена как несинхронизированная');
-        }
+        debugPrint('🔄 IsarService: Заметка ID=$id помечена как несинхронизированная');
       }
     });
   }
@@ -255,40 +338,51 @@ class IsarService {
         .count();
   }
 
-  /// 🔥 КРИТИЧНО ДОБАВЛЕНО: Получение количества рыболовных заметок конкретного пользователя
+  /// 🔥 КРИТИЧНО ДОБАВЛЕНО: Получение количества рыболовных заметок конкретного пользователя (только активные)
   Future<int> getFishingNotesCountByUser(String userId) async {
     final count = await isar.fishingNoteEntitys
         .filter()
         .userIdEqualTo(userId)
+        .and()
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
         .count();
 
-    if (kDebugMode) {
-      debugPrint('📊 getFishingNotesCountByUser($userId): найдено $count заметок');
-    }
-
+    debugPrint('📊 IsarService: Активных FishingNotes пользователя $userId: $count');
     return count;
   }
 
   // ========================================
-  // МЕТОДЫ ДЛЯ BUDGET NOTES
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ДЛЯ BUDGET NOTES С ПОДДЕРЖКОЙ ОФЛАЙН УДАЛЕНИЯ
   // ========================================
 
-  /// Вставка новой записи заметки бюджета
+  /// ✅ ИСПРАВЛЕНО: Вставка новой записи заметки бюджета с логированием
   Future<int> insertBudgetNote(BudgetNoteEntity note) async {
-    return await isar.writeTxn(() async {
+    final result = await isar.writeTxn(() async {
       return await isar.budgetNoteEntitys.put(note);
     });
+
+    debugPrint('📝 IsarService: Вставлена BudgetNote с ID=$result, firebaseId=${note.firebaseId}, markedForDeletion=${note.markedForDeletion}');
+    return result;
   }
 
-  /// Получение всех заметок бюджета пользователя
+  /// ✅ ИСПРАВЛЕНО: Получение всех АКТИВНЫХ заметок бюджета (исключая помеченные для удаления)
   Future<List<BudgetNoteEntity>> getAllBudgetNotes(String userId) async {
-    return await isar.budgetNoteEntitys
+    final notes = await isar.budgetNoteEntitys
         .filter()
         .userIdEqualTo(userId)
         .and()
-        .markedForDeletionEqualTo(false)
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
         .sortByDateDesc()
         .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${notes.length} активных BudgetNotes для пользователя $userId');
+    debugPrint('📊 IsarService: Детали заметок:');
+    for (final note in notes) {
+      debugPrint('  - ID=${note.id}, firebaseId=${note.firebaseId}, markedForDeletion=${note.markedForDeletion}');
+    }
+    return notes;
   }
 
   /// Получение заметки бюджета по ID
@@ -312,6 +406,62 @@ class IsarService {
     });
   }
 
+  /// ✅ НОВОЕ: Пометить заметку бюджета для офлайн удаления
+  Future<void> markBudgetNoteForDeletion(String firebaseId) async {
+    final note = await getBudgetNoteByFirebaseId(firebaseId);
+    if (note == null) {
+      debugPrint('❌ IsarService: BudgetNote с firebaseId=$firebaseId не найдена для маркировки удаления');
+      throw Exception('Заметка бюджета не найдена в локальной базе');
+    }
+
+    note.markedForDeletion = true;
+    note.isSynced = false; // Требует синхронизации удаления
+    note.updatedAt = DateTime.now();
+
+    await updateBudgetNote(note);
+    debugPrint('✅ IsarService: BudgetNote $firebaseId помечена для удаления');
+  }
+
+  /// ✅ НОВОЕ: Получение заметок бюджета помеченных для удаления (для синхронизации)
+  Future<List<BudgetNoteEntity>> getMarkedForDeletionBudgetNotes(String userId) async {
+    final notes = await isar.budgetNoteEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${notes.length} BudgetNotes помеченных для удаления');
+    return notes;
+  }
+
+  /// ✅ НОВОЕ: Очистка синхронизированных удаленных заметок бюджета
+  Future<void> cleanupSyncedDeletedBudgetNotes(String userId) async {
+    // Находим записи которые помечены для удаления И синхронизированы
+    final syncedDeletedNotes = await isar.budgetNoteEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .isSyncedEqualTo(true)
+        .findAll();
+
+    if (syncedDeletedNotes.isNotEmpty) {
+      debugPrint('🧹 IsarService: Найдено ${syncedDeletedNotes.length} синхронизированных удаленных BudgetNotes для очистки');
+
+      // Физически удаляем каждую синхронизированную запись
+      for (final note in syncedDeletedNotes) {
+        await deleteBudgetNote(note.id);
+        debugPrint('🗑️ IsarService: Физически удалена синхронизированная BudgetNote ID=${note.id}, firebaseId=${note.firebaseId}');
+      }
+
+      debugPrint('✅ IsarService: Очистка BudgetNotes завершена - удалено ${syncedDeletedNotes.length} записей');
+    } else {
+      debugPrint('📝 IsarService: Нет синхронизированных удаленных BudgetNotes для очистки');
+    }
+  }
+
   /// Удаление заметки бюджета по ID
   Future<bool> deleteBudgetNote(int id) async {
     return await isar.writeTxn(() async {
@@ -328,28 +478,53 @@ class IsarService {
     return false;
   }
 
-  /// Получение всех несинхронизированных заметок бюджета
+  /// ✅ ИСПРАВЛЕНО: Получение всех несинхронизированных заметок бюджета (включая помеченные для удаления)
   Future<List<BudgetNoteEntity>> getUnsyncedBudgetNotes(String userId) async {
-    return await isar.budgetNoteEntitys
+    final unsyncedNotes = await isar.budgetNoteEntitys
         .filter()
         .userIdEqualTo(userId)
         .and()
         .isSyncedEqualTo(false)
-        .and()
-        .markedForDeletionEqualTo(false)
         .findAll();
+
+    debugPrint('🔍 IsarService: getUnsyncedBudgetNotes найдено ${unsyncedNotes.length} несинхронизированных заметок бюджета');
+
+    // Разделяем на обычные и помеченные для удаления
+    final normalNotes = unsyncedNotes.where((note) => note.markedForDeletion != true).toList();
+    final deletedNotes = unsyncedNotes.where((note) => note.markedForDeletion == true).toList();
+
+    debugPrint('📊 IsarService: Из них ${normalNotes.length} обычных и ${deletedNotes.length} помеченных для удаления');
+
+    // 🔥 НОВОЕ: Запускаем очистку синхронизированных удаленных записей
+    cleanupSyncedDeletedBudgetNotes(userId);
+
+    return unsyncedNotes;
   }
 
-  /// Помечает заметку бюджета как синхронизированную
+  /// ✅ ИСПРАВЛЕНО: Помечает заметку бюджета как синхронизированную с автоудалением
   Future<void> markBudgetNoteAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
     await isar.writeTxn(() async {
       final note = await isar.budgetNoteEntitys.get(id);
       if (note != null) {
         note.markAsSynced();
         note.firebaseId = firebaseId;
         await isar.budgetNoteEntitys.put(note);
+        debugPrint('✅ IsarService: BudgetNote ID=$id помечена как синхронизированная с firebaseId=$firebaseId');
+
+        // 🔥 ИСПРАВЛЕНО: Проверяем нужно ли удалить, но НЕ удаляем внутри транзакции
+        if (note.markedForDeletion == true) {
+          shouldDelete = true;
+        }
       }
     });
+
+    // 🔥 ИСПРАВЛЕНО: Физическое удаление ПОСЛЕ завершения транзакции
+    if (shouldDelete) {
+      await deleteBudgetNote(id);
+      debugPrint('🧹 IsarService: Автоматически удалена синхронизированная помеченная BudgetNote ID=$id');
+    }
   }
 
   /// Помечает заметку бюджета как несинхронизированную (для обновлений)
@@ -358,17 +533,6 @@ class IsarService {
       final note = await isar.budgetNoteEntitys.get(id);
       if (note != null) {
         note.markAsModified();
-        await isar.budgetNoteEntitys.put(note);
-      }
-    });
-  }
-
-  /// Пометить заметку бюджета для удаления
-  Future<void> markBudgetNoteForDeletion(String firebaseId) async {
-    await isar.writeTxn(() async {
-      final note = await getBudgetNoteByFirebaseId(firebaseId);
-      if (note != null) {
-        note.markForDeletion();
         await isar.budgetNoteEntitys.put(note);
       }
     });
@@ -412,25 +576,36 @@ class IsarService {
   }
 
   // ========================================
-  // МЕТОДЫ ДЛЯ MARKER MAPS
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ДЛЯ MARKER MAPS С ПОДДЕРЖКОЙ ОФЛАЙН УДАЛЕНИЯ
   // ========================================
 
-  /// Вставка новой записи маркерной карты
+  /// ✅ ИСПРАВЛЕНО: Вставка новой записи маркерной карты с логированием
   Future<int> insertMarkerMap(MarkerMapEntity map) async {
-    return await isar.writeTxn(() async {
+    final result = await isar.writeTxn(() async {
       return await isar.markerMapEntitys.put(map);
     });
+
+    debugPrint('📝 IsarService: Вставлена MarkerMap с ID=$result, firebaseId=${map.firebaseId}, markedForDeletion=${map.markedForDeletion}');
+    return result;
   }
 
-  /// Получение всех маркерных карт пользователя
+  /// ✅ ИСПРАВЛЕНО: Получение всех АКТИВНЫХ маркерных карт (исключая помеченные для удаления)
   Future<List<MarkerMapEntity>> getAllMarkerMaps(String userId) async {
-    return await isar.markerMapEntitys
+    final maps = await isar.markerMapEntitys
         .filter()
         .userIdEqualTo(userId)
         .and()
-        .markedForDeletionEqualTo(false)
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
         .sortByDateDesc()
         .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${maps.length} активных MarkerMaps для пользователя $userId');
+    debugPrint('📊 IsarService: Детали карт:');
+    for (final map in maps) {
+      debugPrint('  - ID=${map.id}, firebaseId=${map.firebaseId}, markedForDeletion=${map.markedForDeletion}');
+    }
+    return maps;
   }
 
   /// Получение маркерной карты по ID
@@ -470,28 +645,53 @@ class IsarService {
     return false;
   }
 
-  /// Получение всех несинхронизированных маркерных карт
+  /// ✅ ИСПРАВЛЕНО: Получение всех несинхронизированных маркерных карт (включая помеченные для удаления)
   Future<List<MarkerMapEntity>> getUnsyncedMarkerMaps(String userId) async {
-    return await isar.markerMapEntitys
+    final unsyncedMaps = await isar.markerMapEntitys
         .filter()
         .userIdEqualTo(userId)
         .and()
         .isSyncedEqualTo(false)
-        .and()
-        .markedForDeletionEqualTo(false)
         .findAll();
+
+    debugPrint('🔍 IsarService: getUnsyncedMarkerMaps найдено ${unsyncedMaps.length} несинхронизированных маркерных карт');
+
+    // Разделяем на обычные и помеченные для удаления
+    final normalMaps = unsyncedMaps.where((map) => map.markedForDeletion != true).toList();
+    final deletedMaps = unsyncedMaps.where((map) => map.markedForDeletion == true).toList();
+
+    debugPrint('📊 IsarService: Из них ${normalMaps.length} обычных и ${deletedMaps.length} помеченных для удаления');
+
+    // 🔥 НОВОЕ: Запускаем очистку синхронизированных удаленных записей
+    cleanupSyncedDeletedMarkerMaps(userId);
+
+    return unsyncedMaps;
   }
 
-  /// Помечает маркерную карту как синхронизированную
+  /// ✅ ИСПРАВЛЕНО: Помечает маркерную карту как синхронизированную с автоудалением
   Future<void> markMarkerMapAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
     await isar.writeTxn(() async {
       final map = await isar.markerMapEntitys.get(id);
       if (map != null) {
         map.markAsSynced();
         map.firebaseId = firebaseId;
         await isar.markerMapEntitys.put(map);
+        debugPrint('✅ IsarService: MarkerMap ID=$id помечена как синхронизированная с firebaseId=$firebaseId');
+
+        // 🔥 ИСПРАВЛЕНО: Проверяем нужно ли удалить, но НЕ удаляем внутри транзакции
+        if (map.markedForDeletion == true) {
+          shouldDelete = true;
+        }
       }
     });
+
+    // 🔥 ИСПРАВЛЕНО: Физическое удаление ПОСЛЕ завершения транзакции
+    if (shouldDelete) {
+      await deleteMarkerMap(id);
+      debugPrint('🧹 IsarService: Автоматически удалена синхронизированная помеченная MarkerMap ID=$id');
+    }
   }
 
   /// Помечает маркерную карту как несинхронизированную (для обновлений)
@@ -505,15 +705,60 @@ class IsarService {
     });
   }
 
-  /// Пометить маркерную карту для удаления
+  /// ✅ НОВОЕ: Пометить маркерную карту для офлайн удаления
   Future<void> markMarkerMapForDeletion(String firebaseId) async {
-    await isar.writeTxn(() async {
-      final map = await getMarkerMapByFirebaseId(firebaseId);
-      if (map != null) {
-        map.markForDeletion();
-        await isar.markerMapEntitys.put(map);
+    final map = await getMarkerMapByFirebaseId(firebaseId);
+    if (map == null) {
+      debugPrint('❌ IsarService: MarkerMap с firebaseId=$firebaseId не найдена для маркировки удаления');
+      throw Exception('Маркерная карта не найдена в локальной базе');
+    }
+
+    map.markedForDeletion = true;
+    map.isSynced = false; // Требует синхронизации удаления
+    map.updatedAt = DateTime.now();
+
+    await updateMarkerMap(map);
+    debugPrint('✅ IsarService: MarkerMap $firebaseId помечена для удаления');
+  }
+
+  /// ✅ НОВОЕ: Получение маркерных карт помеченных для удаления (для синхронизации)
+  Future<List<MarkerMapEntity>> getMarkedForDeletionMarkerMaps(String userId) async {
+    final maps = await isar.markerMapEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${maps.length} MarkerMaps помеченных для удаления');
+    return maps;
+  }
+
+  /// ✅ НОВОЕ: Очистка синхронизированных удаленных маркерных карт
+  Future<void> cleanupSyncedDeletedMarkerMaps(String userId) async {
+    // Находим записи которые помечены для удаления И синхронизированы
+    final syncedDeletedMaps = await isar.markerMapEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .isSyncedEqualTo(true)
+        .findAll();
+
+    if (syncedDeletedMaps.isNotEmpty) {
+      debugPrint('🧹 IsarService: Найдено ${syncedDeletedMaps.length} синхронизированных удаленных MarkerMaps для очистки');
+
+      // Физически удаляем каждую синхронизированную запись
+      for (final map in syncedDeletedMaps) {
+        await deleteMarkerMap(map.id);
+        debugPrint('🗑️ IsarService: Физически удалена синхронизированная MarkerMap ID=${map.id}, firebaseId=${map.firebaseId}');
       }
-    });
+
+      debugPrint('✅ IsarService: Очистка MarkerMaps завершена - удалено ${syncedDeletedMaps.length} записей');
+    } else {
+      debugPrint('📝 IsarService: Нет синхронизированных удаленных MarkerMaps для очистки');
+    }
   }
 
   /// Получение количества маркерных карт пользователя
@@ -559,18 +804,9 @@ class IsarService {
 
   /// ✅ СУЩЕСТВУЮЩЕЕ: Вставка новой записи согласий политики
   Future<int> insertPolicyAcceptance(PolicyAcceptanceEntity policy) async {
-    if (kDebugMode) {
-      debugPrint('💾 insertPolicyAcceptance: сохраняем согласия id=${policy.id}, userId=${policy.userId}, isSynced=${policy.isSynced}');
-      debugPrint('💾 insertPolicyAcceptance: privacy=${policy.privacyPolicyAccepted}, terms=${policy.termsOfServiceAccepted}');
-    }
-
     final result = await isar.writeTxn(() async {
       return await isar.policyAcceptanceEntitys.put(policy);
     });
-
-    if (kDebugMode) {
-      debugPrint('✅ insertPolicyAcceptance: согласия успешно сохранены в Isar с ID: $result');
-    }
 
     return result;
   }
@@ -578,13 +814,6 @@ class IsarService {
   /// ✅ СУЩЕСТВУЮЩЕЕ: Получение всех согласий политики
   Future<List<PolicyAcceptanceEntity>> getAllPolicyAcceptances() async {
     final policies = await isar.policyAcceptanceEntitys.where().findAll();
-
-    if (kDebugMode) {
-      debugPrint('📋 getAllPolicyAcceptances: найдено ${policies.length} согласий в Isar');
-      for (var policy in policies) {
-        debugPrint('📝 Согласия: id=${policy.id}, userId=${policy.userId}, isSynced=${policy.isSynced}');
-      }
-    }
 
     return policies;
   }
@@ -635,13 +864,6 @@ class IsarService {
         .markedForDeletionEqualTo(false)
         .findAll();
 
-    if (kDebugMode) {
-      debugPrint('🔍 getUnsyncedPolicyAcceptances: найдено несинхронизированных: ${unsyncedPolicies.length}');
-      for (var policy in unsyncedPolicies) {
-        debugPrint('📝 Несинхронизированные согласия: id=${policy.id}, userId=${policy.userId}');
-      }
-    }
-
     return unsyncedPolicies;
   }
 
@@ -653,10 +875,6 @@ class IsarService {
         policy.markAsSynced();
         policy.firebaseId = firebaseId;
         await isar.policyAcceptanceEntitys.put(policy);
-
-        if (kDebugMode) {
-          debugPrint('✅ markPolicyAcceptanceAsSynced: согласия $id помечены как синхронизированные с Firebase ID: $firebaseId');
-        }
       }
     });
   }
@@ -668,10 +886,6 @@ class IsarService {
       if (policy != null) {
         policy.markAsModified();
         await isar.policyAcceptanceEntitys.put(policy);
-
-        if (kDebugMode) {
-          debugPrint('⚠️ markPolicyAcceptanceAsUnsynced: согласия $id помечены как несинхронизированные');
-        }
       }
     });
   }
@@ -683,10 +897,6 @@ class IsarService {
       if (policy != null) {
         policy.markForDeletion();
         await isar.policyAcceptanceEntitys.put(policy);
-
-        if (kDebugMode) {
-          debugPrint('🗑️ markPolicyAcceptanceForDeletion: согласия $id помечены для удаления');
-        }
       }
     });
   }
@@ -725,18 +935,9 @@ class IsarService {
 
   /// 🆕 НОВОЕ: Вставка новой записи лимитов пользователя
   Future<int> insertUserUsageLimits(UserUsageLimitsEntity limits) async {
-    if (kDebugMode) {
-      debugPrint('💾 insertUserUsageLimits: сохраняем лимиты id=${limits.id}, userId=${limits.userId}, isSynced=${limits.isSynced}');
-      debugPrint('💾 insertUserUsageLimits: notes=${limits.notesCount}, budget=${limits.budgetNotesCount}, maps=${limits.markerMapsCount}');
-    }
-
     final result = await isar.writeTxn(() async {
       return await isar.userUsageLimitsEntitys.put(limits);
     });
-
-    if (kDebugMode) {
-      debugPrint('✅ insertUserUsageLimits: лимиты успешно сохранены в Isar с ID: $result');
-    }
 
     return result;
   }
@@ -744,13 +945,6 @@ class IsarService {
   /// 🆕 НОВОЕ: Получение всех лимитов пользователей
   Future<List<UserUsageLimitsEntity>> getAllUserUsageLimits() async {
     final limits = await isar.userUsageLimitsEntitys.where().findAll();
-
-    if (kDebugMode) {
-      debugPrint('📋 getAllUserUsageLimits: найдено ${limits.length} записей лимитов в Isar');
-      for (var limit in limits) {
-        debugPrint('📝 Лимиты: id=${limit.id}, userId=${limit.userId}, isSynced=${limit.isSynced}');
-      }
-    }
 
     return limits;
   }
@@ -811,13 +1005,6 @@ class IsarService {
         .markedForDeletionEqualTo(false)
         .findAll();
 
-    if (kDebugMode) {
-      debugPrint('🔍 getUnsyncedUserUsageLimits: найдено несинхронизированных: ${unsyncedLimits.length}');
-      for (var limits in unsyncedLimits) {
-        debugPrint('📝 Несинхронизированные лимиты: id=${limits.id}, userId=${limits.userId}');
-      }
-    }
-
     return unsyncedLimits;
   }
 
@@ -829,10 +1016,6 @@ class IsarService {
         limits.markAsSynced();
         limits.firebaseId = firebaseId;
         await isar.userUsageLimitsEntitys.put(limits);
-
-        if (kDebugMode) {
-          debugPrint('✅ markUserUsageLimitsAsSynced: лимиты $id помечены как синхронизированные с Firebase ID: $firebaseId');
-        }
       }
     });
   }
@@ -844,10 +1027,6 @@ class IsarService {
       if (limits != null) {
         limits.markAsModified();
         await isar.userUsageLimitsEntitys.put(limits);
-
-        if (kDebugMode) {
-          debugPrint('⚠️ markUserUsageLimitsAsUnsynced: лимиты $id помечены как несинхронизированные');
-        }
       }
     });
   }
@@ -859,10 +1038,6 @@ class IsarService {
       if (limits != null) {
         limits.markForDeletion();
         await isar.userUsageLimitsEntitys.put(limits);
-
-        if (kDebugMode) {
-          debugPrint('🗑️ markUserUsageLimitsForDeletion: лимиты $id помечены для удаления');
-        }
       }
     });
   }
@@ -923,10 +1098,6 @@ class IsarService {
         ..isSynced = false;
 
       await insertUserUsageLimits(limits);
-
-      if (kDebugMode) {
-        debugPrint('🆕 Созданы новые лимиты для пользователя $userId');
-      }
     } else {
       // Обновляем существующие лимиты
       if (budgetNotesCount != null) limits.budgetNotesCount = budgetNotesCount;
@@ -940,10 +1111,6 @@ class IsarService {
       limits.markAsModified();
 
       await updateUserUsageLimits(limits);
-
-      if (kDebugMode) {
-        debugPrint('🔄 Обновлены лимиты для пользователя $userId');
-      }
     }
 
     return limits;
@@ -960,12 +1127,8 @@ class IsarService {
       await isar.budgetNoteEntitys.clear();
       await isar.markerMapEntitys.clear();
       await isar.policyAcceptanceEntitys.clear();
-      await isar.userUsageLimitsEntitys.clear(); // 🆕 ДОБАВЛЕНО
+      await isar.userUsageLimitsEntitys.clear();
     });
-
-    if (kDebugMode) {
-      debugPrint('🗑️ Все данные Isar очищены (включая UserUsageLimits)');
-    }
   }
 
   /// ✅ ОБНОВЛЕНО: Получение общей статистики включая UserUsageLimits с правильной фильтрацией по пользователю
@@ -975,8 +1138,8 @@ class IsarService {
 
     return {
       'fishingNotes': {
-        'total': await getFishingNotesCountByUser(userId), // 🔥 ИСПРАВЛЕНО: теперь с фильтрацией по пользователю
-        'unsynced': await getUnsyncedNotesCount(userId),   // 🔥 ИСПРАВЛЕНО: теперь с фильтрацией по пользователю
+        'total': await getFishingNotesCountByUser(userId),
+        'unsynced': await getUnsyncedNotesCount(userId),
       },
       'budgetNotes': {
         'total': await getBudgetNotesCount(userId),
@@ -990,7 +1153,7 @@ class IsarService {
         'total': await getPolicyAcceptancesCount(),
         'unsynced': await getUnsyncedPolicyAcceptancesCount(),
       },
-      'userUsageLimits': { // 🆕 ДОБАВЛЕНО
+      'userUsageLimits': {
         'total': await getUserUsageLimitsCount(),
         'unsynced': await getUnsyncedUserUsageLimitsCount(),
       },
@@ -1016,7 +1179,7 @@ class IsarService {
           .userIdEqualTo(userId)
           .deleteAll();
 
-      await isar.userUsageLimitsEntitys // 🆕 ДОБАВЛЕНО
+      await isar.userUsageLimitsEntitys
           .filter()
           .userIdEqualTo(userId)
           .deleteAll();
@@ -1027,10 +1190,6 @@ class IsarService {
           .userIdEqualTo(userId)
           .deleteAll();
     });
-
-    if (kDebugMode) {
-      debugPrint('🗑️ Все данные пользователя $userId удалены (включая UserUsageLimits и FishingNotes)');
-    }
   }
 
   /// Закрытие базы данных
@@ -1038,9 +1197,5 @@ class IsarService {
     await _isar?.close();
     _isar = null;
     _instance = null;
-
-    if (kDebugMode) {
-      debugPrint('🔒 IsarService закрыт');
-    }
   }
 }

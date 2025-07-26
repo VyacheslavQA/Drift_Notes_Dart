@@ -87,18 +87,9 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      if (kDebugMode) {
-        debugPrint('✅ Firebase инициализирован');
-      }
-    } else {
-      if (kDebugMode) {
-        debugPrint('🔥 Firebase уже был инициализирован, пропускаем');
-      }
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка инициализации Firebase: $e');
-    }
+    // Silent error handling for production
   }
 
   // ✅ ИСПРАВЛЕНО: Правильная инициализация App Check
@@ -112,31 +103,20 @@ void main() async {
   // Тест подключения к Firebase
   if (kDebugMode) {
     try {
-      debugPrint('🔍 Тестируем подключение к Firebase...');
-      debugPrint('📱 Project ID: ${Firebase.app().options.projectId}');
-      debugPrint('📱 App ID: ${Firebase.app().options.appId}');
-
       // Простой тест Auth
       final auth = FirebaseAuth.instance;
-      debugPrint('🔐 Firebase Auth initialized: ${auth.app.name}');
 
       // Простой тест Firestore
       final firestore = FirebaseFirestore.instance;
       await firestore.enableNetwork();
-      debugPrint('✅ Firestore подключен');
-
-      debugPrint('✅ Все сервисы Firebase доступны');
     } catch (e) {
-      debugPrint('❌ Ошибка подключения к Firebase: $e');
+      // Silent error handling
     }
   }
 
   // Инициализация LanguageProvider ДО создания приложения
   final languageProvider = LanguageProvider();
   await languageProvider.initialize();
-  if (kDebugMode) {
-    debugPrint('🌐 LanguageProvider инициализирован с языком: ${languageProvider.languageCode}');
-  }
 
   // ✅ ИСПРАВЛЕНО: Инициализация новых Isar сервисов с MarkerMap
   await _initializeIsarServices();
@@ -149,10 +129,6 @@ void main() async {
 
   // Запуск мониторинга сети
   _startNetworkMonitoring();
-
-  if (kDebugMode) {
-    debugPrint('🚀 Все сервисы инициализированы, запускаем приложение');
-  }
 
   // Передаем уже инициализированный languageProvider
   runApp(
@@ -171,77 +147,30 @@ void main() async {
 // ✅ ИСПРАВЛЕНО: Инициализация Isar сервисов с поддержкой MarkerMap
 Future<void> _initializeIsarServices() async {
   try {
-    if (kDebugMode) {
-      debugPrint('');
-      debugPrint('💾 ========================================');
-      debugPrint('💾 Инициализация Isar сервисов...');
-      debugPrint('💾 ========================================');
-    }
-
     // Инициализация IsarService (теперь поддерживает MarkerMap)
     await IsarService.instance.init();
-    if (kDebugMode) {
-      debugPrint('✅ IsarService инициализирован с поддержкой MarkerMap');
-    }
 
     // Инициализация FishingNoteRepository
     await FishingNoteRepository().initialize();
-    if (kDebugMode) {
-      debugPrint('✅ FishingNoteRepository инициализирован');
-    }
 
     // Инициализация BudgetNotesRepository
     await BudgetNotesRepository().initialize();
-    if (kDebugMode) {
-      debugPrint('✅ BudgetNotesRepository инициализирован');
-    }
 
     // ✅ ИСПРАВЛЕНО: Инициализация MarkerMapRepository (создадим если нет)
     try {
       await MarkerMapRepository().initialize();
-      if (kDebugMode) {
-        debugPrint('✅ MarkerMapRepository инициализирован');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ MarkerMapRepository не найден или ошибка инициализации: $e');
-        debugPrint('ℹ️ Маркерные карты могут работать через старую систему');
-      }
-    }
-
-    if (kDebugMode) {
-      debugPrint('💾 ========================================');
-      debugPrint('✅ Все Isar сервисы инициализированы');
-      debugPrint('💾 - FishingNotes: ✅');
-      debugPrint('💾 - BudgetNotes: ✅');
-      debugPrint('💾 - MarkerMaps: ✅ (или старая система)');
-      debugPrint('💾 ========================================');
-      debugPrint('');
+      // Silent error handling - markers may use legacy system
     }
 
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка инициализации Isar сервисов: $e');
-      debugPrint('❌ Приложение может работать, но офлайн режим может быть недоступен');
-    }
-
-    // В продакшене логируем критическую ошибку
-    if (!kDebugMode) {
-      debugPrint('🚨 КРИТИЧЕСКАЯ ОШИБКА: Isar сервисы не инициализированы!');
-    }
+    // Silent error handling for production
   }
 }
 
 // ✅ НОВАЯ ФУНКЦИЯ: Правильная инициализация App Check
 Future<void> _initializeAppCheck() async {
   try {
-    if (kDebugMode) {
-      debugPrint('');
-      debugPrint('🔐 ========================================');
-      debugPrint('🔐 Инициализация Firebase App Check...');
-      debugPrint('🔐 ========================================');
-    }
-
     // Настройка провайдеров в зависимости от режима сборки
     if (kDebugMode) {
       // DEBUG режим: Используем Debug Provider для разработки
@@ -249,54 +178,19 @@ Future<void> _initializeAppCheck() async {
         androidProvider: AndroidProvider.debug,
         appleProvider: AppleProvider.debug,
       );
-
-      if (kDebugMode) {
-        debugPrint('🧪 App Check активирован в DEBUG режиме');
-        debugPrint('🔧 Используется Debug Provider для разработки');
-        debugPrint('⚠️  Только для разработки! В продакшене будет Play Integrity');
-      }
     } else {
       // RELEASE режим: Используем Play Integrity для продакшена
       await FirebaseAppCheck.instance.activate(
         androidProvider: AndroidProvider.playIntegrity,
         appleProvider: AppleProvider.deviceCheck,
       );
-
-      debugPrint('🔐 App Check активирован в PRODUCTION режиме');
-      debugPrint('✅ Используется Play Integrity API для безопасности');
     }
 
     // Проверяем статус App Check
     final token = await FirebaseAppCheck.instance.getToken();
-    if (token != null) {
-      if (kDebugMode) {
-        debugPrint('✅ App Check токен получен успешно');
-        debugPrint('🔒 Firebase защищен от злоупотреблений');
-      }
-    } else {
-      if (kDebugMode) {
-        debugPrint('⚠️ App Check токен не получен');
-      }
-    }
-
-    if (kDebugMode) {
-      debugPrint('🔐 ========================================');
-      debugPrint('✅ App Check инициализирован успешно');
-      debugPrint('🔐 ========================================');
-      debugPrint('');
-    }
 
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка инициализации App Check: $e');
-      debugPrint('⚠️ Firebase может работать без App Check, но это небезопасно');
-    }
-
-    // В продакшене логируем критическую ошибку
-    if (!kDebugMode) {
-      // Здесь можно добавить отправку ошибки в Crashlytics
-      debugPrint('🚨 КРИТИЧЕСКАЯ ОШИБКА: App Check не активирован в продакшене!');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -305,31 +199,24 @@ Future<void> _initializeServices() async {
   final services = [
         () async {
       await LocalPushNotificationService().initialize();
-      if (kDebugMode) debugPrint('✅ LocalPushNotificationService инициализирован');
     },
         () async {
       await NotificationService().initialize();
-      if (kDebugMode) debugPrint('✅ NotificationService инициализирован');
     },
         () async {
       await TimerService().initialize();
-      if (kDebugMode) debugPrint('✅ TimerService инициализирован');
     },
         () async {
       await WeatherNotificationService().initialize();
-      if (kDebugMode) debugPrint('✅ WeatherNotificationService инициализирован');
     },
         () async {
       await WeatherSettingsService().initialize();
-      if (kDebugMode) debugPrint('✅ WeatherSettingsService инициализирован');
     },
         () async {
       await ScheduledReminderService().initialize();
-      if (kDebugMode) debugPrint('✅ ScheduledReminderService инициализирован');
     },
         () async {
       await LocationService().initialize();
-      if (kDebugMode) debugPrint('✅ LocationService инициализирован');
     },
   ];
 
@@ -337,9 +224,7 @@ Future<void> _initializeServices() async {
     try {
       await service();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка инициализации сервиса: $e');
-      }
+      // Silent error handling for production
     }
   }
 }
@@ -349,13 +234,8 @@ Future<void> _initializeOfflineServices() async {
   try {
     final offlineStorage = OfflineStorageService();
     await offlineStorage.initialize();
-    if (kDebugMode) {
-      debugPrint('✅ OfflineStorageService (старый) инициализирован для совместимости');
-    }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('⚠️ OfflineStorageService (старый) не удалось инициализировать: $e');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -369,13 +249,9 @@ void _startNetworkMonitoring() {
       if (isConnected) {
         // ✅ ИСПРАВЛЕНО: Используем новый SyncService.instance для Isar
         SyncService.instance.fullSync().then((_) {
-          if (kDebugMode) {
-            debugPrint('✅ Автоматическая синхронизация (Isar) выполнена при подключении к сети');
-          }
+          // Silent success
         }).catchError((e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка автоматической синхронизации (Isar): $e');
-          }
+          // Silent error handling
         });
       }
     });
@@ -383,13 +259,8 @@ void _startNetworkMonitoring() {
     // ✅ ИСПРАВЛЕНО: Запускаем периодическую синхронизацию через новый SyncService
     SyncService.instance.startPeriodicSync();
 
-    if (kDebugMode) {
-      debugPrint('✅ Мониторинг сети запущен с поддержкой Isar');
-    }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('⚠️ Мониторинг сети не удалось запустить: $e');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -398,64 +269,37 @@ Future<void> _testFirebaseAuthentication() async {
   if (!kDebugMode) return;
 
   try {
-    debugPrint('🧪 Тестируем Firebase Authentication с App Check...');
-
     final auth = FirebaseAuth.instance;
 
     // Проверяем текущего пользователя
     final currentUser = auth.currentUser;
-    if (currentUser != null) {
-      debugPrint('👤 Текущий пользователь: ${currentUser.email}');
-    } else {
-      debugPrint('👤 Пользователь не авторизован');
-    }
 
     // Проверяем доступность методов Auth
     try {
       // Попробуем получить провайдеры для несуществующего email
       await auth.fetchSignInMethodsForEmail('test@nonexistent.com');
-      debugPrint('✅ Firebase Auth методы ДОСТУПНЫ с App Check!');
-      debugPrint('🎉 Авторизация работает безопасно');
     } catch (e) {
-      if (e.toString().contains('blocked') || e.toString().contains('app-check')) {
-        debugPrint('❌ Firebase Auth заблокирован App Check: $e');
-        debugPrint('🔧 Проверьте настройки App Check в Firebase Console');
-      } else {
-        debugPrint('✅ Firebase Auth работает с App Check (ошибка ожидаема для тестового email)');
-        debugPrint('🎉 Можно безопасно тестировать авторизацию');
-      }
+      // Expected error for non-existent email - this is fine
     }
 
   } catch (e) {
-    debugPrint('❌ Ошибка тестирования Firebase Auth: $e');
+    // Silent error handling
   }
 }
 
 // Функция для запроса разрешений на уведомления
 Future<void> _requestNotificationPermissions() async {
   try {
-    if (kDebugMode) {
-      debugPrint('📱 Запрашиваем разрешения на уведомления...');
-    }
-
     if (Platform.isAndroid) {
       // Для Android 13+ запрашиваем разрешение на уведомления
       final notificationStatus = await Permission.notification.request();
-      if (kDebugMode) {
-        debugPrint('📱 Android notification permission: $notificationStatus');
-      }
 
       // Запрашиваем разрешение на точные будильники
       if (Platform.isAndroid) {
         try {
           final exactAlarmStatus = await Permission.scheduleExactAlarm.request();
-          if (kDebugMode) {
-            debugPrint('⏰ Android exact alarm permission: $exactAlarmStatus');
-          }
         } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Exact alarm permission не поддерживается на этой версии Android');
-          }
+          // Silent error handling - not supported on all Android versions
         }
       }
     } else if (Platform.isIOS) {
@@ -468,28 +312,15 @@ Future<void> _requestNotificationPermissions() async {
         sound: true,
         critical: true,
       );
-      if (kDebugMode) {
-        debugPrint('📱 iOS notification permissions requested');
-      }
-    }
-
-    if (kDebugMode) {
-      debugPrint('✅ Разрешения на уведомления запрошены');
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка запроса разрешений на уведомления: $e');
-    }
+    // Silent error handling for production
   }
 }
 
 // Функция для инициализации flutter_local_notifications
 Future<void> _initializeNotifications() async {
   try {
-    if (kDebugMode) {
-      debugPrint('🔔 Инициализируем flutter_local_notifications...');
-    }
-
     // Настройки для Android
     const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
 
@@ -518,14 +349,8 @@ Future<void> _initializeNotifications() async {
     if (Platform.isAndroid) {
       await _createNotificationChannel();
     }
-
-    if (kDebugMode) {
-      debugPrint('✅ flutter_local_notifications инициализирован');
-    }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка инициализации flutter_local_notifications: $e');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -546,24 +371,14 @@ Future<void> _createNotificationChannel() async {
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
-
-    if (kDebugMode) {
-      debugPrint('✅ Канал уведомлений таймеров создан');
-    }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка создания канала уведомлений: $e');
-    }
+    // Silent error handling for production
   }
 }
 
 // Обработчик нажатий на уведомления
 void _onNotificationTap(NotificationResponse notificationResponse) {
   try {
-    if (kDebugMode) {
-      debugPrint('🔔 Нажатие на уведомление: ${notificationResponse.payload}');
-    }
-
     if (notificationResponse.payload != null) {
       final payload = notificationResponse.payload!;
 
@@ -576,15 +391,11 @@ void _onNotificationTap(NotificationResponse notificationResponse) {
           _navigateToTimers();
         }
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка парсинга payload уведомления: $e');
-        }
+        // Silent error handling for malformed payload
       }
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка обработки нажатия на уведомление: $e');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -596,18 +407,9 @@ void _navigateToTimers() {
     final navigator = globalNavigatorKey.currentState;
     if (navigator != null) {
       navigator.pushNamed('/timers');
-      if (kDebugMode) {
-        debugPrint('✅ Навигация к таймерам выполнена');
-      }
-    } else {
-      if (kDebugMode) {
-        debugPrint('⚠️ Навигатор недоступен');
-      }
     }
   } catch (e) {
-    if (kDebugMode) {
-      debugPrint('❌ Ошибка навигации к таймерам: $e');
-    }
+    // Silent error handling for production
   }
 }
 
@@ -653,18 +455,12 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       subscriptionProvider.setFirebaseService(_firebaseService);
 
       subscriptionProvider.initialize().then((_) {
-        if (kDebugMode) {
-          debugPrint('✅ SubscriptionProvider инициализирован с FirebaseService');
-        }
+        // Silent success
       }).catchError((error) {
-        if (kDebugMode) {
-          debugPrint('❌ Ошибка инициализации SubscriptionProvider: $error');
-        }
+        // Silent error handling
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Не удалось инициализировать SubscriptionProvider: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -679,9 +475,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       ScheduledReminderService().dispose();
       TimerService().dispose();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибки при освобождении ресурсов: $e');
-      }
+      // Silent error handling for production
     }
 
     super.dispose();
@@ -694,9 +488,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _ensureNotificationHandlerIsActive();
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка установки контекста: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -704,9 +496,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     try {
       _setupNotificationHandlers();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка проверки обработчика: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -719,9 +509,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
           _handleNotificationTap(payload);
         },
         onError: (error) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибки в stream уведомлений: $error');
-          }
+          // Silent error handling
         },
       );
     } catch (e) {
@@ -737,9 +525,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
           _handleNotificationTap(payload);
         });
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Альтернативный обработчик не удалось установить: $e');
-        }
+        // Silent error handling for production
       }
     });
   }
@@ -768,9 +554,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _navigateToNotifications();
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка обработки уведомления: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -842,15 +626,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
   void _checkDocumentUpdatesAfterAuth() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (kDebugMode) {
-        if (user != null) {
-          debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ АВТОРИЗОВАН - ${user.email}');
-          debugPrint('🔐 User UID: ${user.uid}');
-        } else {
-          debugPrint('🔐 AuthStateChange: ПОЛЬЗОВАТЕЛЬ ВЫШЕЛ ИЗ СИСТЕМЫ');
-        }
-      }
-
       if (user != null && widget.consentService != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _initializeScheduledReminderContext();
@@ -871,18 +646,14 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
         const ShortcutItem(type: 'timers', localizedTitle: 'Таймеры'),
       ]).catchError((error) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка установки shortcuts: $error');
-        }
+        // Silent error handling
       });
 
       quickActions.initialize((String shortcutType) {
         _handleShortcutAction(shortcutType);
       });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка инициализации Quick Actions: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -894,9 +665,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _handleDeepLink(uri);
       },
       onError: (err) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка deep link: $err');
-        }
+        // Silent error handling
       },
     );
 
@@ -911,9 +680,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _handleDeepLink(initialLink);
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка получения начального deep link: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -1060,9 +827,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
       _initializeScheduledReminderContext();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Ошибка обновления при возврате в приложение: $e');
-      }
+      // Silent error handling for production
     }
   }
 
@@ -1098,9 +863,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
               try {
                 ScheduledReminderService().setContext(context);
               } catch (e) {
-                if (kDebugMode) {
-                  debugPrint('⚠️ Ошибка установки контекста: $e');
-                }
+                // Silent error handling for production
               }
             });
 

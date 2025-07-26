@@ -13,6 +13,7 @@ class MarkerMapEntity {
   @Index(unique: true)
   String? firebaseId; // ID из Firestore
 
+  @Index()
   late String userId; // ID пользователя
 
   late String name; // Название карты
@@ -29,6 +30,8 @@ class MarkerMapEntity {
 
   bool isSynced = false; // Флаг синхронизации с Firebase
 
+  // ✅ ИСПРАВЛЕНО: Добавлен индекс для эффективных запросов офлайн удаления
+  @Index()
   bool markedForDeletion = false; // Флаг для удаления
 
   DateTime createdAt = DateTime.now();

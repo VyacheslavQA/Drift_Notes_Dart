@@ -15,7 +15,7 @@ class LanguageProvider extends ChangeNotifier {
 
   LanguageProvider() {
     // ИСПРАВЛЕНО: Убираем асинхронный вызов из конструктора
-    debugPrint('🏗️ LanguageProvider создан с дефолтным языком: ${_currentLocale.languageCode}');
+    // ✅ УБРАНО: debugPrint('🏗️ LanguageProvider создан с дефолтным языком: ${_currentLocale.languageCode}');
   }
 
   // Геттер для получения текущей локали
@@ -31,10 +31,10 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    debugPrint('🚀 Инициализация LanguageProvider...');
+    // ✅ УБРАНО: debugPrint('🚀 Инициализация LanguageProvider...');
     await _loadSavedLanguage();
     _isInitialized = true;
-    debugPrint('✅ LanguageProvider инициализирован');
+    // ✅ УБРАНО: debugPrint('✅ LanguageProvider инициализирован');
   }
 
   // Загрузка сохраненного языка из SharedPreferences
@@ -47,15 +47,15 @@ class LanguageProvider extends ChangeNotifier {
         // Используем системный язык
         final systemLocale = await getDeviceLocale();
         _currentLocale = systemLocale;
-        debugPrint('📱 Загружен системный язык: ${_currentLocale.languageCode}');
+        // ✅ УБРАНО: debugPrint('📱 Загружен системный язык: ${_currentLocale.languageCode}');
       } else {
         // Используем сохраненный язык
         final savedLanguage = prefs.getString(_prefsKey);
         if (savedLanguage != null) {
           _currentLocale = Locale(savedLanguage);
-          debugPrint('💾 Загружен сохраненный язык: ${_currentLocale.languageCode}');
+          // ✅ УБРАНО: debugPrint('💾 Загружен сохраненный язык: ${_currentLocale.languageCode}');
         } else {
-          debugPrint('🔧 Используем дефолтный язык: ${_currentLocale.languageCode}');
+          // ✅ УБРАНО: debugPrint('🔧 Используем дефолтный язык: ${_currentLocale.languageCode}');
         }
       }
 
@@ -67,7 +67,7 @@ class LanguageProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('❌ Ошибка при загрузке языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при загрузке языка: $e');
       // При ошибке оставляем дефолтный язык
     }
   }
@@ -75,15 +75,13 @@ class LanguageProvider extends ChangeNotifier {
   // Изменение языка
   Future<void> changeLanguage(Locale newLocale) async {
     if (_currentLocale == newLocale) {
-      debugPrint('🔄 Язык уже установлен: ${newLocale.languageCode}');
+      // ✅ УБРАНО: debugPrint('🔄 Язык уже установлен: ${newLocale.languageCode}');
       // Очищаем кэш географических данных при смене языка
       CountriesData.clearGeographyCache();
       return;
     }
 
-    debugPrint(
-      '🌐 Смена языка с ${_currentLocale.languageCode} на ${newLocale.languageCode}',
-    );
+    // ✅ УБРАНО: debugPrint('🌐 Смена языка с ${_currentLocale.languageCode} на ${newLocale.languageCode}');
 
     _currentLocale = newLocale;
 
@@ -95,9 +93,9 @@ class LanguageProvider extends ChangeNotifier {
         false,
       ); // Отключаем системный язык
 
-      debugPrint('✅ Язык сохранен в настройках: ${newLocale.languageCode}');
+      // ✅ УБРАНО: debugPrint('✅ Язык сохранен в настройках: ${newLocale.languageCode}');
     } catch (e) {
-      debugPrint('❌ Ошибка при сохранении языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при сохранении языка: $e');
     }
 
     // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService
@@ -112,7 +110,7 @@ class LanguageProvider extends ChangeNotifier {
 
   // Установка системного языка
   Future<void> setSystemLanguage() async {
-    debugPrint('🔧 Установка системного языка');
+    // ✅ УБРАНО: debugPrint('🔧 Установка системного языка');
 
     try {
       final systemLocale = await getDeviceLocale();
@@ -122,9 +120,9 @@ class LanguageProvider extends ChangeNotifier {
       await prefs.setBool(_systemLanguageKey, true);
       await prefs.remove(_prefsKey); // Удаляем фиксированный язык
 
-      debugPrint('✅ Установлен системный язык: ${systemLocale.languageCode}');
+      // ✅ УБРАНО: debugPrint('✅ Установлен системный язык: ${systemLocale.languageCode}');
     } catch (e) {
-      debugPrint('❌ Ошибка при установке системного языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при установке системного языка: $e');
     }
 
     // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService
@@ -137,9 +135,9 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> _syncWeatherServiceLanguage() async {
     try {
       await WeatherNotificationService().updateLanguage(_currentLocale.languageCode);
-      debugPrint('🌤️ Язык синхронизирован с WeatherNotificationService: ${_currentLocale.languageCode}');
+      // ✅ УБРАНО: debugPrint('🌤️ Язык синхронизирован с WeatherNotificationService: ${_currentLocale.languageCode}');
     } catch (e) {
-      debugPrint('❌ Ошибка синхронизации языка с WeatherNotificationService: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка синхронизации языка с WeatherNotificationService: $e');
     }
   }
 
@@ -149,7 +147,7 @@ class LanguageProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_systemLanguageKey) ?? false;
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке системного языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при проверке системного языка: $e');
       return false;
     }
   }
@@ -158,20 +156,18 @@ class LanguageProvider extends ChangeNotifier {
   static Future<Locale> getDeviceLocale() async {
     try {
       final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
-      debugPrint('📱 Системный язык устройства: ${deviceLocale.languageCode}');
+      // ✅ УБРАНО: debugPrint('📱 Системный язык устройства: ${deviceLocale.languageCode}');
 
       // Проверяем, поддерживается ли системный язык
       if (['ru', 'en'].contains(deviceLocale.languageCode)) {
         return Locale(deviceLocale.languageCode);
       }
 
-      debugPrint(
-        '⚠️ Системный язык не поддерживается, используем русский по умолчанию',
-      );
+      // ✅ УБРАНО: debugPrint('⚠️ Системный язык не поддерживается, используем русский по умолчанию');
       // Если не поддерживается, возвращаем русский по умолчанию
       return const Locale('ru', 'RU');
     } catch (e) {
-      debugPrint('❌ Ошибка при получении системного языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при получении системного языка: $e');
       return const Locale('ru', 'RU');
     }
   }
@@ -203,7 +199,7 @@ class LanguageProvider extends ChangeNotifier {
 
   // Сброс к настройкам по умолчанию
   Future<void> resetToDefault() async {
-    debugPrint('🔄 Сброс языка к настройкам по умолчанию');
+    // ✅ УБРАНО: debugPrint('🔄 Сброс языка к настройкам по умолчанию');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -212,9 +208,9 @@ class LanguageProvider extends ChangeNotifier {
 
       _currentLocale = const Locale('ru', 'RU');
 
-      debugPrint('✅ Язык сброшен к русскому по умолчанию');
+      // ✅ УБРАНО: debugPrint('✅ Язык сброшен к русскому по умолчанию');
     } catch (e) {
-      debugPrint('❌ Ошибка при сбросе языка: $e');
+      // ✅ УБРАНО: debugPrint('❌ Ошибка при сбросе языка: $e');
     }
 
     // ДОБАВЛЕНО: Синхронизация с WeatherNotificationService при сбросе
@@ -225,7 +221,7 @@ class LanguageProvider extends ChangeNotifier {
 
   // ДОБАВЛЕНО: Метод для принудительного обновления локали
   Future<void> refreshLanguage() async {
-    debugPrint('🔄 Принудительное обновление языка');
+    // ✅ УБРАНО: debugPrint('🔄 Принудительное обновление языка');
     await _loadSavedLanguage();
   }
 }

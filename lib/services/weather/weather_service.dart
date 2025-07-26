@@ -37,9 +37,7 @@ class WeatherService {
       // Конвертируем в FishingWeather для совместимости
       return WeatherApiService.convertToFishingWeather(weatherData);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e');
-      }
+      // ✅ УБРАНО: debugPrint('⚠️ WeatherAPI прогноз недоступен, пробуем текущую погоду: $e');
 
       try {
         // Если прогноз не работает, используем текущую погоду
@@ -51,9 +49,7 @@ class WeatherService {
         return WeatherApiService.convertToFishingWeather(weatherData);
       } catch (e2) {
         // Если новый API не работает совсем, используем старый Open-Meteo как fallback
-        if (kDebugMode) {
-          debugPrint('⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2');
-        }
+        // ✅ УБРАНО: debugPrint('⚠️ WeatherAPI полностью недоступен, используем Open-Meteo: $e2');
         return _getWeatherFromOpenMeteo(latitude, longitude);
       }
     }
@@ -112,9 +108,7 @@ class WeatherService {
         isDay: current['is_day'] == 1,
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Ошибка при обработке данных погоды: $e');
-      }
+      // ✅ УБРАНО: debugPrint('Ошибка при обработке данных погоды: $e');
       return null;
     }
   }

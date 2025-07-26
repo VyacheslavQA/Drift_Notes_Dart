@@ -2239,5 +2239,8 @@
   "accept_consents": "Принять согласия",
   "action_failed": "Не удалось выполнить действие. Попробуйте еще раз.",
   "content_requires_consents": "Контент требует принятия согласий",
-  "accept_consents_to_unlock": "Примите пользовательские согласия для доступа к контенту"
+  "accept_consents_to_unlock": "Примите пользовательские согласия для доступа к контенту",
+
+  "offline_mode_description": "Работаете офлайн",
+  "connection_restored": "Подключение восстановлено"
 }

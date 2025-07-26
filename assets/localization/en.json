@@ -2296,6 +2296,9 @@
   "accept_consents": "Accept consents",
   "action_failed": "Failed to perform action. Please try again.",
   "content_requires_consents": "Content requires consent acceptance",
-  "accept_consents_to_unlock": "Accept user consents to access content"
+  "accept_consents_to_unlock": "Accept user consents to access content",
+
+  "offline_mode_description": "Working offline",
+  "connection_restored": "Connection restored"
 
 }

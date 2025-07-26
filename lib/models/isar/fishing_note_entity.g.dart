@@ -89,38 +89,43 @@ const FishingNoteEntitySchema = CollectionSchema(
       name: r'mapMarkersJson',
       type: IsarType.string,
     ),
-    r'notes': PropertySchema(
+    r'markedForDeletion': PropertySchema(
       id: 14,
+      name: r'markedForDeletion',
+      type: IsarType.bool,
+    ),
+    r'notes': PropertySchema(
+      id: 15,
       name: r'notes',
       type: IsarType.string,
     ),
     r'photoUrls': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'photoUrls',
       type: IsarType.stringList,
     ),
     r'tackle': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'tackle',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'userId',
       type: IsarType.string,
     ),
     r'weatherData': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'weatherData',
       type: IsarType.object,
       target: r'WeatherDataEntity',
@@ -155,6 +160,19 @@ const FishingNoteEntitySchema = CollectionSchema(
           name: r'userId',
           type: IndexType.hash,
           caseSensitive: true,
+        )
+      ],
+    ),
+    r'markedForDeletion': IndexSchema(
+      id: 4789654020591589618,
+      name: r'markedForDeletion',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'markedForDeletion',
+          type: IndexType.value,
+          caseSensitive: false,
         )
       ],
     )
@@ -286,14 +304,15 @@ void _fishingNoteEntitySerialize(
   writer.writeString(offsets[11], object.location);
   writer.writeDouble(offsets[12], object.longitude);
   writer.writeString(offsets[13], object.mapMarkersJson);
-  writer.writeString(offsets[14], object.notes);
-  writer.writeStringList(offsets[15], object.photoUrls);
-  writer.writeString(offsets[16], object.tackle);
-  writer.writeString(offsets[17], object.title);
-  writer.writeDateTime(offsets[18], object.updatedAt);
-  writer.writeString(offsets[19], object.userId);
+  writer.writeBool(offsets[14], object.markedForDeletion);
+  writer.writeString(offsets[15], object.notes);
+  writer.writeStringList(offsets[16], object.photoUrls);
+  writer.writeString(offsets[17], object.tackle);
+  writer.writeString(offsets[18], object.title);
+  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeString(offsets[20], object.userId);
   writer.writeObject<WeatherDataEntity>(
-    offsets[20],
+    offsets[21],
     allOffsets,
     WeatherDataEntitySchema.serialize,
     object.weatherData,
@@ -332,14 +351,15 @@ FishingNoteEntity _fishingNoteEntityDeserialize(
   object.location = reader.readStringOrNull(offsets[11]);
   object.longitude = reader.readDoubleOrNull(offsets[12]);
   object.mapMarkersJson = reader.readStringOrNull(offsets[13]);
-  object.notes = reader.readStringOrNull(offsets[14]);
-  object.photoUrls = reader.readStringList(offsets[15]) ?? [];
-  object.tackle = reader.readStringOrNull(offsets[16]);
-  object.title = reader.readString(offsets[17]);
-  object.updatedAt = reader.readDateTime(offsets[18]);
-  object.userId = reader.readString(offsets[19]);
+  object.markedForDeletion = reader.readBool(offsets[14]);
+  object.notes = reader.readStringOrNull(offsets[15]);
+  object.photoUrls = reader.readStringList(offsets[16]) ?? [];
+  object.tackle = reader.readStringOrNull(offsets[17]);
+  object.title = reader.readString(offsets[18]);
+  object.updatedAt = reader.readDateTime(offsets[19]);
+  object.userId = reader.readString(offsets[20]);
   object.weatherData = reader.readObjectOrNull<WeatherDataEntity>(
-    offsets[20],
+    offsets[21],
     WeatherDataEntitySchema.deserialize,
     allOffsets,
   );
@@ -392,18 +412,20 @@ P _fishingNoteEntityDeserializeProp<P>(
     case 13:
       return (reader.readStringOrNull(offset)) as P;
     case 14:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 15:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 16:
       return (reader.readStringOrNull(offset)) as P;
+    case 16:
+      return (reader.readStringList(offset) ?? []) as P;
     case 17:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 18:
-      return (reader.readDateTime(offset)) as P;
-    case 19:
       return (reader.readString(offset)) as P;
+    case 19:
+      return (reader.readDateTime(offset)) as P;
     case 20:
+      return (reader.readString(offset)) as P;
+    case 21:
       return (reader.readObjectOrNull<WeatherDataEntity>(
         offset,
         WeatherDataEntitySchema.deserialize,
@@ -490,6 +512,15 @@ extension FishingNoteEntityQueryWhereSort
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhere>
+      anyMarkedForDeletion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'markedForDeletion'),
+      );
     });
   }
 }
@@ -670,6 +701,51 @@ extension FishingNoteEntityQueryWhere
               indexName: r'userId',
               lower: [],
               upper: [userId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhereClause>
+      markedForDeletionEqualTo(bool markedForDeletion) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'markedForDeletion',
+        value: [markedForDeletion],
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterWhereClause>
+      markedForDeletionNotEqualTo(bool markedForDeletion) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [],
+              upper: [markedForDeletion],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [markedForDeletion],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [markedForDeletion],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [],
+              upper: [markedForDeletion],
               includeUpper: false,
             ));
       }
@@ -1987,6 +2063,16 @@ extension FishingNoteEntityQueryFilter
   }
 
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      markedForDeletionEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'markedForDeletion',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
       notesIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -3064,6 +3150,20 @@ extension FishingNoteEntityQuerySortBy
   }
 
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      sortByMarkedForDeletion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'markedForDeletion', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      sortByMarkedForDeletionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'markedForDeletion', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
       sortByNotes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.asc);
@@ -3318,6 +3418,20 @@ extension FishingNoteEntityQuerySortThenBy
   }
 
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      thenByMarkedForDeletion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'markedForDeletion', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
+      thenByMarkedForDeletionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'markedForDeletion', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterSortBy>
       thenByNotes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notes', Sort.asc);
@@ -3475,6 +3589,13 @@ extension FishingNoteEntityQueryWhereDistinct
     });
   }
 
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct>
+      distinctByMarkedForDeletion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'markedForDeletion');
+    });
+  }
+
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct> distinctByNotes(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3618,6 +3739,13 @@ extension FishingNoteEntityQueryProperty
       mapMarkersJsonProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'mapMarkersJson');
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, bool, QQueryOperations>
+      markedForDeletionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'markedForDeletion');
     });
   }
 

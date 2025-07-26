@@ -110,15 +110,11 @@ class SubscriptionService {
   /// Инициализация сервиса
   Future<void> initialize() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Инициализация SubscriptionService...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением об инициализации
 
       // Проверяем что FirebaseService установлен
       if (_firebaseService == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ FirebaseService не установлен, пропускаем инициализацию SubscriptionService');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неустановленном FirebaseService
         return;
       }
 
@@ -128,9 +124,7 @@ class SubscriptionService {
       // Проверяем доступность покупок
       final isAvailable = await _inAppPurchase.isAvailable();
       if (!isAvailable) {
-        if (kDebugMode) {
-          debugPrint('❌ In-App Purchase недоступен на этом устройстве');
-        }
+        // ✅ УБРАНО: debugPrint с сообщением о недоступности In-App Purchase
         return;
       }
 
@@ -138,14 +132,10 @@ class SubscriptionService {
       _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
         _handlePurchaseUpdates,
         onDone: () {
-          if (kDebugMode) {
-            debugPrint('🔄 Purchase stream закрыт');
-          }
+          // ✅ УБРАНО: debugPrint о закрытии purchase stream
         },
         onError: (error) {
-          if (kDebugMode) {
-            debugPrint('❌ Ошибка в purchase stream: $error');
-          }
+          // ✅ УБРАНО: debugPrint с деталями ошибки в purchase stream
         },
       );
 
@@ -159,28 +149,20 @@ class SubscriptionService {
       await _initializeUsageLimitsRepository();
 
 
-      if (kDebugMode) {
-        debugPrint('✅ SubscriptionService инициализирован');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением инициализации
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка инициализации SubscriptionService: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки инициализации
     }
   }
 
   /// 🆕 ИСПРАВЛЕНО: Инициализация системы лимитов через Repository
   Future<void> _initializeUsageLimitsRepository() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Инициализация системы лимитов через Repository...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением об инициализации системы лимитов
 
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для инициализации лимитов');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе
         return;
       }
 
@@ -188,26 +170,18 @@ class SubscriptionService {
       final limits = await _usageLimitsRepository.getUserLimits(userId);
 
       if (limits != null) {
-        if (kDebugMode) {
-          debugPrint('📊 Лимиты пользователя загружены через Repository: $limits');
-        }
+        // ✅ УБРАНО: debugPrint с информацией о загруженных лимитах пользователя
       } else {
-        if (kDebugMode) {
-          debugPrint('📊 Создаем начальные лимиты для нового пользователя через Repository');
-        }
+        // ✅ УБРАНО: debugPrint о создании начальных лимитов для нового пользователя
 
         // Создаем лимиты по умолчанию и сохраняем через Repository
         final defaultLimits = UsageLimitsModel.defaultLimits(userId);
         await _usageLimitsRepository.saveUserLimits(defaultLimits);
       }
 
-      if (kDebugMode) {
-        debugPrint('✅ Система лимитов инициализирована через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением инициализации системы лимитов
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка инициализации системы лимитов через Repository: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки инициализации системы лимитов
     }
   }
 
@@ -230,24 +204,18 @@ class SubscriptionService {
 
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для проверки лимитов');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе
         return false;
       }
 
       // 🆕 ИСПРАВЛЕНО: Используем Repository для проверки лимитов
       final result = await _usageLimitsRepository.canCreateContent(userId, contentType);
 
-      if (kDebugMode) {
-        debugPrint('🔍 canCreateContent: $contentType, canCreate=${result.canCreate}, current=${result.currentCount}, limit=${result.limit}');
-      }
+      // ✅ УБРАНО: debugPrint с деталями проверки (contentType, canCreate, currentCount, limit)
 
       return result.canCreate;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки возможности создания контента: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки проверки возможности создания контента
       return false;
     }
   }
@@ -257,9 +225,7 @@ class SubscriptionService {
     try {
       // 1. Проверка тестового аккаунта - безлимитный доступ
       if (_isTestAccount()) {
-        if (kDebugMode) {
-          debugPrint('🧪 Тестовый аккаунт - безлимитный доступ к $contentType');
-        }
+        // ✅ УБРАНО: debugPrint с информацией о тестовом аккаунте
         return true;
       }
 
@@ -267,33 +233,25 @@ class SubscriptionService {
       final cachedSubscription = await _offlineStorage.getCachedSubscriptionStatus();
       if (cachedSubscription?.isPremium == true) {
         if (await _offlineStorage.isSubscriptionCacheValid()) {
-          if (kDebugMode) {
-            debugPrint('🔥 Кэшированный премиум статус действителен - разрешаем $contentType');
-          }
+          // ✅ УБРАНО: debugPrint с информацией о кэшированном премиум статусе
           return true;
         }
       }
 
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для офлайн проверки лимитов');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе для офлайн проверки
         return false;
       }
 
       // 3. 🆕 ИСПРАВЛЕНО: Используем Repository для офлайн проверки
       final result = await _usageLimitsRepository.canCreateContent(userId, contentType);
 
-      if (kDebugMode) {
-        debugPrint('🔍 canCreateContentOffline: $contentType, canCreate=${result.canCreate}, current=${result.currentCount}, limit=${result.limit}');
-      }
+      // ✅ УБРАНО: debugPrint с деталями офлайн проверки (contentType, canCreate, currentCount, limit)
 
       return result.canCreate;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки офлайн создания контента: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки проверки офлайн создания контента
       // При ошибке разрешаем создание (принцип "fail open")
       return true;
     }
@@ -330,9 +288,7 @@ class SubscriptionService {
         message = 'Доступно ${result.remaining} ${_getContentTypeName(contentType)}';
       }
 
-      if (kDebugMode) {
-        debugPrint('🔍 checkOfflineUsage: $contentType, current=${result.currentCount}, limit=${result.limit}, remaining=${result.remaining}, canCreate=${result.canCreate}');
-      }
+      // ✅ УБРАНО: debugPrint с деталями проверки офлайн использования
 
       return OfflineUsageResult(
         canCreate: result.canCreate,
@@ -344,9 +300,7 @@ class SubscriptionService {
         contentType: contentType,
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки офлайн использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки проверки офлайн использования
       return _getErrorUsageResult(contentType);
     }
   }
@@ -373,31 +327,23 @@ class SubscriptionService {
     try {
       // Тестовые аккаунты Google Play - безлимитный доступ БЕЗ счетчиков
       if (_isTestAccount()) {
-        if (kDebugMode) {
-          debugPrint('🧪 Тестовый аккаунт - пропускаем увеличение счетчика для $contentType');
-        }
+        // ✅ УБРАНО: debugPrint с информацией о пропуске увеличения счетчика для тестового аккаунта
         return true;
       }
 
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для увеличения счетчика');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе для увеличения счетчика
         return false;
       }
 
       // 🆕 ИСПРАВЛЕНО: Увеличиваем счетчик через Repository
       await _usageLimitsRepository.incrementCounter(userId, contentType);
 
-      if (kDebugMode) {
-        debugPrint('✅ incrementUsage: счетчик $contentType увеличен через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением увеличения счетчика через Repository
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка увеличения счетчика использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки увеличения счетчика использования
       return false;
     }
   }
@@ -407,23 +353,17 @@ class SubscriptionService {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для уменьшения счетчика');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе для уменьшения счетчика
         return false;
       }
 
       // 🆕 ИСПРАВЛЕНО: Уменьшаем счетчик через Repository
       await _usageLimitsRepository.decrementCounter(userId, contentType);
 
-      if (kDebugMode) {
-        debugPrint('✅ decrementUsage: счетчик $contentType уменьшен через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением уменьшения счетчика через Repository
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка уменьшения счетчика использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки уменьшения счетчика использования
       return false;
     }
   }
@@ -433,22 +373,16 @@ class SubscriptionService {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для сброса счетчика');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе для сброса счетчика
         return;
       }
 
       // Сбрасываем все счетчики через Repository
       await _usageLimitsRepository.resetAllCounters(userId);
 
-      if (kDebugMode) {
-        debugPrint('✅ Сброшены все счетчики через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением сброса всех счетчиков через Repository
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка сброса использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки сброса использования
     }
   }
 
@@ -470,9 +404,7 @@ class SubscriptionService {
 
       return result;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения информации об использовании: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения информации об использовании
       return {};
     }
   }
@@ -496,9 +428,7 @@ class SubscriptionService {
         'exists': true,
       };
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения статистики использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения статистики использования
       return {'exists': false, 'error': e.toString()};
     }
   }
@@ -512,9 +442,7 @@ class SubscriptionService {
       final stats = await _usageLimitsRepository.getStatsForType(userId, contentType);
       return stats['current'] ?? 0;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения текущего использования: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения текущего использования
       return 0;
     }
   }
@@ -524,24 +452,18 @@ class SubscriptionService {
     try {
       final userId = firebaseService.currentUserId;
       if (userId == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Пользователь не авторизован для пересчета лимитов');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением о неавторизованном пользователе для пересчета лимитов
         return;
       }
 
-      if (kDebugMode) {
-        debugPrint('🔄 Пересчет лимитов для пользователя: $userId');
-      }
+      // ✅ УБРАНО: debugPrint с информацией о пересчете лимитов для пользователя
 
       // 🔥 ИСПРАВЛЕНО: Получаем реальное количество заметок с фильтрацией по пользователю
       final fishingNotesCount = await _isarService.getFishingNotesCountByUser(userId);
       final markerMapsCount = await _isarService.getMarkerMapsCountByUser(userId);
       final budgetNotesCount = await _isarService.getBudgetNotesCountByUser(userId);
 
-      if (kDebugMode) {
-        debugPrint('📊 Реальные подсчеты: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
-      }
+      // ✅ УБРАНО: debugPrint с реальными подсчетами по типам
 
       // Пересчитываем через Repository
       await _usageLimitsRepository.recalculateCounters(
@@ -552,13 +474,9 @@ class SubscriptionService {
         recalculationType: 'subscription_service_recalculate',
       );
 
-      if (kDebugMode) {
-        debugPrint('✅ Лимиты пересчитаны: fishing=$fishingNotesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
-      }
+      // ✅ УБРАНО: debugPrint с результатами пересчета лимитов
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка пересчета лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки пересчета лимитов
     }
   }
 
@@ -585,9 +503,7 @@ class SubscriptionService {
   bool hasPremiumAccess() {
     // Проверяем тестовый аккаунт ПЕРВЫМ
     if (_isTestAccount()) {
-      if (kDebugMode) {
-        debugPrint('🧪 Тестовый аккаунт имеет полный премиум доступ');
-      }
+      // ✅ УБРАНО: debugPrint с информацией о полном премиум доступе тестового аккаунта
       return true;
     }
 
@@ -606,9 +522,7 @@ class SubscriptionService {
       // Для бесплатных пользователей возвращаем лимиты из констант
       return SubscriptionConstants.getContentLimit(contentType);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения лимита: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения лимита
       return SubscriptionConstants.getContentLimit(contentType);
     }
   }
@@ -622,9 +536,7 @@ class SubscriptionService {
       final warnings = await _usageLimitsRepository.getContentWarnings(userId);
       return warnings.any((warning) => warning.contentType == contentType);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки необходимости предупреждения: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки проверки необходимости предупреждения
       return false;
     }
   }
@@ -635,9 +547,7 @@ class SubscriptionService {
       final result = await checkOfflineUsage(contentType);
       return result.shouldShowPremiumDialog;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки необходимости диалога премиум: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки проверки необходимости диалога премиум
       return false;
     }
   }
@@ -649,15 +559,11 @@ class SubscriptionService {
   /// 🆕 ИСПРАВЛЕНО: Кэширование данных подписки через Repository
   Future<void> cacheSubscriptionDataOnline() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Кэширование данных подписки онлайн через Repository...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением о кэшировании данных подписки
 
       // Проверяем доступность сети
       if (!await NetworkUtils.isNetworkAvailable()) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Нет сети - пропускаем кэширование');
-        }
+        // ✅ УБРАНО: debugPrint с предупреждением об отсутствии сети
         return;
       }
 
@@ -666,9 +572,7 @@ class SubscriptionService {
 
       // Кэшируем подписку
       await _offlineStorage.cacheSubscriptionStatus(subscription);
-      if (kDebugMode) {
-        debugPrint('✅ Статус подписки кэширован');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением кэширования статуса подписки
 
       // 🆕 ИСПРАВЛЕНО: Кэшируем лимиты через Repository
       try {
@@ -677,43 +581,29 @@ class SubscriptionService {
           final limits = await _usageLimitsRepository.getUserLimits(userId);
           if (limits != null) {
             await _offlineStorage.cacheUsageLimits(limits);
-            if (kDebugMode) {
-              debugPrint('✅ Лимиты пользователя кэшированы через Repository: $limits');
-            }
+            // ✅ УБРАНО: debugPrint с подтверждением кэширования лимитов пользователя через Repository
           }
         }
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка кэширования лимитов через Repository: $e');
-        }
+        // ✅ УБРАНО: debugPrint с деталями ошибки кэширования лимитов через Repository
       }
 
-      if (kDebugMode) {
-        debugPrint('✅ Данные подписки успешно кэшированы через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением успешного кэширования данных подписки
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка кэширования данных подписки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки кэширования данных подписки
     }
   }
 
   /// Принудительное обновление кэша подписки
   Future<void> refreshSubscriptionCache() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Обновление кэша подписки...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением об обновлении кэша подписки
 
       await cacheSubscriptionDataOnline();
 
-      if (kDebugMode) {
-        debugPrint('✅ Кэш подписки обновлен');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением обновления кэша подписки
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка обновления кэша подписки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки обновления кэша подписки
     }
   }
 
@@ -731,9 +621,7 @@ class SubscriptionService {
         'expirationDate': cachedSubscription?.expirationDate?.toIso8601String(),
       };
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения информации о кэше подписки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения информации о кэше подписки
       return {
         'hasCachedSubscription': false,
         'isPremium': false,
@@ -750,9 +638,7 @@ class SubscriptionService {
 
       return await _usageLimitsRepository.getDebugInfo(userId);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения отладочной информации о лимитах: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения отладочной информации о лимитах
       return {'error': e.toString()};
     }
   }
@@ -766,13 +652,9 @@ class SubscriptionService {
       // 🆕 ИСПРАВЛЕНО: Очищаем через Repository
       await _usageLimitsRepository.resetAllCounters(userId);
 
-      if (kDebugMode) {
-        debugPrint('✅ Локальные счетчики очищены через Repository');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением очистки локальных счетчиков через Repository
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка очистки локальных счетчиков: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки очистки локальных счетчиков
     }
   }
 
@@ -791,9 +673,7 @@ class SubscriptionService {
 
       return result;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения локальных счетчиков: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения локальных счетчиков
       return {};
     }
   }
@@ -814,9 +694,7 @@ class SubscriptionService {
 
       // Если тестовый аккаунт - создаем премиум подписку
       if (_isTestAccount()) {
-        if (kDebugMode) {
-          debugPrint('🧪 Создаем премиум подписку для тестового аккаунта');
-        }
+        // ✅ УБРАНО: debugPrint о создании премиум подписки для тестового аккаунта
         _cachedSubscription = SubscriptionModel(
           userId: userId,
           status: SubscriptionStatus.active,
@@ -859,9 +737,7 @@ class SubscriptionService {
 
       return _cachedSubscription!;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка загрузки подписки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки загрузки подписки
       final userId = firebaseService.currentUserId ?? '';
       _cachedSubscription = SubscriptionModel.defaultSubscription(userId);
       _subscriptionStatusController.add(_cachedSubscription!.status);
@@ -872,30 +748,22 @@ class SubscriptionService {
   /// Получение доступных продуктов подписки
   Future<List<ProductDetails>> getAvailableProducts() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Загрузка доступных продуктов...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением о загрузке доступных продуктов
 
       final ProductDetailsResponse response = await _inAppPurchase.queryProductDetails(
         SubscriptionConstants.subscriptionProductIds.toSet(),
       );
 
       if (response.error != null) {
-        if (kDebugMode) {
-          debugPrint('❌ Ошибка загрузки продуктов: ${response.error}');
-        }
+        // ✅ УБРАНО: debugPrint с деталями ошибки загрузки продуктов
         return [];
       }
 
-      if (kDebugMode) {
-        debugPrint('✅ Загружено продуктов: ${response.productDetails.length}');
-      }
+      // ✅ УБРАНО: debugPrint с количеством загруженных продуктов
 
       return response.productDetails;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка получения продуктов: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения продуктов
       return [];
     }
   }
@@ -903,18 +771,14 @@ class SubscriptionService {
   /// Покупка подписки
   Future<bool> purchaseSubscription(String productId) async {
     try {
-      if (kDebugMode) {
-        debugPrint('🛒 Начинаем покупку: $productId');
-      }
+      // ✅ УБРАНО: debugPrint с информацией о начале покупки
 
       // Получаем детали продукта
       final products = await getAvailableProducts();
       final product = products.where((p) => p.id == productId).firstOrNull;
 
       if (product == null) {
-        if (kDebugMode) {
-          debugPrint('❌ Продукт не найден: $productId');
-        }
+        // ✅ УБРАНО: debugPrint с сообщением о ненайденном продукте
         return false;
       }
 
@@ -928,14 +792,10 @@ class SubscriptionService {
         purchaseParam: purchaseParam,
       );
 
-      if (kDebugMode) {
-        debugPrint('🛒 Покупка запущена: $success');
-      }
+      // ✅ УБРАНО: debugPrint с результатом запуска покупки
       return success;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка покупки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки покупки
       return false;
     }
   }
@@ -943,30 +803,20 @@ class SubscriptionService {
   /// Восстановление покупок
   Future<void> restorePurchases() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 Восстановление покупок...');
-      }
+      // ✅ УБРАНО: debugPrint с уведомлением о восстановлении покупок
       await _inAppPurchase.restorePurchases();
-      if (kDebugMode) {
-        debugPrint('✅ Восстановление покупок запущено');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением запуска восстановления покупок
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка восстановления покупок: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки восстановления покупок
     }
   }
 
   /// Обработка обновлений покупок
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchaseDetailsList) async {
-    if (kDebugMode) {
-      debugPrint('🔄 Обработка обновлений покупок: ${purchaseDetailsList.length}');
-    }
+    // ✅ УБРАНО: debugPrint с количеством обновлений покупок
 
     for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
-      if (kDebugMode) {
-        debugPrint('💳 Обработка покупки: ${purchaseDetails.productID} - ${purchaseDetails.status}');
-      }
+      // ✅ УБРАНО: debugPrint с деталями обработки покупки (productID, status)
 
       switch (purchaseDetails.status) {
         case PurchaseStatus.pending:
@@ -989,18 +839,14 @@ class SubscriptionService {
       // Завершаем покупку на платформе
       if (purchaseDetails.pendingCompletePurchase) {
         await _inAppPurchase.completePurchase(purchaseDetails);
-        if (kDebugMode) {
-          debugPrint('✅ Покупка завершена: ${purchaseDetails.productID}');
-        }
+        // ✅ УБРАНО: debugPrint с подтверждением завершения покупки
       }
     }
   }
 
   /// Обработка ожидающей покупки
   Future<void> _handlePendingPurchase(PurchaseDetails purchaseDetails) async {
-    if (kDebugMode) {
-      debugPrint('⏳ Покупка в ожидании: ${purchaseDetails.productID}');
-    }
+    // ✅ УБРАНО: debugPrint с информацией о покупке в ожидании
 
     await _updateSubscriptionStatus(
       purchaseDetails,
@@ -1010,9 +856,7 @@ class SubscriptionService {
 
   /// Обработка успешной покупки
   Future<void> _handleSuccessfulPurchase(PurchaseDetails purchaseDetails) async {
-    if (kDebugMode) {
-      debugPrint('✅ Успешная покупка: ${purchaseDetails.productID}');
-    }
+    // ✅ УБРАНО: debugPrint с информацией об успешной покупке
 
     try {
       if (await _validatePurchase(purchaseDetails)) {
@@ -1021,26 +865,18 @@ class SubscriptionService {
           SubscriptionStatus.active,
         );
 
-        if (kDebugMode) {
-          debugPrint('🎉 Подписка активирована: ${purchaseDetails.productID}');
-        }
+        // ✅ УБРАНО: debugPrint с подтверждением активации подписки
       } else {
-        if (kDebugMode) {
-          debugPrint('❌ Покупка не прошла валидацию: ${purchaseDetails.productID}');
-        }
+        // ✅ УБРАНО: debugPrint с сообщением о непрошедшей валидации покупки
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка обработки успешной покупки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки обработки успешной покупки
     }
   }
 
   /// Обработка восстановленной покупки
   Future<void> _handleRestoredPurchase(PurchaseDetails purchaseDetails) async {
-    if (kDebugMode) {
-      debugPrint('🔄 Восстановлена покупка: ${purchaseDetails.productID}');
-    }
+    // ✅ УБРАНО: debugPrint с информацией о восстановленной покупке
 
     if (await _isSubscriptionStillValid(purchaseDetails)) {
       await _updateSubscriptionStatus(
@@ -1057,17 +893,12 @@ class SubscriptionService {
 
   /// Обработка неудачной покупки
   Future<void> _handleFailedPurchase(PurchaseDetails purchaseDetails) async {
-    if (kDebugMode) {
-      debugPrint('❌ Неудачная покупка: ${purchaseDetails.productID}');
-      debugPrint('❌ Ошибка: ${purchaseDetails.error}');
-    }
+    // ✅ УБРАНО: debugPrint с информацией о неудачной покупке и деталями ошибки
   }
 
   /// Обработка отмененной покупки
   Future<void> _handleCanceledPurchase(PurchaseDetails purchaseDetails) async {
-    if (kDebugMode) {
-      debugPrint('🚫 Покупка отменена: ${purchaseDetails.productID}');
-    }
+    // ✅ УБРАНО: debugPrint с информацией об отмененной покупке
   }
 
   /// Обновление статуса подписки в Firebase
@@ -1136,13 +967,9 @@ class SubscriptionService {
       _subscriptionController.add(subscription);
       _subscriptionStatusController.add(subscription.status);
 
-      if (kDebugMode) {
-        debugPrint('✅ Статус подписки обновлен: $status');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением обновления статуса подписки
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка обновления статуса подписки: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки обновления статуса подписки
     }
   }
 
@@ -1173,9 +1000,7 @@ class SubscriptionService {
     try {
       await _offlineStorage.cacheSubscriptionStatus(subscription);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка сохранения в кэш: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки сохранения в кэш
     }
   }
 
@@ -1185,9 +1010,7 @@ class SubscriptionService {
       final cachedSubscription = await _offlineStorage.getCachedSubscriptionStatus();
       return cachedSubscription ?? SubscriptionModel.defaultSubscription(userId);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка загрузки из кэша: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки загрузки из кэша
       return SubscriptionModel.defaultSubscription(userId);
     }
   }

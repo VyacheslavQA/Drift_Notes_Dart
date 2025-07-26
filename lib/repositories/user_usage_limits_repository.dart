@@ -36,9 +36,7 @@ class UserUsageLimitsRepository {
   /// ✅ Получение лимитов пользователя (основной метод)
   Future<UsageLimitsModel?> getUserLimits(String userId) async {
     try {
-      if (kDebugMode) {
-        debugPrint('📊 getUserLimits: получаем лимиты для пользователя $userId');
-      }
+      // ✅ УБРАНО: debugPrint('📊 getUserLimits: получаем лимиты для пользователя $userId');
 
       // Ищем в Isar
       final entity = await _isarService.getUserUsageLimitsByUserId(userId);
@@ -46,24 +44,18 @@ class UserUsageLimitsRepository {
       if (entity != null) {
         final model = _entityToModel(entity);
 
-        if (kDebugMode) {
-          debugPrint('✅ getUserLimits: найдены лимиты в Isar: $model');
-        }
+        // ✅ УБРАНО: debugPrint('✅ getUserLimits: найдены лимиты в Isar: $model');
 
         return model;
       }
 
       // Если в Isar нет - создаем пустые лимиты
-      if (kDebugMode) {
-        debugPrint('⚠️ getUserLimits: лимиты не найдены, создаем по умолчанию');
-      }
+      // ✅ УБРАНО: debugPrint('⚠️ getUserLimits: лимиты не найдены, создаем по умолчанию');
 
       return UsageLimitsModel.defaultLimits(userId);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ getUserLimits: ошибка получения лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ getUserLimits: ошибка получения лимитов: $e');
       return UsageLimitsModel.defaultLimits(userId);
     }
   }
@@ -71,10 +63,8 @@ class UserUsageLimitsRepository {
   /// ✅ Сохранение/обновление лимитов пользователя
   Future<UsageLimitsModel> saveUserLimits(UsageLimitsModel model) async {
     try {
-      if (kDebugMode) {
-        debugPrint('💾 saveUserLimits: сохраняем лимиты для пользователя ${model.userId}');
-        debugPrint('💾 saveUserLimits: ${model.toString()}');
-      }
+      // ✅ УБРАНО: debugPrint('💾 saveUserLimits: сохраняем лимиты для пользователя ${model.userId}');
+      // ✅ УБРАНО: debugPrint('💾 saveUserLimits: ${model.toString()}');
 
       // Конвертируем модель в entity
       final entity = _modelToEntity(model);
@@ -88,16 +78,12 @@ class UserUsageLimitsRepository {
         entity.firebaseId = existingEntity.firebaseId;
         await _isarService.updateUserUsageLimits(entity);
 
-        if (kDebugMode) {
-          debugPrint('🔄 saveUserLimits: обновлены существующие лимиты ID: ${entity.id}');
-        }
+        // ✅ УБРАНО: debugPrint('🔄 saveUserLimits: обновлены существующие лимиты ID: ${entity.id}');
       } else {
         // Создаем новую
         await _isarService.insertUserUsageLimits(entity);
 
-        if (kDebugMode) {
-          debugPrint('🆕 saveUserLimits: созданы новые лимиты ID: ${entity.id}');
-        }
+        // ✅ УБРАНО: debugPrint('🆕 saveUserLimits: созданы новые лимиты ID: ${entity.id}');
       }
 
       // Запускаем фоновую синхронизацию
@@ -106,9 +92,7 @@ class UserUsageLimitsRepository {
       return _entityToModel(entity);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ saveUserLimits: ошибка сохранения лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ saveUserLimits: ошибка сохранения лимитов: $e');
       rethrow;
     }
   }
@@ -116,9 +100,7 @@ class UserUsageLimitsRepository {
   /// ✅ Удаление лимитов пользователя
   Future<bool> deleteUserLimits(String userId) async {
     try {
-      if (kDebugMode) {
-        debugPrint('🗑️ deleteUserLimits: удаляем лимиты пользователя $userId');
-      }
+      // ✅ УБРАНО: debugPrint('🗑️ deleteUserLimits: удаляем лимиты пользователя $userId');
 
       final deleted = await _isarService.deleteUserUsageLimitsByUserId(userId);
 
@@ -126,17 +108,13 @@ class UserUsageLimitsRepository {
         // Запускаем фоновую синхронизацию
         _triggerSyncInBackground();
 
-        if (kDebugMode) {
-          debugPrint('✅ deleteUserLimits: лимиты пользователя $userId удалены');
-        }
+        // ✅ УБРАНО: debugPrint('✅ deleteUserLimits: лимиты пользователя $userId удалены');
       }
 
       return deleted;
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ deleteUserLimits: ошибка удаления лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ deleteUserLimits: ошибка удаления лимитов: $e');
       return false;
     }
   }
@@ -148,9 +126,7 @@ class UserUsageLimitsRepository {
   /// ✅ Увеличение счетчика для типа контента
   Future<UsageLimitsModel> incrementCounter(String userId, ContentType contentType) async {
     try {
-      if (kDebugMode) {
-        debugPrint('📈 incrementCounter: увеличиваем счетчик $contentType для пользователя $userId');
-      }
+      // ✅ УБРАНО: debugPrint('📈 incrementCounter: увеличиваем счетчик $contentType для пользователя $userId');
 
       // Получаем текущие лимиты
       var model = await getUserLimits(userId) ?? UsageLimitsModel.defaultLimits(userId);
@@ -162,9 +138,7 @@ class UserUsageLimitsRepository {
       return await saveUserLimits(model);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ incrementCounter: ошибка увеличения счетчика: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ incrementCounter: ошибка увеличения счетчика: $e');
       rethrow;
     }
   }
@@ -172,9 +146,7 @@ class UserUsageLimitsRepository {
   /// ✅ Уменьшение счетчика для типа контента
   Future<UsageLimitsModel> decrementCounter(String userId, ContentType contentType) async {
     try {
-      if (kDebugMode) {
-        debugPrint('📉 decrementCounter: уменьшаем счетчик $contentType для пользователя $userId');
-      }
+      // ✅ УБРАНО: debugPrint('📉 decrementCounter: уменьшаем счетчик $contentType для пользователя $userId');
 
       // Получаем текущие лимиты
       var model = await getUserLimits(userId) ?? UsageLimitsModel.defaultLimits(userId);
@@ -186,9 +158,7 @@ class UserUsageLimitsRepository {
       return await saveUserLimits(model);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ decrementCounter: ошибка уменьшения счетчика: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ decrementCounter: ошибка уменьшения счетчика: $e');
       rethrow;
     }
   }
@@ -201,10 +171,8 @@ class UserUsageLimitsRepository {
     String recalculationType = 'manual_recalculate',
   }) async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔢 recalculateCounters: пересчитываем лимиты для пользователя $userId');
-        debugPrint('🔢 recalculateCounters: notes=$notesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
-      }
+      // ✅ УБРАНО: debugPrint('🔢 recalculateCounters: пересчитываем лимиты для пользователя $userId');
+      // ✅ УБРАНО: debugPrint('🔢 recalculateCounters: notes=$notesCount, maps=$markerMapsCount, budget=$budgetNotesCount');
 
       // Создаем/обновляем через IsarService
       final entity = await _isarService.createOrUpdateUserUsageLimits(
@@ -220,16 +188,12 @@ class UserUsageLimitsRepository {
 
       final model = _entityToModel(entity);
 
-      if (kDebugMode) {
-        debugPrint('✅ recalculateCounters: лимиты пересчитаны: $model');
-      }
+      // ✅ УБРАНО: debugPrint('✅ recalculateCounters: лимиты пересчитаны: $model');
 
       return model;
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ recalculateCounters: ошибка пересчета лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ recalculateCounters: ошибка пересчета лимитов: $e');
       rethrow;
     }
   }
@@ -237,9 +201,7 @@ class UserUsageLimitsRepository {
   /// ✅ Сброс всех счетчиков
   Future<UsageLimitsModel> resetAllCounters(String userId) async {
     try {
-      if (kDebugMode) {
-        debugPrint('🔄 resetAllCounters: сбрасываем все счетчики для пользователя $userId');
-      }
+      // ✅ УБРАНО: debugPrint('🔄 resetAllCounters: сбрасываем все счетчики для пользователя $userId');
 
       // Получаем текущие лимиты
       var model = await getUserLimits(userId) ?? UsageLimitsModel.defaultLimits(userId);
@@ -251,9 +213,7 @@ class UserUsageLimitsRepository {
       return await saveUserLimits(model);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ resetAllCounters: ошибка сброса счетчиков: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ resetAllCounters: ошибка сброса счетчиков: $e');
       rethrow;
     }
   }
@@ -290,9 +250,7 @@ class UserUsageLimitsRepository {
       );
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ canCreateContent: ошибка проверки лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ canCreateContent: ошибка проверки лимитов: $e');
 
       return ContentCreationResult(
         canCreate: false,
@@ -325,9 +283,7 @@ class UserUsageLimitsRepository {
       return warnings;
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ getContentWarnings: ошибка получения предупреждений: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ getContentWarnings: ошибка получения предупреждений: $e');
       return [];
     }
   }
@@ -343,9 +299,7 @@ class UserUsageLimitsRepository {
       return model.getUsageStats();
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ getUsageStats: ошибка получения статистики: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ getUsageStats: ошибка получения статистики: $e');
       return {};
     }
   }
@@ -357,9 +311,7 @@ class UserUsageLimitsRepository {
       return model.getStatsForType(contentType);
 
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ getStatsForType: ошибка получения статистики для типа: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ getStatsForType: ошибка получения статистики для типа: $e');
       return {};
     }
   }
@@ -373,9 +325,7 @@ class UserUsageLimitsRepository {
     try {
       return await _isarService.getUnsyncedUserUsageLimits();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ getUnsyncedLimits: ошибка получения несинхронизированных лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ getUnsyncedLimits: ошибка получения несинхронизированных лимитов: $e');
       return [];
     }
   }
@@ -385,13 +335,9 @@ class UserUsageLimitsRepository {
     try {
       await _isarService.markUserUsageLimitsAsSynced(id, firebaseId);
 
-      if (kDebugMode) {
-        debugPrint('✅ markAsSynced: лимиты $id помечены как синхронизированные');
-      }
+      // ✅ УБРАНО: debugPrint('✅ markAsSynced: лимиты $id помечены как синхронизированные');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ markAsSynced: ошибка пометки синхронизации: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ markAsSynced: ошибка пометки синхронизации: $e');
     }
   }
 
@@ -400,18 +346,12 @@ class UserUsageLimitsRepository {
     try {
       // Запускаем синхронизацию без ожидания результата
       _syncService.syncUserUsageLimitsToFirebase().catchError((error) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Фоновая синхронизация лимитов завершилась с ошибкой: $error');
-        }
+        // ✅ УБРАНО: debugPrint('⚠️ Фоновая синхронизация лимитов завершилась с ошибкой: $error');
       });
 
-      if (kDebugMode) {
-        debugPrint('🔄 Запущена фоновая синхронизация лимитов');
-      }
+      // ✅ УБРАНО: debugPrint('🔄 Запущена фоновая синхронизация лимитов');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка запуска фоновой синхронизации лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ Ошибка запуска фоновой синхронизации лимитов: $e');
     }
   }
 
@@ -481,9 +421,7 @@ class UserUsageLimitsRepository {
   /// ✅ Очистка всех лимитов (для отладки)
   Future<void> clearAllLimits() async {
     try {
-      if (kDebugMode) {
-        debugPrint('🗑️ clearAllLimits: очищаем все лимиты пользователей');
-      }
+      // ✅ УБРАНО: debugPrint('🗑️ clearAllLimits: очищаем все лимиты пользователей');
 
       // Получаем все записи и удаляем их
       final allLimits = await _isarService.getAllUserUsageLimits();
@@ -491,13 +429,9 @@ class UserUsageLimitsRepository {
         await _isarService.deleteUserUsageLimits(limits.id);
       }
 
-      if (kDebugMode) {
-        debugPrint('✅ clearAllLimits: все лимиты очищены');
-      }
+      // ✅ УБРАНО: debugPrint('✅ clearAllLimits: все лимиты очищены');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ clearAllLimits: ошибка очистки лимитов: $e');
-      }
+      // ✅ УБРАНО: debugPrint('❌ clearAllLimits: ошибка очистки лимитов: $e');
     }
   }
 }

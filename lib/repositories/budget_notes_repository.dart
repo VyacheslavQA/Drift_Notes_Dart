@@ -37,16 +37,16 @@ class BudgetNotesRepository {
   /// ✅ НОВОЕ: Инициализация репозитория
   Future<void> initialize() async {
     try {
-      debugPrint('🏦 Инициализация BudgetNotesRepository...');
+      // ✅ УБРАНО: debugPrint с уведомлением об инициализации
 
       // IsarService должен быть уже инициализирован в main.dart
       if (!_isarService.isInitialized) {
         await _isarService.init();
       }
 
-      debugPrint('✅ BudgetNotesRepository инициализирован');
+      // ✅ УБРАНО: debugPrint с подтверждением инициализации
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации BudgetNotesRepository: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки инициализации
       rethrow;
     }
   }
@@ -59,16 +59,16 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 BudgetNotesRepository.getUserTrips() - userId: $userId');
+      // ✅ УБРАНО: debugPrint('🏦 BudgetNotesRepository.getUserTrips() - userId: $userId');
 
       // Проверяем кэш
       if (_cachedTrips != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
-          debugPrint('💾 Возвращаем данные из кэша (возраст: ${cacheAge.inSeconds}с)');
+          // ✅ УБРАНО: debugPrint с информацией о возврате данных из кэша
           return _cachedTrips!;
         } else {
-          debugPrint('💾 Кэш устарел, очищаем');
+          // ✅ УБРАНО: debugPrint об устаревшем кэше
           _cachedTrips = null;
           _cacheTimestamp = null;
         }
@@ -76,20 +76,20 @@ class BudgetNotesRepository {
 
       // ✅ ИСПРАВЛЕНО: Получаем данные из Isar и конвертируем правильно
       final budgetEntities = await _isarService.getAllBudgetNotes(userId);
-      debugPrint('💾 Найдено ${budgetEntities.length} заметок бюджета в Isar');
+      // ✅ УБРАНО: debugPrint('💾 Найдено ${budgetEntities.length} заметок бюджета в Isar');
 
       // Преобразуем в FishingTripModel для совместимости
       final trips = budgetEntities.map((entity) => entity.toTripModel()).toList();
 
       // Проверяем подключение к интернету для синхронизации
       final isOnline = await NetworkUtils.isNetworkAvailable();
-      debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+      // ✅ УБРАНО: debugPrint('🌐 Состояние сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
       if (isOnline) {
         // ✅ ИСПРАВЛЕНО: Используем SyncService вместо собственной логики
         final hasUnsyncedData = budgetEntities.any((entity) => !entity.isSynced);
         if (hasUnsyncedData) {
-          debugPrint('🔄 Найдены несинхронизированные данные, запускаем синхронизацию через SyncService');
+          // ✅ УБРАНО: debugPrint о найденных несинхронизированных данных
           _triggerSyncServiceInBackground();
         }
 
@@ -97,13 +97,12 @@ class BudgetNotesRepository {
         _triggerSyncFromFirebaseInBackground();
       }
 
-      debugPrint('📊 Итого заметок бюджета: ${trips.length}');
-      for (final trip in trips) {
-        debugPrint('  📍 Поездка: ${trip.locationName}');
-        debugPrint('     Дата: ${trip.date}');
-        debugPrint('     Расходов: ${trip.expenses.length}');
-        debugPrint('     Общая сумма: ${trip.expenses.fold<double>(0, (sum, expense) => sum + expense.amount)}');
-      }
+      // ✅ УБРАНО: Все логи с деталями заметок бюджета:
+      // - debugPrint('📊 Итого заметок бюджета: ${trips.length}');
+      // - debugPrint('  📍 Поездка: ${trip.locationName}');
+      // - debugPrint('     Дата: ${trip.date}');
+      // - debugPrint('     Расходов: ${trip.expenses.length}');
+      // - debugPrint('     Общая сумма: ${trip.expenses.fold<double>(0, (sum, expense) => sum + expense.amount)}');
 
       // Кэшируем результат
       _cachedTrips = trips;
@@ -111,7 +110,7 @@ class BudgetNotesRepository {
 
       return trips;
     } catch (e) {
-      debugPrint('❌ Ошибка в getUserTrips: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки в getUserTrips
 
       // В случае ошибки, пытаемся вернуть хотя бы данные из Isar
       try {
@@ -143,7 +142,7 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 Создание заметки бюджета с расходами...');
+      // ✅ УБРАНО: debugPrint о создании заметки бюджета с расходами
 
       // ✅ Проверяем лимиты для budgetNotes
       final canCreate = await _subscriptionService.canCreateContentOffline(
@@ -189,7 +188,7 @@ class BudgetNotesRepository {
         }
       }
 
-      debugPrint('🏦 Создано ${expenses.length} расходов');
+      // ✅ УБРАНО: debugPrint('🏦 Создано ${expenses.length} расходов');
 
       // Генерируем уникальный ID
       final tripId = const Uuid().v4();
@@ -212,14 +211,14 @@ class BudgetNotesRepository {
 
       // ✅ НОВОЕ: Сохраняем в Isar
       await _isarService.insertBudgetNote(budgetEntity);
-      debugPrint('💾 Заметка бюджета сохранена в Isar: $tripId');
+      // ✅ УБРАНО: debugPrint('💾 Заметка бюджета сохранена в Isar: $tripId');
 
       // Увеличиваем счетчик
       try {
         await _subscriptionService.incrementUsage(ContentType.budgetNotes);
-        debugPrint('✅ Счетчик заметок бюджета увеличен');
+        // ✅ УБРАНО: debugPrint с подтверждением увеличения счетчика
       } catch (e) {
-        debugPrint('❌ Ошибка увеличения счетчика заметок бюджета: $e');
+        // ✅ УБРАНО: debugPrint с деталями ошибки увеличения счетчика
       }
 
       // Очищаем кэш после создания новой заметки
@@ -234,7 +233,7 @@ class BudgetNotesRepository {
       // Возвращаем FishingTripModel для совместимости
       return budgetEntity.toTripModel();
     } catch (e) {
-      debugPrint('❌ Ошибка создания заметки бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки создания заметки бюджета
       rethrow;
     }
   }
@@ -251,7 +250,7 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 Обновление заметки бюджета: ${trip.id}');
+      // ✅ УБРАНО: debugPrint('🏦 Обновление заметки бюджета: ${trip.id}');
 
       // ✅ ИСПРАВЛЕНО: Находим существующую запись в Isar
       final existingEntity = await _isarService.getBudgetNoteByFirebaseId(trip.id);
@@ -263,14 +262,14 @@ class BudgetNotesRepository {
         updatedEntity.markAsModified(); // Помечаем как измененную
 
         await _isarService.updateBudgetNote(updatedEntity);
-        debugPrint('💾 Заметка бюджета обновлена в Isar');
+        // ✅ УБРАНО: debugPrint с подтверждением обновления в Isar
       } else {
         // Создаем новую запись если не найдена
         final newEntity = BudgetNoteEntity.fromTripModel(trip);
         newEntity.markAsModified();
 
         await _isarService.insertBudgetNote(newEntity);
-        debugPrint('💾 Заметка бюджета создана в Isar (не найдена для обновления)');
+        // ✅ УБРАНО: debugPrint о создании заметки в Isar (не найдена для обновления)
       }
 
       // Очищаем кэш после обновления заметки
@@ -284,7 +283,7 @@ class BudgetNotesRepository {
 
       return trip;
     } catch (e) {
-      debugPrint('❌ Ошибка при обновлении заметки бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при обновлении заметки бюджета
       rethrow;
     }
   }
@@ -301,25 +300,25 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 Получение заметки бюджета по ID: $tripId');
+      // ✅ УБРАНО: debugPrint('🏦 Получение заметки бюджета по ID: $tripId');
 
       // ✅ ИСПРАВЛЕНО: Ищем в Isar
       final budgetEntity = await _isarService.getBudgetNoteByFirebaseId(tripId);
 
       if (budgetEntity != null) {
-        debugPrint('✅ Заметка бюджета найдена в Isar');
+        // ✅ УБРАНО: debugPrint с подтверждением нахождения заметки бюджета в Isar
         return budgetEntity.toTripModel();
       }
 
-      debugPrint('⚠️ Заметка бюджета не найдена: $tripId');
+      // ✅ УБРАНО: debugPrint('⚠️ Заметка бюджета не найдена: $tripId');
       return null;
     } catch (e) {
-      debugPrint('❌ Ошибка при получении заметки бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении заметки бюджета
       return null;
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Удалить заметку бюджета с правильным удалением из Firebase
+  /// 🔥 ИСПРАВЛЕНО: Удалить заметку бюджета с двухэтапной логикой (онлайн/офлайн)
   Future<void> deleteTrip(String tripId) async {
     try {
       if (tripId.isEmpty) {
@@ -331,42 +330,55 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 Удаление заметки бюджета: $tripId');
+      debugPrint('🗑️ BudgetNotesRepository: Начинаем удаление заметки бюджета $tripId');
 
-      // ✅ ИСПРАВЛЕНО: Используем единый метод удаления через SyncService
-      final result = await _syncService.deleteBudgetNoteByFirebaseId(tripId);
+      // 🔥 НОВОЕ: Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 BudgetNotesRepository: Статус сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
 
-      if (result) {
-        // ✅ Уменьшаем счетчик ТОЛЬКО если удаление прошло успешно
-        try {
-          await _subscriptionService.decrementUsage(ContentType.budgetNotes);
-          debugPrint('✅ Заметка бюджета удалена и счетчик уменьшен');
-        } catch (e) {
-          debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
-          // Не прерываем выполнение, заметка уже удалена
+      if (isOnline) {
+        // 🔥 ОНЛАЙН: Сразу удаляем из Firebase + Isar
+        debugPrint('📱 BudgetNotesRepository: Режим ОНЛАЙН - сразу удаляем из Firebase и Isar');
+        final result = await _syncService.deleteBudgetNoteByFirebaseId(tripId);
+
+        if (result) {
+          debugPrint('✅ BudgetNotesRepository: Онлайн удаление прошло успешно');
+        } else {
+          debugPrint('⚠️ BudgetNotesRepository: Онлайн удаление завершилось с предупреждениями');
         }
       } else {
-        debugPrint('⚠️ Удаление заметки бюджета выполнено с предупреждениями');
+        // 🔥 ОФЛАЙН: Помечаем для удаления, НЕ удаляем физически
+        debugPrint('📴 BudgetNotesRepository: Режим ОФЛАЙН - помечаем для удаления');
 
-        // Даже если были предупреждения, пытаемся уменьшить счетчик
         try {
-          await _subscriptionService.decrementUsage(ContentType.budgetNotes);
-          debugPrint('✅ Счетчик заметок бюджета уменьшен (с предупреждениями)');
+          await _isarService.markBudgetNoteForDeletion(tripId);
+          debugPrint('✅ BudgetNotesRepository: Заметка бюджета помечена для офлайн удаления');
         } catch (e) {
-          debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
+          debugPrint('❌ BudgetNotesRepository: Ошибка при маркировке заметки для удаления: $e');
+          rethrow;
         }
+      }
+
+      // 🔥 ВСЕГДА: Уменьшаем счетчик независимо от режима
+      try {
+        await _subscriptionService.decrementUsage(ContentType.budgetNotes);
+        debugPrint('✅ BudgetNotesRepository: Счетчик лимитов уменьшен');
+      } catch (e) {
+        debugPrint('❌ BudgetNotesRepository: Ошибка уменьшения счетчика: $e');
+        // Не прерываем выполнение, заметка уже удалена/помечена
       }
 
       // Очищаем кэш после удаления заметки
       clearCache();
 
-      // ✅ ИСПРАВЛЕНО: Запускаем синхронизацию через SyncService
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // 🔥 ЗАПУСКАЕМ СИНХРОНИЗАЦИЮ: Если онлайн или при включении интернета
       if (isOnline) {
         _triggerSyncServiceInBackground();
       }
+
+      debugPrint('🎯 BudgetNotesRepository: Удаление заметки бюджета завершено успешно');
     } catch (e) {
-      debugPrint('❌ Ошибка при удалении заметки бюджета: $e');
+      debugPrint('❌ BudgetNotesRepository: Критическая ошибка при удалении заметки бюджета $tripId: $e');
       rethrow;
     }
   }
@@ -374,42 +386,42 @@ class BudgetNotesRepository {
   /// ✅ ИСПРАВЛЕНО: Фоновая синхронизация через SyncService
   void _triggerSyncServiceInBackground() async {
     try {
-      debugPrint('🔄 Запуск фоновой синхронизации BudgetNotes через SyncService...');
+      // ✅ УБРАНО: debugPrint о запуске фоновой синхронизации
 
-      // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ SyncService
-      final result = await _syncService.syncBudgetNotesToFirebase();
+      // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ SyncService с поддержкой удаления
+      final result = await _syncService.syncBudgetNotesToFirebaseWithDeletion();
 
       if (result) {
-        debugPrint('✅ Фоновая синхронизация BudgetNotes через SyncService завершена успешно');
+        // ✅ УБРАНО: debugPrint с подтверждением успешной фоновой синхронизации
       } else {
-        debugPrint('⚠️ Фоновая синхронизация BudgetNotes через SyncService завершена с ошибками');
+        // ✅ УБРАНО: debugPrint с предупреждением о синхронизации с ошибками
       }
 
       // Очищаем кэш после синхронизации
       clearCache();
     } catch (e) {
-      debugPrint('❌ Ошибка фоновой синхронизации BudgetNotes через SyncService: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки фоновой синхронизации
     }
   }
 
   /// ✅ ИСПРАВЛЕНО: Синхронизация данных из Firebase через SyncService
   void _triggerSyncFromFirebaseInBackground() async {
     try {
-      debugPrint('🔄 Запуск синхронизации BudgetNotes из Firebase через SyncService...');
+      // ✅ УБРАНО: debugPrint о запуске синхронизации из Firebase
 
       // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ SyncService
       final result = await _syncService.syncBudgetNotesFromFirebase();
 
       if (result) {
-        debugPrint('✅ Синхронизация BudgetNotes из Firebase через SyncService завершена успешно');
+        // ✅ УБРАНО: debugPrint с подтверждением успешной синхронизации из Firebase
       } else {
-        debugPrint('⚠️ Синхронизация BudgetNotes из Firebase через SyncService завершена с ошибками');
+        // ✅ УБРАНО: debugPrint с предупреждением о синхронизации из Firebase с ошибками
       }
 
       // Очищаем кэш после синхронизации
       clearCache();
     } catch (e) {
-      debugPrint('❌ Ошибка синхронизации BudgetNotes из Firebase через SyncService: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации из Firebase
     }
   }
 
@@ -423,25 +435,25 @@ class BudgetNotesRepository {
     DateTime? endDate,
   }) async {
     try {
-      debugPrint('🏦 Получение сводки по категориям...');
+      // ✅ УБРАНО: debugPrint о получении сводки по категориям
 
       // Используем кэшированные данные если доступны
       List<FishingTripModel> trips;
       if (_cachedTrips != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
-          debugPrint('💾 Используем кэшированные заметки для анализа');
+          // ✅ УБРАНО: debugPrint о использовании кэшированных заметок для анализа
           trips = _cachedTrips!;
         } else {
-          debugPrint('💾 Кэш устарел, загружаем заново');
+          // ✅ УБРАНО: debugPrint об устаревшем кэше
           trips = await getUserTrips();
         }
       } else {
-        debugPrint('💾 Кэша нет, загружаем заметки');
+        // ✅ УБРАНО: debugPrint об отсутствии кэша
         trips = await getUserTrips();
       }
 
-      debugPrint('🏦 Получено ${trips.length} заметок для анализа');
+      // ✅ УБРАНО: debugPrint('🏦 Получено ${trips.length} заметок для анализа');
 
       // Фильтруем заметки по периоду
       final filteredTrips = trips.where((trip) {
@@ -450,7 +462,7 @@ class BudgetNotesRepository {
         return true;
       }).toList();
 
-      debugPrint('🏦 После фильтрации осталось ${filteredTrips.length} заметок');
+      // ✅ УБРАНО: debugPrint('🏦 После фильтрации осталось ${filteredTrips.length} заметок');
 
       final Map<FishingExpenseCategory, CategoryExpenseSummary> summaries = {};
 
@@ -486,14 +498,14 @@ class BudgetNotesRepository {
             currency: currency,
           );
 
-          debugPrint('✅ Категория ${category.toString()}: ${totalAmount.toStringAsFixed(2)} $currency');
+          // ✅ УБРАНО: debugPrint с деталями категории и суммой
         }
       }
 
-      debugPrint('✅ Получено ${summaries.length} категорий с расходами');
+      // ✅ УБРАНО: debugPrint('✅ Получено ${summaries.length} категорий с расходами');
       return summaries;
     } catch (e) {
-      debugPrint('❌ Ошибка получения сводки по категориям: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения сводки по категориям
       return {};
     }
   }
@@ -509,14 +521,14 @@ class BudgetNotesRepository {
       if (_cachedTrips != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
-          debugPrint('💾 Используем кэшированные заметки для статистики');
+          // ✅ УБРАНО: debugPrint о использовании кэшированных заметок для статистики
           allTrips = _cachedTrips!;
         } else {
-          debugPrint('💾 Кэш устарел, загружаем заново для статистики');
+          // ✅ УБРАНО: debugPrint об устаревшем кэше для статистики
           allTrips = await getUserTrips();
         }
       } else {
-        debugPrint('💾 Кэша нет, загружаем заметки для статистики');
+        // ✅ УБРАНО: debugPrint об отсутствии кэша для статистики
         allTrips = await getUserTrips();
       }
 
@@ -533,7 +545,7 @@ class BudgetNotesRepository {
         endDate: endDate,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка получения статистики заметок бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения статистики заметок бюджета
       return FishingTripStatistics.fromTrips([]);
     }
   }
@@ -555,7 +567,7 @@ class BudgetNotesRepository {
             );
       }).toList();
     } catch (e) {
-      debugPrint('❌ Ошибка поиска заметок бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки поиска заметок бюджета
       return [];
     }
   }
@@ -567,7 +579,7 @@ class BudgetNotesRepository {
         ContentType.budgetNotes,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка при проверке возможности создания заметки бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при проверке возможности создания заметки бюджета
       return false;
     }
   }
@@ -579,7 +591,7 @@ class BudgetNotesRepository {
         ContentType.budgetNotes,
       );
     } catch (e) {
-      debugPrint('❌ Ошибка при получении текущего использования заметок бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении текущего использования заметок бюджета
       return 0;
     }
   }
@@ -589,7 +601,7 @@ class BudgetNotesRepository {
     try {
       return _subscriptionService.getLimit(ContentType.budgetNotes);
     } catch (e) {
-      debugPrint('❌ Ошибка при получении лимита заметок бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении лимита заметок бюджета
       return 0;
     }
   }
@@ -602,7 +614,7 @@ class BudgetNotesRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      debugPrint('🏦 Удаление всех заметок бюджета пользователя: $userId');
+      // ✅ УБРАНО: debugPrint('🏦 Удаление всех заметок бюджета пользователя: $userId');
 
       // ✅ ИСПРАВЛЕНО: Удаляем все из Isar
       await _isarService.deleteAllBudgetNotes(userId);
@@ -610,9 +622,9 @@ class BudgetNotesRepository {
       // Очищаем кэш
       clearCache();
 
-      debugPrint('✅ Все заметки бюджета удалены');
+      // ✅ УБРАНО: debugPrint с подтверждением удаления всех заметок бюджета
     } catch (e) {
-      debugPrint('❌ Ошибка при удалении всех заметок бюджета: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при удалении всех заметок бюджета
       rethrow;
     }
   }
@@ -620,15 +632,15 @@ class BudgetNotesRepository {
   /// ✅ ИСПРАВЛЕНО: Принудительная синхронизация данных через SyncService
   Future<bool> forceSyncData() async {
     try {
-      debugPrint('🔄 Принудительная синхронизация заметок бюджета через SyncService...');
+      // ✅ УБРАНО: debugPrint о принудительной синхронизации через SyncService
 
       // ✅ ИСПОЛЬЗУЕМ ПОЛНУЮ СИНХРОНИЗАЦИЮ SyncService
       final result = await _syncService.fullSync();
 
       if (result) {
-        debugPrint('✅ Принудительная синхронизация BudgetNotes завершена успешно');
+        // ✅ УБРАНО: debugPrint с подтверждением успешной принудительной синхронизации
       } else {
-        debugPrint('⚠️ Принудительная синхронизация BudgetNotes завершена с ошибками');
+        // ✅ УБРАНО: debugPrint с предупреждением о синхронизации с ошибками
       }
 
       // Очищаем кэш
@@ -636,7 +648,7 @@ class BudgetNotesRepository {
 
       return result;
     } catch (e) {
-      debugPrint('❌ Ошибка при принудительной синхронизации через SyncService: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки при принудительной синхронизации через SyncService
       return false;
     }
   }
@@ -654,7 +666,7 @@ class BudgetNotesRepository {
         'hasInternet': await NetworkUtils.isNetworkAvailable(),
       };
     } catch (e) {
-      debugPrint('❌ Ошибка получения статуса синхронизации через SyncService: $e');
+      // ✅ УБРАНО: debugPrint с деталями ошибки получения статуса синхронизации через SyncService
       return {
         'total': 0,
         'unsynced': 0,
@@ -669,7 +681,7 @@ class BudgetNotesRepository {
   static void clearCache() {
     _cachedTrips = null;
     _cacheTimestamp = null;
-    debugPrint('💾 Кэш заметок бюджета очищен');
+    // ✅ УБРАНО: debugPrint с уведомлением об очистке кэша заметок бюджета
   }
 
   // ========================================

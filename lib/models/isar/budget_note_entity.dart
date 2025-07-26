@@ -44,6 +44,9 @@ class BudgetNoteEntity {
 
   // Дополнительные поля для синхронизации
   DateTime? lastSyncAt;
+
+  // ✅ ИСПРАВЛЕНО: Добавлен индекс для эффективных запросов офлайн удаления
+  @Index()
   bool markedForDeletion = false;
 
   BudgetNoteEntity();

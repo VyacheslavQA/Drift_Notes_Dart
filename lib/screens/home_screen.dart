@@ -350,6 +350,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (_hasNetworkConnection) {
           debugPrint('🌐 Подключение восстановлено');
           await _initializeOnlineMode();
+
+          // ✅ ДОБАВИТЬ ЭТИ СТРОКИ:
+          _isOfflineMode = false; // Выключаем офлайн режим
+          _offlineStatusMessage = null; // Очищаем сообщение
           await _loadSubscriptionDataWithOfflineCheck();
           await _refreshProviderData();
 

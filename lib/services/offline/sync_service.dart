@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,7 +11,7 @@ import '../../models/isar/fishing_note_entity.dart';
 import '../../models/isar/budget_note_entity.dart';
 import '../../models/isar/marker_map_entity.dart';
 import '../../models/isar/policy_acceptance_entity.dart';
-import '../../models/isar/user_usage_limits_entity.dart'; // 🆕 ДОБАВЛЕНО
+import '../../models/isar/user_usage_limits_entity.dart';
 import '../isar_service.dart';
 
 class SyncService {
@@ -53,7 +54,6 @@ class SyncService {
   CollectionReference? _getUserCollection(String collectionName) {
     final user = _auth.currentUser;
     if (user == null) {
-      log('Пользователь не авторизован');
       return null;
     }
     return _firestore.collection('users').doc(user.uid).collection(collectionName);
@@ -96,7 +96,6 @@ class SyncService {
       try {
         map['mapMarkers'] = jsonDecode(entity.mapMarkersJson!);
       } catch (e) {
-        log('Ошибка декодирования mapMarkers: $e');
         map['mapMarkers'] = [];
       }
     } else {
@@ -169,7 +168,6 @@ class SyncService {
         try {
           map['aiPrediction']['tips'] = jsonDecode(entity.aiPrediction!.tipsJson!);
         } catch (e) {
-          log('Ошибка декодирования AI tips: $e');
           map['aiPrediction']['tips'] = [];
         }
       }
@@ -213,7 +211,6 @@ class SyncService {
       try {
         entity.mapMarkersJson = jsonEncode(data['mapMarkers']);
       } catch (e) {
-        log('Ошибка кодирования mapMarkers: $e');
         entity.mapMarkersJson = '[]';
       }
     }
@@ -287,7 +284,6 @@ class SyncService {
         try {
           entity.aiPrediction!.tipsJson = jsonEncode(aiMap['tips']);
         } catch (e) {
-          log('Ошибка кодирования AI tips: $e');
           entity.aiPrediction!.tipsJson = '[]';
         }
       }
@@ -300,7 +296,6 @@ class SyncService {
   Future<bool> syncFishingNotesToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для FishingNotes');
         return false;
       }
 
@@ -308,9 +303,12 @@ class SyncService {
       if (collection == null) return false;
 
       final unsyncedNotes = await _isarService.getUnsyncedNotes();
-      log('🔄 Найдено ${unsyncedNotes.length} несинхронизированных рыболовных заметок');
 
-      for (final note in unsyncedNotes) {
+      // Фильтруем только НЕ помеченные для удаления
+      final notesToSync = unsyncedNotes.where((note) => note.markedForDeletion != true).toList();
+      debugPrint('📤 SyncService: Синхронизируем ${notesToSync.length} заметок в Firebase');
+
+      for (final note in notesToSync) {
         try {
           final firebaseData = _fishingNoteEntityToFirestore(note);
 
@@ -323,27 +321,87 @@ class SyncService {
             if (docSnapshot.exists) {
               // Документ существует - обновляем
               await docRef.update(firebaseData);
-              log('✅ Обновлена существующая рыболовная заметка: ${note.firebaseId}');
+              debugPrint('🔄 SyncService: Обновлена заметка ${note.firebaseId}');
             } else {
               // Документ не существует - создаем новый
               await docRef.set(firebaseData);
-              log('✅ Создана рыболовная заметка с существующим ID: ${note.firebaseId}');
+              debugPrint('✅ SyncService: Создана заметка ${note.firebaseId}');
             }
             await _isarService.markAsSynced(note.id, note.firebaseId!);
           } else {
             // firebaseId == null - создаем новый документ
             final docRef = await collection.add(firebaseData);
             await _isarService.markAsSynced(note.id, docRef.id);
-            log('✅ Создана новая рыболовная заметка: ${docRef.id}');
+            debugPrint('✅ SyncService: Создана новая заметка ${docRef.id}');
           }
         } catch (e) {
-          log('❌ Ошибка синхронизации рыболовной заметки ${note.id}: $e');
+          debugPrint('❌ SyncService: Ошибка синхронизации заметки ${note.firebaseId}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncFishingNotesToFirebase: $e');
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingNotesToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Синхронизация удаления помеченных FishingNotes
+  Future<bool> syncFishingNotesDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления');
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_notes');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию fishing_notes');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем записи помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionFishingNotes();
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} записей для удаления из Firebase');
+
+      for (final note in markedForDeletion) {
+        try {
+          if (note.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(note.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена из Firebase: ${note.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markAsSynced(note.id, note.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление из Isar для ID=${note.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления ${note.firebaseId}: $e');
+          // Продолжаем с другими записями
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация FishingNotes (создание/обновление + удаление)
+  Future<bool> syncFishingNotesToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncFishingNotesToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncFishingNotesDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации FishingNotes - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации FishingNotes: $e');
       return false;
     }
   }
@@ -352,7 +410,6 @@ class SyncService {
   Future<bool> syncFishingNotesFromFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для загрузки FishingNotes');
         return false;
       }
 
@@ -360,7 +417,7 @@ class SyncService {
       if (collection == null) return false;
 
       final querySnapshot = await collection.orderBy('date', descending: true).get();
-      log('📥 Получено ${querySnapshot.docs.length} рыболовных записей из Firebase');
+      debugPrint('📥 SyncService: Получено ${querySnapshot.docs.length} заметок из Firebase');
 
       for (final doc in querySnapshot.docs) {
         try {
@@ -372,37 +429,36 @@ class SyncService {
           if (existingNote == null) {
             final entity = _firestoreToFishingNoteEntity(firebaseId, data);
             await _isarService.insertFishingNote(entity);
-            log('✅ Добавлена новая рыболовная заметка из Firebase: $firebaseId');
+            debugPrint('✅ SyncService: Добавлена новая заметка из Firebase: $firebaseId');
           } else {
             final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingNote.updatedAt)) {
               final updatedEntity = _firestoreToFishingNoteEntity(firebaseId, data);
               updatedEntity.id = existingNote.id;
               await _isarService.updateFishingNote(updatedEntity);
-              log('✅ Обновлена рыболовная заметка из Firebase: $firebaseId');
+              debugPrint('🔄 SyncService: Обновлена заметка из Firebase: $firebaseId');
             }
           }
         } catch (e) {
-          log('❌ Ошибка обработки рыболовного документа ${doc.id}: $e');
+          debugPrint('❌ SyncService: Ошибка обработки заметки ${doc.id}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncFishingNotesFromFirebase: $e');
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingNotesFromFirebase: $e');
       return false;
     }
   }
 
   // ========================================
-  // МЕТОДЫ ДЛЯ BUDGET NOTES
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ДЛЯ BUDGET NOTES С ПОДДЕРЖКОЙ ОФЛАЙН УДАЛЕНИЯ
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Синхронизация BudgetNotes с Firebase с проверкой существования документов
   Future<bool> syncBudgetNotesToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для BudgetNotes');
         return false;
       }
 
@@ -413,9 +469,12 @@ class SyncService {
       if (userId == null) return false;
 
       final unsyncedNotes = await _isarService.getUnsyncedBudgetNotes(userId);
-      log('🔄 Найдено ${unsyncedNotes.length} несинхронизированных бюджетных заметок');
 
-      for (final note in unsyncedNotes) {
+      // Фильтруем только НЕ помеченные для удаления
+      final notesToSync = unsyncedNotes.where((note) => note.markedForDeletion != true).toList();
+      debugPrint('📤 SyncService: Синхронизируем ${notesToSync.length} BudgetNotes в Firebase');
+
+      for (final note in notesToSync) {
         try {
           final data = note.toFirestoreMap();
 
@@ -428,27 +487,93 @@ class SyncService {
             if (docSnapshot.exists) {
               // Документ существует - обновляем
               await docRef.update(data);
-              log('✅ Обновлена существующая бюджетная заметка: ${note.firebaseId}');
+              debugPrint('🔄 SyncService: Обновлена BudgetNote ${note.firebaseId}');
             } else {
               // Документ не существует - создаем новый
               await docRef.set(data);
-              log('✅ Создана бюджетная заметка с существующим ID: ${note.firebaseId}');
+              debugPrint('✅ SyncService: Создана BudgetNote ${note.firebaseId}');
             }
             await _isarService.markBudgetNoteAsSynced(note.id, note.firebaseId!);
           } else {
             // firebaseId == null - создаем новый документ
             final docRef = await collection.add(data);
             await _isarService.markBudgetNoteAsSynced(note.id, docRef.id);
-            log('✅ Создана новая бюджетная заметка: ${docRef.id}');
+            debugPrint('✅ SyncService: Создана новая BudgetNote ${docRef.id}');
           }
         } catch (e) {
-          log('❌ Ошибка синхронизации бюджетной заметки ${note.id}: $e');
+          debugPrint('❌ SyncService: Ошибка синхронизации BudgetNote ${note.firebaseId}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncBudgetNotesToFirebase: $e');
+      debugPrint('❌ SyncService: Критическая ошибка syncBudgetNotesToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Синхронизация удаления помеченных BudgetNotes
+  Future<bool> syncBudgetNotesDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления BudgetNotes');
+        return false;
+      }
+
+      final collection = _getUserCollection('budget_notes');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию budget_notes');
+        return false;
+      }
+
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        debugPrint('❌ SyncService: Пользователь не авторизован');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем записи помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionBudgetNotes(userId);
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} BudgetNotes для удаления из Firebase');
+
+      for (final note in markedForDeletion) {
+        try {
+          if (note.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(note.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена BudgetNote из Firebase: ${note.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markBudgetNoteAsSynced(note.id, note.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление BudgetNote из Isar для ID=${note.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления BudgetNote ${note.firebaseId}: $e');
+          // Продолжаем с другими записями
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления BudgetNotes: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация BudgetNotes (создание/обновление + удаление)
+  Future<bool> syncBudgetNotesToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncBudgetNotesToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncBudgetNotesDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации BudgetNotes - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации BudgetNotes: $e');
       return false;
     }
   }
@@ -457,7 +582,6 @@ class SyncService {
   Future<bool> syncBudgetNotesFromFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для загрузки BudgetNotes');
         return false;
       }
 
@@ -468,7 +592,6 @@ class SyncService {
       if (userId == null) return false;
 
       final querySnapshot = await collection.orderBy('date', descending: true).get();
-      log('📥 Получено ${querySnapshot.docs.length} бюджетных записей из Firebase');
 
       for (final doc in querySnapshot.docs) {
         try {
@@ -480,37 +603,33 @@ class SyncService {
           if (existingNote == null) {
             final entity = BudgetNoteEntity.fromFirestoreMap(firebaseId, data);
             await _isarService.insertBudgetNote(entity);
-            log('✅ Добавлена новая бюджетная заметка из Firebase: $firebaseId');
           } else {
             final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingNote.updatedAt)) {
               final updatedEntity = BudgetNoteEntity.fromFirestoreMap(firebaseId, data);
               updatedEntity.id = existingNote.id;
               await _isarService.updateBudgetNote(updatedEntity);
-              log('✅ Обновлена бюджетная заметка из Firebase: $firebaseId');
             }
           }
         } catch (e) {
-          log('❌ Ошибка обработки бюджетного документа ${doc.id}: $e');
+          // Silent error handling for production
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncBudgetNotesFromFirebase: $e');
       return false;
     }
   }
 
   // ========================================
-  // МЕТОДЫ ДЛЯ MARKER MAPS
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ДЛЯ MARKER MAPS С ПОДДЕРЖКОЙ ОФЛАЙН УДАЛЕНИЯ
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Синхронизация MarkerMaps с Firebase с проверкой существования документов
   Future<bool> syncMarkerMapsToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для MarkerMaps');
         return false;
       }
 
@@ -521,9 +640,12 @@ class SyncService {
       if (userId == null) return false;
 
       final unsyncedMaps = await _isarService.getUnsyncedMarkerMaps(userId);
-      log('🔄 Найдено ${unsyncedMaps.length} несинхронизированных карт с маркерами');
 
-      for (final map in unsyncedMaps) {
+      // Фильтруем только НЕ помеченные для удаления
+      final mapsToSync = unsyncedMaps.where((map) => map.markedForDeletion != true).toList();
+      debugPrint('📤 SyncService: Синхронизируем ${mapsToSync.length} MarkerMaps в Firebase');
+
+      for (final map in mapsToSync) {
         try {
           final data = map.toFirestoreMap();
 
@@ -536,27 +658,93 @@ class SyncService {
             if (docSnapshot.exists) {
               // Документ существует - обновляем
               await docRef.update(data);
-              log('✅ Обновлена существующая карта: ${map.firebaseId}');
+              debugPrint('🔄 SyncService: Обновлена MarkerMap ${map.firebaseId}');
             } else {
               // Документ не существует - создаем новый
               await docRef.set(data);
-              log('✅ Создана карта с существующим ID: ${map.firebaseId}');
+              debugPrint('✅ SyncService: Создана MarkerMap ${map.firebaseId}');
             }
             await _isarService.markMarkerMapAsSynced(map.id, map.firebaseId!);
           } else {
             // firebaseId == null - создаем новый документ
             final docRef = await collection.add(data);
             await _isarService.markMarkerMapAsSynced(map.id, docRef.id);
-            log('✅ Создана новая карта: ${docRef.id}');
+            debugPrint('✅ SyncService: Создана новая MarkerMap ${docRef.id}');
           }
         } catch (e) {
-          log('❌ Ошибка синхронизации карты ${map.id}: $e');
+          debugPrint('❌ SyncService: Ошибка синхронизации MarkerMap ${map.firebaseId}: $e');
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncMarkerMapsToFirebase: $e');
+      debugPrint('❌ SyncService: Критическая ошибка syncMarkerMapsToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Синхронизация удаления помеченных MarkerMaps
+  Future<bool> syncMarkerMapsDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления MarkerMaps');
+        return false;
+      }
+
+      final collection = _getUserCollection('marker_maps');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию marker_maps');
+        return false;
+      }
+
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        debugPrint('❌ SyncService: Пользователь не авторизован');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем записи помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionMarkerMaps(userId);
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} MarkerMaps для удаления из Firebase');
+
+      for (final map in markedForDeletion) {
+        try {
+          if (map.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(map.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена MarkerMap из Firebase: ${map.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markMarkerMapAsSynced(map.id, map.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление MarkerMap из Isar для ID=${map.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления MarkerMap ${map.firebaseId}: $e');
+          // Продолжаем с другими записями
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления MarkerMaps: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация MarkerMaps (создание/обновление + удаление)
+  Future<bool> syncMarkerMapsToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncMarkerMapsToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncMarkerMapsDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации MarkerMaps - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации MarkerMaps: $e');
       return false;
     }
   }
@@ -565,7 +753,6 @@ class SyncService {
   Future<bool> syncMarkerMapsFromFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для загрузки MarkerMaps');
         return false;
       }
 
@@ -576,7 +763,6 @@ class SyncService {
       if (userId == null) return false;
 
       final querySnapshot = await collection.orderBy('date', descending: true).get();
-      log('📥 Получено ${querySnapshot.docs.length} карт из Firebase');
 
       for (final doc in querySnapshot.docs) {
         try {
@@ -588,24 +774,21 @@ class SyncService {
           if (existingMap == null) {
             final entity = MarkerMapEntity.fromFirestoreMap(firebaseId, data);
             await _isarService.insertMarkerMap(entity);
-            log('✅ Добавлена новая карта из Firebase: $firebaseId');
           } else {
             final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
             if (firebaseUpdatedAt.isAfter(existingMap.updatedAt)) {
               final updatedEntity = MarkerMapEntity.fromFirestoreMap(firebaseId, data);
               updatedEntity.id = existingMap.id;
               await _isarService.updateMarkerMap(updatedEntity);
-              log('✅ Обновлена карта из Firebase: $firebaseId');
             }
           }
         } catch (e) {
-          log('❌ Ошибка обработки карты ${doc.id}: $e');
+          // Silent error handling for production
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncMarkerMapsFromFirebase: $e');
       return false;
     }
   }
@@ -618,13 +801,11 @@ class SyncService {
   Future<bool> syncPolicyAcceptanceToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для PolicyAcceptance');
         return false;
       }
 
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        log('Пользователь не авторизован для синхронизации PolicyAcceptance');
         return false;
       }
 
@@ -635,7 +816,6 @@ class SyncService {
           .collection('user_consents');
 
       final unsyncedPolicies = await _isarService.getUnsyncedPolicyAcceptances();
-      log('🔄 Найдено ${unsyncedPolicies.length} несинхронизированных согласий политики');
 
       for (final policy in unsyncedPolicies) {
         try {
@@ -648,23 +828,20 @@ class SyncService {
           if (docSnapshot.exists) {
             // Документ существует - обновляем
             await docRef.update(data);
-            log('✅ Обновлены существующие согласия политики: consents');
           } else {
             // Документ не существует - создаем новый
             await docRef.set(data);
-            log('✅ Созданы новые согласия политики: consents');
           }
 
           // Отмечаем как синхронизированные
           await _isarService.markPolicyAcceptanceAsSynced(policy.id, 'consents');
         } catch (e) {
-          log('❌ Ошибка синхронизации согласий политики ${policy.id}: $e');
+          // Silent error handling for production
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncPolicyAcceptanceToFirebase: $e');
       return false;
     }
   }
@@ -673,13 +850,11 @@ class SyncService {
   Future<bool> syncPolicyAcceptanceFromFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для загрузки PolicyAcceptance');
         return false;
       }
 
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        log('Пользователь не авторизован для загрузки PolicyAcceptance');
         return false;
       }
 
@@ -690,7 +865,6 @@ class SyncService {
           .doc('consents');
 
       final docSnapshot = await docRef.get();
-      log('📥 Получение согласий политики из Firebase для пользователя: $userId');
 
       if (docSnapshot.exists) {
         try {
@@ -706,7 +880,6 @@ class SyncService {
             // Создаем новые согласия
             final entity = PolicyAcceptanceEntity.fromFirestoreMap(userId, data);
             await _isarService.insertPolicyAcceptance(entity);
-            log('✅ Добавлены новые согласия политики из Firebase');
           } else {
             // Проверяем нужно ли обновление
             final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
@@ -714,21 +887,15 @@ class SyncService {
               final updatedEntity = PolicyAcceptanceEntity.fromFirestoreMap(userId, data);
               updatedEntity.id = existingPolicy.id;
               await _isarService.updatePolicyAcceptance(updatedEntity);
-              log('✅ Обновлены согласия политики из Firebase');
-            } else {
-              log('📋 Согласия политики уже актуальны');
             }
           }
         } catch (e) {
-          log('❌ Ошибка обработки документа согласий политики: $e');
+          // Silent error handling for production
         }
-      } else {
-        log('📋 Согласия политики не найдены в Firebase');
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncPolicyAcceptanceFromFirebase: $e');
       return false;
     }
   }
@@ -741,13 +908,11 @@ class SyncService {
   Future<bool> syncUserUsageLimitsToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для UserUsageLimits');
         return false;
       }
 
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        log('Пользователь не авторизован для синхронизации UserUsageLimits');
         return false;
       }
 
@@ -758,7 +923,6 @@ class SyncService {
           .collection('user_usage_limits');
 
       final unsyncedLimits = await _isarService.getUnsyncedUserUsageLimits();
-      log('🔄 Найдено ${unsyncedLimits.length} несинхронизированных лимитов пользователя');
 
       for (final limits in unsyncedLimits) {
         try {
@@ -771,27 +935,20 @@ class SyncService {
           if (docSnapshot.exists) {
             // Документ существует - обновляем
             await docRef.update(data);
-            log('✅ Обновлены существующие лимиты пользователя: current');
           } else {
             // Документ не существует - создаем новый
             await docRef.set(data);
-            log('✅ Созданы новые лимиты пользователя: current');
           }
 
           // Отмечаем как синхронизированные
           await _isarService.markUserUsageLimitsAsSynced(limits.id, 'current');
-
-          if (limits.userId == userId) {
-            log('✅ Синхронизированы лимиты: notes=${limits.notesCount}, budget=${limits.budgetNotesCount}, maps=${limits.markerMapsCount}');
-          }
         } catch (e) {
-          log('❌ Ошибка синхронизации лимитов пользователя ${limits.id}: $e');
+          // Silent error handling for production
         }
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncUserUsageLimitsToFirebase: $e');
       return false;
     }
   }
@@ -800,13 +957,11 @@ class SyncService {
   Future<bool> syncUserUsageLimitsFromFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
-        log('Нет подключения к интернету для загрузки UserUsageLimits');
         return false;
       }
 
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        log('Пользователь не авторизован для загрузки UserUsageLimits');
         return false;
       }
 
@@ -817,7 +972,6 @@ class SyncService {
           .doc('current');
 
       final docSnapshot = await docRef.get();
-      log('📥 Получение лимитов пользователя из Firebase для пользователя: $userId');
 
       if (docSnapshot.exists) {
         try {
@@ -830,8 +984,6 @@ class SyncService {
             // Создаем новые лимиты
             final entity = UserUsageLimitsEntity.fromFirestoreMap('current', data, userId);
             await _isarService.insertUserUsageLimits(entity);
-            log('✅ Добавлены новые лимиты пользователя из Firebase');
-            log('📊 Лимиты: notes=${entity.notesCount}, budget=${entity.budgetNotesCount}, maps=${entity.markerMapsCount}');
           } else {
             // Проверяем нужно ли обновление
             final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
@@ -839,34 +991,27 @@ class SyncService {
               final updatedEntity = UserUsageLimitsEntity.fromFirestoreMap('current', data, userId);
               updatedEntity.id = existingLimits.id;
               await _isarService.updateUserUsageLimits(updatedEntity);
-              log('✅ Обновлены лимиты пользователя из Firebase');
-              log('📊 Новые лимиты: notes=${updatedEntity.notesCount}, budget=${updatedEntity.budgetNotesCount}, maps=${updatedEntity.markerMapsCount}');
-            } else {
-              log('📋 Лимиты пользователя уже актуальны');
             }
           }
         } catch (e) {
-          log('❌ Ошибка обработки документа лимитов пользователя: $e');
+          // Silent error handling for production
         }
-      } else {
-        log('📋 Лимиты пользователя не найдены в Firebase - это нормально для новых пользователей');
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка syncUserUsageLimitsFromFirebase: $e');
       return false;
     }
   }
 
   // ========================================
-  // ✅ НОВЫЕ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
+  // ✅ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
   // ========================================
 
   /// ✅ ИСПРАВЛЕНО: Удаление заметки по Firebase ID с улучшенным логированием
   Future<bool> deleteNoteByFirebaseId(String firebaseId) async {
     try {
-      log('🗑️ Удаление заметки по Firebase ID: $firebaseId');
+      debugPrint('🗑️ SyncService: Начинаем удаление заметки $firebaseId');
 
       // Сначала удаляем из Firebase
       if (await _hasInternetConnection()) {
@@ -874,10 +1019,10 @@ class SyncService {
         if (collection != null) {
           try {
             await collection.doc(firebaseId).delete();
-            log('✅ Заметка удалена из Firebase: $firebaseId');
+            debugPrint('✅ SyncService: Удалена из Firebase: $firebaseId');
           } catch (e) {
-            log('❌ Ошибка удаления из Firebase: $e');
-            // Не возвращаем false, продолжаем удаление из Isar
+            debugPrint('❌ SyncService: Ошибка удаления из Firebase $firebaseId: $e');
+            // Continue with local deletion even if Firebase fails
           }
         }
       }
@@ -886,20 +1031,20 @@ class SyncService {
       final entity = await _isarService.getFishingNoteByFirebaseId(firebaseId);
       if (entity != null) {
         await _isarService.deleteFishingNote(entity.id);
-        log('✅ Заметка удалена из Isar: ${entity.id}');
+        debugPrint('✅ SyncService: Удалена из Isar: $firebaseId');
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка deleteNoteByFirebaseId: $e');
+      debugPrint('❌ SyncService: Критическая ошибка deleteNoteByFirebaseId $firebaseId: $e');
       return false;
     }
   }
 
-  /// ✅ НОВОЕ: Удаление заметки бюджета по Firebase ID с улучшенным логированием
+  /// ✅ ИСПРАВЛЕНО: Удаление заметки бюджета по Firebase ID с улучшенным логированием
   Future<bool> deleteBudgetNoteByFirebaseId(String firebaseId) async {
     try {
-      log('🗑️ Удаление заметки бюджета по Firebase ID: $firebaseId');
+      debugPrint('🗑️ SyncService: Начинаем удаление BudgetNote $firebaseId');
 
       // Сначала удаляем из Firebase
       if (await _hasInternetConnection()) {
@@ -907,10 +1052,10 @@ class SyncService {
         if (collection != null) {
           try {
             await collection.doc(firebaseId).delete();
-            log('✅ Заметка бюджета удалена из Firebase: $firebaseId');
+            debugPrint('✅ SyncService: BudgetNote удалена из Firebase: $firebaseId');
           } catch (e) {
-            log('❌ Ошибка удаления заметки бюджета из Firebase: $e');
-            // Не возвращаем false, продолжаем удаление из Isar
+            debugPrint('❌ SyncService: Ошибка удаления BudgetNote из Firebase $firebaseId: $e');
+            // Continue with local deletion even if Firebase fails
           }
         }
       }
@@ -919,22 +1064,20 @@ class SyncService {
       final entity = await _isarService.getBudgetNoteByFirebaseId(firebaseId);
       if (entity != null) {
         await _isarService.deleteBudgetNote(entity.id);
-        log('✅ Заметка бюджета удалена из Isar: ${entity.id}');
-      } else {
-        log('⚠️ Заметка бюджета не найдена в Isar: $firebaseId');
+        debugPrint('✅ SyncService: BudgetNote удалена из Isar: $firebaseId');
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка deleteBudgetNoteByFirebaseId: $e');
+      debugPrint('❌ SyncService: Критическая ошибка deleteBudgetNoteByFirebaseId $firebaseId: $e');
       return false;
     }
   }
 
-  /// ✅ НОВОЕ: Удаление маркерной карты по Firebase ID с улучшенным логированием
+  /// ✅ ИСПРАВЛЕНО: Удаление маркерной карты по Firebase ID с улучшенным логированием
   Future<bool> deleteMarkerMapByFirebaseId(String firebaseId) async {
     try {
-      log('🗑️ Удаление маркерной карты по Firebase ID: $firebaseId');
+      debugPrint('🗑️ SyncService: Начинаем удаление MarkerMap $firebaseId');
 
       // Сначала удаляем из Firebase
       if (await _hasInternetConnection()) {
@@ -942,10 +1085,10 @@ class SyncService {
         if (collection != null) {
           try {
             await collection.doc(firebaseId).delete();
-            log('✅ Маркерная карта удалена из Firebase: $firebaseId');
+            debugPrint('✅ SyncService: MarkerMap удалена из Firebase: $firebaseId');
           } catch (e) {
-            log('❌ Ошибка удаления маркерной карты из Firebase: $e');
-            // Не возвращаем false, продолжаем удаление из Isar
+            debugPrint('❌ SyncService: Ошибка удаления MarkerMap из Firebase $firebaseId: $e');
+            // Continue with local deletion even if Firebase fails
           }
         }
       }
@@ -953,31 +1096,79 @@ class SyncService {
       // Затем находим и удаляем из Isar по firebaseId
       final entity = await _isarService.getMarkerMapByFirebaseId(firebaseId);
       if (entity != null) {
-        await _isarService.deleteMarkerMapByFirebaseId(firebaseId);
-        log('✅ Маркерная карта удалена из Isar: ${entity.id}');
-      } else {
-        log('⚠️ Маркерная карта не найдена в Isar: $firebaseId');
+        await _isarService.deleteMarkerMap(entity.id);
+        debugPrint('✅ SyncService: MarkerMap удалена из Isar: $firebaseId');
       }
 
       return true;
     } catch (e) {
-      log('❌ Ошибка deleteMarkerMapByFirebaseId: $e');
+      debugPrint('❌ SyncService: Критическая ошибка deleteMarkerMapByFirebaseId $firebaseId: $e');
       return false;
     }
   }
 
   // ========================================
-  // ОБНОВЛЕННЫЕ ОБЩИЕ МЕТОДЫ
+  // 🔥 ОБНОВЛЕННЫЕ ОБЩИЕ МЕТОДЫ
   // ========================================
+
+  /// ✅ ОБНОВЛЕНО: Синхронизация всех данных включая удаление MarkerMaps
+  Future<bool> syncAll() async {
+    try {
+      debugPrint('🔄 SyncService: Начинаем syncAll...');
+      final results = await Future.wait([
+        syncFishingNotesToFirebaseWithDeletion(), // 🔥 ОБНОВЛЕНО: с удалением
+        syncBudgetNotesToFirebaseWithDeletion(),  // 🔥 НОВОЕ: с удалением
+        syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
+        syncPolicyAcceptanceToFirebase(),
+        syncUserUsageLimitsToFirebase(),
+      ]);
+
+      final success = results.every((result) => result);
+      debugPrint('📊 SyncService: syncAll результат: $success');
+      return success;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка syncAll: $e');
+      return false;
+    }
+  }
+
+  /// ✅ ОБНОВЛЕНО: Полная двусторонняя синхронизация включая удаление MarkerMaps
+  Future<bool> fullSync() async {
+    try {
+      debugPrint('🔄 SyncService: Начинаем полную синхронизацию...');
+
+      // Отправляем локальные изменения в Firebase (включая удаление)
+      final toFirebaseResults = await Future.wait([
+        syncFishingNotesToFirebaseWithDeletion(), // 🔥 ОБНОВЛЕНО: с удалением
+        syncBudgetNotesToFirebaseWithDeletion(),  // 🔥 НОВОЕ: с удалением
+        syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
+        syncPolicyAcceptanceToFirebase(),
+        syncUserUsageLimitsToFirebase(),
+      ]);
+
+      // Получаем обновления из Firebase
+      final fromFirebaseResults = await Future.wait([
+        syncFishingNotesFromFirebase(),
+        syncBudgetNotesFromFirebase(),
+        syncMarkerMapsFromFirebase(),
+        syncPolicyAcceptanceFromFirebase(),
+        syncUserUsageLimitsFromFirebase(),
+      ]);
+
+      final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);
+      debugPrint('✅ SyncService: Полная синхронизация завершена, результат: $success');
+      return success;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации: $e');
+      return false;
+    }
+  }
 
   /// ✅ ИСПРАВЛЕНО: Удаление заметки и синхронизация удаления с Firebase
   Future<bool> deleteNoteAndSync(int localId) async {
     try {
-      log('🗑️ Удаление и синхронизация заметки с localId: $localId');
-
       final note = await _isarService.getFishingNoteById(localId);
       if (note == null) {
-        log('⚠️ Заметка с ID $localId не найдена в Isar');
         return false;
       }
 
@@ -987,89 +1178,23 @@ class SyncService {
         if (collection != null) {
           try {
             await collection.doc(note.firebaseId).delete();
-            log('✅ Заметка удалена из Firebase: ${note.firebaseId}');
           } catch (e) {
-            log('❌ Ошибка удаления из Firebase: $e');
-            // Не возвращаем false, продолжаем удаление из Isar
+            // Continue with local deletion even if Firebase fails
           }
         }
       }
 
       // Удаляем из Isar после успешного удаления из Firebase
       await _isarService.deleteFishingNote(localId);
-      log('✅ Заметка удалена из Isar: $localId');
 
       return true;
     } catch (e) {
-      log('❌ Ошибка deleteNoteAndSync: $e');
-      return false;
-    }
-  }
-
-  /// ✅ ОБНОВЛЕНО: Синхронизация всех данных в Firebase включая UserUsageLimits
-  Future<bool> syncAll() async {
-    try {
-      log('🔄 Начинается синхронизация всех данных в Firebase');
-
-      final results = await Future.wait([
-        syncFishingNotesToFirebase(),
-        syncBudgetNotesToFirebase(),
-        syncMarkerMapsToFirebase(),
-        syncPolicyAcceptanceToFirebase(),
-        syncUserUsageLimitsToFirebase(), // 🆕 ДОБАВЛЕНО
-      ]);
-
-      final success = results.every((result) => result);
-      log('📤 Синхронизация всех данных в Firebase завершена. Успех: $success');
-      log('📊 Результаты: FishingNotes=${results[0]}, BudgetNotes=${results[1]}, MarkerMaps=${results[2]}, PolicyAcceptance=${results[3]}, UserUsageLimits=${results[4]}');
-
-      return success;
-    } catch (e) {
-      log('❌ Ошибка syncAll: $e');
-      return false;
-    }
-  }
-
-  /// ✅ ОБНОВЛЕНО: Полная двусторонняя синхронизация всех типов данных включая UserUsageLimits
-  Future<bool> fullSync() async {
-    try {
-      log('🔄 Начинается полная двусторонняя синхронизация');
-
-      // Отправляем локальные изменения в Firebase
-      log('📤 Этап 1: Отправка локальных изменений в Firebase');
-      final toFirebaseResults = await Future.wait([
-        syncFishingNotesToFirebase(),
-        syncBudgetNotesToFirebase(),
-        syncMarkerMapsToFirebase(),
-        syncPolicyAcceptanceToFirebase(),
-        syncUserUsageLimitsToFirebase(), // 🆕 ДОБАВЛЕНО
-      ]);
-
-      // Получаем обновления из Firebase
-      log('📥 Этап 2: Получение обновлений из Firebase');
-      final fromFirebaseResults = await Future.wait([
-        syncFishingNotesFromFirebase(),
-        syncBudgetNotesFromFirebase(),
-        syncMarkerMapsFromFirebase(),
-        syncPolicyAcceptanceFromFirebase(),
-        syncUserUsageLimitsFromFirebase(), // 🆕 ДОБАВЛЕНО
-      ]);
-
-      final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);
-      log('✅ Полная синхронизация завершена. Общий успех: $success');
-      log('📊 К Firebase: FishingNotes=${toFirebaseResults[0]}, BudgetNotes=${toFirebaseResults[1]}, MarkerMaps=${toFirebaseResults[2]}, PolicyAcceptance=${toFirebaseResults[3]}, UserUsageLimits=${toFirebaseResults[4]}');
-      log('📊 Из Firebase: FishingNotes=${fromFirebaseResults[0]}, BudgetNotes=${fromFirebaseResults[1]}, MarkerMaps=${fromFirebaseResults[2]}, PolicyAcceptance=${fromFirebaseResults[3]}, UserUsageLimits=${fromFirebaseResults[4]}');
-
-      return success;
-    } catch (e) {
-      log('❌ Ошибка fullSync: $e');
       return false;
     }
   }
 
   /// Принудительная полная синхронизация
   Future<bool> forceSyncAll() async {
-    log('🔄 Запуск принудительной полной синхронизации');
     return await fullSync();
   }
 
@@ -1080,14 +1205,10 @@ class SyncService {
 
   /// ✅ УЛУЧШЕНО: Периодическая синхронизация с логированием
   void startPeriodicSync() {
-    log('⏰ Запуск периодической синхронизации (каждые 5 минут)');
     Timer.periodic(const Duration(minutes: 5), (timer) async {
       if (await _hasInternetConnection()) {
-        log('⏰ Выполнение периодической синхронизации');
         final result = await fullSync();
-        log('⏰ Периодическая синхронизация завершена: $result');
-      } else {
-        log('⏰ Периодическая синхронизация пропущена - нет интернета');
+        debugPrint('⏰ SyncService: Периодическая синхронизация: $result');
       }
     });
   }
@@ -1097,17 +1218,14 @@ class SyncService {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        log('⚠️ Пользователь не авторизован для получения статуса синхронизации');
         return {
           'fishingNotes': {'total': 0, 'unsynced': 0, 'synced': 0},
           'budgetNotes': {'total': 0, 'unsynced': 0, 'synced': 0},
           'markerMaps': {'total': 0, 'unsynced': 0, 'synced': 0},
           'policyAcceptance': {'total': 0, 'unsynced': 0, 'synced': 0},
-          'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0}, // 🆕 ДОБАВЛЕНО
+          'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0},
         };
       }
-
-      log('📊 Получение статуса синхронизации для пользователя: $userId');
 
       final fishingNotesTotal = await _isarService.getNotesCount();
       final fishingNotesUnsynced = await _isarService.getUnsyncedNotesCount();
@@ -1121,7 +1239,6 @@ class SyncService {
       final policyAcceptanceTotal = await _isarService.getPolicyAcceptancesCount();
       final policyAcceptanceUnsynced = await _isarService.getUnsyncedPolicyAcceptancesCount();
 
-      // 🆕 ДОБАВЛЕНО: Статус синхронизации UserUsageLimits
       final userUsageLimitsTotal = await _isarService.getUserUsageLimitsCount();
       final userUsageLimitsUnsynced = await _isarService.getUnsyncedUserUsageLimitsCount();
 
@@ -1146,24 +1263,21 @@ class SyncService {
           'unsynced': policyAcceptanceUnsynced,
           'synced': policyAcceptanceTotal - policyAcceptanceUnsynced,
         },
-        'userUsageLimits': { // 🆕 ДОБАВЛЕНО
+        'userUsageLimits': {
           'total': userUsageLimitsTotal,
           'unsynced': userUsageLimitsUnsynced,
           'synced': userUsageLimitsTotal - userUsageLimitsUnsynced,
         },
       };
 
-      log('📊 Статус синхронизации: FishingNotes(${fishingNotesTotal}/${fishingNotesUnsynced}), BudgetNotes(${budgetNotesTotal}/${budgetNotesUnsynced}), MarkerMaps(${markerMapsTotal}/${markerMapsUnsynced}), PolicyAcceptance(${policyAcceptanceTotal}/${policyAcceptanceUnsynced}), UserUsageLimits(${userUsageLimitsTotal}/${userUsageLimitsUnsynced})');
-
       return status;
     } catch (e) {
-      log('❌ Ошибка получения статуса синхронизации: $e');
       return {
         'fishingNotes': {'total': 0, 'unsynced': 0, 'synced': 0},
         'budgetNotes': {'total': 0, 'unsynced': 0, 'synced': 0},
         'markerMaps': {'total': 0, 'unsynced': 0, 'synced': 0},
         'policyAcceptance': {'total': 0, 'unsynced': 0, 'synced': 0},
-        'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0}, // 🆕 ДОБАВЛЕНО
+        'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0},
         'error': e.toString(),
       };
     }

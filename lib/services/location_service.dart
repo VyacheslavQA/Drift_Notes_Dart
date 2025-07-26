@@ -37,7 +37,6 @@ class LocationService {
   // Инициализация - загрузка настроек
   Future<void> initialize() async {
     await _loadSettings();
-    debugPrint('🌍 LocationService инициализирован');
   }
 
   // Загрузка настроек из SharedPreferences
@@ -67,12 +66,8 @@ class LocationService {
           speedAccuracy: 0,
         );
       }
-
-      debugPrint(
-        '🌍 Настройки местоположения загружены: requested:$_permissionRequested, granted:$_permissionGranted, hasLocation:$hasLocation',
-      );
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки настроек местоположения: $e');
+      // Silent error handling for production
     }
   }
 
@@ -90,10 +85,8 @@ class LocationService {
         await prefs.setDouble(_lastKnownLongitudeKey, _lastKnownPosition!.longitude);
         await prefs.setInt(_lastLocationUpdateKey, _lastKnownPosition!.timestamp.millisecondsSinceEpoch);
       }
-
-      debugPrint('✅ Настройки местоположения сохранены');
     } catch (e) {
-      debugPrint('❌ Ошибка сохранения настроек местоположения: $e');
+      // Silent error handling for production
     }
   }
 
@@ -119,11 +112,8 @@ class LocationService {
       _permissionGranted = isGranted;
       await _saveSettings();
 
-      debugPrint('🌍 Проверка разрешений: permission_handler:$permissionStatus, geolocator:$geolocatorPermission, result:$isGranted');
-
       return isGranted;
     } catch (e) {
-      debugPrint('❌ Ошибка проверки разрешений местоположения: $e');
       return false;
     }
   }
@@ -131,15 +121,12 @@ class LocationService {
   // Запрос разрешения на геолокацию (СИСТЕМНЫЙ ДИАЛОГ)
   Future<bool> requestLocationPermission() async {
     try {
-      debugPrint('🌍 Запрашиваем разрешение на геолокацию через системный диалог...');
-
       // Отмечаем, что разрешение было запрошено
       _permissionRequested = true;
 
       // Сначала проверяем, включены ли службы геолокации
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('❌ Службы геолокации отключены');
         await _saveSettings();
         return false;
       }
@@ -154,11 +141,8 @@ class LocationService {
       _permissionGranted = isGranted;
       await _saveSettings();
 
-      debugPrint('🌍 Результат системного запроса разрешений: $geolocatorPermission, granted:$isGranted');
-
       return isGranted;
     } catch (e) {
-      debugPrint('❌ Ошибка запроса разрешения на геолокацию: $e');
       _permissionRequested = true;
       _permissionGranted = false;
       await _saveSettings();
@@ -171,18 +155,14 @@ class LocationService {
     try {
       // Проверяем разрешения
       if (!await checkLocationPermission()) {
-        debugPrint('❌ Нет разрешения на получение местоположения');
         return _lastKnownPosition;
       }
 
       // Проверяем, включены ли службы геолокации
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('❌ Службы геолокации отключены');
         return _lastKnownPosition;
       }
-
-      debugPrint('🌍 Получаем текущее местоположение...');
 
       // Получаем текущую позицию
       Position position = await Geolocator.getCurrentPosition(
@@ -194,13 +174,8 @@ class LocationService {
       _lastKnownPosition = position;
       await _saveSettings();
 
-      debugPrint(
-        '✅ Местоположение получено: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
-      );
-
       return position;
     } catch (e) {
-      debugPrint('❌ Ошибка получения местоположения: $e');
       return _lastKnownPosition;
     }
   }
@@ -217,15 +192,10 @@ class LocationService {
       if (lastPosition != null) {
         _lastKnownPosition = lastPosition;
         await _saveSettings();
-
-        debugPrint(
-          '⚡ Последнее известное местоположение: ${lastPosition.latitude.toStringAsFixed(4)}, ${lastPosition.longitude.toStringAsFixed(4)}',
-        );
       }
 
       return lastPosition ?? _lastKnownPosition;
     } catch (e) {
-      debugPrint('❌ Ошибка получения последнего местоположения: $e');
       return _lastKnownPosition;
     }
   }
@@ -234,9 +204,8 @@ class LocationService {
   Future<void> openAppSettings() async {
     try {
       await openAppSettings();
-      debugPrint('🌍 Открыты настройки приложения');
     } catch (e) {
-      debugPrint('❌ Ошибка открытия настроек: $e');
+      // Silent error handling for production
     }
   }
 
@@ -244,9 +213,8 @@ class LocationService {
   Future<void> openLocationSettings() async {
     try {
       await Geolocator.openLocationSettings();
-      debugPrint('🌍 Открыты настройки местоположения');
     } catch (e) {
-      debugPrint('❌ Ошибка открытия настроек местоположения: $e');
+      // Silent error handling for production
     }
   }
 
@@ -307,10 +275,8 @@ class LocationService {
       _permissionRequested = false;
       _permissionGranted = false;
       _lastKnownPosition = null;
-
-      debugPrint('🌍 Настройки местоположения сброшены');
     } catch (e) {
-      debugPrint('❌ Ошибка сброса настроек местоположения: $e');
+      // Silent error handling for production
     }
   }
 

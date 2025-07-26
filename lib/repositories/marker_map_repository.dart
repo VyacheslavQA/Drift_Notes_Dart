@@ -31,13 +31,9 @@ class MarkerMapRepository {
   Future<void> initialize() async {
     try {
       // Репозиторий готов к работе после инициализации IsarService
-      if (kDebugMode) {
-        debugPrint('✅ MarkerMapRepository инициализирован с поддержкой Isar');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением инициализации с поддержкой Isar
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка инициализации MarkerMapRepository: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки инициализации
       rethrow;
     }
   }
@@ -45,22 +41,16 @@ class MarkerMapRepository {
   // ✅ ОСНОВНОЙ МЕТОД: Получить все маркерные карты пользователя
   Future<List<MarkerMapModel>> getUserMarkerMaps() async {
     try {
-      if (kDebugMode) {
-        debugPrint('📍 Запрос маркерных карт пользователя через Isar');
-      }
+      // ✅ УБРАНО: debugPrint о запросе маркерных карт пользователя через Isar
 
       // Проверяем кэш
       if (_cachedMaps != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
-          if (kDebugMode) {
-            debugPrint('💾 Возвращаем карты из кэша (возраст: ${cacheAge.inSeconds}с)');
-          }
+          // ✅ УБРАНО: debugPrint с информацией о возврате карт из кэша
           return _cachedMaps!;
         } else {
-          if (kDebugMode) {
-            debugPrint('💾 Кэш карт устарел, очищаем');
-          }
+          // ✅ УБРАНО: debugPrint об устаревшем кэше карт
           clearCache();
         }
       }
@@ -74,9 +64,7 @@ class MarkerMapRepository {
       // Загружаем карты из Isar
       final markerMapEntities = await IsarService.instance.getAllMarkerMaps(userId);
 
-      if (kDebugMode) {
-        debugPrint('💾 Найдено карт в Isar: ${markerMapEntities.length}');
-      }
+      // ✅ УБРАНО: debugPrint('💾 Найдено карт в Isar: ${markerMapEntities.length}');
 
       // Преобразуем entities в models
       final markerMaps = markerMapEntities
@@ -90,25 +78,19 @@ class MarkerMapRepository {
       _cachedMaps = markerMaps;
       _cacheTimestamp = DateTime.now();
 
-      if (kDebugMode) {
-        debugPrint('✅ Загружено ${markerMaps.length} маркерных карт из Isar');
-      }
+      // ✅ УБРАНО: debugPrint('✅ Загружено ${markerMaps.length} маркерных карт из Isar');
 
       // Запускаем синхронизацию в фоне, если есть интернет
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка фоновой синхронизации: $e');
-          }
+          // ✅ УБРАНО: debugPrint с деталями ошибки фоновой синхронизации
         });
       }
 
       return markerMaps;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при получении маркерных карт: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении маркерных карт
 
       // В случае ошибки возвращаем пустой список
       return [];
@@ -118,9 +100,7 @@ class MarkerMapRepository {
   // ✅ СОЗДАНИЕ: Добавить новую маркерную карту
   Future<String> addMarkerMap(MarkerMapModel map) async {
     try {
-      if (kDebugMode) {
-        debugPrint('📍 Добавление новой маркерной карты');
-      }
+      // ✅ УБРАНО: debugPrint о добавлении новой маркерной карты
 
       // Получаем ID текущего пользователя
       final userId = IsarService.instance.getCurrentUserId();
@@ -160,20 +140,14 @@ class MarkerMapRepository {
       // Сохраняем в Isar
       await IsarService.instance.insertMarkerMap(entity);
 
-      if (kDebugMode) {
-        debugPrint('✅ Маркерная карта сохранена в Isar: $mapId');
-      }
+      // ✅ УБРАНО: debugPrint('✅ Маркерная карта сохранена в Isar: $mapId');
 
       // Увеличиваем счетчик использования
       try {
         await _subscriptionService.incrementUsage(ContentType.markerMaps);
-        if (kDebugMode) {
-          debugPrint('✅ Счетчик маркерных карт увеличен');
-        }
+        // ✅ УБРАНО: debugPrint с подтверждением увеличения счетчика маркерных карт
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Ошибка увеличения счетчика: $e');
-        }
+        // ✅ УБРАНО: debugPrint с деталями ошибки увеличения счетчика
         // Не прерываем выполнение, карта уже сохранена
       }
 
@@ -183,17 +157,13 @@ class MarkerMapRepository {
       // Запускаем синхронизацию в фоне
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка синхронизации после создания: $e');
-          }
+          // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после создания
         });
       }
 
       return mapId;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при добавлении маркерной карты: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при добавлении маркерной карты
       rethrow;
     }
   }
@@ -201,10 +171,8 @@ class MarkerMapRepository {
   // ✅ ОБНОВЛЕНИЕ: Обновить маркерную карту (БЕЗ полей связей)
   Future<void> updateMarkerMap(MarkerMapModel map) async {
     try {
-      if (kDebugMode) {
-        debugPrint('📍 Обновление маркерной карты: ${map.id}');
-        debugPrint('📍 Количество маркеров: ${map.markers.length}');
-      }
+      // ✅ УБРАНО: debugPrint('📍 Обновление маркерной карты: ${map.id}');
+      // ✅ УБРАНО: debugPrint('📍 Количество маркеров: ${map.markers.length}');
 
       if (map.id.isEmpty) {
         throw Exception('ID карты не может быть пустым');
@@ -235,9 +203,7 @@ class MarkerMapRepository {
       // Сохраняем обновления в Isar
       await IsarService.instance.updateMarkerMap(existingEntity);
 
-      if (kDebugMode) {
-        debugPrint('✅ Маркерная карта обновлена в Isar');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением обновления маркерной карты в Isar
 
       // Очищаем кэш
       clearCache();
@@ -246,28 +212,20 @@ class MarkerMapRepository {
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка синхронизации после обновления: $e');
-          }
+          // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после обновления
         });
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при обновлении маркерной карты: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при обновлении маркерной карты
       rethrow;
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Удалить маркерную карту с правильным удалением из Firebase
+  // 🔥 ИСПРАВЛЕНО: Удалить маркерную карту с двухэтапной логикой (онлайн/офлайн)
   Future<void> deleteMarkerMap(String mapId) async {
     try {
       if (mapId.isEmpty) {
         throw Exception('ID карты не может быть пустым');
-      }
-
-      if (kDebugMode) {
-        debugPrint('📍 Удаление маркерной карты: $mapId');
       }
 
       // Получаем ID текущего пользователя
@@ -276,56 +234,57 @@ class MarkerMapRepository {
         throw Exception('Пользователь не авторизован');
       }
 
-      // ✅ ИСПРАВЛЕНО: Используем единый метод удаления через SyncService
-      final result = await _syncService.deleteMarkerMapByFirebaseId(mapId);
+      debugPrint('🗑️ MarkerMapRepository: Начинаем удаление маркерной карты $mapId');
 
-      if (result) {
-        // ✅ Уменьшаем счетчик ТОЛЬКО если удаление прошло успешно
-        try {
-          await _subscriptionService.decrementUsage(ContentType.markerMaps);
-          if (kDebugMode) {
-            debugPrint('✅ Маркерная карта удалена и счетчик уменьшен');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
-          }
-          // Не прерываем выполнение, карта уже удалена
+      // 🔥 НОВОЕ: Проверяем подключение к интернету
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      debugPrint('🌐 MarkerMapRepository: Статус сети: ${isOnline ? 'Онлайн' : 'Офлайн'}');
+
+      if (isOnline) {
+        // 🔥 ОНЛАЙН: Сразу удаляем из Firebase + Isar
+        debugPrint('📱 MarkerMapRepository: Режим ОНЛАЙН - сразу удаляем из Firebase и Isar');
+        final result = await _syncService.deleteMarkerMapByFirebaseId(mapId);
+
+        if (result) {
+          debugPrint('✅ MarkerMapRepository: Онлайн удаление прошло успешно');
+        } else {
+          debugPrint('⚠️ MarkerMapRepository: Онлайн удаление завершилось с предупреждениями');
         }
       } else {
-        if (kDebugMode) {
-          debugPrint('⚠️ Удаление маркерной карты выполнено с предупреждениями');
-        }
+        // 🔥 ОФЛАЙН: Помечаем для удаления, НЕ удаляем физически
+        debugPrint('📴 MarkerMapRepository: Режим ОФЛАЙН - помечаем для удаления');
 
-        // Даже если были предупреждения, пытаемся уменьшить счетчик
         try {
-          await _subscriptionService.decrementUsage(ContentType.markerMaps);
-          if (kDebugMode) {
-            debugPrint('✅ Счетчик маркерных карт уменьшен (с предупреждениями)');
-          }
+          await IsarService.instance.markMarkerMapForDeletion(mapId);
+          debugPrint('✅ MarkerMapRepository: Маркерная карта помечена для офлайн удаления');
         } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка уменьшения счетчика: $e');
-          }
+          debugPrint('❌ MarkerMapRepository: Ошибка при маркировке карты для удаления: $e');
+          rethrow;
         }
+      }
+
+      // 🔥 ВСЕГДА: Уменьшаем счетчик независимо от режима
+      try {
+        await _subscriptionService.decrementUsage(ContentType.markerMaps);
+        debugPrint('✅ MarkerMapRepository: Счетчик лимитов уменьшен');
+      } catch (e) {
+        debugPrint('❌ MarkerMapRepository: Ошибка уменьшения счетчика: $e');
+        // Не прерываем выполнение, карта уже удалена/помечена
       }
 
       // Очищаем кэш
       clearCache();
 
-      // Запускаем синхронизацию в фоне
-      final isOnline = await NetworkUtils.isNetworkAvailable();
+      // 🔥 ЗАПУСКАЕМ СИНХРОНИЗАЦИЮ: Если онлайн или при включении интернета
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Ошибка синхронизации после удаления: $e');
-          }
+          // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после удаления
         });
       }
+
+      debugPrint('🎯 MarkerMapRepository: Удаление маркерной карты завершено успешно');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при удалении маркерной карты: $e');
-      }
+      debugPrint('❌ MarkerMapRepository: Критическая ошибка при удалении маркерной карты $mapId: $e');
       rethrow;
     }
   }
@@ -337,9 +296,7 @@ class MarkerMapRepository {
         throw Exception('ID карты не может быть пустым');
       }
 
-      if (kDebugMode) {
-        debugPrint('📍 Получение маркерной карты по ID: $mapId');
-      }
+      // ✅ УБРАНО: debugPrint('📍 Получение маркерной карты по ID: $mapId');
 
       // Ищем entity по Firebase ID
       final entity = await IsarService.instance.getMarkerMapByFirebaseId(mapId);
@@ -350,15 +307,11 @@ class MarkerMapRepository {
 
       final model = _entityToModel(entity);
 
-      if (kDebugMode) {
-        debugPrint('✅ Маркерная карта найдена');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением нахождения маркерной карты
 
       return model;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при получении маркерной карты по ID: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении маркерной карты по ID
       rethrow;
     }
   }
@@ -366,9 +319,7 @@ class MarkerMapRepository {
   // ✅ ОЧИСТКА: Удалить все маркерные карты пользователя
   Future<void> clearAllMarkerMaps() async {
     try {
-      if (kDebugMode) {
-        debugPrint('📍 Удаление всех маркерных карт пользователя');
-      }
+      // ✅ УБРАНО: debugPrint об удалении всех маркерных карт пользователя
 
       // Получаем ID текущего пользователя
       final userId = IsarService.instance.getCurrentUserId();
@@ -379,16 +330,12 @@ class MarkerMapRepository {
       // Удаляем все карты пользователя из Isar
       await IsarService.instance.deleteAllMarkerMaps(userId);
 
-      if (kDebugMode) {
-        debugPrint('✅ Все маркерные карты пользователя удалены');
-      }
+      // ✅ УБРАНО: debugPrint с подтверждением удаления всех маркерных карт пользователя
 
       // Очищаем кэш
       clearCache();
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при удалении всех маркерных карт: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при удалении всех маркерных карт
       rethrow;
     }
   }
@@ -402,9 +349,7 @@ class MarkerMapRepository {
         ContentType.markerMaps,
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при проверке возможности создания карты: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при проверке возможности создания карты
       return false;
     }
   }
@@ -416,9 +361,7 @@ class MarkerMapRepository {
         ContentType.markerMaps,
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при получении текущего использования карт: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении текущего использования карт
       return 0;
     }
   }
@@ -428,9 +371,7 @@ class MarkerMapRepository {
     try {
       return _subscriptionService.getLimit(ContentType.markerMaps);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при получении лимита карт: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении лимита карт
       return 0;
     }
   }
@@ -448,9 +389,7 @@ class MarkerMapRepository {
       await SyncService.instance.fullSync();
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при принудительной синхронизации: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при принудительной синхронизации
       return false;
     }
   }
@@ -471,9 +410,7 @@ class MarkerMapRepository {
         'syncPercentage': total > 0 ? ((total - unsynced) / total * 100).round() : 100,
       };
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Ошибка при получении статуса синхронизации: $e');
-      }
+      // ✅ УБРАНО: debugPrint с деталями ошибки при получении статуса синхронизации
       return {};
     }
   }
@@ -484,9 +421,7 @@ class MarkerMapRepository {
   static void clearCache() {
     _cachedMaps = null;
     _cacheTimestamp = null;
-    if (kDebugMode) {
-      debugPrint('💾 Кэш маркерных карт очищен');
-    }
+    // ✅ УБРАНО: debugPrint с уведомлением об очистке кэша маркерных карт
   }
 
   /// 🔥 ИСПРАВЛЕНО: Преобразование Entity в Model БЕЗ полей связей
