@@ -121,6 +121,32 @@ const MarkerMapEntitySchema = CollectionSchema(
           caseSensitive: true,
         )
       ],
+    ),
+    r'userId': IndexSchema(
+      id: -2005826577402374815,
+      name: r'userId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'userId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'markedForDeletion': IndexSchema(
+      id: 4789654020591589618,
+      name: r'markedForDeletion',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'markedForDeletion',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
     )
   },
   links: {},
@@ -353,6 +379,15 @@ extension MarkerMapEntityQueryWhereSort
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterWhere>
+      anyMarkedForDeletion() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'markedForDeletion'),
+      );
+    });
+  }
 }
 
 extension MarkerMapEntityQueryWhere
@@ -486,6 +521,96 @@ extension MarkerMapEntityQueryWhere
               indexName: r'firebaseId',
               lower: [],
               upper: [firebaseId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterWhereClause>
+      userIdEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'userId',
+        value: [userId],
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterWhereClause>
+      userIdNotEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterWhereClause>
+      markedForDeletionEqualTo(bool markedForDeletion) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'markedForDeletion',
+        value: [markedForDeletion],
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterWhereClause>
+      markedForDeletionNotEqualTo(bool markedForDeletion) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [],
+              upper: [markedForDeletion],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [markedForDeletion],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [markedForDeletion],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'markedForDeletion',
+              lower: [],
+              upper: [markedForDeletion],
               includeUpper: false,
             ));
       }

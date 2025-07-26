@@ -12,7 +12,7 @@ import 'storage_cleanup_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
-import 'notification_sound_settings_screen.dart'; // НОВЫЙ ИМПОРТ
+import 'notification_sound_settings_screen.dart';
 import 'weather_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -186,8 +186,7 @@ class SettingsScreenState extends State<SettingsScreen>
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      builder: (context) => AlertDialog(
         backgroundColor: AppConstants.cardColor,
         title: Text(
           localizations.translate('clear_all_data_title'),
@@ -315,8 +314,7 @@ class SettingsScreenState extends State<SettingsScreen>
                                     angle: _syncRotationAnimation.value,
                                     child: Icon(
                                       Icons.sync,
-                                      color:
-                                      _isSyncing
+                                      color: _isSyncing
                                           ? AppConstants.primaryColor
                                           : AppConstants.textColor,
                                       size: 24,
@@ -437,8 +435,7 @@ class SettingsScreenState extends State<SettingsScreen>
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color:
-                                        _syncStatus['isOnline'] == true
+                                        color: _syncStatus['isOnline'] == true
                                             ? Colors.green
                                             : Colors.red,
                                         shape: BoxShape.circle,
@@ -503,27 +500,21 @@ class SettingsScreenState extends State<SettingsScreen>
                 ),
                 child: Column(
                   children: [
-                    // Настройки звуков уведомлений - НОВЫЙ ПУНКТ
+                    // Настройки звуков уведомлений
                     ListTile(
                       leading: const Icon(Icons.volume_up, color: Colors.green),
                       title: Text(
-                        AppLocalizations.of(
-                          context,
-                        ).translate('notification_sounds'),
+                        AppLocalizations.of(context).translate('notification_sounds'),
                       ),
                       subtitle: Text(
-                        AppLocalizations.of(
-                          context,
-                        ).translate('sound_vibration_badge_settings'),
+                        AppLocalizations.of(context).translate('sound_vibration_badge_settings'),
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (context) =>
-                            const NotificationSoundSettingsScreen(),
+                            builder: (context) => const NotificationSoundSettingsScreen(),
                           ),
                         );
                       },
@@ -548,9 +539,7 @@ class SettingsScreenState extends State<SettingsScreen>
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (context) =>
-                            const WeatherNotificationsSettingsScreen(),
+                            builder: (context) => const WeatherNotificationsSettingsScreen(),
                           ),
                         );
                       },

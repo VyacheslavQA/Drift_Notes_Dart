@@ -15,7 +15,8 @@ import '../../widgets/loading_overlay.dart';
 import '../../widgets/subscription/usage_badge.dart';
 import '../subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
-import 'marker_map_screen.dart';
+// 🚀 ИНТЕГРАЦИЯ: Заменяем старый экран на современный
+import 'modern_marker_map_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
   const MarkerMapsListScreen({super.key});
@@ -526,6 +527,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🚀 ИНТЕГРАЦИЯ: Создание карты теперь переходит на ModernMarkerMapScreen
   Future<void> _createMap(MarkerMapModel newMap) async {
     final localizations = AppLocalizations.of(context);
 
@@ -547,10 +549,12 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
         if (mounted) {
           final map = newMap.copyWith(id: mapId);
+
+          // 🚀 НОВОЕ: Переходим на ModernMarkerMapScreen вместо старого
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MarkerMapScreen(markerMap: map),
+              builder: (context) => ModernMarkerMapScreen(markerMap: map),
             ),
           ).then((_) => _loadData());
         }
@@ -829,6 +833,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🚀 ИНТЕГРАЦИЯ: Открытие существующих карт теперь через ModernMarkerMapScreen
   Widget _buildMapCard(MarkerMapModel map) {
     final localizations = AppLocalizations.of(context);
 
@@ -838,10 +843,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       color: AppConstants.cardColor,
       child: InkWell(
         onTap: () {
+          // 🚀 НОВОЕ: Переходим на ModernMarkerMapScreen для всех карт
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MarkerMapScreen(markerMap: map),
+              builder: (context) => ModernMarkerMapScreen(markerMap: map),
             ),
           ).then((_) => _loadData());
         },

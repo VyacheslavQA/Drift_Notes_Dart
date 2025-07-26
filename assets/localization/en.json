@@ -2299,6 +2299,23 @@
   "accept_consents_to_unlock": "Accept user consents to access content",
 
   "offline_mode_description": "Working offline",
-  "connection_restored": "Connection restored"
+  "connection_restored": "Connection restored",
+
+  "marker_guide_title": "Marker Map Guide",
+  "how_to_use_guide": "📋 How to use:",
+  "adding_marker_title": "Adding Marker",
+  "adding_marker_instruction": "Press \"+\" button → select ray...",
+  "bottom_types_guide": "🎨 Bottom types and their designations:",
+  "useful_tips_title": "Useful tips:",
+  "useful_tips_content": "• Depth is displayed in yellow...",
+  "distance_hint": "Enter distance (10-200 m)",
+  "depth_hint": "Enter depth (m)",
+  "notes_hint": "Add notes about the point (optional)",
+  "saving": "Saving...",
+  "saved": "saved",
+  "save_error": "Save error",
+  "marker_added": "Marker added",
+  "meters": "m",
+  "depth_charts_development": "Depth charts - feature in development"
 
 }
