@@ -22,6 +22,7 @@ import '../widgets/user_agreements_dialog.dart';
 import '../widgets/subscription/usage_badge.dart';
 import '../widgets/subscription/premium_create_button.dart';
 import '../providers/subscription_provider.dart';
+import '../mixins/policy_enforcement_mixin.dart';
 import 'subscription/paywall_screen.dart';
 import 'timer/timers_screen.dart';
 import 'fishing_note/fishing_type_selection_screen.dart';
@@ -46,7 +47,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, PolicyEnforcementMixin {
   final _firebaseService = FirebaseService();
   final _fishingNoteRepository = FishingNoteRepository();
   final _userRepository = UserRepository();
@@ -400,33 +401,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Проверка политики через упрощенные методы
+  // ✅ ИСПРАВЛЕНО: Используем PolicyEnforcementMixin
   Future<void> _checkPolicyCompliance() async {
     try {
       if (!mounted) return;
 
-      String languageCode = 'ru';
+      debugPrint('🔍 Проверка политики через PolicyEnforcementMixin...');
 
-      try {
-        final localizations = AppLocalizations.of(context);
-        languageCode = localizations.translate('language_code') ?? 'ru';
-      } catch (e) {
-        debugPrint('⚠️ Локализация недоступна, используем русский язык');
-      }
+      // ✅ ИСПРАВЛЕНО: правильное название метода
+      await checkPolicyCompliance();
 
-      // ✅ ИСПРАВЛЕНО: Используем упрощенный метод checkUserConsents
-      final consentResult = await UserConsentService().checkUserConsents(languageCode);
-
-      if (!consentResult.allValid) {
-        debugPrint('🚫 Политика не принята - показываем принудительный диалог');
-        _policyAccepted = false;
-        if (mounted) {
-          await _showPolicyUpdateDialog();
-        }
-      } else {
-        _policyAccepted = true;
-        debugPrint('✅ Политика принята');
-      }
+      // ✅ Получаем статус из mixin
+      _policyAccepted = consentsValid;
 
       if (mounted) {
         setState(() {});
@@ -437,57 +423,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showPolicyUpdateDialog() async {
-    if (!mounted) return;
-
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return PopScope(
-          canPop: false,
-          child: UserAgreementsDialog(
-            isRegistration: false, // ✅ ИСПРАВЛЕНО: добавлен обязательный параметр
-            onAgreementsAccepted: () async {
-              debugPrint('✅ Политика принята пользователем');
-              _policyAccepted = true;
-              await _refreshPolicyStatus();
-            },
-            onCancel: () async {
-              debugPrint('❌ Пользователь отказался от принятия политики');
-              _policyAccepted = false;
-              // ✅ ИСПРАВЛЕНО: Убран вызов несуществующего метода recordPolicyRejection
-              // Выходим из аккаунта при отказе
-              await _firebaseService.signOut();
-              if (mounted && Navigator.canPop(context)) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
-          ),
-        );
-      },
-    );
-  }
 
   Future<void> _refreshPolicyStatus() async {
     if (!mounted) return;
 
-    String languageCode = 'ru';
-
     try {
-      final localizations = AppLocalizations.of(context);
-      languageCode = localizations.translate('language_code') ?? 'ru';
+      // ✅ ИСПРАВЛЕНО: используем метод из mixin
+      await recheckConsents();
+      _policyAccepted = consentsValid;
+
+      if (mounted) {
+        setState(() {});
+      }
+
+      debugPrint('🔄 Статус политики обновлен: $_policyAccepted');
     } catch (e) {
-      debugPrint('⚠️ Локализация недоступна при обновлении статуса');
+      debugPrint('❌ Ошибка при обновлении статуса политики: $e');
+      _policyAccepted = false;
     }
+  }
 
-    // ✅ ИСПРАВЛЕНО: Убрано обращение к несуществующему getConsentRestrictions
-    final consentResult = await UserConsentService().checkUserConsents(languageCode);
-    _policyAccepted = consentResult.allValid;
-
-    if (mounted) {
-      setState(() {});
-    }
+  // ✅ ДОБАВЬТЕ ЭТО:
+  Future<void> _showPolicyUpdateDialog() async {
+    await _checkPolicyCompliance();
   }
 
   // ✅ ИСПРАВЛЕНО: Упрощенная проверка возможности создания контента

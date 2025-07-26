@@ -8,17 +8,28 @@ import '../screens/help/privacy_policy_screen.dart';
 import '../screens/help/terms_of_service_screen.dart';
 import '../services/user_consent_service.dart';
 
-/// ✅ УПРОЩЕННЫЙ диалог соглашений без сложной селективной логики
+/// ✅ СЕЛЕКТИВНЫЙ диалог соглашений - показывает только устаревшие документы
 class UserAgreementsDialog extends StatefulWidget {
   final VoidCallback onAgreementsAccepted;
   final VoidCallback? onCancel;
-  final bool isRegistration; // Новый параметр для контекста
+  final bool isRegistration; // Контекст использования
+
+  // ✅ НОВЫЕ параметры для селективного показа
+  final bool showPrivacyPolicy;
+  final bool showTermsOfService;
+
+  // ✅ НОВЫЕ параметры для передачи информации об устаревших документах
+  final List<String> outdatedPolicies; // ['privacy', 'terms'] или их подмножество
 
   const UserAgreementsDialog({
     super.key,
     required this.onAgreementsAccepted,
     this.onCancel,
-    this.isRegistration = false, // По умолчанию - обновление политик
+    this.isRegistration = false,
+    // ✅ Параметры селективности
+    this.showPrivacyPolicy = true,
+    this.showTermsOfService = true,
+    this.outdatedPolicies = const ['privacy', 'terms'], // По умолчанию все
   });
 
   @override
@@ -35,8 +46,24 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
   @override
   void initState() {
     super.initState();
-    // ✅ УПРОЩЕНО: Никаких сложных проверок - всегда показываем оба документа
-    debugPrint('🔍 Показываем упрощенный диалог согласий');
+    debugPrint('🔍 Показываем селективный диалог согласий');
+    debugPrint('📋 Показать Privacy Policy: ${widget.showPrivacyPolicy}');
+    debugPrint('📋 Показать Terms of Service: ${widget.showTermsOfService}');
+    debugPrint('📋 Устаревшие политики: ${widget.outdatedPolicies}');
+
+    // ✅ ИСПРАВЛЕНО: Автоматически принимаем скрытые документы
+    if (!widget.showPrivacyPolicy) {
+      _privacyPolicyAccepted = true;
+      debugPrint('🔒 Privacy Policy скрыт - автоматически принят');
+    }
+    if (!widget.showTermsOfService) {
+      _termsOfServiceAccepted = true;
+      debugPrint('🔒 Terms of Service скрыт - автоматически принят');
+    }
+
+    debugPrint('📊 Состояние после инициализации:');
+    debugPrint('   - _privacyPolicyAccepted: $_privacyPolicyAccepted');
+    debugPrint('   - _termsOfServiceAccepted: $_termsOfServiceAccepted');
   }
 
   /// Показывает политику конфиденциальности
@@ -53,10 +80,11 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     );
   }
 
-  /// ✅ УПРОЩЕНО: Простое принятие всех соглашений
+  /// ✅ СЕЛЕКТИВНОЕ принятие - обновляем только показанные документы
   Future<void> _handleAcceptAgreements() async {
-    // Проверяем что оба документа приняты
-    if (!_privacyPolicyAccepted || !_termsOfServiceAccepted) {
+    // ✅ Проверяем что показанные документы приняты
+    if ((widget.showPrivacyPolicy && !_privacyPolicyAccepted) ||
+        (widget.showTermsOfService && !_termsOfServiceAccepted)) {
       _showErrorMessage();
       return;
     }
@@ -66,14 +94,16 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     });
 
     try {
-      // ✅ УПРОЩЕНО: Всегда сохраняем оба документа (не селективно)
+      // ✅ СЕЛЕКТИВНОЕ сохранение - передаем только те документы, которые нужно обновить
       final success = await _consentService.saveSelectiveConsents(
-        privacyPolicyAccepted: _privacyPolicyAccepted,
-        termsOfServiceAccepted: _termsOfServiceAccepted,
+        privacyPolicyAccepted: widget.showPrivacyPolicy ? _privacyPolicyAccepted : null,
+        termsOfServiceAccepted: widget.showTermsOfService ? _termsOfServiceAccepted : null,
+        outdatedPolicies: widget.outdatedPolicies, // ✅ Передаем контекст устаревших политик
       );
 
       if (success && mounted) {
-        debugPrint('✅ Согласия успешно сохранены');
+        debugPrint('✅ Селективные согласия успешно сохранены');
+        debugPrint('📋 Обновлены политики: ${widget.outdatedPolicies}');
         Navigator.of(context).pop();
         widget.onAgreementsAccepted();
       } else if (mounted) {
@@ -93,10 +123,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
   }
 
-  /// ✅ УПРОЩЕНО: Простой отказ без записи в систему
+  /// Отказ от принятия соглашений
   Future<void> _handleDeclineAgreements() async {
-    // ✅ УПРОЩЕНО: Убрана запись отказа с планированием удаления
-    // Просто закрываем диалог и вызываем коллбэк
     debugPrint('❌ Пользователь отклонил соглашения');
 
     if (mounted) {
@@ -107,16 +135,29 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     }
   }
 
-  /// ✅ УПРОЩЕНО: Простое сообщение об ошибке
+  /// ✅ АДАПТИВНОЕ сообщение об ошибке
   void _showErrorMessage() {
     final localizations = AppLocalizations.of(context);
 
+    // Определяем какие документы нужно принять
+    List<String> requiredDocs = [];
+    if (widget.showPrivacyPolicy && !_privacyPolicyAccepted) {
+      requiredDocs.add(localizations.translate('privacy_policy') ?? 'Политику конфиденциальности');
+    }
+    if (widget.showTermsOfService && !_termsOfServiceAccepted) {
+      requiredDocs.add(localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
+    }
+
+    String message;
+    if (requiredDocs.length == 1) {
+      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${requiredDocs.first}';
+    } else {
+      message = localizations.translate('agreements_required') ?? 'Необходимо принять все соглашения для продолжения';
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          localizations.translate('agreements_required') ??
-              'Необходимо принять все соглашения для продолжения',
-        ),
+        content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
       ),
@@ -138,29 +179,56 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     );
   }
 
-  /// ✅ УПРОЩЕНО: Простой статический заголовок
+  /// ✅ АДАПТИВНЫЙ заголовок в зависимости от контекста
   String _getDialogTitle(AppLocalizations localizations) {
     if (widget.isRegistration) {
       return localizations.translate('accept_agreements_title') ?? 'Принятие соглашений';
     } else {
-      return localizations.translate('agreements_update_title') ?? 'Обновление соглашений';
+      // Для обновлений показываем более конкретную информацию
+      if (widget.outdatedPolicies.length == 1) {
+        String policyName = widget.outdatedPolicies.first == 'privacy'
+            ? (localizations.translate('privacy_policy') ?? 'Политика конфиденциальности')
+            : (localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
+        return '${localizations.translate('update_single_policy') ?? 'Обновление'} $policyName';
+      } else {
+        return localizations.translate('agreements_update_title') ?? 'Обновление соглашений';
+      }
     }
   }
 
-  /// ✅ УПРОЩЕНО: Простое статическое описание
+  /// ✅ АДАПТИВНОЕ описание в зависимости от контекста
   String _getDialogDescription(AppLocalizations localizations) {
     if (widget.isRegistration) {
       return localizations.translate('accept_agreements_description') ??
           'Для использования приложения необходимо принять соглашения';
     } else {
-      return localizations.translate('agreements_update_description') ??
-          'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
+      // Для обновлений показываем что именно обновилось
+      if (widget.outdatedPolicies.length == 1) {
+        String policyName = widget.outdatedPolicies.first == 'privacy'
+            ? (localizations.translate('privacy_policy') ?? 'Политика конфиденциальности')
+            : (localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
+        return '${localizations.translate('single_policy_updated') ?? 'Обновилась'} $policyName. ${localizations.translate('please_review_accept') ?? 'Пожалуйста, ознакомьтесь и примите новую версию.'}';
+      } else {
+        return localizations.translate('agreements_update_description') ??
+            'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
+      }
     }
   }
 
-  /// ✅ УПРОЩЕНО: Простая проверка - оба документа должны быть приняты
+  /// ✅ СЕЛЕКТИВНАЯ проверка - только показанные документы должны быть приняты
   bool _canAccept() {
-    return _privacyPolicyAccepted && _termsOfServiceAccepted;
+    bool privacyOk = !widget.showPrivacyPolicy || _privacyPolicyAccepted;
+    bool termsOk = !widget.showTermsOfService || _termsOfServiceAccepted;
+    return privacyOk && termsOk;
+  }
+
+  /// ✅ ВСПОМОГАТЕЛЬНЫЙ метод - проверяет есть ли документы для показа
+  bool _hasDocumentsToShow() {
+    final hasDocuments = widget.showPrivacyPolicy || widget.showTermsOfService;
+    debugPrint('🔍 _hasDocumentsToShow(): $hasDocuments');
+    debugPrint('   - showPrivacyPolicy: ${widget.showPrivacyPolicy}');
+    debugPrint('   - showTermsOfService: ${widget.showTermsOfService}');
+    return hasDocuments;
   }
 
   @override
@@ -168,6 +236,17 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     final localizations = AppLocalizations.of(context);
     final textScaler = MediaQuery.of(context).textScaler;
     final screenSize = MediaQuery.of(context).size;
+
+    // ✅ ЗАЩИТА: Если нет документов для показа, не показываем диалог
+    if (!_hasDocumentsToShow()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pop();
+          widget.onAgreementsAccepted();
+        }
+      });
+      return const SizedBox.shrink();
+    }
 
     return WillPopScope(
       onWillPop: () async => false, // Нельзя закрыть без принятия
@@ -182,7 +261,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ✅ УПРОЩЕННЫЙ заголовок
+              // ✅ АДАПТИВНЫЙ заголовок
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -223,39 +302,44 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                 ),
               ),
 
-              // ✅ УПРОЩЕННОЕ содержимое - всегда показываем оба документа
+              // ✅ СЕЛЕКТИВНОЕ содержимое - показываем только нужные документы
               Flexible(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Политика конфиденциальности (всегда показываем)
-                      _buildSimpleAgreementCheckbox(
-                        value: _privacyPolicyAccepted,
-                        onChanged: (value) => setState(() => _privacyPolicyAccepted = value ?? false),
-                        text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                        linkText: localizations.translate('privacy_policy') ?? 'Политикой конфиденциальности',
-                        onLinkTap: _showPrivacyPolicy,
-                      ),
+                      // ✅ УСЛОВНОЕ отображение политики конфиденциальности
+                      if (widget.showPrivacyPolicy) ...[
+                        _buildSelectiveAgreementCheckbox(
+                          value: _privacyPolicyAccepted,
+                          onChanged: (value) => setState(() => _privacyPolicyAccepted = value ?? false),
+                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
+                          linkText: localizations.translate('privacy_policy') ?? 'Политикой конфиденциальности',
+                          onLinkTap: _showPrivacyPolicy,
+                          isUpdated: widget.outdatedPolicies.contains('privacy'),
+                        ),
+                        if (widget.showTermsOfService) const SizedBox(height: 16),
+                      ],
 
-                      const SizedBox(height: 16),
-
-                      // Пользовательское соглашение (всегда показываем)
-                      _buildSimpleAgreementCheckbox(
-                        value: _termsOfServiceAccepted,
-                        onChanged: (value) => setState(() => _termsOfServiceAccepted = value ?? false),
-                        text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                        linkText: localizations.translate('terms_of_service') ?? 'Пользовательским соглашением',
-                        onLinkTap: _showTermsOfService,
-                      ),
+                      // ✅ УСЛОВНОЕ отображение пользовательского соглашения
+                      if (widget.showTermsOfService) ...[
+                        _buildSelectiveAgreementCheckbox(
+                          value: _termsOfServiceAccepted,
+                          onChanged: (value) => setState(() => _termsOfServiceAccepted = value ?? false),
+                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
+                          linkText: localizations.translate('terms_of_service') ?? 'Пользовательским соглашением',
+                          onLinkTap: _showTermsOfService,
+                          isUpdated: widget.outdatedPolicies.contains('terms'),
+                        ),
+                      ],
 
                       const SizedBox(height: 24),
 
-                      // ✅ УПРОЩЕННЫЕ кнопки
+                      // ✅ АДАПТИВНЫЕ кнопки
                       Row(
                         children: [
-                          // Кнопка отмены (простая)
+                          // Кнопка отмены
                           Expanded(
                             child: OutlinedButton(
                               onPressed: _isProcessing ? null : _handleDeclineAgreements,
@@ -281,7 +365,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
 
                           const SizedBox(width: 12),
 
-                          // Кнопка принятия (простая)
+                          // Кнопка принятия
                           Expanded(
                             child: ElevatedButton(
                               onPressed: (_isProcessing || !_canAccept()) ? null : _handleAcceptAgreements,
@@ -326,65 +410,108 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     );
   }
 
-  /// ✅ УПРОЩЕННЫЙ виджет checkbox без сложной логики версий
-  Widget _buildSimpleAgreementCheckbox({
+  /// ✅ СЕЛЕКТИВНЫЙ виджет checkbox с индикацией обновления
+  Widget _buildSelectiveAgreementCheckbox({
     required bool value,
     required ValueChanged<bool?> onChanged,
     required String text,
     required String linkText,
     required VoidCallback onLinkTap,
+    required bool isUpdated, // Новый параметр - указывает что документ обновлен
   }) {
     final textScaler = MediaQuery.of(context).textScaler;
+    final localizations = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(8),
-      child: Row(
+      // ✅ Выделяем обновленные документы
+      decoration: isUpdated && !widget.isRegistration
+          ? BoxDecoration(
+        color: AppConstants.primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppConstants.primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      )
+          : null,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Checkbox
-          Transform.scale(
-            scale: 1.2,
-            child: Checkbox(
-              value: value,
-              onChanged: onChanged,
-              activeColor: AppConstants.primaryColor,
-              checkColor: Colors.white,
-              side: BorderSide(
-                color: AppConstants.textColor.withOpacity(0.5),
-                width: 1.5,
+          // ✅ Индикатор обновления
+          if (isUpdated && !widget.isRegistration)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.new_releases,
+                    color: AppConstants.primaryColor,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    localizations.translate('document_updated') ?? 'Документ обновлен',
+                    style: TextStyle(
+                      color: AppConstants.primaryColor,
+                      fontSize: 12 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(width: 12),
-
-          // Простой текст с ссылкой
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 14 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                    height: 1.4,
+          // Основной checkbox с текстом
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Checkbox
+              Transform.scale(
+                scale: 1.2,
+                child: Checkbox(
+                  value: value,
+                  onChanged: onChanged,
+                  activeColor: AppConstants.primaryColor,
+                  checkColor: Colors.white,
+                  side: BorderSide(
+                    color: AppConstants.textColor.withOpacity(0.5),
+                    width: 1.5,
                   ),
-                  children: [
-                    TextSpan(text: text),
-                    const TextSpan(text: ' '),
-                    TextSpan(
-                      text: linkText,
-                      style: TextStyle(
-                        color: AppConstants.primaryColor,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      recognizer: TapGestureRecognizer()..onTap = onLinkTap,
-                    ),
-                  ],
                 ),
               ),
-            ),
+
+              const SizedBox(width: 12),
+
+              // Текст с ссылкой
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: 14 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
+                        height: 1.4,
+                      ),
+                      children: [
+                        TextSpan(text: text),
+                        const TextSpan(text: ' '),
+                        TextSpan(
+                          text: linkText,
+                          style: TextStyle(
+                            color: AppConstants.primaryColor,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          recognizer: TapGestureRecognizer()..onTap = onLinkTap,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

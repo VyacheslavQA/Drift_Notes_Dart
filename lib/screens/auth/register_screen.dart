@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart'; // ✅ ДОБАВЛЕНО: Для безопасного хеширования
+import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ ДОБАВЛЕНО: Для сохранения данных
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
@@ -14,6 +14,7 @@ import '../../localization/app_localizations.dart';
 import '../help/privacy_policy_screen.dart';
 import '../help/terms_of_service_screen.dart';
 import '../../widgets/user_agreements_dialog.dart';
+import '../../repositories/policy_acceptance_repository.dart'; // ✅ ДОБАВЛЕН ИМПОРТ
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -31,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _firebaseService = FirebaseService();
+  final _policyRepository = PolicyAcceptanceRepository(); // ✅ ДОБАВЛЕН РЕПОЗИТОРИЙ
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -54,10 +56,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Регулярное выражение для допустимых символов в пароле
   final RegExp _allowedPasswordChars = RegExp(r'^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
 
-  // ✅ ДОБАВЛЕНО: Ключи для безопасного хранения данных
+  // Ключи для безопасного хранения данных
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
   static const String _keySavedPasswordHash = 'saved_password_hash';
+
+  // ✅ ДОБАВЛЕНЫ КОНСТАНТЫ ВЕРСИЙ ПОЛИТИК
+  static const String _currentPrivacyVersion = '1.0.0';
+  static const String _currentTermsVersion = '1.0.0';
 
   @override
   void initState() {
@@ -155,12 +161,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ ДОБАВЛЕНО: Безопасное сохранение данных для офлайн режима
+  // Безопасное сохранение данных для офлайн режима
   Future<void> _saveCredentialsForOffline(String email, String password) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // ✅ БЕЗОПАСНО: Сохраняем хеш пароля для офлайн режима
+      // Сохраняем хеш пароля для офлайн режима
       final passwordHash = sha256.convert(utf8.encode(password)).toString();
 
       await prefs.setBool(_keyRememberMe, true);
@@ -173,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ УПРОЩЕНО: Функция для создания профиля пользователя
+  // Функция для создания профиля пользователя
   Future<void> _createUserProfile(String userId, String name, String email) async {
     try {
       await _firebaseService.createUserProfile({
@@ -193,8 +199,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ УПРОЩЕНО: Функция для сохранения согласий пользователя
-  Future<bool> _saveUserConsents() async {
+  // ✅ ИСПРАВЛЕНО: Функция для сохранения согласий И в Firebase, И в ISAR
+  Future<bool> _saveUserConsents(String userId) async {
     try {
       // Проверяем что пользователь принял согласия
       if (!_acceptedTermsAndPrivacy) {
@@ -202,11 +208,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return false;
       }
 
-      debugPrint('✅ Пользователь принял соглашения - сохраняем');
+      debugPrint('🔄 Сохраняем согласия пользователя в Firebase и ISAR...');
 
+      // ✅ ЭТАП 1: Сохраняем в ISAR через PolicyAcceptanceRepository
+      debugPrint('🔄 Сохраняем согласия в ISAR...');
+      final isarSuccess = await _policyRepository.acceptAllPolicies(
+        userId: userId,
+        privacyVersion: _currentPrivacyVersion,
+        termsVersion: _currentTermsVersion,
+        language: 'ru',
+      );
+
+      if (!isarSuccess) {
+        debugPrint('❌ Ошибка при сохранении согласий в ISAR');
+        return false;
+      }
+
+      debugPrint('✅ Согласия успешно сохранены в ISAR');
+
+      // ✅ ЭТАП 2: Сохраняем в Firebase
+      debugPrint('🔄 Сохраняем согласия в Firebase...');
       await _firebaseService.updateUserConsents({
         'privacyPolicyAccepted': true,
         'termsOfServiceAccepted': true,
+        'privacyPolicyVersion': _currentPrivacyVersion,
+        'termsOfServiceVersion': _currentTermsVersion,
         'consentDate': FieldValue.serverTimestamp(),
         'appVersion': '1.0.0',
         'authProvider': 'email',
@@ -214,17 +240,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'deviceInfo': {
           'platform': Theme.of(context).platform.name,
         },
+        'consentLanguage': 'ru',
       });
 
-      debugPrint('✅ Согласия пользователя сохранены');
-      return true;
+      debugPrint('✅ Согласия успешно сохранены в Firebase');
+
+      // ✅ ЭТАП 3: Проверяем что данные действительно сохранились в ISAR
+      debugPrint('🔄 Проверяем сохранение согласий в ISAR...');
+      final savedConsents = await _policyRepository.getUserPolicyAcceptance(userId);
+
+      if (savedConsents != null &&
+          savedConsents.privacyPolicyAccepted &&
+          savedConsents.termsOfServiceAccepted &&
+          savedConsents.privacyPolicyVersion == _currentPrivacyVersion &&
+          savedConsents.termsOfServiceVersion == _currentTermsVersion) {
+        debugPrint('✅ ПОДТВЕРЖДЕНО: Согласия корректно сохранены в ISAR');
+        return true;
+      } else {
+        debugPrint('❌ Согласия НЕ найдены в ISAR после сохранения');
+        return false;
+      }
+
     } catch (e) {
       debugPrint('❌ Ошибка при сохранении согласий: $e');
       return false;
     }
   }
 
-  // ✅ УПРОЩЕНО: Показ диалога согласий при ошибке сохранения
+  // Показ диалога согласий при ошибке сохранения
   Future<bool> _showAgreementsDialog() async {
     try {
       final result = await showDialog<bool>(
@@ -232,6 +275,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         barrierDismissible: false,
         builder: (BuildContext context) {
           return UserAgreementsDialog(
+            isRegistration: true, // ✅ ДОБАВЛЕН ОБЯЗАТЕЛЬНЫЙ ПАРАМЕТР
             onAgreementsAccepted: () {
               debugPrint('✅ Пользователь принял соглашения через диалог');
             },
@@ -249,14 +293,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ УПРОЩЕНО: Основная функция регистрации
+  // ✅ ИСПРАВЛЕНО: Основная функция регистрации
   Future<void> _register() async {
     // Скрываем клавиатуру
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: Согласие с условиями
+    // Обязательная проверка: Согласие с условиями
     if (!_acceptedTermsAndPrivacy) {
       final localizations = AppLocalizations.of(context);
       setState(() {
@@ -275,24 +319,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final password = _passwordController.text;
       final name = _nameController.text.trim();
 
-      // ✅ УПРОЩЕНО: Регистрируем пользователя в Firebase Auth
+      debugPrint('🔄 Начинаем регистрацию пользователя...');
+
+      // ✅ ЭТАП 1: Регистрируем пользователя в Firebase Auth
       final userCredential = await _firebaseService
           .registerWithEmailAndPassword(email, password, context);
 
       final user = userCredential.user;
 
       if (user != null) {
+        debugPrint('✅ Пользователь зарегистрирован в Firebase Auth: ${user.uid}');
+
         // Обновляем имя пользователя
         await user.updateDisplayName(name);
+        debugPrint('✅ Имя пользователя обновлено');
 
-        // ✅ УПРОЩЕНО: Создаем профиль пользователя
+        // ✅ ЭТАП 2: Создаем профиль пользователя
         await _createUserProfile(user.uid, name, email);
 
-        // ✅ УПРОЩЕНО: Сохраняем согласия
-        final consentsSuccess = await _saveUserConsents();
+        // ✅ ЭТАП 3: КРИТИЧЕСКИ ВАЖНО - Сохраняем согласия в ISAR и Firebase
+        debugPrint('🔄 Сохраняем согласия пользователя...');
+        bool consentsSuccess = await _saveUserConsents(user.uid);
 
+        // ✅ ЭТАП 4: Если сохранение не удалось - пробуем резервный диалог
         if (!consentsSuccess) {
-          // Показываем диалог согласий как запасной вариант
+          debugPrint('⚠️ Основное сохранение согласий не удалось, показываем диалог...');
+
           final dialogResult = await _showAgreementsDialog();
 
           if (!dialogResult) {
@@ -313,16 +365,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
               });
             }
             return;
+          } else {
+            // ✅ Пользователь принял через диалог - повторно сохраняем
+            consentsSuccess = await _saveUserConsents(user.uid);
+            debugPrint('✅ Согласия приняты через диалог и сохранены: $consentsSuccess');
           }
         }
 
-        // ✅ ДОБАВЛЕНО: Сохраняем данные для офлайн режима
+        // ✅ ЭТАП 5: Финальная проверка что согласия действительно сохранились
+        if (consentsSuccess) {
+          debugPrint('🔄 Финальная проверка согласий...');
+          final finalCheck = await _policyRepository.arePoliciesValid(
+            userId: user.uid,
+            currentPrivacyVersion: _currentPrivacyVersion,
+            currentTermsVersion: _currentTermsVersion,
+          );
+
+          if (finalCheck) {
+            debugPrint('✅ ФИНАЛЬНАЯ ПРОВЕРКА ПРОЙДЕНА: Согласия корректно сохранены');
+          } else {
+            debugPrint('⚠️ ФИНАЛЬНАЯ ПРОВЕРКА НЕ ПРОЙДЕНА: Есть проблемы с согласиями');
+          }
+        }
+
+        // ✅ ЭТАП 6: Сохраняем данные для офлайн режима
         await _saveCredentialsForOffline(email, password);
 
-        // ✅ ДОБАВЛЕНО: Кэшируем данные для офлайн режима
+        // ✅ ЭТАП 7: Кэшируем данные для офлайн режима
         await _firebaseService.cacheUserDataForOffline(user);
 
-        // ✅ УСПЕШНАЯ РЕГИСТРАЦИЯ
+        // ✅ ЭТАП 8: УСПЕШНАЯ РЕГИСТРАЦИЯ
+        debugPrint('🎉 Регистрация полностью завершена успешно!');
+
         if (mounted) {
           final localizations = AppLocalizations.of(context);
 
@@ -334,9 +408,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
 
-          // Переходим на главный экран
+          // ✅ ФИНАЛ: Переходим на главный экран
+          debugPrint('🎯 Переходим на главный экран после успешной регистрации');
+
           if (widget.onAuthSuccess != null) {
-            debugPrint('🎯 Вызываем коллбэк после успешной регистрации');
             Navigator.of(context).pushReplacementNamed('/home');
             Future.delayed(const Duration(milliseconds: 500), () {
               widget.onAuthSuccess!();
@@ -351,7 +426,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Ошибка регистрации: $e');
+      debugPrint('❌ Критическая ошибка регистрации: $e');
 
       // При ошибке регистрации выходим из аккаунта
       if (_firebaseService.currentUser != null) {

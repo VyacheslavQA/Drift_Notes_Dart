@@ -107,14 +107,12 @@ flutter:
     - assets/localization/  # Файлы локализации
     - assets/localization/geography/
     - assets/images/drawer_logo.png
-    - assets/privacy_policy/
-    - assets/privacy_policy/privacy_policy_ru.txt
-    - assets/privacy_policy/privacy_policy_en.txt
-    - assets/user_guide/
     - assets/icon/
+    - assets/user_guide/
+
+    # ✅ ОБНОВЛЕНО: Автоматическое включение всех файлов политик
+    - assets/privacy_policy/
     - assets/terms_of_service/
-    - assets/terms_of_service/terms_of_service_ru.txt
-    - assets/terms_of_service/terms_of_service_en.txt
 
 # ОБНОВЛЕННАЯ КОНФИГУРАЦИЯ ИКОНОК
 flutter_launcher_icons:

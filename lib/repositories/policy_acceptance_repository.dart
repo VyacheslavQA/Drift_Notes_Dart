@@ -1,189 +1,350 @@
-// Путь: lib/models/isar/policy_acceptance_entity.dart
+// Путь: lib/repositories/policy_acceptance_repository.dart
 
-import 'package:isar/isar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:isar/isar.dart'; // ✅ ДОБАВИТЬ ЭТУ СТРОКУ
+import '../models/isar/policy_acceptance_entity.dart';
+import '../services/isar_service.dart';
+import '../services/offline/sync_service.dart';
+import '../services/firebase/firebase_service.dart';
 
+/// ✅ Repository для управления принятием политики конфиденциальности через Isar
+class PolicyAcceptanceRepository {
+  static final PolicyAcceptanceRepository _instance = PolicyAcceptanceRepository._internal();
+  factory PolicyAcceptanceRepository() => _instance;
+  PolicyAcceptanceRepository._internal();
 
-/// ✅ Entity модель для хранения принятия политики конфиденциальности в Isar
-@Collection()
-class PolicyAcceptanceEntity {
-  Id id = Isar.autoIncrement;
-
-  String? firebaseId = 'consents'; // Фиксированный ID документа в Firebase
-  late String userId;
-
-  // Политика конфиденциальности
-  bool privacyPolicyAccepted = false;
-  String privacyPolicyVersion = '1.0.0';
-  String? privacyPolicyHash;
-
-  // Пользовательское соглашение
-  bool termsOfServiceAccepted = false;
-  String termsOfServiceVersion = '1.0.0';
-  String? termsOfServiceHash;
-
-  // Общие данные
-  String consentLanguage = 'ru';
-  DateTime? consentTimestamp;
-
-  // Метаданные
-  bool isSynced = false;
-  bool markedForDeletion = false;
-  DateTime? lastSyncAt;
-  DateTime createdAt = DateTime.now();
-  DateTime updatedAt = DateTime.now();
+  final IsarService _isarService = IsarService.instance;
+  final SyncService _syncService = SyncService.instance;
+  final FirebaseService _firebaseService = FirebaseService();
 
   // ========================================
-  // МЕТОДЫ СИНХРОНИЗАЦИИ С FIREBASE
+  // CRUD ОПЕРАЦИИ
   // ========================================
 
-  /// Преобразование в Firebase формат
-  Map<String, dynamic> toFirestoreMap() {
-    return {
-      'privacy_policy_accepted': privacyPolicyAccepted,
-      'privacy_policy_version': privacyPolicyVersion,
-      'privacy_policy_hash': privacyPolicyHash,
-      'terms_of_service_accepted': termsOfServiceAccepted,
-      'terms_of_service_version': termsOfServiceVersion,
-      'terms_of_service_hash': termsOfServiceHash,
-      'consent_language': consentLanguage,
-      'consent_timestamp': consentTimestamp != null
-          ? Timestamp.fromDate(consentTimestamp!)
-          : FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-  }
+  /// Получение текущих согласий пользователя
+  Future<PolicyAcceptanceEntity?> getUserPolicyAcceptance(String userId) async {
+    try {
+      debugPrint('📋 Получение согласий для пользователя: $userId');
 
-  /// Создание из Firebase данных
-  static PolicyAcceptanceEntity fromFirestoreMap(String userId, Map<String, dynamic> data) {
-    return PolicyAcceptanceEntity()
-      ..firebaseId = 'consents'
-      ..userId = userId
-      ..privacyPolicyAccepted = data['privacy_policy_accepted'] ?? false
-      ..privacyPolicyVersion = data['privacy_policy_version'] ?? '1.0.0'
-      ..privacyPolicyHash = data['privacy_policy_hash']
-      ..termsOfServiceAccepted = data['terms_of_service_accepted'] ?? false
-      ..termsOfServiceVersion = data['terms_of_service_version'] ?? '1.0.0'
-      ..termsOfServiceHash = data['terms_of_service_hash']
-      ..consentLanguage = data['consent_language'] ?? 'ru'
-      ..consentTimestamp = _parseTimestamp(data['consent_timestamp'])
-      ..isSynced = true
-      ..markedForDeletion = false
-      ..lastSyncAt = DateTime.now()
-      ..createdAt = _parseTimestamp(data['createdAt']) ?? DateTime.now()
-      ..updatedAt = _parseTimestamp(data['updatedAt']) ?? DateTime.now();
-  }
+      final entities = await _isarService.getAllPolicyAcceptances();
+      final userEntity = entities.where((e) => e.userId == userId).firstOrNull;
 
-  /// Универсальный парсинг Timestamp/DateTime/int
-  static DateTime? _parseTimestamp(dynamic timestamp) {
-    if (timestamp == null) return null;
+      if (userEntity != null) {
+        debugPrint('✅ Найдены согласия пользователя: ${userEntity.toString()}');
+        return userEntity;
+      }
 
-    if (timestamp is Timestamp) {
-      return timestamp.toDate();
-    } else if (timestamp is DateTime) {
-      return timestamp;
-    } else if (timestamp is int) {
-      return DateTime.fromMillisecondsSinceEpoch(timestamp);
-    } else if (timestamp is String) {
-      return DateTime.tryParse(timestamp);
+      debugPrint('❌ Согласия для пользователя не найдены');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении согласий: $e');
+      return null;
     }
-
-    return null;
   }
 
-  // ========================================
-  // МЕТОДЫ УПРАВЛЕНИЯ СОСТОЯНИЕМ
-  // ========================================
+  /// Сохранение согласий пользователя
+  Future<bool> savePolicyAcceptance(PolicyAcceptanceEntity entity) async {
+    try {
+      debugPrint('💾 Сохранение согласий: ${entity.toString()}');
 
-  /// Отметить как синхронизированную
-  void markAsSynced() {
-    isSynced = true;
-    lastSyncAt = DateTime.now();
-    updatedAt = DateTime.now();
+      // Устанавливаем временные метки
+      if (entity.id == Isar.autoIncrement) {
+        entity.createdAt = DateTime.now();
+      }
+      entity.updatedAt = DateTime.now();
+      entity.markAsModified(); // isSynced = false
+
+      // Сохраняем в Isar
+      await _isarService.insertPolicyAcceptance(entity);
+
+      debugPrint('✅ Согласия сохранены в Isar: ID=${entity.id}');
+
+      // Триггерим синхронизацию в фоновом режиме
+      _triggerSyncServiceInBackground();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Ошибка при сохранении согласий: $e');
+      return false;
+    }
   }
 
-  /// Отметить как измененную (требует синхронизации)
-  void markAsModified() {
-    isSynced = false;
-    updatedAt = DateTime.now();
-  }
-
-  /// Отметить для удаления
-  void markForDeletion() {
-    markedForDeletion = true;
-    isSynced = false;
-    updatedAt = DateTime.now();
-  }
-
-  // ========================================
-  // БИЗНЕС-ЛОГИКА
-  // ========================================
-
-  /// Проверяет, приняты ли все согласия с актуальными версиями
-  bool isValid(String currentPrivacyVersion, String currentTermsVersion) {
-    return privacyPolicyAccepted &&
-        termsOfServiceAccepted &&
-        privacyPolicyVersion == currentPrivacyVersion &&
-        termsOfServiceVersion == currentTermsVersion;
-  }
-
-  /// Принимает политику конфиденциальности
-  void acceptPrivacyPolicy(String version, {String? hash}) {
-    privacyPolicyAccepted = true;
-    privacyPolicyVersion = version;
-    privacyPolicyHash = hash;
-    consentTimestamp = DateTime.now();
-    markAsModified();
-  }
-
-  /// Принимает пользовательское соглашение
-  void acceptTermsOfService(String version, {String? hash}) {
-    termsOfServiceAccepted = true;
-    termsOfServiceVersion = version;
-    termsOfServiceHash = hash;
-    consentTimestamp = DateTime.now();
-    markAsModified();
-  }
-
-  /// Принимает оба документа одновременно
-  void acceptAll(String privacyVersion, String termsVersion, {
+  /// Создание или обновление согласий пользователя
+  Future<bool> createOrUpdatePolicyAcceptance({
+    required String userId,
+    bool? privacyPolicyAccepted,
+    bool? termsOfServiceAccepted,
+    String? privacyVersion,
+    String? termsVersion,
     String? privacyHash,
     String? termsHash,
     String? language,
-  }) {
-    privacyPolicyAccepted = true;
-    privacyPolicyVersion = privacyVersion;
-    privacyPolicyHash = privacyHash;
+  }) async {
+    try {
+      debugPrint('🔄 Создание/обновление согласий для пользователя: $userId');
 
-    termsOfServiceAccepted = true;
-    termsOfServiceVersion = termsVersion;
-    termsOfServiceHash = termsHash;
+      // Ищем существующие согласия
+      PolicyAcceptanceEntity entity = await getUserPolicyAcceptance(userId) ??
+          PolicyAcceptanceEntity()
+            ..userId = userId
+            ..firebaseId = 'consents'
+            ..createdAt = DateTime.now();
 
-    if (language != null) {
-      consentLanguage = language;
+      // Обновляем данные
+      if (privacyPolicyAccepted == true && privacyVersion != null) {
+        entity.acceptPrivacyPolicy(privacyVersion, hash: privacyHash);
+      }
+
+      if (termsOfServiceAccepted == true && termsVersion != null) {
+        entity.acceptTermsOfService(termsVersion, hash: termsHash);
+      }
+
+      if (language != null) {
+        entity.consentLanguage = language;
+      }
+
+      // Сохраняем
+      return await savePolicyAcceptance(entity);
+    } catch (e) {
+      debugPrint('❌ Ошибка при создании/обновлении согласий: $e');
+      return false;
     }
-
-    consentTimestamp = DateTime.now();
-    markAsModified();
   }
 
-  /// Сброс всех согласий
-  void reset() {
-    privacyPolicyAccepted = false;
-    termsOfServiceAccepted = false;
-    consentTimestamp = null;
-    markAsModified();
+  /// Принятие всех согласий одновременно
+  Future<bool> acceptAllPolicies({
+    required String userId,
+    required String privacyVersion,
+    required String termsVersion,
+    String? privacyHash,
+    String? termsHash,
+    String? language,
+  }) async {
+    try {
+      debugPrint('✅ Принятие всех согласий для пользователя: $userId');
+
+      // Ищем существующие согласия или создаем новые
+      PolicyAcceptanceEntity entity = await getUserPolicyAcceptance(userId) ??
+          PolicyAcceptanceEntity()
+            ..userId = userId
+            ..firebaseId = 'consents'
+            ..createdAt = DateTime.now();
+
+      // Принимаем все согласия
+      entity.acceptAll(
+        privacyVersion,
+        termsVersion,
+        privacyHash: privacyHash,
+        termsHash: termsHash,
+        language: language ?? 'ru',
+      );
+
+      // Сохраняем
+      return await savePolicyAcceptance(entity);
+    } catch (e) {
+      debugPrint('❌ Ошибка при принятии всех согласий: $e');
+      return false;
+    }
+  }
+
+  /// Очистка согласий пользователя (при выходе из аккаунта)
+  Future<bool> clearUserPolicyAcceptance(String userId) async {
+    try {
+      debugPrint('🗑️ Очистка согласий для пользователя: $userId');
+
+      final entity = await getUserPolicyAcceptance(userId);
+      if (entity != null) {
+        await _isarService.deletePolicyAcceptance(entity.id);
+        debugPrint('✅ Согласия очищены для пользователя: $userId');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Ошибка при очистке согласий: $e');
+      return false;
+    }
   }
 
   // ========================================
-  // ОТЛАДКА
+  // ПРОВЕРКА ВАЛИДНОСТИ
   // ========================================
 
-  @override
-  String toString() {
-    return 'PolicyAcceptanceEntity(id: $id, userId: $userId, '
-        'privacy: $privacyPolicyAccepted($privacyPolicyVersion), '
-        'terms: $termsOfServiceAccepted($termsOfServiceVersion), '
-        'isSynced: $isSynced)';
+  /// Проверка актуальности согласий
+  Future<bool> arePoliciesValid({
+    required String userId,
+    required String currentPrivacyVersion,
+    required String currentTermsVersion,
+  }) async {
+    try {
+      final entity = await getUserPolicyAcceptance(userId);
+
+      if (entity == null) {
+        debugPrint('❌ Согласия не найдены для пользователя: $userId');
+        return false;
+      }
+
+      final isValid = entity.isValid(currentPrivacyVersion, currentTermsVersion);
+      debugPrint('🔍 Валидность согласий для $userId: $isValid');
+
+      return isValid;
+    } catch (e) {
+      debugPrint('❌ Ошибка при проверке валидности согласий: $e');
+      return false;
+    }
+  }
+
+  /// Получение статуса согласий (для совместимости с существующим кодом)
+  Future<Map<String, dynamic>> getPolicyStatus(String userId) async {
+    try {
+      final entity = await getUserPolicyAcceptance(userId);
+
+      if (entity == null) {
+        return {
+          'privacy_policy_accepted': false,
+          'terms_of_service_accepted': false,
+          'privacy_policy_version': '1.0.0',
+          'terms_of_service_version': '1.0.0',
+          'consent_language': 'ru',
+          'consent_timestamp': null,
+          'exists': false,
+        };
+      }
+
+      return {
+        'privacy_policy_accepted': entity.privacyPolicyAccepted,
+        'terms_of_service_accepted': entity.termsOfServiceAccepted,
+        'privacy_policy_version': entity.privacyPolicyVersion,
+        'terms_of_service_version': entity.termsOfServiceVersion,
+        'privacy_policy_hash': entity.privacyPolicyHash,
+        'terms_of_service_hash': entity.termsOfServiceHash,
+        'consent_language': entity.consentLanguage,
+        'consent_timestamp': entity.consentTimestamp,
+        'exists': true,
+      };
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении статуса согласий: $e');
+      return {
+        'privacy_policy_accepted': false,
+        'terms_of_service_accepted': false,
+        'exists': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // ========================================
+  // СИНХРОНИЗАЦИЯ
+  // ========================================
+
+  /// Получение несинхронизированных согласий
+  Future<List<PolicyAcceptanceEntity>> getUnsyncedPolicyAcceptances() async {
+    try {
+      final allEntities = await _isarService.getAllPolicyAcceptances();
+      final unsynced = allEntities.where((entity) => !entity.isSynced).toList();
+
+      debugPrint('🔄 Найдено несинхронизированных согласий: ${unsynced.length}');
+      return unsynced;
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении несинхронизированных согласий: $e');
+      return [];
+    }
+  }
+
+  /// Триггер синхронизации в фоновом режиме
+  void _triggerSyncServiceInBackground() {
+    Future.delayed(Duration.zero, () async {
+      try {
+        await _syncService.performFullSync();
+      } catch (e) {
+        debugPrint('❌ Ошибка фоновой синхронизации согласий: $e');
+      }
+    });
+  }
+
+  // ========================================
+  // ОБРАТНАЯ СОВМЕСТИМОСТЬ
+  // ========================================
+
+  /// Миграция данных из SharedPreferences (если нужно)
+  Future<void> migrateFromSharedPreferences(String userId) async {
+    try {
+      debugPrint('🔄 Попытка миграции согласий из SharedPreferences для: $userId');
+
+      // Проверяем, есть ли уже данные в Isar
+      final existingEntity = await getUserPolicyAcceptance(userId);
+      if (existingEntity != null) {
+        debugPrint('✅ Согласия уже существуют в Isar, миграция не нужна');
+        return;
+      }
+
+      // Здесь можно добавить логику чтения из SharedPreferences
+      // и создания PolicyAcceptanceEntity
+      debugPrint('🔄 Миграция из SharedPreferences пока не реализована');
+    } catch (e) {
+      debugPrint('❌ Ошибка при миграции из SharedPreferences: $e');
+    }
+  }
+
+  /// Синхронизация с Firebase (прямая, если SyncService недоступен)
+  Future<bool> syncWithFirebase(String userId) async {
+    try {
+      debugPrint('🔄 Прямая синхронизация согласий с Firebase для: $userId');
+
+      // Получаем данные из Firebase
+      final firebaseDoc = await _firebaseService.getUserConsents();
+
+      if (firebaseDoc.exists) {
+        final data = firebaseDoc.data() as Map<String, dynamic>;
+        final entity = PolicyAcceptanceEntity.fromFirestoreMap(userId, data);
+
+        // Сохраняем в Isar
+        await _isarService.insertPolicyAcceptance(entity);
+
+        debugPrint('✅ Согласия синхронизированы с Firebase');
+        return true;
+      } else {
+        debugPrint('❌ Согласия не найдены в Firebase');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка при синхронизации с Firebase: $e');
+      return false;
+    }
+  }
+
+  // ========================================
+  // ДИАГНОСТИКА
+  // ========================================
+
+  /// Получение всех согласий для диагностики
+  Future<List<PolicyAcceptanceEntity>> getAllPolicyAcceptances() async {
+    try {
+      return await _isarService.getAllPolicyAcceptances();
+    } catch (e) {
+      debugPrint('❌ Ошибка при получении всех согласий: $e');
+      return [];
+    }
+  }
+
+  /// Информация о состоянии
+  Future<Map<String, dynamic>> getRepositoryInfo() async {
+    try {
+      final allEntities = await getAllPolicyAcceptances();
+      final unsyncedCount = allEntities.where((e) => !e.isSynced).length;
+
+      return {
+        'total_entities': allEntities.length,
+        'unsynced_count': unsyncedCount,
+        'synced_count': allEntities.length - unsyncedCount,
+        'repository_type': 'PolicyAcceptanceRepository',
+        'storage_backend': 'Isar',
+        'sync_service': 'SyncService',
+      };
+    } catch (e) {
+      return {
+        'error': e.toString(),
+        'repository_type': 'PolicyAcceptanceRepository',
+      };
+    }
   }
 }

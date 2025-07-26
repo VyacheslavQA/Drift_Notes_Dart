@@ -12,12 +12,10 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../../localization/app_localizations.dart';
 import 'depth_chart_screen.dart';
-// ✅ ИСПРАВЛЕНО: Правильные импорты для премиум системы
 import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../../models/offline_usage_result.dart';
 import '../subscription/paywall_screen.dart';
-// 🔥 ДОБАВЛЕНО: Импорт Repository для очистки кэша
 import '../../repositories/marker_map_repository.dart';
 
 class MarkerMapScreen extends StatefulWidget {
@@ -34,18 +32,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   final _depthController = TextEditingController();
   final _notesController = TextEditingController();
   final _distanceController = TextEditingController();
-
-  // ✅ ДОБАВЛЕНО: Сервис для проверки лимитов
   final _subscriptionService = SubscriptionService();
-
   final _markerMapRepository = MarkerMapRepository();
 
   late MarkerMapModel _markerMap;
   bool _isLoading = false;
-
-  // 🔥 ДОБАВЛЕНО: Индикатор автосохранения
   bool _isAutoSaving = false;
   String _saveMessage = '';
+
+  // 🔥 ДОБАВЛЕНО: Флаг disposed для предотвращения утечек
+  bool _isDisposed = false;
 
   // Сохранение последнего выбранного луча
   int _lastSelectedRayIndex = 0;
@@ -54,8 +50,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   final int _raysCount = 5;
   final double _maxDistance = 200.0;
   final double _distanceStep = 10.0;
-
-  // Параметры угла лучей (скорректированные)
   final double _leftAngle = 105.0;
   final double _rightAngle = 75.0;
 
@@ -72,27 +66,26 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     'точка_кормления',
   ];
 
-  // Текущий тип дна для нового маркера
   String _currentBottomType = 'ил';
 
   // Обновленные цвета для типов дна маркеров
   final Map<String, Color> _bottomTypeColors = {
-    'ил': Color(0xFFD4A574), // Светло ярко коричневый
-    'глубокий_ил': Color(0xFF8B4513), // Темно коричневый
-    'ракушка': Colors.white, // Белый
-    'ровно_твердо': Colors.yellow, // Желтый
-    'камни': Colors.grey, // Серый
-    'трава_водоросли': Color(0xFF90EE90), // Светло зеленый
-    'зацеп': Colors.red, // Красный
-    'бугор': Color(0xFFFF8C00), // Ярко оранжевый
-    'точка_кормления': Color(0xFF00BFFF), // Ярко голубой
-    'default': Colors.blue, // для обратной совместимости
+    'ил': Color(0xFFD4A574),
+    'глубокий_ил': Color(0xFF8B4513),
+    'ракушка': Colors.white,
+    'ровно_твердо': Colors.yellow,
+    'камни': Colors.grey,
+    'трава_водоросли': Color(0xFF90EE90),
+    'зацеп': Colors.red,
+    'бугор': Color(0xFFFF8C00),
+    'точка_кормления': Color(0xFF00BFFF),
+    'default': Colors.blue,
   };
 
   final Map<String, IconData> _bottomTypeIcons = {
-    'ил': Icons.view_headline, // горизонтальные линии для ила
+    'ил': Icons.view_headline,
     'глубокий_ил': Icons.waves_outlined,
-    'ракушка': Icons.wifi, // волнистые линии WiFi для ракушки
+    'ракушка': Icons.wifi,
     'ровно_твердо': Icons.remove,
     'камни': Icons.more_horiz,
     'трава_водоросли': Icons.grass,
@@ -106,22 +99,42 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   void initState() {
     super.initState();
     _markerMap = widget.markerMap;
-
-    // Скрываем системные панели для полноэкранного режима
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-
     debugPrint('🗺️ MarkerMapScreen: Открываем карту маркеров ID: ${_markerMap.id}');
   }
 
   @override
   void dispose() {
+    debugPrint('🗺️ MarkerMapScreen: Начинаем dispose...');
+
+    // 🔥 ДОБАВЛЕНО: Устанавливаем флаг disposed
+    _isDisposed = true;
+
+    // Освобождаем контроллеры
     _depthController.dispose();
     _notesController.dispose();
     _distanceController.dispose();
 
-    // Восстанавливаем системные панели при выходе
+    // 🔥 ДОБАВЛЕНО: Очищаем кэш Repository
+    try {
+      MarkerMapRepository.clearCache();
+      debugPrint('🗺️ Кэш Repository очищен в dispose');
+    } catch (e) {
+      debugPrint('⚠️ Ошибка очистки кэша Repository: $e');
+    }
+
+    // Восстанавливаем системные панели
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    debugPrint('🗺️ MarkerMapScreen: dispose завершен успешно');
     super.dispose();
+  }
+
+  // 🔥 ДОБАВЛЕНО: Безопасный setState с проверкой disposed
+  void _safeSetState(VoidCallback fn) {
+    if (!_isDisposed && mounted) {
+      setState(fn);
+    }
   }
 
   // Получение названия типа дна
@@ -148,7 +161,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         return localizations.translate('hill');
       case 'точка_кормления':
         return localizations.translate('feeding_spot');
-    // Для обратной совместимости со старыми типами
       case 'dropoff':
         return localizations.translate('hill');
       case 'weed':
@@ -180,59 +192,51 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       case 'default':
         return 'ил';
       default:
-        return type; // Возвращаем как есть, если это новый тип
+        return type;
     }
   }
 
   // Вычисление угла луча
   double _calculateRayAngle(int rayIndex) {
-    // Распределяем лучи равномерно в диапазоне от _leftAngle до _rightAngle (где 90° - прямо вверх)
-    // 0-й луч будет самым левым, последний - самым правым
-    final totalAngle = _leftAngle - _rightAngle; // общий угол охвата в градусах
+    final totalAngle = _leftAngle - _rightAngle;
     final angleStep = totalAngle / (_raysCount - 1);
-    return (_leftAngle - (rayIndex * angleStep)) *
-        (math.pi / 180); // конвертируем в радианы
+    return (_leftAngle - (rayIndex * angleStep)) * (math.pi / 180);
   }
 
-  // 🔥 ИСПРАВЛЕНО: Автосохранение БЕЗ полей связей с заметками
+  // 🔥 ИСПРАВЛЕНО: Автосохранение с проверкой disposed
   Future<void> _autoSaveChanges(String action) async {
-    if (!mounted) return;
+    if (_isDisposed || !mounted) return;
 
     try {
-      setState(() {
+      _safeSetState(() {
         _isAutoSaving = true;
         _saveMessage = action;
       });
 
       debugPrint('💾 Автосохранение: $action');
 
-      // Создаем полную копию модели карты для сохранения
       final markerMapToSave = _markerMap.copyWith(
-        // Очищаем временные поля с объектами Offset из маркеров
         markers: _markerMap.markers.map((marker) {
-          // Создаем копию маркера без полей для UI
           final cleanMarker = Map<String, dynamic>.from(marker);
-          // Удаляем поля хитбоксов, которые не должны сохраняться
           cleanMarker.remove('_hitboxCenter');
           cleanMarker.remove('_hitboxRadius');
           return cleanMarker;
         }).toList(),
       );
 
-      // 🔥 ИСПРАВЛЕНО: Сохраняем только основные поля карты БЕЗ привязок к заметкам
       final mapData = {
-        'name': markerMapToSave.name,                    // Название карты
-        'date': markerMapToSave.date.millisecondsSinceEpoch, // Дата создания
-        'sector': markerMapToSave.sector,                // Сектор
-        'markers': markerMapToSave.markers,              // Список маркеров
-        'userId': markerMapToSave.userId,                // ID пользователя (для совместимости)
-        'createdAt': markerMapToSave.date.millisecondsSinceEpoch, // Время создания
-        'updatedAt': DateTime.now().millisecondsSinceEpoch, // Время обновления
+        'name': markerMapToSave.name,
+        'date': markerMapToSave.date.millisecondsSinceEpoch,
+        'sector': markerMapToSave.sector,
+        'markers': markerMapToSave.markers,
+        'userId': markerMapToSave.userId,
+        'createdAt': markerMapToSave.date.millisecondsSinceEpoch,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
       };
 
       await _markerMapRepository.updateMarkerMap(markerMapToSave);
 
-      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Очищаем кэш Repository после автосохранения
+      // 🔥 ДОБАВЛЕНО: Очищаем кэш после сохранения
       try {
         MarkerMapRepository.clearCache();
         debugPrint('💾 Кэш Repository очищен после автосохранения');
@@ -240,13 +244,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
         debugPrint('⚠️ Не удалось очистить кэш Repository: $e');
       }
 
-      if (mounted) {
-        setState(() {
+      if (!_isDisposed && mounted) {
+        _safeSetState(() {
           _isAutoSaving = false;
           _saveMessage = '';
         });
 
-        // Показываем краткое уведомление об успешном сохранении
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -260,8 +263,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       }
     } catch (e) {
       debugPrint('❌ Ошибка автосохранения: $e');
-      if (mounted) {
-        setState(() {
+      if (!_isDisposed && mounted) {
+        _safeSetState(() {
           _isAutoSaving = false;
           _saveMessage = '';
         });
@@ -280,6 +283,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ информации о маркерах
   void _showMarkerInfo() {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     showDialog(
@@ -354,18 +359,15 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               children: [
-                                // Цветная точка
                                 Container(
                                   width: 16,
                                   height: 16,
                                   decoration: BoxDecoration(
-                                    color:
-                                    _bottomTypeColors[type] ?? Colors.blue,
+                                    color: _bottomTypeColors[type] ?? Colors.blue,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                // Иконка
                                 Icon(
                                   _bottomTypeIcons[type] ?? Icons.location_on,
                                   color: AppConstants.textColor.withValues(
@@ -374,7 +376,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
-                                // Название типа
                                 Expanded(
                                   child: Text(
                                     _getBottomTypeName(type),
@@ -406,17 +407,13 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         _buildInstructionItem(
                           icon: Icons.add_location,
                           title: localizations.translate('adding_marker'),
-                          description: localizations.translate(
-                            'adding_marker_desc',
-                          ),
+                          description: localizations.translate('adding_marker_desc'),
                         ),
 
                         _buildInstructionItem(
                           icon: Icons.visibility,
                           title: localizations.translate('view_details'),
-                          description: localizations.translate(
-                            'view_details_desc',
-                          ),
+                          description: localizations.translate('view_details_desc'),
                         ),
 
                         _buildInstructionItem(
@@ -509,6 +506,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Показ диалога с деталями маркера
   void _showMarkerDetails(Map<String, dynamic> marker) {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -534,7 +533,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Отображение луча и дистанции
               Row(
                 children: [
                   Icon(Icons.straighten, color: AppConstants.textColor),
@@ -551,7 +549,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Глубина
               if (marker['depth'] != null) ...[
                 Row(
                   children: [
@@ -569,7 +566,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 const SizedBox(height: 8),
               ],
 
-              // Тип дна
               if (marker['bottomType'] != null || marker['type'] != null) ...[
                 Row(
                   children: [
@@ -592,7 +588,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 const SizedBox(height: 8),
               ],
 
-              // Описание
               if (marker['notes'] != null && marker['notes'].isNotEmpty) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,7 +608,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 const SizedBox(height: 8),
               ] else if (marker['description'] != null &&
                   marker['description'].isNotEmpty) ...[
-                // Для обратной совместимости
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -635,11 +629,9 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
               const SizedBox(height: 16),
 
-              // Кнопки управления
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Кнопка редактирования
                   TextButton.icon(
                     icon: const Icon(Icons.edit, size: 18),
                     label: Text(localizations.translate('edit')),
@@ -652,7 +644,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     },
                   ),
                   const SizedBox(width: 16),
-                  // Кнопка удаления
                   TextButton.icon(
                     icon: const Icon(Icons.delete, size: 18),
                     label: Text(localizations.translate('delete')),
@@ -674,25 +665,22 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   // Получение иконки для типа дна
   IconData _getBottomTypeIcon(String? type) {
     if (type == null) return Icons.terrain;
-
-    // Пробуем конвертировать старый тип в новый
     final newType = _convertLegacyTypeToNew(type);
-
     return _bottomTypeIcons[newType] ?? Icons.terrain;
   }
 
-  // 🔥 ИСПРАВЛЕНО: Диалог добавления нового маркера с автосохранением
+  // Диалог добавления нового маркера
   Future<void> _showAddMarkerDialog() async {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     debugPrint('✅ Открываем диалог добавления маркера с автосохранением');
 
-    // Сбрасываем поля формы
     _depthController.text = '';
     _notesController.text = '';
     _distanceController.text = '';
 
-    // Используем последний выбранный луч по умолчанию
     int selectedRayIndex = _lastSelectedRayIndex;
     String selectedBottomType = _currentBottomType;
 
@@ -714,15 +702,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Выбор луча через выпадающий список
                     Row(
                       children: [
                         Text(
                           '${localizations.translate('ray')}:',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.7,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -746,7 +731,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                                   setState(() {
                                     selectedRayIndex = value;
                                   });
-                                  // Сохраняем выбранный луч
                                   _lastSelectedRayIndex = value;
                                 }
                               },
@@ -757,7 +741,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Ввод дистанции цифрами
                     TextField(
                       controller: _distanceController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -768,9 +751,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -783,7 +764,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Глубина
                     TextField(
                       controller: _depthController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -794,9 +774,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -805,13 +783,10 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                           ),
                         ),
                       ),
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                     ),
                     const SizedBox(height: 16),
 
-                    // Тип дна
                     Text(
                       '${localizations.translate('marker_type')}:',
                       style: TextStyle(
@@ -824,19 +799,15 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children:
-                      _bottomTypes.map((type) {
+                      children: _bottomTypes.map((type) {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor:
-                          _bottomTypeColors[type] ?? Colors.grey,
-                          selectedColor:
-                          _bottomTypeColors[type] ?? Colors.grey,
+                          backgroundColor: _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor: _bottomTypeColors[type] ?? Colors.grey,
                           labelStyle: TextStyle(
                             color: Colors.black,
-                            fontWeight:
-                            selectedBottomType == type
+                            fontWeight: selectedBottomType == type
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                           ),
@@ -857,7 +828,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Заметки
                     TextField(
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -868,9 +838,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -900,85 +868,70 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     foregroundColor: AppConstants.textColor,
                   ),
                   onPressed: () async {
-                    // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            localizations.translate('enter_distance'),
-                          ),
+                          content: Text(localizations.translate('enter_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
 
-                    // Парсим введенную дистанцию
-                    double? distance = double.tryParse(
-                      _distanceController.text,
-                    );
+                    double? distance = double.tryParse(_distanceController.text);
                     if (distance == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            localizations.translate('enter_valid_distance'),
-                          ),
+                          content: Text(localizations.translate('enter_valid_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
 
-                    // Ограничиваем дистанцию максимальным значением
                     if (distance > _maxDistance) {
                       distance = _maxDistance;
                     } else if (distance < 0) {
                       distance = 0;
                     }
 
-                    // Создаем новый маркер
                     final newMarker = {
                       'id': const Uuid().v4(),
                       'rayIndex': selectedRayIndex.toDouble(),
                       'distance': distance,
-                      'name': localizations.translate(
-                        'marker',
-                      ), // Установка дефолтного названия
-                      'depth':
-                      _depthController.text.isEmpty
+                      'name': localizations.translate('marker'),
+                      'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
                       'notes': _notesController.text.trim(),
                       'bottomType': selectedBottomType,
-                      // Сохраняем также угол и соотношение для отображения
                       'angle': _calculateRayAngle(selectedRayIndex),
                       'ratio': distance / _maxDistance,
                     };
 
-                    // Сохраняем последний выбранный луч и тип дна для следующего добавления
                     _lastSelectedRayIndex = selectedRayIndex;
                     _currentBottomType = selectedBottomType;
 
-                    // Создаем копию списка маркеров и добавляем новый маркер
-                    final updatedMarkers = List<Map<String, dynamic>>.from(
-                      _markerMap.markers,
-                    );
+                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
                     updatedMarkers.add(newMarker);
 
-                    this.setState(() {
-                      // Вместо модификации списка создаем новую модель
-                      _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-                    });
+                    // 🔥 ИСПРАВЛЕНО: Используем безопасный setState
+                    if (!_isDisposed) {
+                      _safeSetState(() {
+                        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                      });
+                    }
 
                     Navigator.pop(context);
 
                     debugPrint('✅ Добавлен новый маркер: ${newMarker['id']}');
 
-                    // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после добавления маркера
                     await _autoSaveChanges('Маркер добавлен');
 
-                    // Обновляем UI
-                    Future.microtask(() => this.setState(() {}));
+                    // 🔥 ИСПРАВЛЕНО: Безопасное обновление UI
+                    if (!_isDisposed && mounted) {
+                      Future.microtask(() => _safeSetState(() {}));
+                    }
                   },
                   child: Text(
                     localizations.translate('add'),
@@ -993,19 +946,18 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // 🔥 ИСПРАВЛЕНО: Диалог редактирования маркера с автосохранением
+  // Диалог редактирования маркера
   void _showEditMarkerDialog(Map<String, dynamic> marker) {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
-    _depthController.text =
-    marker['depth'] != null ? marker['depth'].toString() : '';
+    _depthController.text = marker['depth'] != null ? marker['depth'].toString() : '';
     _notesController.text = marker['notes'] ?? marker['description'] ?? '';
     _distanceController.text = marker['distance'].toString();
 
-    // Определяем тип дна (с учетом обратной совместимости)
     String selectedBottomType =
         marker['bottomType'] ?? _convertLegacyTypeToNew(marker['type']) ?? 'ил';
 
-    // Сохраняем текущие значения луча
     int currentRayIndex = marker['rayIndex'].toInt();
 
     showDialog(
@@ -1026,15 +978,12 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Выбор луча
                     Row(
                       children: [
                         Text(
                           '${localizations.translate('ray')}:',
                           style: TextStyle(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.7,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -1058,7 +1007,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                                   setState(() {
                                     currentRayIndex = value;
                                   });
-                                  // Сохраняем выбранный луч для последующих добавлений
                                   _lastSelectedRayIndex = value;
                                 }
                               },
@@ -1069,7 +1017,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Ввод дистанции цифрами
                     TextField(
                       controller: _distanceController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -1080,9 +1027,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -1095,7 +1040,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Глубина
                     TextField(
                       controller: _depthController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -1106,9 +1050,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -1117,13 +1059,10 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                           ),
                         ),
                       ),
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                     ),
                     const SizedBox(height: 16),
 
-                    // Тип дна маркера
                     Text(
                       localizations.translate('marker_type'),
                       style: TextStyle(
@@ -1136,19 +1075,15 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children:
-                      _bottomTypes.map((type) {
+                      children: _bottomTypes.map((type) {
                         return ChoiceChip(
                           label: Text(_getBottomTypeName(type)),
                           selected: selectedBottomType == type,
-                          backgroundColor:
-                          _bottomTypeColors[type] ?? Colors.grey,
-                          selectedColor:
-                          _bottomTypeColors[type] ?? Colors.grey,
+                          backgroundColor: _bottomTypeColors[type] ?? Colors.grey,
+                          selectedColor: _bottomTypeColors[type] ?? Colors.grey,
                           labelStyle: TextStyle(
                             color: Colors.black,
-                            fontWeight:
-                            selectedBottomType == type
+                            fontWeight: selectedBottomType == type
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                           ),
@@ -1162,7 +1097,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                               setState(() {
                                 selectedBottomType = type;
                               });
-                              // Сохраняем выбранный тип дна
                               _currentBottomType = type;
                             }
                           },
@@ -1171,7 +1105,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Заметки
                     TextField(
                       controller: _notesController,
                       style: TextStyle(color: AppConstants.textColor),
@@ -1182,9 +1115,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                         ),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
-                            color: AppConstants.textColor.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppConstants.textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         focusedBorder: UnderlineInputBorder(
@@ -1214,74 +1145,61 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     foregroundColor: AppConstants.textColor,
                   ),
                   onPressed: () async {
-                    // Проверка валидности ввода
                     if (_distanceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            localizations.translate('enter_distance'),
-                          ),
+                          content: Text(localizations.translate('enter_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
 
-                    // Парсим введенную дистанцию
-                    double? distance = double.tryParse(
-                      _distanceController.text,
-                    );
+                    double? distance = double.tryParse(_distanceController.text);
                     if (distance == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            localizations.translate('enter_valid_distance'),
-                          ),
+                          content: Text(localizations.translate('enter_valid_distance')),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
 
-                    // Ограничиваем дистанцию максимальным значением
                     if (distance > _maxDistance) {
                       distance = _maxDistance;
                     } else if (distance < 0) {
                       distance = 0;
                     }
 
-                    // Обновляем маркер
                     final updatedMarker = {
                       ...marker,
                       'rayIndex': currentRayIndex.toDouble(),
                       'distance': distance,
-                      'depth':
-                      _depthController.text.isEmpty
+                      'depth': _depthController.text.isEmpty
                           ? null
                           : double.tryParse(_depthController.text),
                       'notes': _notesController.text.trim(),
                       'bottomType': selectedBottomType,
-                      // Обновляем угол и соотношение
                       'angle': _calculateRayAngle(currentRayIndex),
                       'ratio': distance / _maxDistance,
                     };
 
-                    // Удаляем старые поля, если они существуют (для обратной совместимости)
                     updatedMarker.remove('type');
                     updatedMarker.remove('description');
 
-                    // Обновляем в списке
                     _updateMarker(marker['id'], updatedMarker);
 
                     Navigator.pop(context);
 
                     debugPrint('✅ Маркер обновлен: ${marker['id']}');
 
-                    // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после редактирования маркера
                     await _autoSaveChanges('Маркер обновлен');
 
-                    // Обновляем UI
-                    Future.microtask(() => this.setState(() {}));
+                    // 🔥 ИСПРАВЛЕНО: Безопасное обновление UI
+                    if (!_isDisposed && mounted) {
+                      Future.microtask(() => _safeSetState(() {}));
+                    }
                   },
                   child: Text(
                     localizations.translate('save'),
@@ -1298,21 +1216,23 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Обновление маркера
   void _updateMarker(String markerId, Map<String, dynamic> updatedMarker) {
+    if (_isDisposed) return;
+
     final index = _markerMap.markers.indexWhere((m) => m['id'] == markerId);
     if (index != -1) {
-      final updatedMarkers = List<Map<String, dynamic>>.from(
-        _markerMap.markers,
-      );
+      final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
       updatedMarkers[index] = updatedMarker;
 
-      setState(() {
+      _safeSetState(() {
         _markerMap = _markerMap.copyWith(markers: updatedMarkers);
       });
     }
   }
 
-  // 🔥 ИСПРАВЛЕНО: Диалог подтверждения удаления маркера с автосохранением
+  // Диалог подтверждения удаления маркера
   void _confirmDeleteMarker(Map<String, dynamic> marker) {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
     showDialog(
       context: context,
@@ -1344,16 +1264,16 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
               onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Удаляем маркер
                 _deleteMarker(marker);
 
                 debugPrint('🗑️ Маркер удален: ${marker['id']}');
 
-                // 🔥 АВТОСОХРАНЕНИЕ: сохраняем изменения сразу после удаления маркера
                 await _autoSaveChanges('Маркер удален');
 
-                // Обновляем UI
-                Future.microtask(() => setState(() {}));
+                // 🔥 ИСПРАВЛЕНО: Безопасное обновление UI
+                if (!_isDisposed && mounted) {
+                  Future.microtask(() => _safeSetState(() {}));
+                }
               },
               child: Text(
                 localizations.translate('delete'),
@@ -1368,22 +1288,25 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
 
   // Удаление маркера
   void _deleteMarker(Map<String, dynamic> marker) {
+    if (_isDisposed) return;
+
     final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
     updatedMarkers.removeWhere((item) => item['id'] == marker['id']);
 
-    setState(() {
+    _safeSetState(() {
       _markerMap = _markerMap.copyWith(markers: updatedMarkers);
     });
   }
 
-  // ✅ ИСПРАВЛЕНО: Переход к экрану графиков глубин с правильной проверкой подписки
+  // Переход к экрану графиков глубин
   Future<void> _showDepthCharts() async {
+    if (_isDisposed) return;
+
     try {
       final localizations = AppLocalizations.of(context);
 
       debugPrint('📊 Проверяем доступ к графикам глубины...');
 
-      // ✅ ИСПРАВЛЕНО: Проверяем подписку через правильный getter
       final hasActiveSubscription = _subscriptionService.isPremium;
 
       debugPrint('📊 Результат проверки подписки: $hasActiveSubscription');
@@ -1391,7 +1314,6 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       if (hasActiveSubscription) {
         debugPrint('✅ Есть активная подписка - открываем графики глубины');
 
-        // Есть подписка - открываем графики
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1401,18 +1323,18 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
       } else {
         debugPrint('❌ Нет активной подписки - показываем Paywall');
 
-        // Нет подписки - показываем Paywall
         _showPremiumRequired(ContentType.depthChart);
       }
     } catch (e) {
       debugPrint('❌ Ошибка при проверке доступа к графику глубины: $e');
-      // При ошибке показываем Paywall (безопасный подход)
       _showPremiumRequired(ContentType.depthChart);
     }
   }
 
   // Единый метод для показа PaywallScreen
   void _showPremiumRequired(ContentType contentType) {
+    if (_isDisposed) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1423,24 +1345,29 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
     );
   }
 
-  // 🔥 ИСПРАВЛЕНО: Простой выход без автосохранения
+  // Простой выход без автосохранения
   Future<void> _exitScreen() async {
     debugPrint('🚪 Выходим из экрана маркерной карты (автосохранение уже работает)');
-    if (mounted) {
+    if (mounted && !_isDisposed) {
       Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 ДОБАВЛЕНО: Проверка disposed в build
+    if (_isDisposed) {
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1F1D), // Темно-зеленый фон как в HTML
+      backgroundColor: const Color(0xFF0B1F1D),
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: AppLocalizations.of(context).translate('please_wait'),
         child: Stack(
           children: [
-            // Карта на весь экран с учетом системных отступов
+            // 🔥 ОПТИМИЗИРОВАНО: Упрощенная карта с кэшированием
             Positioned(
               top: 0,
               left: 0,
@@ -1454,25 +1381,23 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                     colors: [Color(0xFF0B1F1D), Color(0xFF0F2823)],
                   ),
                 ),
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: FullscreenMarkerMapPainter(
-                    rayCount: _raysCount,
-                    maxDistance: _maxDistance,
-                    distanceStep: _distanceStep,
-                    markers: _markerMap.markers,
-                    bottomTypeColors: _bottomTypeColors,
-                    bottomTypeIcons: _bottomTypeIcons,
-                    onMarkerTap: _showMarkerDetails,
-                    context: context,
-                    leftAngle: _leftAngle,
-                    rightAngle: _rightAngle,
-                  ),
+                child: OptimizedMarkerMapPainter(
+                  rayCount: _raysCount,
+                  maxDistance: _maxDistance,
+                  distanceStep: _distanceStep,
+                  markers: _markerMap.markers,
+                  bottomTypeColors: _bottomTypeColors,
+                  bottomTypeIcons: _bottomTypeIcons,
+                  onMarkerTap: _showMarkerDetails,
+                  context: context,
+                  leftAngle: _leftAngle,
+                  rightAngle: _rightAngle,
+                  isDisposed: _isDisposed,
                 ),
               ),
             ),
 
-            // 🔥 ДОБАВЛЕНО: Индикатор автосохранения в верхнем центре
+            // Индикатор автосохранения
             if (_isAutoSaving)
               Positioned(
                 top: MediaQuery.of(context).padding.top + 20,
@@ -1480,10 +1405,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 right: 0,
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppConstants.primaryColor.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
@@ -1503,9 +1425,7 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1523,69 +1443,55 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
                 ),
               ),
 
-            // Информационная кнопка в левом нижнем углу
+            // Кнопка информации
             Positioned(
               left: 16,
-              bottom:
-              55 +
-                  MediaQuery.of(
-                    context,
-                  ).padding.bottom, // Добавляем отступ для системных кнопок
+              bottom: 55 + MediaQuery.of(context).padding.bottom,
               child: FloatingActionButton(
                 heroTag: "info_button",
                 onPressed: _showMarkerInfo,
-                backgroundColor: AppConstants.primaryColor.withValues(
-                  alpha: 0.9,
-                ),
+                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
                 child: const Icon(Icons.info_outline),
               ),
             ),
 
-            // 🔥 ИСПРАВЛЕНО: Три кнопки справа с равномерными промежутками и улучшенными иконками
+            // Кнопка выхода
             Positioned(
               right: 16,
-              bottom:
-              205 + MediaQuery.of(context).padding.bottom, // Верхняя кнопка (130 + 75 = 205)
+              bottom: 205 + MediaQuery.of(context).padding.bottom,
               child: FloatingActionButton(
                 heroTag: "exit_button",
-                onPressed: _exitScreen, // 🔥 ИЗМЕНЕНО: простой выход без сохранения
-                backgroundColor: AppConstants.primaryColor.withValues(
-                  alpha: 0.9,
-                ),
+                onPressed: _exitScreen,
+                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.arrow_back), // 🔥 ИЗМЕНЕНО: более понятная иконка выхода
+                child: const Icon(Icons.arrow_back),
               ),
             ),
 
+            // Кнопка графиков
             Positioned(
               right: 16,
-              bottom:
-              130 + MediaQuery.of(context).padding.bottom, // Средняя кнопка (55 + 75 = 130)
+              bottom: 130 + MediaQuery.of(context).padding.bottom,
               child: FloatingActionButton(
                 heroTag: "charts_button",
                 onPressed: _showDepthCharts,
-                backgroundColor: AppConstants.primaryColor.withValues(
-                  alpha: 0.9,
-                ),
+                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
                 child: const Icon(Icons.bar_chart),
               ),
             ),
 
-            // 🔥 ИСПРАВЛЕНО: Кнопка добавления маркера на том же уровне что и кнопка информации с иконкой маркера
+            // Кнопка добавления маркера
             Positioned(
               right: 16,
-              bottom:
-              55 + MediaQuery.of(context).padding.bottom, // На том же уровне что и кнопка информации (left: 55)
+              bottom: 55 + MediaQuery.of(context).padding.bottom,
               child: FloatingActionButton(
                 heroTag: "add_marker_button",
                 onPressed: _showAddMarkerDialog,
-                backgroundColor: AppConstants.primaryColor.withValues(
-                  alpha: 0.9,
-                ),
+                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.9),
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.add_location), // 🔥 ИЗМЕНЕНО: иконка маркера вместо простого плюса
+                child: const Icon(Icons.add_location),
               ),
             ),
           ],
@@ -1595,8 +1501,8 @@ class MarkerMapScreenState extends State<MarkerMapScreen> {
   }
 }
 
-// Новый painter для полноэкранной карты
-class FullscreenMarkerMapPainter extends CustomPainter {
+// 🔥 НОВЫЙ ОПТИМИЗИРОВАННЫЙ PAINTER
+class OptimizedMarkerMapPainter extends StatefulWidget {
   final int rayCount;
   final double maxDistance;
   final double distanceStep;
@@ -1607,8 +1513,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
   final BuildContext context;
   final double leftAngle;
   final double rightAngle;
+  final bool isDisposed;
 
-  FullscreenMarkerMapPainter({
+  const OptimizedMarkerMapPainter({
+    super.key,
     required this.rayCount,
     required this.maxDistance,
     required this.distanceStep,
@@ -1619,38 +1527,206 @@ class FullscreenMarkerMapPainter extends CustomPainter {
     required this.context,
     this.leftAngle = 105.0,
     this.rightAngle = 75.0,
+    required this.isDisposed,
+  });
+
+  @override
+  State<OptimizedMarkerMapPainter> createState() => _OptimizedMarkerMapPainterState();
+}
+
+class _OptimizedMarkerMapPainterState extends State<OptimizedMarkerMapPainter> {
+  // 🔥 ДОБАВЛЕНО: Кэшированные Paint объекты для переиспользования
+  late final Paint _gridPaint;
+  late final Paint _rayPaint;
+  late final Paint _pointPaint;
+  late final Paint _markerPaint;
+  late final Paint _centerDotPaint;
+
+  // 🔥 ДОБАВЛЕНО: Кэшированные TextPainter для переиспользования
+  late final TextPainter _textPainter;
+
+  // 🔥 ДОБАВЛЕНО: Кэшированные углы лучей
+  late final List<double> _rayAngles;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 ОПТИМИЗАЦИЯ: Инициализируем Paint объекты один раз
+    _gridPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = Colors.white.withValues(alpha: 0.3);
+
+    _rayPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = Colors.white.withValues(alpha: 0.3);
+
+    _pointPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.white.withValues(alpha: 0.5);
+
+    _markerPaint = Paint()..style = PaintingStyle.fill;
+
+    _centerDotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    // 🔥 ОПТИМИЗАЦИЯ: Инициализируем TextPainter один раз
+    _textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
+
+    // 🔥 ОПТИМИЗАЦИЯ: Вычисляем углы лучей один раз
+    _rayAngles = [];
+    for (int i = 0; i < widget.rayCount; i++) {
+      final totalAngle = widget.leftAngle - widget.rightAngle;
+      final angleStep = totalAngle / (widget.rayCount - 1);
+      final angleDegrees = widget.leftAngle - (i * angleStep);
+      final angleRadians = angleDegrees * (math.pi / 180);
+      _rayAngles.add(angleRadians);
+    }
+  }
+
+  @override
+  void dispose() {
+    // 🔥 ДОБАВЛЕНО: Очищаем TextPainter ресурсы
+    _textPainter.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 🔥 ДОБАВЛЕНО: Проверка disposed
+    if (widget.isDisposed) {
+      return const SizedBox.shrink();
+    }
+
+    return GestureDetector(
+      onTapDown: _handleTap,
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: _OptimizedMapPainter(
+          rayCount: widget.rayCount,
+          maxDistance: widget.maxDistance,
+          distanceStep: widget.distanceStep,
+          markers: widget.markers,
+          bottomTypeColors: widget.bottomTypeColors,
+          bottomTypeIcons: widget.bottomTypeIcons,
+          context: widget.context,
+          leftAngle: widget.leftAngle,
+          rightAngle: widget.rightAngle,
+          gridPaint: _gridPaint,
+          rayPaint: _rayPaint,
+          pointPaint: _pointPaint,
+          markerPaint: _markerPaint,
+          centerDotPaint: _centerDotPaint,
+          textPainter: _textPainter,
+          rayAngles: _rayAngles,
+        ),
+      ),
+    );
+  }
+
+  void _handleTap(TapDownDetails details) {
+    if (widget.isDisposed) return;
+
+    final position = details.localPosition;
+
+    // Проверяем нажатие на маркеры
+    for (final marker in widget.markers) {
+      if (marker.containsKey('_hitboxCenter') && marker.containsKey('_hitboxRadius')) {
+        final center = marker['_hitboxCenter'] as Offset;
+        final radius = marker['_hitboxRadius'] as double;
+
+        if ((center - position).distance <= radius) {
+          widget.onMarkerTap(marker);
+          return;
+        }
+      }
+    }
+  }
+}
+
+// 🔥 УПРОЩЕННЫЙ PAINTER С ОПТИМИЗАЦИЯМИ
+class _OptimizedMapPainter extends CustomPainter {
+  final int rayCount;
+  final double maxDistance;
+  final double distanceStep;
+  final List<Map<String, dynamic>> markers;
+  final Map<String, Color> bottomTypeColors;
+  final Map<String, IconData> bottomTypeIcons;
+  final BuildContext context;
+  final double leftAngle;
+  final double rightAngle;
+
+  // 🔥 ДОБАВЛЕНО: Переиспользуемые Paint объекты
+  final Paint gridPaint;
+  final Paint rayPaint;
+  final Paint pointPaint;
+  final Paint markerPaint;
+  final Paint centerDotPaint;
+  final TextPainter textPainter;
+  final List<double> rayAngles;
+
+  _OptimizedMapPainter({
+    required this.rayCount,
+    required this.maxDistance,
+    required this.distanceStep,
+    required this.markers,
+    required this.bottomTypeColors,
+    required this.bottomTypeIcons,
+    required this.context,
+    required this.leftAngle,
+    required this.rightAngle,
+    required this.gridPaint,
+    required this.rayPaint,
+    required this.pointPaint,
+    required this.markerPaint,
+    required this.centerDotPaint,
+    required this.textPainter,
+    required this.rayAngles,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint();
+    // 🔥 ОПТИМИЗАЦИЯ: Базовые вычисления один раз
     final centerX = size.width / 2;
-    final originY = size.height - 5; // Почти в самом низу
+    final originY = size.height - 5;
     final pixelsPerMeter = size.height / (maxDistance * 1.1);
 
-    // Отрисовка полукругов (концентрических дуг) с одинаковым мелким пунктиром
-    paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 1.0;
-    paint.color = Colors.white.withValues(alpha: 0.3);
+    // Отрисовка полукругов (оптимизированная)
+    _drawOptimizedGrid(canvas, centerX, originY, pixelsPerMeter);
 
+    // Отрисовка лучей (оптимизированная)
+    _drawOptimizedRays(canvas, centerX, originY, pixelsPerMeter);
+
+    // Отрисовка точек пересечения (оптимизированная)
+    _drawOptimizedPoints(canvas, centerX, originY, pixelsPerMeter);
+
+    // Отрисовка подписей (оптимизированная)
+    _drawOptimizedLabels(canvas, size, centerX, originY, pixelsPerMeter);
+
+    // Отрисовка маркеров (оптимизированная)
+    _drawOptimizedMarkers(canvas, size, centerX, originY, pixelsPerMeter);
+  }
+
+  void _drawOptimizedGrid(Canvas canvas, double centerX, double originY, double pixelsPerMeter) {
+    // 🔥 ОПТИМИЗАЦИЯ: Упрощенная отрисовка сетки
     for (int distance = 10; distance <= maxDistance.toInt(); distance += 10) {
       final radius = distance * pixelsPerMeter;
 
-      // Рисуем пунктирную дугу с одинаковыми отрезками в пикселях
+      // Упрощенная пунктирная дуга
       final path = Path();
-      final dashLengthPx = 3.0; // Длина штриха в пикселях
-      final gapLengthPx = 6.0; // Длина пробела в пикселях
-      final circumference = math.pi * radius; // Длина полукруга
-      final segmentLength = dashLengthPx + gapLengthPx;
-      final numSegments = (circumference / segmentLength).floor();
+      final dashLength = 3.0;
+      final gapLength = 6.0;
+      final circumference = math.pi * radius;
+      final numDashes = (circumference / (dashLength + gapLength)).floor();
 
-      for (int i = 0; i < numSegments; i++) {
-        // Вычисляем углы для каждого штриха
-        final startAngle = math.pi + (i * segmentLength / radius);
-        final endAngle =
-            math.pi + ((i * segmentLength + dashLengthPx) / radius);
+      for (int i = 0; i < numDashes; i++) {
+        final startAngle = math.pi + (i * (dashLength + gapLength) / radius);
+        final endAngle = math.pi + ((i * (dashLength + gapLength) + dashLength) / radius);
 
-        if (endAngle > math.pi * 2) break; // Не выходим за пределы полукруга
+        if (endAngle > math.pi * 2) break;
 
         final startX = centerX + radius * math.cos(startAngle);
         final startY = originY + radius * math.sin(startAngle);
@@ -1661,30 +1737,23 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         path.arcToPoint(Offset(endX, endY), radius: Radius.circular(radius));
       }
 
-      canvas.drawPath(path, paint);
+      canvas.drawPath(path, gridPaint);
     }
+  }
 
-    final rayAngles = <double>[];
-    for (int i = 0; i < rayCount; i++) {
-      final totalAngle = leftAngle - rightAngle;
-      final angleStep = totalAngle / (rayCount - 1);
-      final angleDegrees = leftAngle - (i * angleStep);
-      final angleRadians = angleDegrees * (math.pi / 180);
-      rayAngles.add(angleRadians);
-    }
+  void _drawOptimizedRays(Canvas canvas, double centerX, double originY, double pixelsPerMeter) {
+    // 🔥 ОПТИМИЗАЦИЯ: Используем кэшированные углы
+    final rayLength = maxDistance * pixelsPerMeter;
 
     for (final angle in rayAngles) {
-      final rayLength = maxDistance * pixelsPerMeter;
       final endX = centerX + rayLength * math.cos(angle);
       final endY = originY - rayLength * math.sin(angle);
-
-      canvas.drawLine(Offset(centerX, originY), Offset(endX, endY), paint);
+      canvas.drawLine(Offset(centerX, originY), Offset(endX, endY), rayPaint);
     }
+  }
 
-    // Отрисовка точек на пересечениях
-    paint.style = PaintingStyle.fill;
-    paint.color = Colors.white.withValues(alpha: 0.5);
-
+  void _drawOptimizedPoints(Canvas canvas, double centerX, double originY, double pixelsPerMeter) {
+    // 🔥 ОПТИМИЗАЦИЯ: Упрощенная отрисовка точек
     for (final angle in rayAngles) {
       for (int distance = 10; distance <= maxDistance.toInt(); distance += 10) {
         final radius = distance * pixelsPerMeter;
@@ -1692,39 +1761,16 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         final pointY = originY - radius * math.sin(angle);
 
         if (pointY > 30) {
-          // Не рисуем точки слишком близко к верху
-          canvas.drawCircle(Offset(pointX, pointY), 1.5, paint);
+          canvas.drawCircle(Offset(pointX, pointY), 1.5, pointPaint);
         }
       }
     }
-
-    // Отрисовка подписей дистанций
-    _drawDistanceLabels(canvas, size, centerX, originY, pixelsPerMeter);
-
-    // Отрисовка подписей лучей
-    _drawRayLabels(canvas, size, centerX, originY, pixelsPerMeter, rayAngles);
-
-    // Отрисовка маркеров с подписями
-    _drawMarkersWithLabels(
-      canvas,
-      size,
-      centerX,
-      originY,
-      pixelsPerMeter,
-      rayAngles,
-    );
   }
 
-  void _drawDistanceLabels(
-      Canvas canvas,
-      Size size,
-      double centerX,
-      double originY,
-      double pixelsPerMeter,
-      ) {
-    final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
+  void _drawOptimizedLabels(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter) {
+    // 🔥 ОПТИМИЗАЦИЯ: Упрощенная отрисовка подписей
 
-    // Подписи 10-50м (поперек внизу с поворотом) - СДВИНУТО ПРАВЕЕ
+    // Подписи 10-50м
     for (int distance = 10; distance <= 50; distance += 10) {
       textPainter.text = TextSpan(
         text: distance.toString(),
@@ -1745,12 +1791,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
 
       canvas.save();
       canvas.translate(
-        centerX -
-            distance * pixelsPerMeter +
-            4, // ИЗМЕНЕНО: было -4, стало +10 (сдвиг на 14px правее)
+        centerX - distance * pixelsPerMeter + 4,
         originY - 20,
       );
-      canvas.rotate(-math.pi / 2); // Поворот на 270°
+      canvas.rotate(-math.pi / 2);
       textPainter.paint(
         canvas,
         Offset(-textPainter.width / 2, -textPainter.height / 2),
@@ -1758,7 +1802,7 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // Подписи 60-200м (по левому краю) - точные позиции как в HTML
+    // Подписи 60-200м с фиксированными позициями
     final distancePositions = [
       {'distance': 60, 'offset': 95.0},
       {'distance': 70, 'offset': 70.0},
@@ -1803,58 +1847,41 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         Offset(8, originY - distance * pixelsPerMeter + offset),
       );
     }
-  }
 
-  void _drawRayLabels(
-      Canvas canvas,
-      Size size,
-      double centerX,
-      double originY,
-      double pixelsPerMeter,
-      List<double> rayAngles,
-      ) {
+    // Подписи лучей
     final localizations = AppLocalizations.of(context);
-    final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
 
-    // Размещаем названия лучей точно над каждым лучом в верхней части
     for (int i = 0; i < rayAngles.length && i < rayCount; i++) {
       final angle = rayAngles[i];
 
-      // Фиксированное расстояние от верха экрана с индивидуальными корректировками
-      double labelY = 50.0; // Базовый отступ от верха экрана
-
-      // Вычисляем X координату на основе угла луча
+      double labelY = 50.0;
       final rayAtLabelY = (originY - labelY);
       double labelX = centerX + rayAtLabelY / math.tan(angle);
 
       // Индивидуальные корректировки для каждого луча
       switch (i) {
-        case 0: // Луч 1 - еще немного левее
-          labelY += 20.0; // Еще чуть ниже
-          labelX -= 50.0; // Еще немного левее (было 45.0)
-          labelX = math.max(labelX, 35.0); // Минимальный отступ от левого края
+        case 0:
+          labelY += 20.0;
+          labelX -= 50.0;
+          labelX = math.max(labelX, 35.0);
           break;
-        case 1: // Луч 2 - чутка ниже
-          labelY += 5.0; // Чутка ниже
+        case 1:
+          labelY += 5.0;
           break;
-        case 2: // Луч 3 - без изменений
+        case 2:
           break;
-        case 3: // Луч 4 - чутка ниже
-          labelY += 5.0; // Чутка ниже
+        case 3:
+          labelY += 5.0;
           break;
-        case 4: // Луч 5 - еще немного правее
-          labelY += 20.0; // Чутка ниже
-          labelX += 50.0; // Еще немного правее (было 45.0)
-          labelX = math.min(
-            labelX,
-            size.width - 35.0,
-          ); // Максимальный отступ от правого края
+        case 4:
+          labelY += 20.0;
+          labelX += 50.0;
+          labelX = math.min(labelX, size.width - 35.0);
           break;
       }
 
       textPainter.text = TextSpan(
-        text:
-        '${localizations.translate('ray')} ${i + 1}', // ИСПРАВЛЕНО: теперь через локализацию
+        text: '${localizations.translate('ray')} ${i + 1}',
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.8),
           fontSize: 12,
@@ -1869,16 +1896,12 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       );
       textPainter.layout();
 
-      // Дополнительная корректировка для учета ширины текста
       if (i == 0) {
-        // Луч 1
         labelX = math.max(labelX, textPainter.width / 2 + 10);
       } else if (i == rayCount - 1) {
-        // Луч 5
         labelX = math.min(labelX, size.width - textPainter.width / 2 - 10);
       }
 
-      // Центрируем текст относительно позиции
       textPainter.paint(
         canvas,
         Offset(labelX - textPainter.width / 2, labelY - textPainter.height / 2),
@@ -1886,22 +1909,14 @@ class FullscreenMarkerMapPainter extends CustomPainter {
     }
   }
 
-  void _drawMarkersWithLabels(
-      Canvas canvas,
-      Size size,
-      double centerX,
-      double originY,
-      double pixelsPerMeter,
-      List<double> rayAngles,
-      ) {
+  void _drawOptimizedMarkers(Canvas canvas, Size size, double centerX, double originY, double pixelsPerMeter) {
+    // 🔥 ОПТИМИЗАЦИЯ: Упрощенная отрисовка маркеров
     for (final marker in markers) {
-      // Получаем координаты из сохраненных в маркере данных
       final rayIndex = (marker['rayIndex'] as double? ?? 0).toInt();
       final distance = marker['distance'] as double? ?? 0;
 
       if (rayIndex >= rayAngles.length) continue;
 
-      // Вычисляем позицию маркера
       final angle = rayAngles[rayIndex];
       final ratio = distance / maxDistance;
       final maxRayLength = maxDistance * pixelsPerMeter;
@@ -1909,10 +1924,9 @@ class FullscreenMarkerMapPainter extends CustomPainter {
       final dx = centerX + maxRayLength * ratio * math.cos(angle);
       final dy = originY - maxRayLength * ratio * math.sin(angle);
 
-      // Определяем цвет по типу дна (с учетом обратной совместимости)
+      // Определяем цвет маркера
       String bottomType = marker['bottomType'] ?? 'default';
       if (bottomType == 'default' && marker['type'] != null) {
-        // Для обратной совместимости
         switch (marker['type']) {
           case 'dropoff':
             bottomType = 'бугор';
@@ -1933,31 +1947,16 @@ class FullscreenMarkerMapPainter extends CustomPainter {
 
       final markerColor = bottomTypeColors[bottomType] ?? Colors.blue;
 
-      // Рисуем маркер
-      final markerPaint =
-      Paint()
-        ..color = markerColor
-        ..style = PaintingStyle.fill;
-
-      // Рисуем кружок без обводки
+      // 🔥 ОПТИМИЗАЦИЯ: Переиспользуем Paint объект
+      markerPaint.color = markerColor;
       canvas.drawCircle(Offset(dx, dy), 8, markerPaint);
-
-      // Добавляем внутреннюю точку
-      final centerDotPaint =
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-
       canvas.drawCircle(Offset(dx, dy), 2, centerDotPaint);
 
-      // Отрисовка подписей справа от луча
-      final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
-
-      // Вычисляем позицию справа от луча
-      final labelOffsetX = 15.0; // Отступ от маркера
+      // Отрисовка подписей
+      final labelOffsetX = 15.0;
       final labelX = dx + labelOffsetX;
 
-      // Подпись глубины сверху (желтый цвет)
+      // Подпись глубины
       if (marker['depth'] != null) {
         textPainter.text = TextSpan(
           text: '${marker['depth'].toStringAsFixed(1)}м',
@@ -1975,15 +1974,10 @@ class FullscreenMarkerMapPainter extends CustomPainter {
           ),
         );
         textPainter.layout();
-
-        // Размещаем глубину сверху
-        textPainter.paint(
-          canvas,
-          Offset(labelX, dy - 10), // Выше маркера
-        );
+        textPainter.paint(canvas, Offset(labelX, dy - 10));
       }
 
-      // Подпись дистанции снизу (белый цвет)
+      // Подпись дистанции
       textPainter.text = TextSpan(
         text: '${distance.toInt()}м',
         style: TextStyle(
@@ -2000,40 +1994,21 @@ class FullscreenMarkerMapPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
+      textPainter.paint(canvas, Offset(labelX, dy + 2));
 
-      // Размещаем дистанцию снизу
-      textPainter.paint(
-        canvas,
-        Offset(labelX, dy + 2), // Ниже маркера
-      );
-
-      // Сохраняем позицию маркера для обработки тапов (хитбокс)
+      // Сохраняем хитбокс для тапов
       marker['_hitboxCenter'] = Offset(dx, dy);
-      marker['_hitboxRadius'] = 15.0; // Увеличиваем зону нажатия
+      marker['_hitboxRadius'] = 15.0;
     }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
-  }
-
-  @override
-  bool? hitTest(Offset position) {
-    // Проверяем, нажал ли пользователь на маркер
-    for (final marker in markers) {
-      if (marker.containsKey('_hitboxCenter') &&
-          marker.containsKey('_hitboxRadius')) {
-        final center = marker['_hitboxCenter'] as Offset;
-        final radius = marker['_hitboxRadius'] as double;
-
-        if ((center - position).distance <= radius) {
-          // Нажатие на маркер
-          onMarkerTap(marker);
-          return true;
-        }
-      }
+    // 🔥 ОПТИМИЗАЦИЯ: Перерисовываем только при изменении маркеров
+    if (oldDelegate is _OptimizedMapPainter) {
+      return markers.length != oldDelegate.markers.length ||
+          markers.hashCode != oldDelegate.markers.hashCode;
     }
-    return null;
+    return true;
   }
 }

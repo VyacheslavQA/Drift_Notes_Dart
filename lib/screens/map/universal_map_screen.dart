@@ -1,11 +1,12 @@
 // Путь: lib/screens/map/universal_map_screen.dart
-// УНИВЕРСАЛЬНАЯ КАРТА - заменяет map_screen.dart и map_location_screen.dart
+// ИСПРАВЛЕНИЯ ДЛЯ УСТРАНЕНИЯ УТЕЧЕК ПАМЯТИ GPU
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';  // ✅ ДОБАВЛЕНО для Completer
 import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
 import '../../repositories/fishing_note_repository.dart';
@@ -42,11 +43,15 @@ class UniversalMapScreen extends StatefulWidget {
 class _UniversalMapScreenState extends State<UniversalMapScreen> {
   final _fishingNoteRepository = FishingNoteRepository();
 
+  // ✅ ИСПРАВЛЕНО: Используем Completer для безопасной работы с контроллером
+  final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
+
   final Set<Marker> _markers = {};
   bool _isLoading = true;
   bool _errorLoadingMap = false;
   String _errorMessage = '';
+  bool _isDisposed = false;  // ✅ ДОБАВЛЕНО: флаг для проверки disposed состояния
 
   // Общие настройки карты
   MapType _currentMapType = MapType.normal;
@@ -70,10 +75,45 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     _initializeMap();
   }
 
+  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильное освобождение ресурсов
   @override
   void dispose() {
-    _mapController?.dispose();
+    debugPrint('🗺️ UniversalMapScreen: Начинаем dispose...');
+    _isDisposed = true;
+
+    // Очищаем маркеры немедленно
+    _markers.clear();
+
+    // Обнуляем контроллер
+    _mapController = null;
+
+    // Освобождаем ресурсы асинхронно
+    _disposeMapResources();
+
+    debugPrint('🗺️ UniversalMapScreen: dispose завершен');
     super.dispose();
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Асинхронное освобождение ресурсов карты
+  Future<void> _disposeMapResources() async {
+    try {
+      debugPrint('🗺️ Очищаем маркеры...');
+
+      // Очищаем маркеры немедленно
+      _markers.clear();
+
+      // Освобождаем контроллер карты
+      if (_controller.isCompleted) {
+        debugPrint('🗺️ Освобождаем контроллер карты...');
+        // GoogleMapController не имеет метода dispose(), просто обнуляем ссылку
+        _mapController = null;
+        debugPrint('🗺️ Контроллер карты освобожден');
+      }
+
+      debugPrint('🗺️ UniversalMapScreen: dispose завершен успешно');
+    } catch (e) {
+      debugPrint('❌ Ошибка при dispose карты: $e');
+    }
   }
 
   @override
@@ -82,23 +122,29 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     // Обновляем ошибки с локализацией
     if (_errorLoadingMap && _errorMessage == 'Google Maps API ключ не настроен') {
       final localizations = AppLocalizations.of(context);
-      setState(() {
-        _errorMessage = localizations.translate('google_maps_not_configured');
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _errorMessage = localizations.translate('google_maps_not_configured');
+        });
+      }
     }
   }
 
   // 🚀 ИНИЦИАЛИЗАЦИЯ КАРТЫ В ЗАВИСИМОСТИ ОТ РЕЖИМА
   Future<void> _initializeMap() async {
+    if (_isDisposed) return;
+
     await _loadSavedMapType();
 
     // Проверяем API ключ
     if (!ApiKeys.hasGoogleMapsKey) {
-      setState(() {
-        _isLoading = false;
-        _errorLoadingMap = true;
-        _errorMessage = 'Google Maps API ключ не настроен';
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+          _errorLoadingMap = true;
+          _errorMessage = 'Google Maps API ключ не настроен';
+        });
+      }
       return;
     }
 
@@ -127,67 +173,87 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🏠 ИНИЦИАЛИЗАЦИЯ РЕЖИМА ПРОСМОТРА ЗАМЕТОК
   Future<void> _initializeHomeView() async {
+    if (_isDisposed) return;
+
     try {
       await _loadUserLocationWithoutLocalization();
       await _loadFishingSpotsWithoutLocalization();
     } catch (e) {
       debugPrint('Ошибка инициализации режима просмотра: $e');
-      setState(() {
-        _isLoading = false;
-        _errorLoadingMap = true;
-        _errorMessage = 'Ошибка загрузки карты: $e';
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+          _errorLoadingMap = true;
+          _errorMessage = 'Ошибка загрузки карты: $e';
+        });
+      }
     }
   }
 
   // 📍 ИНИЦИАЛИЗАЦИЯ РЕЖИМА ВЫБОРА ТОЧКИ
   Future<void> _initializeLocationSelection() async {
+    if (_isDisposed) return;
+
     try {
       if (widget.initialLatitude != null && widget.initialLongitude != null) {
         // Есть начальные координаты - используем их
         _updateLocationMarker();
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       } else {
         // Определяем текущее местоположение
         await _determineCurrentPosition();
       }
     } catch (e) {
       debugPrint('Ошибка инициализации выбора точки: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   // ✏️ ИНИЦИАЛИЗАЦИЯ РЕЖИМА РЕДАКТИРОВАНИЯ ТОЧКИ
   Future<void> _initializeLocationEditing() async {
+    if (_isDisposed) return;
+
     try {
       if (widget.initialLatitude != null && widget.initialLongitude != null) {
         _selectedPosition = LatLng(widget.initialLatitude!, widget.initialLongitude!);
         _updateLocationMarker();
       }
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Ошибка инициализации редактирования: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   // 💾 ЗАГРУЗКА/СОХРАНЕНИЕ НАСТРОЕК КАРТЫ
   Future<void> _loadSavedMapType() async {
+    if (_isDisposed) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = widget.mode == MapMode.homeView ? 'map_type' : 'location_map_type';
       final savedMapTypeIndex = prefs.getInt(key) ?? 0;
-      setState(() {
-        _currentMapType = MapType.values[savedMapTypeIndex];
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _currentMapType = MapType.values[savedMapTypeIndex];
+        });
+      }
     } catch (e) {
       debugPrint('Ошибка при загрузке типа карты: $e');
     }
@@ -204,6 +270,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   void _toggleMapType() {
+    if (_isDisposed) return;
+
     setState(() {
       _currentMapType = _currentMapType == MapType.normal ? MapType.hybrid : MapType.normal;
     });
@@ -212,10 +280,12 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🌍 РАБОТА С ГЕОЛОКАЦИЕЙ
   Future<void> _loadUserLocationWithoutLocalization() async {
+    if (_isDisposed) return;
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _errorLoadingMap = true;
             _errorMessage = 'Службы геолокации отключены';
@@ -228,7 +298,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted) {
+          if (mounted && !_isDisposed) {
             setState(() {
               _errorLoadingMap = true;
               _errorMessage = 'Разрешение на геолокацию отклонено';
@@ -239,7 +309,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _errorLoadingMap = true;
             _errorMessage = 'Разрешение на геолокацию отклонено навсегда';
@@ -250,7 +320,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
       Position position = await Geolocator.getCurrentPosition();
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _initialPosition = CameraPosition(
             target: LatLng(position.latitude, position.longitude),
@@ -259,7 +329,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
           // Добавляем маркер текущей позиции только в режиме homeView
           if (widget.mode == MapMode.homeView) {
-            _markers.add(
+            _addMarkerSafely(
               Marker(
                 markerId: const MarkerId('currentLocation'),
                 position: LatLng(position.latitude, position.longitude),
@@ -272,10 +342,10 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
           _isLoading = false;
         });
 
-        _mapController?.animateCamera(CameraUpdate.newCameraPosition(_initialPosition));
+        _animateCameraSafely(CameraUpdate.newCameraPosition(_initialPosition));
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _errorLoadingMap = true;
           _errorMessage = 'Ошибка определения местоположения: $e';
@@ -285,13 +355,35 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
+  // ✅ НОВЫЙ МЕТОД: Безопасное добавление маркеров
+  void _addMarkerSafely(Marker marker) {
+    if (_isDisposed) return;
+    _markers.add(marker);
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Безопасная анимация камеры
+  Future<void> _animateCameraSafely(CameraUpdate cameraUpdate) async {
+    if (_isDisposed) return;
+
+    try {
+      if (_controller.isCompleted) {
+        final controller = await _controller.future;
+        await controller.animateCamera(cameraUpdate);
+      }
+    } catch (e) {
+      debugPrint('Ошибка анимации камеры: $e');
+    }
+  }
+
   Future<void> _loadUserLocation() async {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _errorLoadingMap = true;
             _errorMessage = localizations.translate('location_services_disabled');
@@ -304,7 +396,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted) {
+          if (mounted && !_isDisposed) {
             setState(() {
               _errorLoadingMap = true;
               _errorMessage = localizations.translate('location_permission_denied');
@@ -315,7 +407,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _errorLoadingMap = true;
             _errorMessage = localizations.translate('location_permission_denied_forever');
@@ -326,7 +418,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
       Position position = await Geolocator.getCurrentPosition();
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         if (widget.mode == MapMode.homeView) {
           // В режиме просмотра - обновляем маркер текущей позиции
           setState(() {
@@ -336,7 +428,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
             );
 
             _markers.removeWhere((marker) => marker.markerId.value == 'currentLocation');
-            _markers.add(
+            _addMarkerSafely(
               Marker(
                 markerId: const MarkerId('currentLocation'),
                 position: LatLng(position.latitude, position.longitude),
@@ -360,7 +452,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
           _updateLocationMarker();
         }
 
-        _mapController?.animateCamera(
+        _animateCameraSafely(
           CameraUpdate.newCameraPosition(
             CameraPosition(
               target: widget.mode == MapMode.homeView
@@ -372,7 +464,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _errorLoadingMap = true;
           _errorMessage = '${localizations.translate('location_error')}: $e';
@@ -383,6 +475,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   Future<void> _determineCurrentPosition() async {
+    if (_isDisposed) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -390,10 +484,10 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _isLoading = false;
+          });
           _showLocationError('Location services are disabled');
         }
         return;
@@ -403,10 +497,10 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() {
-            _isLoading = false;
-          });
-          if (mounted) {
+          if (mounted && !_isDisposed) {
+            setState(() {
+              _isLoading = false;
+            });
             _showLocationError('Location permissions are denied');
           }
           return;
@@ -414,10 +508,10 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _isLoading = false;
+          });
           _showLocationError('Location permissions are permanently denied');
         }
         return;
@@ -425,7 +519,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
       final position = await Geolocator.getCurrentPosition();
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _selectedPosition = LatLng(position.latitude, position.longitude);
           _isLoading = false;
@@ -433,14 +527,14 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
         _updateLocationMarker();
 
-        _mapController?.animateCamera(
+        _animateCameraSafely(
           CameraUpdate.newCameraPosition(
             CameraPosition(target: _selectedPosition, zoom: 15.0),
           ),
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
         });
@@ -450,6 +544,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   void _showLocationError(String fallbackMessage) {
+    if (_isDisposed) return;
+
     try {
       final localizations = AppLocalizations.of(context);
       final localizedMessage = _getLocalizedError(fallbackMessage, localizations);
@@ -484,6 +580,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🎣 РАБОТА С ЗАМЕТКАМИ РЫБАЛКИ (для режима homeView)
   Future<void> _loadFishingSpotsWithoutLocalization() async {
+    if (_isDisposed) return;
+
     try {
       final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
       final notesWithCoordinates = fishingNotes
@@ -493,7 +591,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       _fishingNotes = notesWithCoordinates;
 
       for (var note in notesWithCoordinates) {
-        _markers.add(
+        _addMarkerSafely(
           Marker(
             markerId: MarkerId(note.id),
             position: LatLng(note.latitude, note.longitude),
@@ -509,7 +607,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         );
       }
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {});
       }
     } catch (e) {
@@ -518,6 +616,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   Future<void> _loadFishingSpots() async {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     try {
@@ -531,7 +631,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       _markers.removeWhere((marker) => marker.markerId.value != 'currentLocation');
 
       for (var note in notesWithCoordinates) {
-        _markers.add(
+        _addMarkerSafely(
           Marker(
             markerId: MarkerId(note.id),
             position: LatLng(note.latitude, note.longitude),
@@ -547,11 +647,11 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         );
       }
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {});
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${localizations.translate('error_loading_fishing_spots')}: $e'),
@@ -563,17 +663,21 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 📍 РАБОТА С ВЫБОРОМ ТОЧКИ (для режимов selectLocation и editLocation)
   void _updateLocationMarker() {
+    if (_isDisposed) return;
+
     setState(() {
       _markers.removeWhere((marker) => marker.markerId.value == 'selected_location');
-      _markers.add(
+      _addMarkerSafely(
         Marker(
           markerId: const MarkerId('selected_location'),
           position: _selectedPosition,
           draggable: true,
           onDragEnd: (newPosition) {
-            setState(() {
-              _selectedPosition = newPosition;
-            });
+            if (!_isDisposed) {
+              setState(() {
+                _selectedPosition = newPosition;
+              });
+            }
           },
         ),
       );
@@ -581,6 +685,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   void _onMapTapped(LatLng position) {
+    if (_isDisposed) return;
+
     if (widget.mode == MapMode.selectLocation || widget.mode == MapMode.editLocation) {
       setState(() {
         _selectedPosition = position;
@@ -591,6 +697,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 💾 СОХРАНЕНИЕ ВЫБРАННОЙ ТОЧКИ
   void _saveLocation() {
+    if (_isDisposed) return;
+
     Navigator.pop(context, {
       'latitude': _selectedPosition.latitude,
       'longitude': _selectedPosition.longitude,
@@ -599,25 +707,36 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🗺️ УПРАВЛЕНИЕ КАРТОЙ
   void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
+    debugPrint('🗺️ Карта создана, инициализируем контроллер...');
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    if (!_controller.isCompleted && !_isDisposed) {
+      _controller.complete(controller);
+      _mapController = controller;
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      debugPrint('🗺️ Контроллер карты успешно инициализирован');
     }
   }
 
   void _zoomIn() {
-    _mapController?.animateCamera(CameraUpdate.zoomIn());
+    if (_isDisposed) return;
+    _animateCameraSafely(CameraUpdate.zoomIn());
   }
 
   void _zoomOut() {
-    _mapController?.animateCamera(CameraUpdate.zoomOut());
+    if (_isDisposed) return;
+    _animateCameraSafely(CameraUpdate.zoomOut());
   }
 
   // 🔄 ПОВТОРНАЯ ЗАГРУЗКА
   void _retryLoading() {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     if (!ApiKeys.hasGoogleMapsKey) {
@@ -644,6 +763,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   void _showApiKeyInfo() {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     showDialog(
@@ -692,6 +813,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🎣 ИНФОРМАЦИЯ О ЗАМЕТКЕ РЫБАЛКИ (только для режима homeView)
   void _showFishingNoteInfo(FishingNoteModel note) {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -867,6 +990,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
   // 🧭 НАВИГАЦИЯ К МЕСТУ РЫБАЛКИ
   Future<void> _navigateToFishingSpot(FishingNoteModel note) async {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
@@ -1042,6 +1167,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
   }
 
   Future<void> _launchURL(String url, String appName) async {
+    if (_isDisposed) return;
+
     final localizations = AppLocalizations.of(context);
 
     try {
@@ -1050,7 +1177,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${localizations.translate('app_not_installed')}: $appName'),
@@ -1065,7 +1192,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${localizations.translate('error_opening_app')}: $appName'),
