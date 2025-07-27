@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../models/marker_map_model.dart';
 import '../../services/firebase/firebase_service.dart';
@@ -15,6 +16,7 @@ import '../../services/subscription/subscription_service.dart';
 import '../../constants/subscription_constants.dart';
 import '../subscription/paywall_screen.dart';
 import '../../repositories/marker_map_repository.dart';
+import '../../providers/subscription_provider.dart';
 
 // Импорты современных компонентов
 import 'components/modern_map_background.dart';
@@ -730,7 +732,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           children: [
                             // 1️⃣ ВЫБОР ЛУЧА
                             Text(
-                              '1. ${localizations.translate('ray')}',
+                              '1. ${localizations.translate('ray_selection')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -1050,11 +1052,32 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     );
   }
 
-  // 🚀 ИНТЕГРАЦИЯ ГРАФИКОВ ГЛУБИНЫ - РЕАЛЬНЫЙ ПЕРЕХОД
+  // 🚀 ИНТЕГРАЦИЯ ГРАФИКОВ ГЛУБИНЫ - С ПРОВЕРКОЙ ПОДПИСКИ
   Future<void> _showDepthCharts() async {
     if (_isDisposed) return;
 
-    debugPrint('📊 Переходим к графикам глубины с ${_markerMap.markers.length} маркерами');
+    debugPrint('📊 Проверяем доступ к графикам глубины...');
+
+    // 🔒 ПРОВЕРКА ПОДПИСКИ
+    final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+
+    if (!subscriptionProvider.hasPremiumAccess) {
+      debugPrint('🚫 Доступ к графикам заблокирован - показываем PaywallScreen');
+
+      // Показываем PaywallScreen для графиков глубины
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PaywallScreen(
+            contentType: 'depth_charts',
+            blockedFeature: 'Графики глубины',
+          ),
+        ),
+      );
+      return;
+    }
+
+    debugPrint('✅ Premium доступ подтвержден - переходим к графикам глубины с ${_markerMap.markers.length} маркерами');
 
     // 🎬 ПРОСТАЯ АНИМАЦИЯ slide справа налево
     Navigator.push(
@@ -1252,7 +1275,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       delay: 100,
     ));
 
-    // Кнопка графиков (ТЕПЕРЬ РАБОЧАЯ!)
+    // Кнопка графиков (ТЕПЕРЬ С ПРОВЕРКОЙ ПОДПИСКИ!)
     buttons.add(_buildSingleFloatingButton(
       right: 20,
       bottom: 145 + bottomPadding,
@@ -1260,6 +1283,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       heroTag: "charts_button",
       onPressed: _showDepthCharts,
       delay: 200,
+      isPremiumFeature: true, // 🔒 Помечаем как Premium функцию
+      tooltip: AppLocalizations.of(context).translate('depth_charts'), // 📋 Подсказка
     ));
 
     // Кнопка добавления маркера
@@ -1287,6 +1312,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     required VoidCallback onPressed,
     required int delay,
     bool isPrimary = false,
+    bool isPremiumFeature = false, // 🔒 НОВЫЙ параметр для Premium функций
+    String? tooltip, // 📋 НОВЫЙ параметр для подсказок
   }) {
     return Positioned(
       left: left,
@@ -1310,59 +1337,145 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
           return Transform.scale(
             scale: delayedAnimation.value,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isPrimary
-                      ? [
-                    AppConstants.primaryColor,
-                    AppConstants.primaryColor.withOpacity(0.8),
-                  ]
-                      : [
-                    AppConstants.primaryColor.withOpacity(0.9),
-                    AppConstants.primaryColor.withOpacity(0.7),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                  BoxShadow(
-                    color: AppConstants.primaryColor.withOpacity(0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 0),
-                  ),
-                ],
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(30),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    onPressed();
-                  },
-                  child: Hero(
-                    tag: heroTag,
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: isPrimary ? 28 : 24,
+            child: Consumer<SubscriptionProvider>(
+              builder: (context, subscriptionProvider, _) {
+                // 🔒 Проверяем нужно ли показывать замочек для Premium функций
+                final showLock = isPremiumFeature && !subscriptionProvider.hasPremiumAccess;
+
+                Widget buttonWidget = Stack(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isPrimary
+                              ? [
+                            AppConstants.primaryColor,
+                            AppConstants.primaryColor.withOpacity(0.8),
+                          ]
+                              : showLock
+                              ? [
+                            Colors.orange.withOpacity(0.9),
+                            Colors.orange.withOpacity(0.7),
+                          ]
+                              : [
+                            AppConstants.primaryColor.withOpacity(0.9),
+                            AppConstants.primaryColor.withOpacity(0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                          BoxShadow(
+                            color: (showLock ? Colors.orange : AppConstants.primaryColor).withOpacity(0.4),
+                            blurRadius: 20,
+                            offset: const Offset(0, 0),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            onPressed();
+                          },
+                          child: Hero(
+                            tag: heroTag,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // 🎯 ВСЕГДА показываем основную иконку
+                                Icon(
+                                  icon,
+                                  color: Colors.white,
+                                  size: isPrimary ? 28 : 24,
+                                ),
+
+                                // 🔒 Накладываем замочек ПОВЕРХ для Premium функций
+                                if (showLock)
+                                  Positioned(
+                                    bottom: -2,
+                                    right: -2,
+                                    child: Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.orange,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.lock,
+                                        color: Colors.orange,
+                                        size: 10,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
+
+                    // 🔒 Индикатор Premium для платных функций
+                    if (showLock)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: const BoxDecoration(
+                            color: Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.star,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+
+                // 📋 Добавляем Tooltip если задан
+                if (tooltip != null) {
+                  return Tooltip(
+                    message: showLock
+                        ? '${tooltip} - Premium'
+                        : tooltip,
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    textStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                    child: buttonWidget,
+                  );
+                }
+
+                return buttonWidget;
+              },
             ),
           );
         },
