@@ -65,6 +65,11 @@ android {
             isShrinkResources = false
             ndk {
                 debugSymbolLevel = "NONE"
+                // УБРАНО: abiFilters - теперь включены все архитектуры
+            }
+            // ДОБАВЛЕНО: Отключаем обработку нативных библиотек
+            packagingOptions {
+                doNotStrip("**/*.so")
             }
         }
 
@@ -85,10 +90,31 @@ android {
         warningsAsErrors = false
     }
 
+    // ДОБАВЛЕНО: Настройки для App Bundle
+    bundle {
+        abi {
+            enableSplit = true
+        }
+        density {
+            enableSplit = true
+        }
+        language {
+            enableSplit = false
+        }
+    }
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
         }
+        // ДОБАВЛЕНО: Настройки для решения проблемы с символами
+        doNotStrip("*/arm64-v8a/libc++_shared.so")
+        doNotStrip("*/x86_64/libc++_shared.so")
+        doNotStrip("*/x86/libc++_shared.so")
+        doNotStrip("*/armeabi-v7a/libc++_shared.so")
+
+        pickFirst("**/libc++_shared.so")
+        pickFirst("**/libjsc.so")
     }
 }
 

@@ -1136,13 +1136,15 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
   }
 
   String _getBiteRecordsText(int count) {
+    final localizations = AppLocalizations.of(context);
+
     if (count % 10 == 1 && count % 100 != 11) {
-      return 'поклевка';
+      return localizations.translate('bite_singular');
     } else if ((count % 10 >= 2 && count % 10 <= 4) &&
         (count % 100 < 10 || count % 100 >= 20)) {
-      return 'поклевки';
+      return localizations.translate('bite_few');
     } else {
-      return 'поклевок';
+      return localizations.translate('bite_many');
     }
   }
 

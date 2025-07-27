@@ -675,6 +675,7 @@ class _PressureDetailScreenState extends State<PressureDetailScreen>
           const SizedBox(height: 24),
           // Рекомендации
           _buildRecommendationsCard(widget.weatherData.current.pressureMb),
+          SizedBox(height: 24 + MediaQuery.of(context).padding.bottom),
         ],
       ),
     );

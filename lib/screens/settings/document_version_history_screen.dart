@@ -76,7 +76,7 @@ class _DocumentVersionHistoryScreenState
         });
       }
     } catch (e) {
-      debugPrint('❌ Ошибка загрузки информации о версии: $e');
+      debugPrint('❌ Error loading version information: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -177,7 +177,12 @@ class _DocumentVersionHistoryScreenState
 
   Widget _buildContent(AppLocalizations localizations) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + MediaQuery.of(context).padding.bottom,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

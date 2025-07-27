@@ -1058,7 +1058,7 @@
   "selected_period": "Selected Period",
   "filter_applied": "Filter Applied",
   "map_settings": "Map Settings",
-  "edit_map_info": "Edit Information",
+  "edit_map": "Edit Map",
   "share_map": "Share Map",
   "feature_coming_soon": "Feature coming soon",
   "edit_map_information": "Edit Map Information",
@@ -1866,5 +1866,15 @@
   "depth_charts_development": "Depth charts - feature in development",
   "policy_required": "Policy Required",
   "accept_policy_to_continue": "Accept Policy to Continue",
-  "ray_selection_en": "Ray Selection"
+  "ray_selection_en": "Ray Selection",
+
+  "poor_for_fishing": "Poor for fishing",
+  "bite_singular": "bite",
+  "bite_few": "bites",
+  "bite_many": "bites",
+  "ray_selection": "Ray Selection",
+  "edit_expenses": "Edit Expenses",
+  "expense_count": "Expense count",
+  "expenses_count": "Expenses"
+
 }

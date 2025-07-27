@@ -189,7 +189,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                 const SizedBox(height: 20),
                 _buildSettingsMenuItem(
                   icon: Icons.edit,
-                  title: localizations.translate('edit_map_info'),
+                  title: localizations.translate('edit_map'),
                   onTap: () {
                     Navigator.pop(context);
                     _showMapFormDialog(existingMap: map);

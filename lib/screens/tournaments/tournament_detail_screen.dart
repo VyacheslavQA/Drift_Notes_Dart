@@ -139,7 +139,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
             // Кнопки действий
             _buildActionButtons(context, localizations),
 
-            const SizedBox(height: 24),
+            SizedBox(height: 24 + MediaQuery.of(context).padding.bottom),
           ],
         ),
       ),

@@ -37,8 +37,8 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       print('🔍 Language code: $languageCode');
       print('🔍 Full locale: ${localizations.locale}');
 
-      // Пробуем загрузить файл для текущего языка
-      final fileName = 'assets/privacy_policy/privacy_policy_$languageCode.txt';
+      // Пробуем загрузить файл для текущего языка с версией
+      final fileName = 'assets/privacy_policy/privacy_policy_${languageCode}_1.0.0.txt';
       print('🔍 Trying to load file: $fileName');
 
       String policyText;
@@ -50,12 +50,21 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         // Если файл для текущего языка не найден, загружаем английскую версию
         try {
           policyText = await rootBundle.loadString(
-            'assets/privacy_policy/privacy_policy_en.txt',
+            'assets/privacy_policy/privacy_policy_en_1.0.0.txt',
           );
           print('✅ Successfully loaded fallback English version');
         } catch (e2) {
           print('❌ Failed to load English version: $e2');
-          throw Exception('Cannot load any privacy policy file');
+          // Если и версия с номером не найдена, пробуем старый формат
+          try {
+            policyText = await rootBundle.loadString(
+              'assets/privacy_policy/privacy_policy_en.txt',
+            );
+            print('✅ Successfully loaded legacy English version');
+          } catch (e3) {
+            print('❌ Failed to load any version: $e3');
+            throw Exception('Cannot load any privacy policy file');
+          }
         }
       }
 
@@ -70,7 +79,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       if (mounted) {
         setState(() {
           _policyText =
-              'Ошибка загрузки политики конфиденциальности\n\nОшибка: $e';
+          'Ошибка загрузки политики конфиденциальности\n\nОшибка: $e';
           _isLoading = false;
         });
       }
@@ -100,36 +109,41 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         ),
       ),
       body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppConstants.textColor,
-                  ),
-                ),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppConstants.textColor.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    _policyText,
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 16,
-                      height: 1.6,
-                    ),
-                  ),
-                ),
-              ),
+      _isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(
+            AppConstants.textColor,
+          ),
+        ),
+      )
+          : SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 16 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppConstants.textColor.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            _policyText,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+              height: 1.6,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

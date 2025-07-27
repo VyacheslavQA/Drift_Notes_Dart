@@ -1,47 +1,120 @@
 // Путь: lib/services/localization/ai_localization_service.dart
 
 import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
 import '../../localization/app_localizations.dart';
 
 class AILocalizationService {
-  /// Получить системное сообщение для OpenAI на нужном языке
+  /// Получить системное сообщение для OpenAI на нужном языке - УСИЛЕННАЯ ВЕРСИЯ
   String getSystemMessage(AppLocalizations l10n) {
     switch (l10n.languageCode) {
       case 'en':
-        return '''You are an expert fishing consultant. Always respond in English with detailed and specific advice. 
-Structure your responses clearly and provide practical recommendations for anglers.
-IMPORTANT: Always respond in English language only, regardless of the user's query language.''';
+        return '''You are an expert fishing consultant specializing in practical advice for anglers.
+
+CRITICAL LANGUAGE REQUIREMENT: 
+- You MUST respond ONLY in English language
+- NEVER use Russian, Spanish, French, German or any other language
+- If you accidentally start in another language, immediately stop and restart in English
+- All technical terms must be in English
+- All recommendations must be in English
+
+Your responses should be:
+- Clear and practical
+- Specific to fishing conditions
+- Structured with numbered points when listing recommendations
+- Professional but accessible to anglers of all levels
+
+Remember: ENGLISH ONLY - no exceptions!''';
 
       case 'ru':
-        return '''Ты эксперт по рыбалке и рыболовный консультант. Всегда отвечай на русском языке с подробными и конкретными советами.
-Структурируй свои ответы четко и давай практические рекомендации для рыбаков.
-ВАЖНО: Всегда отвечай только на русском языке, независимо от языка запроса пользователя.''';
+        return '''Ты эксперт по рыбалке, специализирующийся на практических советах для рыбаков.
+
+КРИТИЧЕСКОЕ ТРЕБОВАНИЕ К ЯЗЫКУ:
+- Ты ДОЛЖЕН отвечать ТОЛЬКО на русском языке
+- НИКОГДА не используй английский, испанский, французский, немецкий или другие языки
+- Если случайно начнешь на другом языке, немедленно остановись и начни заново на русском
+- Все технические термины должны быть на русском
+- Все рекомендации должны быть на русском
+
+Твои ответы должны быть:
+- Понятными и практичными
+- Конкретными для условий рыбалки
+- Структурированными с нумерованными пунктами при перечислении рекомендаций
+- Профессиональными, но доступными для рыбаков любого уровня
+
+Запомни: ТОЛЬКО РУССКИЙ ЯЗЫК - никаких исключений!''';
 
       case 'es':
-        return '''Eres un experto consultor de pesca. Siempre responde en español con consejos detallados y específicos.
-Estructura tus respuestas claramente y proporciona recomendaciones prácticas para pescadores.
-IMPORTANTE: Siempre responde solo en español, independientemente del idioma de la consulta del usuario.''';
+        return '''Eres un experto consultor de pesca especializado en consejos prácticos para pescadores.
+
+REQUISITO CRÍTICO DE IDIOMA:
+- DEBES responder SOLO en español
+- NUNCA uses inglés, ruso, francés, alemán u otros idiomas
+- Si accidentalmente empiezas en otro idioma, detente inmediatamente y reinicia en español
+- Todos los términos técnicos deben estar en español
+- Todas las recomendaciones deben estar en español
+
+Tus respuestas deben ser:
+- Claras y prácticas
+- Específicas para las condiciones de pesca
+- Estructuradas con puntos numerados al listar recomendaciones
+- Profesionales pero accesibles para pescadores de todos los niveles
+
+Recuerda: SOLO ESPAÑOL - ¡sin excepciones!''';
 
       case 'fr':
-        return '''Vous êtes un expert consultant en pêche. Répondez toujours en français avec des conseils détaillés et spécifiques.
-Structurez vos réponses clairement et fournissez des recommandations pratiques pour les pêcheurs.
-IMPORTANT: Répondez toujours uniquement en français, quel que soit la langue de la requête de l'utilisateur.''';
+        return '''Vous êtes un expert consultant en pêche spécialisé dans les conseils pratiques pour les pêcheurs.
+
+EXIGENCE CRITIQUE DE LANGUE:
+- Vous DEVEZ répondre UNIQUEMENT en français
+- N'utilisez JAMAIS l'anglais, le russe, l'espagnol, l'allemand ou toute autre langue
+- Si vous commencez accidentellement dans une autre langue, arrêtez-vous immédiatement et recommencez en français
+- Tous les termes techniques doivent être en français
+- Toutes les recommandations doivent être en français
+
+Vos réponses doivent être:
+- Claires et pratiques
+- Spécifiques aux conditions de pêche
+- Structurées avec des points numérotés lors de l'énumération des recommandations
+- Professionnelles mais accessibles aux pêcheurs de tous niveaux
+
+Rappelez-vous: FRANÇAIS UNIQUEMENT - aucune exception!''';
 
       case 'de':
-        return '''Sie sind ein Experte für Angelberatung. Antworten Sie immer auf Deutsch mit detaillierten und spezifischen Ratschlägen.
-Strukturieren Sie Ihre Antworten klar und geben Sie praktische Empfehlungen für Angler.
-WICHTIG: Antworten Sie immer nur auf Deutsch, unabhängig von der Sprache der Benutzeranfrage.''';
+        return '''Sie sind ein Experte für Angelberatung, spezialisiert auf praktische Ratschläge für Angler.
+
+KRITISCHE SPRACHANFORDERUNG:
+- Sie MÜSSEN AUSSCHLIESSLICH auf Deutsch antworten
+- Verwenden Sie NIEMALS Englisch, Russisch, Spanisch, Französisch oder andere Sprachen
+- Wenn Sie versehentlich in einer anderen Sprache beginnen, stoppen Sie sofort und beginnen Sie auf Deutsch neu
+- Alle Fachbegriffe müssen auf Deutsch sein
+- Alle Empfehlungen müssen auf Deutsch sein
+
+Ihre Antworten sollten sein:
+- Klar und praktisch
+- Spezifisch für Angelbedingungen
+- Strukturiert mit nummerierten Punkten bei der Auflistung von Empfehlungen
+- Professionell, aber für Angler aller Niveaus zugänglich
+
+Denken Sie daran: NUR DEUTSCH - keine Ausnahmen!''';
 
       default:
-        return '''You are an expert fishing consultant. Always respond in English with detailed and specific advice. 
-Structure your responses clearly and provide practical recommendations for anglers.
-IMPORTANT: Always respond in English language only, regardless of the user's query language.''';
+        return '''You are an expert fishing consultant specializing in practical advice for anglers.
+
+CRITICAL LANGUAGE REQUIREMENT: 
+- You MUST respond ONLY in English language
+- NEVER use Russian, Spanish, French, German or any other language
+- If you accidentally start in another language, immediately stop and restart in English
+- All technical terms must be in English
+- All recommendations must be in English
+
+Remember: ENGLISH ONLY - no exceptions!''';
     }
   }
 
-  /// Создать локализованный промпт для рекомендаций по ветру
+  /// Создать локализованный промпт для рекомендаций по ветру - УСИЛЕННАЯ ВЕРСИЯ
   String createWindRecommendationPrompt(String originalPrompt, AppLocalizations l10n) {
-    final languageInstruction = _getLanguageInstruction(l10n);
+    final languageInstruction = _getStrongLanguageInstruction(l10n);
 
     switch (l10n.languageCode) {
       case 'en':
@@ -49,110 +122,150 @@ IMPORTANT: Always respond in English language only, regardless of the user's que
 
 Weather conditions and wind situation: $originalPrompt
 
-Please provide 3-5 specific fishing recommendations for these wind conditions:
-1. Lure/bait selection
-2. Fishing technique adjustments  
-3. Location and positioning tips
-4. Equipment recommendations
-5. Timing considerations
+Please provide exactly 3-5 specific fishing recommendations for these wind conditions.
+Format MUST be:
+1. [First recommendation]
+2. [Second recommendation] 
+3. [Third recommendation]
+etc.
 
-Format each recommendation as a numbered list item.''';
+Focus on:
+- Lure/bait selection for wind
+- Fishing technique adjustments
+- Location and positioning tips
+- Equipment recommendations
+- Timing considerations
+
+REMEMBER: Reply ONLY in English!''';
 
       case 'ru':
         return '''$languageInstruction
 
 Погодные условия и ветровая обстановка: $originalPrompt
 
-Дай 3-5 конкретных рекомендаций для рыбалки в этих ветровых условиях:
-1. Выбор приманок/наживки
-2. Корректировка техники ловли
-3. Выбор места и позиционирование
-4. Рекомендации по снастям
-5. Выбор времени
+Дай точно 3-5 конкретных рекомендаций для рыбалки в этих ветровых условиях.
+Формат ОБЯЗАТЕЛЬНО должен быть:
+1. [Первая рекомендация]
+2. [Вторая рекомендация]
+3. [Третья рекомендация]
+и т.д.
 
-Оформи каждую рекомендацию как пронумерованный пункт.''';
+Сосредоточься на:
+- Выбор приманок/наживки для ветра
+- Корректировка техники ловли
+- Выбор места и позиционирование
+- Рекомендации по снастям
+- Выбор времени
+
+ПОМНИ: Отвечай ТОЛЬКО на русском!''';
 
       case 'es':
         return '''$languageInstruction
 
 Condiciones meteorológicas y situación del viento: $originalPrompt
 
-Proporciona 3-5 recomendaciones específicas de pesca para estas condiciones de viento:
-1. Selección de señuelos/cebo
-2. Ajustes de técnica de pesca
-3. Consejos de ubicación y posicionamiento
-4. Recomendaciones de equipo
-5. Consideraciones de tiempo
+Proporciona exactamente 3-5 recomendaciones específicas de pesca para estas condiciones de viento.
+El formato DEBE ser:
+1. [Primera recomendación]
+2. [Segunda recomendación]
+3. [Tercera recomendación]
+etc.
 
-Formatea cada recomendación como un elemento de lista numerada.''';
+Enfócate en:
+- Selección de señuelos/cebo para viento
+- Ajustes de técnica de pesca
+- Consejos de ubicación y posicionamiento
+- Recomendaciones de equipo
+- Consideraciones de tiempo
+
+RECUERDA: ¡Responde SOLO en español!''';
 
       case 'fr':
         return '''$languageInstruction
 
 Conditions météorologiques et situation du vent: $originalPrompt
 
-Veuillez fournir 3-5 recommandations de pêche spécifiques pour ces conditions de vent:
-1. Sélection des leurres/appâts
-2. Ajustements de technique de pêche
-3. Conseils de localisation et positionnement
-4. Recommandations d'équipement
-5. Considérations de timing
+Veuillez fournir exactement 3-5 recommandations de pêche spécifiques pour ces conditions de vent.
+Le format DOIT être:
+1. [Première recommandation]
+2. [Deuxième recommandation]
+3. [Troisième recommandation]
+etc.
 
-Formatez chaque recommandation comme un élément de liste numérotée.''';
+Concentrez-vous sur:
+- Sélection des leurres/appâts pour le vent
+- Ajustements de technique de pêche
+- Conseils de localisation et positionnement
+- Recommandations d'équipement
+- Considérations de timing
+
+RAPPELEZ-VOUS: Répondez UNIQUEMENT en français!''';
 
       case 'de':
         return '''$languageInstruction
 
 Wetterbedingungen und Windsituation: $originalPrompt
 
-Bitte geben Sie 3-5 spezifische Angelempfehlungen für diese Windbedingungen:
-1. Köder-/Köderfischauswahl
-2. Anpassungen der Angeltechnik
-3. Standort- und Positionierungstipps
-4. Ausrüstungsempfehlungen
-5. Timing-Überlegungen
+Bitte geben Sie genau 3-5 spezifische Angelempfehlungen für diese Windbedingungen.
+Das Format MUSS sein:
+1. [Erste Empfehlung]
+2. [Zweite Empfehlung]
+3. [Dritte Empfehlung]
+etc.
 
-Formatieren Sie jede Empfehlung als nummeriertes Listenelement.''';
+Konzentrieren Sie sich auf:
+- Köder-/Köderfischauswahl für Wind
+- Anpassungen der Angeltechnik
+- Standort- und Positionierungstipps
+- Ausrüstungsempfehlungen
+- Timing-Überlegungen
+
+DENKEN SIE DARAN: Antworten Sie NUR auf Deutsch!''';
 
       default:
         return createWindRecommendationPrompt(originalPrompt, l10n);
     }
   }
 
-  /// Создать тестовый промпт для проверки соединения
+  /// Создать тестовый промпт для проверки соединения - УСИЛЕННАЯ ВЕРСИЯ
   String createTestPrompt(AppLocalizations l10n) {
     switch (l10n.languageCode) {
       case 'en':
-        return '''${_getLanguageInstruction(l10n)}
+        return '''${_getStrongLanguageInstruction(l10n)}
 
-Respond with one short phrase: "API works correctly"''';
+Task: Respond with EXACTLY this phrase in English: "API works correctly"
+Do not add any other text. Just this exact phrase in English.''';
 
       case 'ru':
-        return '''${_getLanguageInstruction(l10n)}
+        return '''${_getStrongLanguageInstruction(l10n)}
 
-Ответь одной короткой фразой: "API работает корректно"''';
+Задача: Ответь ТОЧНО этой фразой на русском языке: "API работает корректно"
+Не добавляй никакого другого текста. Только эта точная фраза на русском.''';
 
       case 'es':
-        return '''${_getLanguageInstruction(l10n)}
+        return '''${_getStrongLanguageInstruction(l10n)}
 
-Responde con una frase corta: "La API funciona correctamente"''';
+Tarea: Responde con EXACTAMENTE esta frase en español: "La API funciona correctamente"
+No agregues ningún otro texto. Solo esta frase exacta en español.''';
 
       case 'fr':
-        return '''${_getLanguageInstruction(l10n)}
+        return '''${_getStrongLanguageInstruction(l10n)}
 
-Répondez par une phrase courte: "L'API fonctionne correctement"''';
+Tâche: Répondez avec EXACTEMENT cette phrase en français: "L'API fonctionne correctement"
+N'ajoutez aucun autre texte. Juste cette phrase exacte en français.''';
 
       case 'de':
-        return '''${_getLanguageInstruction(l10n)}
+        return '''${_getStrongLanguageInstruction(l10n)}
 
-Antworten Sie mit einem kurzen Satz: "API funktioniert korrekt"''';
+Aufgabe: Antworten Sie mit GENAU diesem Satz auf Deutsch: "API funktioniert korrekt"
+Fügen Sie keinen anderen Text hinzu. Nur dieser genaue Satz auf Deutsch.''';
 
       default:
         return createTestPrompt(l10n);
     }
   }
 
-  /// Создать специализированный промпт для конкретного типа рыбалки
+  /// Создать специализированный промпт для конкретного типа рыбалки - УСИЛЕННАЯ ВЕРСИЯ
   String createSpecializedPrompt({
     required String typeName,
     required double temperature,
@@ -164,94 +277,119 @@ Antworten Sie mit einem kurzen Satz: "API funktioniert korrekt"''';
     required int currentHour,
     required AppLocalizations l10n,
   }) {
-    final languageInstruction = _getLanguageInstruction(l10n);
+    final languageInstruction = _getStrongLanguageInstruction(l10n);
     final experienceLevelName = getExperienceLevelName(experienceLevel, l10n);
 
     switch (l10n.languageCode) {
       case 'en':
         return '''$languageInstruction
 
-Fishing conditions for "$typeName":
-- Weather: ${temperature.round()}°C, pressure ${pressure.round()} mb, wind ${windSpeed.round()} km/h
-- Current forecast: $currentScore points out of 100
-- Angler level: $experienceLevelName
-- Has fishing history: $hasHistory
-- Time of day: $currentHour:00
+Fishing analysis for: "$typeName"
+Current conditions:
+- Temperature: ${temperature.round()}°C
+- Pressure: ${pressure.round()} mb
+- Wind: ${windSpeed.round()} km/h
+- Current forecast score: $currentScore/100 points
+- Angler experience: $experienceLevelName
+- Has fishing history: ${hasHistory ? 'Yes' : 'No'}
+- Time: $currentHour:00
 
-Give 3 specific tips for "$typeName" in these conditions:
-1. What lures/baits to use
-2. Fishing technique and tactics
-3. Location and timing selection
+Provide EXACTLY 3 specific tips for "$typeName" fishing in these conditions.
+Format MUST be:
+1. [Tip about lures/baits to use]
+2. [Tip about fishing technique and tactics]
+3. [Tip about location and timing]
 
-Each tip should be a separate line starting with a number.''';
+Each tip should be practical and specific to the conditions mentioned above.
+REMEMBER: Write ONLY in English!''';
 
       case 'ru':
         return '''$languageInstruction
 
-Условия для рыбалки "$typeName":
-- Погода: ${temperature.round()}°C, давление ${pressure.round()} мб, ветер ${windSpeed.round()} км/ч
-- Текущий прогноз: $currentScore баллов из 100
-- Уровень рыбака: $experienceLevelName
-- Есть история рыбалок: ${hasHistory ? 'да' : 'нет'}
-- Время суток: $currentHour:00
+Анализ рыбалки для: "$typeName"
+Текущие условия:
+- Температура: ${temperature.round()}°C
+- Давление: ${pressure.round()} мб
+- Ветер: ${windSpeed.round()} км/ч
+- Текущий балл прогноза: $currentScore/100 баллов
+- Опыт рыбака: $experienceLevelName
+- Есть история рыбалок: ${hasHistory ? 'Да' : 'Нет'}
+- Время: $currentHour:00
 
-Дай 3 конкретных совета именно для "$typeName" в этих условиях:
-1. Какие приманки/наживки использовать
-2. Техника и тактика ловли  
-3. Выбор места и времени
+Дай ТОЧНО 3 конкретных совета для рыбалки "$typeName" в этих условиях.
+Формат ОБЯЗАТЕЛЬНО должен быть:
+1. [Совет о приманках/наживках]
+2. [Совет о технике и тактике ловли]
+3. [Совет о выборе места и времени]
 
-Каждый совет - отдельная строка, начинающаяся с номера.''';
+Каждый совет должен быть практичным и конкретным для указанных условий.
+ПОМНИ: Пиши ТОЛЬКО на русском языке!''';
 
       case 'es':
         return '''$languageInstruction
 
-Condiciones para la pesca "$typeName":
-- Clima: ${temperature.round()}°C, presión ${pressure.round()} mb, viento ${windSpeed.round()} km/h
-- Pronóstico actual: $currentScore puntos de 100
-- Nivel del pescador: $experienceLevelName
-- Tiene historial de pesca: ${hasHistory ? 'sí' : 'no'}
-- Hora del día: $currentHour:00
+Análisis de pesca para: "$typeName"
+Condiciones actuales:
+- Temperatura: ${temperature.round()}°C
+- Presión: ${pressure.round()} mb
+- Viento: ${windSpeed.round()} km/h
+- Puntuación actual del pronóstico: $currentScore/100 puntos
+- Experiencia del pescador: $experienceLevelName
+- Tiene historial de pesca: ${hasHistory ? 'Sí' : 'No'}
+- Hora: $currentHour:00
 
-Da 3 consejos específicos para "$typeName" en estas condiciones:
-1. Qué señuelos/cebos usar
-2. Técnica y táctica de pesca
-3. Selección de lugar y tiempo
+Proporciona EXACTAMENTE 3 consejos específicos para pescar "$typeName" en estas condiciones.
+El formato DEBE ser:
+1. [Consejo sobre señuelos/cebos a usar]
+2. [Consejo sobre técnica y táctica de pesca]
+3. [Consejo sobre ubicación y tiempo]
 
-Cada consejo debe ser una línea separada que comience con un número.''';
+Cada consejo debe ser práctico y específico para las condiciones mencionadas.
+RECUERDA: ¡Escribe SOLO en español!''';
 
       case 'fr':
         return '''$languageInstruction
 
-Conditions pour la pêche "$typeName":
-- Météo: ${temperature.round()}°C, pression ${pressure.round()} mb, vent ${windSpeed.round()} km/h
-- Prévision actuelle: $currentScore points sur 100
-- Niveau du pêcheur: $experienceLevelName
-- A un historique de pêche: ${hasHistory ? 'oui' : 'non'}
-- Heure de la journée: $currentHour:00
+Analyse de pêche pour: "$typeName"
+Conditions actuelles:
+- Température: ${temperature.round()}°C
+- Pression: ${pressure.round()} mb
+- Vent: ${windSpeed.round()} km/h
+- Score de prévision actuel: $currentScore/100 points
+- Expérience du pêcheur: $experienceLevelName
+- A un historique de pêche: ${hasHistory ? 'Oui' : 'Non'}
+- Heure: $currentHour:00
 
-Donnez 3 conseils spécifiques pour "$typeName" dans ces conditions:
-1. Quels leurres/appâts utiliser
-2. Technique et tactique de pêche
-3. Sélection du lieu et du timing
+Fournissez EXACTEMENT 3 conseils spécifiques pour pêcher "$typeName" dans ces conditions.
+Le format DOIT être:
+1. [Conseil sur les leurres/appâts à utiliser]
+2. [Conseil sur la technique et tactique de pêche]
+3. [Conseil sur l'emplacement et le timing]
 
-Chaque conseil doit être une ligne séparée commençant par un numéro.''';
+Chaque conseil doit être pratique et spécifique aux conditions mentionnées.
+RAPPELEZ-VOUS: Écrivez UNIQUEMENT en français!''';
 
       case 'de':
         return '''$languageInstruction
 
-Bedingungen für das Angeln "$typeName":
-- Wetter: ${temperature.round()}°C, Druck ${pressure.round()} mb, Wind ${windSpeed.round()} km/h
-- Aktuelle Vorhersage: $currentScore Punkte von 100
-- Angler-Level: $experienceLevelName
-- Hat Angel-Historie: ${hasHistory ? 'ja' : 'nein'}
-- Tageszeit: $currentHour:00
+Angel-Analyse für: "$typeName"
+Aktuelle Bedingungen:
+- Temperatur: ${temperature.round()}°C
+- Druck: ${pressure.round()} mb
+- Wind: ${windSpeed.round()} km/h
+- Aktuelle Vorhersage-Punktzahl: $currentScore/100 Punkte
+- Angler-Erfahrung: $experienceLevelName
+- Hat Angel-Historie: ${hasHistory ? 'Ja' : 'Nein'}
+- Zeit: $currentHour:00
 
-Geben Sie 3 spezifische Tipps für "$typeName" unter diesen Bedingungen:
-1. Welche Köder/Köderfische zu verwenden
-2. Angeltechnik und Taktik
-3. Orts- und Zeitauswahl
+Geben Sie GENAU 3 spezifische Tipps für das Angeln "$typeName" unter diesen Bedingungen.
+Das Format MUSS sein:
+1. [Tipp über zu verwendende Köder/Köderfische]
+2. [Tipp über Angeltechnik und Taktik]
+3. [Tipp über Standort und Timing]
 
-Jeder Tipp sollte eine separate Zeile sein, die mit einer Nummer beginnt.''';
+Jeder Tipp sollte praktisch und spezifisch für die genannten Bedingungen sein.
+DENKEN SIE DARAN: Schreiben Sie NUR auf Deutsch!''';
 
       default:
         return createSpecializedPrompt(
@@ -268,32 +406,39 @@ Jeder Tipp sollte eine separate Zeile sein, die mit einer Nummer beginnt.''';
     }
   }
 
-  /// Парсинг обычных рекомендаций ИИ
+  /// Парсинг обычных рекомендаций ИИ - УЛУЧШЕННАЯ ВЕРСИЯ
   List<String> parseAIRecommendations(String content) {
     final cleanContent = content.trim();
     List<String> recommendations = [];
 
+    // Проверяем на неправильный язык и пытаемся исправить
+    if (_isWrongLanguageResponse(cleanContent)) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Обнаружен ответ на неправильном языке: ${cleanContent.substring(0, math.min(50, cleanContent.length))}...');
+      }
+      // Возвращаем fallback рекомендации
+      return _getFallbackRecommendations();
+    }
+
     // Сначала пробуем разделить по номерам
     final numberedLines = cleanContent.split(RegExp(r'\d+\.\s*'));
     if (numberedLines.length > 1) {
-      recommendations =
-          numberedLines
-              .skip(1)
-              .map((line) => line.trim())
-              .where((line) => line.isNotEmpty && line.length > 5)
-              .take(6)
-              .toList();
+      recommendations = numberedLines
+          .skip(1)
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty && line.length > 5)
+          .take(6)
+          .toList();
     }
 
     // Если нумерованных пунктов нет, разбиваем по переносам строк
     if (recommendations.isEmpty) {
-      recommendations =
-          cleanContent
-              .split('\n')
-              .map((line) => line.trim())
-              .where((line) => line.isNotEmpty && line.length > 5)
-              .take(6)
-              .toList();
+      recommendations = cleanContent
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty && line.length > 5)
+          .take(6)
+          .toList();
     }
 
     // Если и так не получилось, возвращаем весь ответ как одну рекомендацию
@@ -304,10 +449,19 @@ Jeder Tipp sollte eine separate Zeile sein, die mit einer Nummer beginnt.''';
     return recommendations;
   }
 
-  /// Парсинг специализированного ответа ИИ с иконками
+  /// Парсинг специализированного ответа ИИ с иконками - УЛУЧШЕННАЯ ВЕРСИЯ
   List<String> parseSpecializedAIResponse(String content, AppLocalizations l10n) {
     final cleanResponse = content.trim();
     final tips = <String>[];
+
+    // Проверяем язык ответа
+    if (!validateResponseLanguage(cleanResponse, l10n)) {
+      if (kDebugMode) {
+        debugPrint('⚠️ AI ответил на неправильном языке. Ожидался: ${l10n.languageCode}');
+      }
+      // Возвращаем fallback совет на правильном языке
+      return [_getFallbackAITip(l10n)];
+    }
 
     if (cleanResponse.isNotEmpty && cleanResponse.length > 10) {
       // Разбиваем ответ на отдельные советы по номерам
@@ -334,34 +488,43 @@ Jeder Tipp sollte eine separate Zeile sein, die mit einer Nummer beginnt.''';
       }
     }
 
-    return tips;
+    return tips.isNotEmpty ? tips : [_getFallbackAITip(l10n)];
   }
 
-  /// Валидация языка ответа
+  /// Валидация языка ответа - УЛУЧШЕННАЯ ВЕРСИЯ
   bool validateResponseLanguage(String response, AppLocalizations l10n) {
     if (response.isEmpty) return false;
 
     switch (l10n.languageCode) {
       case 'ru':
-      // Проверяем наличие кириллических символов
-        return RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+      // Проверяем наличие кириллических символов и отсутствие латинских слов
+        final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        final hasEnglishWords = RegExp(r'\b[a-z]{3,}\b', caseSensitive: false).hasMatch(response);
+        return hasCyrillic && !hasEnglishWords;
 
       case 'en':
       // Проверяем наличие латинских символов и отсутствие кириллицы
-        return RegExp(r'[a-z]', caseSensitive: false).hasMatch(response) &&
-            !RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        final hasLatin = RegExp(r'[a-z]', caseSensitive: false).hasMatch(response);
+        final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        return hasLatin && !hasCyrillic;
 
       case 'es':
-      // Проверяем латинские символы и испанские специфичные символы
-        return RegExp(r'[a-záéíóúñü]', caseSensitive: false).hasMatch(response);
+      // Проверяем латинские символы, возможные испанские слова
+        final hasLatin = RegExp(r'[a-záéíóúñü]', caseSensitive: false).hasMatch(response);
+        final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        return hasLatin && !hasCyrillic;
 
       case 'fr':
-      // Проверяем латинские символы и французские специфичные символы
-        return RegExp(r'[a-zàâäéèêëïîôöùûüÿç]', caseSensitive: false).hasMatch(response);
+      // Проверяем латинские символы, возможные французские слова
+        final hasLatin = RegExp(r'[a-zàâäéèêëïîôöùûüÿç]', caseSensitive: false).hasMatch(response);
+        final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        return hasLatin && !hasCyrillic;
 
       case 'de':
-      // Проверяем латинские символы и немецкие специфичные символы
-        return RegExp(r'[a-zäöüß]', caseSensitive: false).hasMatch(response);
+      // Проверяем латинские символы, возможные немецкие слова
+        final hasLatin = RegExp(r'[a-zäöüß]', caseSensitive: false).hasMatch(response);
+        final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(response);
+        return hasLatin && !hasCyrillic;
 
       default:
         return true; // Для неизвестных языков возвращаем true
@@ -422,21 +585,83 @@ Jeder Tipp sollte eine separate Zeile sein, die mit einer Nummer beginnt.''';
 
   // Приватные методы
 
-  /// Получить инструкцию по языку для ИИ
-  String _getLanguageInstruction(AppLocalizations l10n) {
+  /// Получить УСИЛЕННУЮ инструкцию по языку для ИИ
+  String _getStrongLanguageInstruction(AppLocalizations l10n) {
     switch (l10n.languageCode) {
       case 'en':
-        return 'IMPORTANT: Respond ONLY in English language. Do not use any other language.';
+        return '''CRITICAL LANGUAGE REQUIREMENT:
+You MUST respond ONLY in English. If you start writing in Russian, Spanish, French, German or any other language, STOP immediately and restart in English.
+DO NOT MIX LANGUAGES. English only!''';
+
       case 'ru':
-        return 'ВАЖНО: Отвечай ТОЛЬКО на русском языке. Не используй другие языки.';
+        return '''КРИТИЧЕСКОЕ ТРЕБОВАНИЕ К ЯЗЫКУ:
+Ты ДОЛЖЕН отвечать ТОЛЬКО на русском языке. Если начнешь писать на английском, испанском, французском, немецком или любом другом языке, немедленно ОСТАНАВЛИВАЙСЯ и начинай заново на русском.
+НЕ СМЕШИВАЙ ЯЗЫКИ. Только русский!''';
+
       case 'es':
-        return 'IMPORTANTE: Responde SOLO en español. No uses otros idiomas.';
+        return '''REQUISITO CRÍTICO DE IDIOMA:
+DEBES responder SOLO en español. Si empiezas a escribir en inglés, ruso, francés, alemán o cualquier otro idioma, DETENTE inmediatamente y reinicia en español.
+NO MEZCLES IDIOMAS. ¡Solo español!''';
+
       case 'fr':
-        return 'IMPORTANT: Répondez UNIQUEMENT en français. N\'utilisez pas d\'autres langues.';
+        return '''EXIGENCE CRITIQUE DE LANGUE:
+Vous DEVEZ répondre UNIQUEMENT en français. Si vous commencez à écrire en anglais, russe, espagnol, allemand ou toute autre langue, ARRÊTEZ-VOUS immédiatement et recommencez en français.
+NE MÉLANGEZ PAS LES LANGUES. Français uniquement!''';
+
       case 'de':
-        return 'WICHTIG: Antworten Sie NUR auf Deutsch. Verwenden Sie keine anderen Sprachen.';
+        return '''KRITISCHE SPRACHANFORDERUNG:
+Sie MÜSSEN AUSSCHLIESSLICH auf Deutsch antworten. Wenn Sie anfangen, auf Englisch, Russisch, Spanisch, Französisch oder einer anderen Sprache zu schreiben, STOPPEN Sie sofort und beginnen Sie auf Deutsch neu.
+MISCHEN SIE KEINE SPRACHEN. Nur Deutsch!''';
+
       default:
-        return 'IMPORTANT: Respond ONLY in English language. Do not use any other language.';
+        return '''CRITICAL LANGUAGE REQUIREMENT:
+You MUST respond ONLY in English. If you start writing in Russian, Spanish, French, German or any other language, STOP immediately and restart in English.
+DO NOT MIX LANGUAGES. English only!''';
+    }
+  }
+
+  /// Проверить, является ли ответ на неправильном языке
+  bool _isWrongLanguageResponse(String content) {
+    // Проверяем наличие смешанных языков или явно неправильного языка
+    final hasCyrillic = RegExp(r'[а-яё]', caseSensitive: false).hasMatch(content);
+    final hasLatin = RegExp(r'[a-z]', caseSensitive: false).hasMatch(content);
+
+    // Если есть и кириллица, и латиница в большом количестве - это смешанный язык
+    if (hasCyrillic && hasLatin) {
+      final cyrillicCount = RegExp(r'[а-яё]', caseSensitive: false).allMatches(content).length;
+      final latinCount = RegExp(r'[a-z]', caseSensitive: false).allMatches(content).length;
+
+      // Если оба языка представлены значительно - это проблема
+      return cyrillicCount > 10 && latinCount > 10;
+    }
+
+    return false;
+  }
+
+  /// Получить fallback рекомендации при ошибке языка
+  List<String> _getFallbackRecommendations() {
+    return [
+      'AI language detection error - using default recommendations',
+      'Check weather conditions before fishing',
+      'Use appropriate lures for current conditions',
+    ];
+  }
+
+  /// Получить fallback совет от ИИ на правильном языке
+  String _getFallbackAITip(AppLocalizations l10n) {
+    switch (l10n.languageCode) {
+      case 'ru':
+        return '🧠 ИИ анализ: Рекомендации адаптированы под текущие условия';
+      case 'en':
+        return '🧠 AI Analysis: Recommendations adapted to current conditions';
+      case 'es':
+        return '🧠 Análisis IA: Recomendaciones adaptadas a las condiciones actuales';
+      case 'fr':
+        return '🧠 Analyse IA: Recommandations adaptées aux conditions actuelles';
+      case 'de':
+        return '🧠 KI-Analyse: Empfehlungen an aktuelle Bedingungen angepasst';
+      default:
+        return '🧠 AI Analysis: Recommendations adapted to current conditions';
     }
   }
 

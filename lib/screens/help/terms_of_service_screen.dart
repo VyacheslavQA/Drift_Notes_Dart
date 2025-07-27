@@ -37,9 +37,8 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
       print('🔍 Language code: $languageCode');
       print('🔍 Full locale: ${localizations.locale}');
 
-      // Пробуем загрузить файл для текущего языка
-      final fileName =
-          'assets/terms_of_service/terms_of_service_$languageCode.txt';
+      // Пробуем загрузить файл для текущего языка с версией
+      final fileName = 'assets/terms_of_service/terms_of_service_${languageCode}_1.0.0.txt';
       print('🔍 Trying to load file: $fileName');
 
       String termsText;
@@ -51,12 +50,21 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
         // Если файл для текущего языка не найден, загружаем английскую версию
         try {
           termsText = await rootBundle.loadString(
-            'assets/terms_of_service/terms_of_service_en.txt',
+            'assets/terms_of_service/terms_of_service_en_1.0.0.txt',
           );
           print('✅ Successfully loaded fallback English version');
         } catch (e2) {
           print('❌ Failed to load English version: $e2');
-          throw Exception('Cannot load any terms of service file');
+          // Если и версия с номером не найдена, пробуем старый формат
+          try {
+            termsText = await rootBundle.loadString(
+              'assets/terms_of_service/terms_of_service_en.txt',
+            );
+            print('✅ Successfully loaded legacy English version');
+          } catch (e3) {
+            print('❌ Failed to load any version: $e3');
+            throw Exception('Cannot load any terms of service file');
+          }
         }
       }
 
@@ -72,7 +80,7 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
       if (mounted) {
         setState(() {
           _termsText =
-              'Ошибка загрузки пользовательского соглашения.\nError loading terms of service.';
+          'Ошибка загрузки пользовательского соглашения.\nError loading terms of service.';
           _isLoading = false;
         });
       }
@@ -102,54 +110,59 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
         ),
       ),
       body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppConstants.primaryColor,
-                  ),
-                ),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppConstants.textColor.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Заголовок
-                      Text(
-                        localizations.translate('terms_of_service'),
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Текст пользовательского соглашения
-                      Text(
-                        _termsText,
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.9),
-                          fontSize: 16,
-                          height: 1.6,
-                        ),
-                      ),
-                    ],
-                  ),
+      _isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(
+            AppConstants.primaryColor,
+          ),
+        ),
+      )
+          : SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: 20 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppConstants.textColor.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок
+              Text(
+                localizations.translate('terms_of_service'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+
+              const SizedBox(height: 20),
+
+              // Текст пользовательского соглашения
+              Text(
+                _termsText,
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.9),
+                  fontSize: 16,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

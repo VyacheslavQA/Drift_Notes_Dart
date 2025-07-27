@@ -1023,7 +1023,7 @@
   "selected_period": "Выбранный период",
   "filter_applied": "Фильтр применён",
   "map_settings": "Настройки карты",
-  "edit_map_info": "Редактировать информацию",
+  "edit_map": "Редактировать карту",
   "share_map": "Поделиться картой",
   "feature_coming_soon": "Функция будет реализована позже",
   "edit_map_information": "Редактирование информации о карте",
@@ -1823,5 +1823,13 @@
   "depth_charts_development": "Графики глубины - функция в разработке",
   "policy_required": "Требуется согласие с политикой",
   "accept_policy_to_continue": "Примите политику для продолжения",
-  "ray_selection": "Выбор луча"
+  "ray_selection": "Выбор луча",
+  "poor_for_fishing": "Неблагоприятно для рыбалки",
+  "bite_singular": "поклевка",
+  "bite_few": "поклевки",
+  "bite_many": "поклевок",
+  "edit_expenses": "Редактировать расходы",
+  "expense_count": "Количество расходов",
+  "expenses_count": "Расходов"
+
 }
