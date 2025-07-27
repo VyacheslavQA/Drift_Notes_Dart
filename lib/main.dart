@@ -73,7 +73,7 @@ void main() async {
   ]);
 
   // Показываем системную навигацию
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
 
   // Запрос разрешений на уведомления ПЕРЕД инициализацией Firebase
   await _requestNotificationPermissions();

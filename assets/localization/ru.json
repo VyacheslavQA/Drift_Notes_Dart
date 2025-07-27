@@ -1830,6 +1830,15 @@
   "bite_many": "поклевок",
   "edit_expenses": "Редактировать расходы",
   "expense_count": "Количество расходов",
-  "expenses_count": "Расходов"
+  "expenses_count": "Расходов",
+  "pressure_unit_mmhg": "мм рт.ст.",
+  "pressure_unit_hpa": "гПа",
+  "pressure_unit_inhg": "дюймы рт.ст.",
+  "pressure_unit_mmhg": "мм рт.ст.",
+  "pressure_unit_hpa": "гПа",
+  "pressure_unit_inhg": "дюймы рт.ст.",
+  "wind_unit_ms": "м/с",
+  "wind_unit_kmh": "км/ч",
+  "wind_unit_mph": "миль/ч"
 
 }

@@ -1522,7 +1522,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Po
             ),
           ),
         ),
-        extendBody: true,
+        extendBody: false,
         bottomNavigationBar: _buildBottomNavigationBar(),
       ),
     );

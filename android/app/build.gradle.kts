@@ -50,6 +50,9 @@ android {
         minSdk = 23
         targetSdk = 35
 
+        // ДОБАВЛЕНО: Включаем multidex для поддержки больших приложений
+        multiDexEnabled = true
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
@@ -61,13 +64,16 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // ИСПРАВЛЕНО: Включаем минификацию для работы ProGuard правил
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            // ДОБАВЛЕНО: Подключаем ProGuard правила для Google Maps
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
             ndk {
                 debugSymbolLevel = "NONE"
-                // УБРАНО: abiFilters - теперь включены все архитектуры
             }
-            // ДОБАВЛЕНО: Отключаем обработку нативных библиотек
             packagingOptions {
                 doNotStrip("**/*.so")
             }
@@ -123,6 +129,9 @@ flutter {
 }
 
 dependencies {
+    // ДОБАВЛЕНО: Multidex для поддержки больших приложений
+    implementation("androidx.multidex:multidex:2.0.1")
+
     // ИСПРАВЛЕНО: Проверенные версии Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.2.0"))
     implementation("com.google.firebase:firebase-analytics")

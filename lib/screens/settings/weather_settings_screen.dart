@@ -184,6 +184,8 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
       return localizations.translate('no_calibration') ?? 'Без калибровки';
     }
 
+    final localizations = AppLocalizations.of(context);
+
     // Конвертируем калибровку в текущие единицы для отображения
     double displayValue = _barometerCalibration;
     String unitSymbol;
@@ -191,15 +193,15 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
     switch (_selectedPressureUnit) {
       case PressureUnit.mmhg:
         displayValue = _barometerCalibration / 1.333;
-        unitSymbol = AppLocalizations.of(context).locale.languageCode == 'en' ? 'mmHg' : 'мм рт.ст.';
+        unitSymbol = localizations.translate('pressure_unit_mmhg') ?? 'мм рт.ст.';
         break;
       case PressureUnit.hpa:
         displayValue = _barometerCalibration;
-        unitSymbol = AppLocalizations.of(context).locale.languageCode == 'en' ? 'hPa' : 'гПа';
+        unitSymbol = localizations.translate('pressure_unit_hpa') ?? 'гПа';
         break;
       case PressureUnit.inhg:
         displayValue = _barometerCalibration / 33.8639;
-        unitSymbol = 'inHg';
+        unitSymbol = localizations.translate('pressure_unit_inhg') ?? 'дюймы рт.ст.';
         break;
     }
 
@@ -487,27 +489,24 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildUnitOption(
-                  title: 'm/s',
-                  subtitle: localizations.translate('meters_per_second'),
+                child: _buildSimpleUnitOption(
+                  title: localizations.translate('wind_unit_ms') ?? 'м/с',
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.ms,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.ms),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildUnitOption(
-                  title: 'km/h',
-                  subtitle: localizations.translate('kilometers_per_hour'),
+                child: _buildSimpleUnitOption(
+                  title: localizations.translate('wind_unit_kmh') ?? 'км/ч',
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.kmh,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.kmh),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildUnitOption(
-                  title: 'mph',
-                  subtitle: localizations.translate('miles_per_hour'),
+                child: _buildSimpleUnitOption(
+                  title: localizations.translate('wind_unit_mph') ?? 'миль/ч',
                   isSelected: _selectedWindSpeedUnit == WindSpeedUnit.mph,
                   onTap: () => _updateWindSpeedUnit(WindSpeedUnit.mph),
                 ),
@@ -547,29 +546,18 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildUnitOption(
-                  title: 'mmHg',
-                  subtitle: localizations.translate('common'),
+                child: _buildSimpleUnitOption(
+                  title: localizations.translate('pressure_unit_mmhg') ?? 'мм рт.ст.',
                   isSelected: _selectedPressureUnit == PressureUnit.mmhg,
                   onTap: () => _updatePressureUnit(PressureUnit.mmhg),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildUnitOption(
-                  title: 'hPa',
-                  subtitle: localizations.translate('scientific'),
+                child: _buildSimpleUnitOption(
+                  title: localizations.translate('pressure_unit_hpa') ?? 'гПа',
                   isSelected: _selectedPressureUnit == PressureUnit.hpa,
                   onTap: () => _updatePressureUnit(PressureUnit.hpa),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildUnitOption(
-                  title: 'inHg',
-                  subtitle: localizations.translate('inches'),
-                  isSelected: _selectedPressureUnit == PressureUnit.inhg,
-                  onTap: () => _updatePressureUnit(PressureUnit.inhg),
                 ),
               ),
             ],
@@ -803,6 +791,47 @@ class _WeatherSettingsScreenState extends State<WeatherSettingsScreen> {
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleUnitOption({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color:
+          isSelected
+              ? AppConstants.primaryColor.withValues(alpha: 0.2)
+              : AppConstants.backgroundColor.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color:
+            isSelected
+                ? AppConstants.primaryColor
+                : AppConstants.textColor.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color:
+              isSelected
+                  ? AppConstants.primaryColor
+                  : AppConstants.textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );
