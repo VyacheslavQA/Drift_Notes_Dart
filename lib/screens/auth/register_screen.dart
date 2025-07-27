@@ -10,11 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../services/firebase/firebase_service.dart';
 import '../../utils/validators.dart';
+import '../../utils/password_validator.dart'; // ✅ ДОБАВЛЕН ИМПОРТ
 import '../../localization/app_localizations.dart';
 import '../help/privacy_policy_screen.dart';
 import '../help/terms_of_service_screen.dart';
 import '../../widgets/user_agreements_dialog.dart';
-import '../../repositories/policy_acceptance_repository.dart'; // ✅ ДОБАВЛЕН ИМПОРТ
+import '../../repositories/policy_acceptance_repository.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -32,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _firebaseService = FirebaseService();
-  final _policyRepository = PolicyAcceptanceRepository(); // ✅ ДОБАВЛЕН РЕПОЗИТОРИЙ
+  final _policyRepository = PolicyAcceptanceRepository();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -40,34 +41,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _acceptedTermsAndPrivacy = false;
   String _errorMessage = '';
 
-  // Состояние требований к паролю
-  bool _hasMinLength = false;
-  bool _hasUppercase = false;
-  bool _hasNumber = false;
+  // ✅ НОВАЯ ЛОГИКА: Состояние валидации пароля
+  PasswordValidationResult? _passwordValidationResult;
   bool _passwordFieldFocused = false;
-
-  // Для валидации символов пароля
-  bool _showInvalidCharMessage = false;
-  String _invalidCharMessage = '';
 
   final FocusNode _passwordFocusNode = FocusNode();
   final FocusNode _confirmPasswordFocusNode = FocusNode();
 
-  // Регулярное выражение для допустимых символов в пароле
-  final RegExp _allowedPasswordChars = RegExp(r'^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$');
+  // ✅ ОБНОВЛЕНО: Регулярное выражение только для букв и цифр
+  final RegExp _allowedPasswordChars = RegExp(r'^[a-zA-Z0-9]*$');
 
   // Ключи для безопасного хранения данных
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
   static const String _keySavedPasswordHash = 'saved_password_hash';
 
-  // ✅ ДОБАВЛЕНЫ КОНСТАНТЫ ВЕРСИЙ ПОЛИТИК
+  // Константы версий политик
   static const String _currentPrivacyVersion = '1.0.0';
   static const String _currentTermsVersion = '1.0.0';
 
   @override
   void initState() {
     super.initState();
+    // ✅ ОБНОВЛЕНО: Новый метод проверки пароля
     _passwordController.addListener(_checkPasswordRequirements);
 
     _passwordFocusNode.addListener(() {
@@ -133,32 +129,133 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // ✅ НОВАЯ ЛОГИКА: Проверка требований к паролю через PasswordValidator
   void _checkPasswordRequirements() {
     final password = _passwordController.text;
     setState(() {
-      _hasMinLength = password.length >= 8;
-      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
-      _hasNumber = password.contains(RegExp(r'[0-9]'));
+      _passwordValidationResult = PasswordValidator.validatePasswordDetailed(password);
     });
   }
 
+  // ✅ ОБНОВЛЕНО: Валидация ввода пароля - теперь только для букв и цифр
   void _validatePasswordInput(String input) {
     if (!_allowedPasswordChars.hasMatch(input)) {
       final localizations = AppLocalizations.of(context);
-      setState(() {
-        _showInvalidCharMessage = true;
-        _invalidCharMessage = localizations.translate('password_invalid_characters');
-      });
 
-      // Скрываем сообщение через 3 секунды
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _showInvalidCharMessage = false;
-          });
-        }
-      });
+      // Показываем SnackBar с предупреждением
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            localizations.translate('password_no_special_chars') ??
+                'Пароль не должен содержать специальные символы',
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
+  }
+
+  // ✅ НОВЫЙ ВИДЖЕТ: Индикатор правила пароля
+  Widget _buildPasswordRuleIndicator(PasswordRule rule, bool isTablet) {
+    final localizations = AppLocalizations.of(context);
+    final isValid = _passwordValidationResult != null &&
+        !_passwordValidationResult!.violatedRules.contains(rule);
+
+    String ruleText;
+    switch (rule) {
+      case PasswordRule.minLength:
+        ruleText = localizations.translate('password_min_chars') ?? 'Мин. 8 символов';
+        break;
+      case PasswordRule.hasUppercase:
+        ruleText = 'A-Z';
+        break;
+      case PasswordRule.hasDigit:
+        ruleText = '0-9';
+        break;
+      case PasswordRule.noSpecialChars:
+        ruleText = localizations.translate('password_no_special') ?? 'Только буквы и цифры';
+        break;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red.withValues(alpha: 0.7),
+          size: 14,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          ruleText,
+          style: TextStyle(
+            color: isValid ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ НОВЫЙ ВИДЖЕТ: Блок с сообщениями об ошибках пароля
+  Widget _buildPasswordErrorMessages(bool isTablet) {
+    if (_passwordValidationResult == null || _passwordValidationResult!.isValid) {
+      return const SizedBox.shrink();
+    }
+
+    final localizations = AppLocalizations.of(context);
+    final errorMessages = _passwordValidationResult!.getAllErrorMessages(context);
+
+    return Container(
+      margin: EdgeInsets.only(top: isTablet ? 8 : 6),
+      padding: EdgeInsets.all(isTablet ? 12 : 8),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.redAccent.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.redAccent,
+                size: isTablet ? 18 : 16,
+              ),
+              SizedBox(width: isTablet ? 8 : 6),
+              Expanded(
+                child: Text(
+                  localizations.translate('password_requirements_not_met') ??
+                      'Требования к паролю не выполнены:',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: isTablet ? 12 : 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isTablet ? 6 : 4),
+          ...errorMessages.map((message) => Padding(
+            padding: EdgeInsets.only(left: isTablet ? 24 : 20, top: 2),
+            child: Text(
+              '• $message',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: isTablet ? 11 : 10,
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
   }
 
   // Безопасное сохранение данных для офлайн режима
@@ -199,7 +296,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Функция для сохранения согласий И в Firebase, И в ISAR
+  // Функция для сохранения согласий И в Firebase, И в ISAR
   Future<bool> _saveUserConsents(String userId) async {
     try {
       // Проверяем что пользователь принял согласия
@@ -210,7 +307,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('🔄 Сохраняем согласия пользователя в Firebase и ISAR...');
 
-      // ✅ ЭТАП 1: Сохраняем в ISAR через PolicyAcceptanceRepository
+      // ЭТАП 1: Сохраняем в ISAR через PolicyAcceptanceRepository
       debugPrint('🔄 Сохраняем согласия в ISAR...');
       final isarSuccess = await _policyRepository.acceptAllPolicies(
         userId: userId,
@@ -226,7 +323,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('✅ Согласия успешно сохранены в ISAR');
 
-      // ✅ ЭТАП 2: Сохраняем в Firebase
+      // ЭТАП 2: Сохраняем в Firebase
       debugPrint('🔄 Сохраняем согласия в Firebase...');
       await _firebaseService.updateUserConsents({
         'privacyPolicyAccepted': true,
@@ -245,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('✅ Согласия успешно сохранены в Firebase');
 
-      // ✅ ЭТАП 3: Проверяем что данные действительно сохранились в ISAR
+      // ЭТАП 3: Проверяем что данные действительно сохранились в ISAR
       debugPrint('🔄 Проверяем сохранение согласий в ISAR...');
       final savedConsents = await _policyRepository.getUserPolicyAcceptance(userId);
 
@@ -275,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         barrierDismissible: false,
         builder: (BuildContext context) {
           return UserAgreementsDialog(
-            isRegistration: true, // ✅ ДОБАВЛЕН ОБЯЗАТЕЛЬНЫЙ ПАРАМЕТР
+            isRegistration: true,
             onAgreementsAccepted: () {
               debugPrint('✅ Пользователь принял соглашения через диалог');
             },
@@ -293,7 +390,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // ✅ ИСПРАВЛЕНО: Основная функция регистрации
+  // Основная функция регистрации
   Future<void> _register() async {
     // Скрываем клавиатуру
     FocusScope.of(context).unfocus();
@@ -321,7 +418,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('🔄 Начинаем регистрацию пользователя...');
 
-      // ✅ ЭТАП 1: Регистрируем пользователя в Firebase Auth
+      // ЭТАП 1: Регистрируем пользователя в Firebase Auth
       final userCredential = await _firebaseService
           .registerWithEmailAndPassword(email, password, context);
 
@@ -334,14 +431,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await user.updateDisplayName(name);
         debugPrint('✅ Имя пользователя обновлено');
 
-        // ✅ ЭТАП 2: Создаем профиль пользователя
+        // ЭТАП 2: Создаем профиль пользователя
         await _createUserProfile(user.uid, name, email);
 
-        // ✅ ЭТАП 3: КРИТИЧЕСКИ ВАЖНО - Сохраняем согласия в ISAR и Firebase
+        // ЭТАП 3: КРИТИЧЕСКИ ВАЖНО - Сохраняем согласия в ISAR и Firebase
         debugPrint('🔄 Сохраняем согласия пользователя...');
         bool consentsSuccess = await _saveUserConsents(user.uid);
 
-        // ✅ ЭТАП 4: Если сохранение не удалось - пробуем резервный диалог
+        // ЭТАП 4: Если сохранение не удалось - пробуем резервный диалог
         if (!consentsSuccess) {
           debugPrint('⚠️ Основное сохранение согласий не удалось, показываем диалог...');
 
@@ -366,13 +463,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
             return;
           } else {
-            // ✅ Пользователь принял через диалог - повторно сохраняем
+            // Пользователь принял через диалог - повторно сохраняем
             consentsSuccess = await _saveUserConsents(user.uid);
             debugPrint('✅ Согласия приняты через диалог и сохранены: $consentsSuccess');
           }
         }
 
-        // ✅ ЭТАП 5: Финальная проверка что согласия действительно сохранились
+        // ЭТАП 5: Финальная проверка что согласия действительно сохранились
         if (consentsSuccess) {
           debugPrint('🔄 Финальная проверка согласий...');
           final finalCheck = await _policyRepository.arePoliciesValid(
@@ -388,13 +485,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         }
 
-        // ✅ ЭТАП 6: Сохраняем данные для офлайн режима
+        // ЭТАП 6: Сохраняем данные для офлайн режима
         await _saveCredentialsForOffline(email, password);
 
-        // ✅ ЭТАП 7: Кэшируем данные для офлайн режима
+        // ЭТАП 7: Кэшируем данные для офлайн режима
         await _firebaseService.cacheUserDataForOffline(user);
 
-        // ✅ ЭТАП 8: УСПЕШНАЯ РЕГИСТРАЦИЯ
+        // ЭТАП 8: УСПЕШНАЯ РЕГИСТРАЦИЯ
         debugPrint('🎉 Регистрация полностью завершена успешно!');
 
         if (mounted) {
@@ -408,7 +505,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           );
 
-          // ✅ ФИНАЛ: Переходим на главный экран
+          // ФИНАЛ: Переходим на главный экран
           debugPrint('🎯 Переходим на главный экран после успешной регистрации');
 
           if (widget.onAuthSuccess != null) {
@@ -732,7 +829,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                                 SizedBox(height: isTablet ? 20 : 16),
 
-                                // Поле для пароля с валидацией символов
+                                // ✅ ОБНОВЛЕНО: Поле для пароля с новой валидацией
                                 Column(
                                   children: [
                                     Container(
@@ -834,42 +931,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ),
                                     ),
 
-                                    // Сообщение о недопустимых символах
-                                    if (_showInvalidCharMessage)
-                                      Container(
-                                        margin: EdgeInsets.only(top: isTablet ? 8 : 6),
-                                        padding: EdgeInsets.all(isTablet ? 12 : 8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: Colors.redAccent.withValues(alpha: 0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.warning_amber_rounded,
-                                              color: Colors.redAccent,
-                                              size: isTablet ? 18 : 16,
-                                            ),
-                                            SizedBox(width: isTablet ? 8 : 6),
-                                            Expanded(
-                                              child: Text(
-                                                _invalidCharMessage,
-                                                style: TextStyle(
-                                                  color: Colors.redAccent,
-                                                  fontSize: isTablet ? 12 : 11,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                    // ✅ НОВОЕ: Сообщения об ошибках валидации пароля
+                                    _buildPasswordErrorMessages(isTablet),
 
-                                    // Требования к паролю
+                                    // ✅ ОБНОВЛЕНО: Требования к паролю с новыми правилами
                                     if (_passwordFieldFocused || _passwordController.text.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(top: isTablet ? 12 : 8),
@@ -878,63 +943,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           color: const Color(0xFF12332E).withValues(alpha: 0.5),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        child: Wrap(
+                                          spacing: isTablet ? 16 : 12,
+                                          runSpacing: isTablet ? 8 : 6,
                                           children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  _hasMinLength ? Icons.check_circle : Icons.cancel,
-                                                  color: _hasMinLength ? Colors.green : Colors.red.withValues(alpha: 0.7),
-                                                  size: 14,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  localizations.translate('password_min_chars'),
-                                                  style: TextStyle(
-                                                    color: _hasMinLength ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  _hasUppercase ? Icons.check_circle : Icons.cancel,
-                                                  color: _hasUppercase ? Colors.green : Colors.red.withValues(alpha: 0.7),
-                                                  size: 14,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  'A-Z',
-                                                  style: TextStyle(
-                                                    color: _hasUppercase ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  _hasNumber ? Icons.check_circle : Icons.cancel,
-                                                  color: _hasNumber ? Colors.green : Colors.red.withValues(alpha: 0.7),
-                                                  size: 14,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  '0-9',
-                                                  style: TextStyle(
-                                                    color: _hasNumber ? Colors.green : AppConstants.textColor.withValues(alpha: 0.7),
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
+                                            _buildPasswordRuleIndicator(PasswordRule.minLength, isTablet),
+                                            _buildPasswordRuleIndicator(PasswordRule.hasUppercase, isTablet),
+                                            _buildPasswordRuleIndicator(PasswordRule.hasDigit, isTablet),
+                                            _buildPasswordRuleIndicator(PasswordRule.noSpecialChars, isTablet),
                                           ],
                                         ),
                                       ),

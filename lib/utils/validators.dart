@@ -1,7 +1,8 @@
-// Путь: lib/utils/validators.dart
+// Файл: lib/utils/validators.dart
 
 import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
+import 'password_validator.dart'; // ✅ ДОБАВЛЕН ИМПОРТ
 
 class Validators {
   // Проверка Email
@@ -14,7 +15,7 @@ class Validators {
 
     // Простая регулярка для проверки формата email
     final RegExp emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'   // ← без запятой
     );
 
     if (!emailRegex.hasMatch(value)) {
@@ -26,40 +27,9 @@ class Validators {
     return null; // Возвращаем null если проверка успешна
   }
 
-  // Проверка пароля
+  // ✅ ДЕЛЕГИРОВАНИЕ: Проверка пароля теперь использует PasswordValidator
   static String? validatePassword(String? value, [BuildContext? context]) {
-    if (value == null || value.isEmpty) {
-      return context != null
-          ? AppLocalizations.of(context).translate('please_enter_password')
-          : 'Пожалуйста, введите пароль';
-    }
-
-    if (value.length < 8) {
-      return context != null
-          ? AppLocalizations.of(context).translate('password_min_8_chars')
-          : 'Пароль должен содержать минимум 8 символов';
-    }
-
-    // Проверка на наличие хотя бы одной заглавной буквы
-    if (!value.contains(RegExp(r'[A-Z]'))) {
-      return context != null
-          ? AppLocalizations.of(context).translate('password_needs_uppercase')
-          : 'Пароль должен содержать хотя бы одну заглавную букву';
-    }
-
-    // Проверка на отсутствие специфичных символов, кроме разрешенных
-    // Разрешаем только буквы, цифры и некоторые специальные символы
-    final RegExp allowedCharsRegex = RegExp(
-      r'^[a-zA-Z0-9@#$%^&*()_+\-=\[\]{}|;:,.<>?]*$',
-    );
-
-    if (!allowedCharsRegex.hasMatch(value)) {
-      return context != null
-          ? AppLocalizations.of(context).translate('password_invalid_chars')
-          : 'Пароль содержит недопустимые символы';
-    }
-
-    return null; // Возвращаем null если проверка успешна
+    return PasswordValidator.validatePassword(value, context);
   }
 
   // Проверка имени пользователя
@@ -81,10 +51,10 @@ class Validators {
 
   // Проверка подтверждения пароля
   static String? validateConfirmPassword(
-    String? value,
-    String password, [
-    BuildContext? context,
-  ]) {
+      String? value,
+      String password, [
+        BuildContext? context,
+      ]) {
     if (value == null || value.isEmpty) {
       return context != null
           ? AppLocalizations.of(context).translate('please_confirm_password')

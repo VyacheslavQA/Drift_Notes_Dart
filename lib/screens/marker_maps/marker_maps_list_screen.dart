@@ -353,20 +353,71 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🚀 ОБНОВЛЕНО: Новый современный дизайн поля без звездочки
   Widget _buildNameField(TextEditingController controller, AppLocalizations localizations) {
-    return TextField(
-      controller: controller,
-      style: TextStyle(color: AppConstants.textColor),
-      decoration: InputDecoration(
-        labelText: '${localizations.translate('map_name')}*',
-        labelStyle: TextStyle(color: AppConstants.textColor.withOpacity(0.7)),
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: AppConstants.textColor.withOpacity(0.5)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppConstants.primaryColor,
+              width: 2,
+            ),
+            color: AppConstants.primaryColor.withOpacity(0.05),
+          ),
+          child: TextField(
+            controller: controller,
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              labelText: localizations.translate('map_name'),
+              labelStyle: TextStyle(
+                color: AppConstants.primaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
         ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: AppConstants.primaryColor),
+        const SizedBox(height: 8),
+        Text(
+          localizations.translate('required_field'),
+          style: TextStyle(
+            color: AppConstants.primaryColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
+      ],
     );
   }
 
