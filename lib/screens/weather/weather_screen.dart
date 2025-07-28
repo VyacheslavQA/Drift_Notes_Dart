@@ -1,6 +1,6 @@
 // Путь: lib/screens/weather/weather_screen.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: Удален AIBiteMeter, добавлена простая кнопка перехода на AI-экран
+// ОБНОВЛЕНО: Убран pull-to-refresh, добавлена кнопка обновления в заголовок
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -14,6 +14,7 @@ import '../../services/weather_settings_service.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../localization/app_localizations.dart';
 import '../../widgets/weather/forecast_period_selector.dart';
+import '../../widgets/weather/weather_summary_card.dart';
 import '../../widgets/weather/detailed_weather_forecast.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
@@ -49,11 +50,6 @@ class _WeatherScreenState extends State<WeatherScreen>
   // Анимации
   late AnimationController _loadingController;
   late AnimationController _fadeController;
-  late AnimationController _pullHintController;
-  late Animation<double> _pullHintAnimation;
-  late Animation<Offset> _pullHintSlideAnimation;
-  bool _showPullHint = true;
-  bool _hasShownHintOnce = false;
 
   @override
   void initState() {
@@ -66,10 +62,6 @@ class _WeatherScreenState extends State<WeatherScreen>
     super.didChangeDependencies();
     if (_isLoading && _currentWeather == null) {
       _loadWeather();
-    } else {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) _startPullHintIfNeeded();
-      });
     }
   }
 
@@ -83,57 +75,12 @@ class _WeatherScreenState extends State<WeatherScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-
-    _pullHintController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    _pullHintAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
-      CurvedAnimation(parent: _pullHintController, curve: Curves.easeInOut),
-    );
-
-    _pullHintSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, -0.5),
-      end: const Offset(0, 0.2),
-    ).animate(
-      CurvedAnimation(parent: _pullHintController, curve: Curves.easeInOut),
-    );
-
-    _startPullHintIfNeeded();
-  }
-
-  void _startPullHintIfNeeded() {
-    final shouldShow =
-        !_hasShownHintOnce ||
-            _errorMessage != null ||
-            (_currentWeather != null &&
-                DateTime.now().difference(_lastUpdated).inHours > 1);
-
-    if (shouldShow && !_isLoading) {
-      setState(() {
-        _showPullHint = true;
-      });
-
-      _pullHintController.repeat(reverse: true);
-      _hasShownHintOnce = true;
-
-      Future.delayed(const Duration(seconds: 8), () {
-        if (mounted && _showPullHint) {
-          setState(() {
-            _showPullHint = false;
-          });
-          _pullHintController.stop();
-        }
-      });
-    }
   }
 
   @override
   void dispose() {
     _loadingController.dispose();
     _fadeController.dispose();
-    _pullHintController.dispose();
     super.dispose();
   }
 
@@ -143,10 +90,8 @@ class _WeatherScreenState extends State<WeatherScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _showPullHint = false;
     });
 
-    _pullHintController.stop();
     _loadingController.repeat();
 
     try {
@@ -184,12 +129,6 @@ class _WeatherScreenState extends State<WeatherScreen>
 
           _loadingController.stop();
           _fadeController.forward();
-
-          if (!_hasShownHintOnce) {
-            Future.delayed(const Duration(seconds: 2), () {
-              if (mounted) _startPullHintIfNeeded();
-            });
-          }
         }
       }
     } catch (e) {
@@ -201,10 +140,6 @@ class _WeatherScreenState extends State<WeatherScreen>
           _isLoading = false;
         });
         _loadingController.stop();
-
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) _startPullHintIfNeeded();
-        });
       }
     }
   }
@@ -295,66 +230,71 @@ class _WeatherScreenState extends State<WeatherScreen>
   }
 
   Widget _buildMainContent() {
-    return RefreshIndicator(
-      onRefresh: _loadWeather,
-      color: AppConstants.primaryColor,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          // Заголовок экрана
-          SliverToBoxAdapter(child: _buildScreenHeader()),
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        // Заголовок экрана
+        SliverToBoxAdapter(child: _buildScreenHeader()),
 
-          // Анимированная подсказка pull-to-refresh
-          if (_showPullHint)
-            SliverToBoxAdapter(child: _buildAnimatedPullHint()),
-
-          // Селектор периодов с динамическими табами
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeController,
-              child: ForecastPeriodSelector(
-                weather: _currentWeather!,
-                selectedDayIndex: _selectedDayIndex,
-                onDayChanged: _onDayChanged,
-              ),
+        // Селектор периодов с динамическими табами
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: ForecastPeriodSelector(
+              weather: _currentWeather!,
+              selectedDayIndex: _selectedDayIndex,
+              onDayChanged: _onDayChanged,
             ),
           ),
+        ),
 
-          // Детальный прогноз с выбранным днем
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeController,
-              child: DetailedWeatherForecast(
-                weather: _currentWeather!,
-                weatherSettings: _weatherSettings,
-                selectedDayIndex: _selectedDayIndex,
-                locationName: _locationName,
-              ),
+        // Карточка сводки погоды (новая)
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: WeatherSummaryCard(
+              weather: _currentWeather!,
+              weatherSettings: _weatherSettings,
+              selectedDayIndex: _selectedDayIndex,
+              locationName: _locationName,
             ),
           ),
+        ),
 
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 24),
-
-                  // Карточки метрик
-                  _buildMetricsGrid(),
-
-                  const SizedBox(height: 24),
-
-                  // Простая кнопка перехода на AI-анализ
-                  _buildSimpleAIButton(),
-
-                  const SizedBox(height: 100),
-                ],
-              ),
+        // Детальный прогноз с выбранным днем
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: DetailedWeatherForecast(
+              weather: _currentWeather!,
+              weatherSettings: _weatherSettings,
+              selectedDayIndex: _selectedDayIndex,
+              locationName: _locationName,
             ),
           ),
-        ],
-      ),
+        ),
+
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: Column(
+              children: [
+                const SizedBox(height: 24),
+
+                // Карточки метрик
+                _buildMetricsGrid(),
+
+                const SizedBox(height: 24),
+
+                // Простая кнопка перехода на AI-анализ
+                _buildSimpleAIButton(),
+
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -405,35 +345,7 @@ class _WeatherScreenState extends State<WeatherScreen>
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
         child: Row(
           children: [
-            Icon(Icons.cloud, color: AppConstants.primaryColor, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    localizations.translate('weather'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (_locationName.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _locationName,
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            // Debug кнопка слева (только в debug режиме)
             if (kDebugMode)
               Container(
                 decoration: BoxDecoration(
@@ -456,87 +368,72 @@ class _WeatherScreenState extends State<WeatherScreen>
                   icon: Icon(
                     Icons.smart_toy,
                     color: AppConstants.primaryColor,
-                    size: 24,
+                    size: 20,
                   ),
                   tooltip: 'Источник прогнозов ИИ',
                   padding: const EdgeInsets.all(8),
                   constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
+                    minWidth: 36,
+                    minHeight: 36,
                   ),
                 ),
               ),
+
+            // Отступ после debug кнопки
+            if (kDebugMode) const SizedBox(width: 12),
+
+            // Иконка и заголовок
+            Icon(Icons.cloud, color: AppConstants.primaryColor, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                localizations.translate('weather'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+
+            // Кнопка обновления справа
+            Container(
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: IconButton(
+                onPressed: _isLoading ? null : _loadWeather,
+                icon: AnimatedBuilder(
+                  animation: _loadingController,
+                  builder: (context, child) {
+                    return Transform.rotate(
+                      angle: _isLoading ? _loadingController.value * 2 * 3.14159 : 0,
+                      child: Icon(
+                        Icons.refresh,
+                        color: _isLoading
+                            ? AppConstants.primaryColor.withValues(alpha: 0.5)
+                            : AppConstants.primaryColor,
+                        size: 24,
+                      ),
+                    );
+                  },
+                ),
+                tooltip: localizations.translate('refresh'),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
+              ),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAnimatedPullHint() {
-    final localizations = AppLocalizations.of(context);
-
-    return AnimatedBuilder(
-      animation: _pullHintController,
-      builder: (context, child) {
-        return Container(
-          height: 32,
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          child: SlideTransition(
-            position: _pullHintSlideAnimation,
-            child: FadeTransition(
-              opacity: _pullHintAnimation,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Transform.scale(
-                    scale: 0.8 + (_pullHintAnimation.value * 0.4),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppConstants.primaryColor.withValues(
-                        alpha: 0.3 + (_pullHintAnimation.value * 0.4),
-                      ),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ShaderMask(
-                    shaderCallback:
-                        (bounds) => LinearGradient(
-                      colors: [
-                        AppConstants.primaryColor.withValues(alpha: 0.6),
-                        AppConstants.primaryColor,
-                        AppConstants.primaryColor.withValues(alpha: 0.6),
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ).createShader(bounds),
-                    child: Text(
-                      localizations.translate('pull_to_refresh') ??
-                          'Потяните для обновления',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Transform.scale(
-                    scale: 0.8 + (_pullHintAnimation.value * 0.4),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppConstants.primaryColor.withValues(
-                        alpha: 0.3 + (_pullHintAnimation.value * 0.4),
-                      ),
-                      size: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -551,17 +448,17 @@ class _WeatherScreenState extends State<WeatherScreen>
             animation: _loadingController,
             builder: (context, child) {
               return Transform.rotate(
-                angle: -_loadingController.value * 2 * 3.14159, // ИСПРАВЛЕНО: меняем направление на противоположное
+                angle: _loadingController.value * 2 * 3.14159,
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF87CEEB).withValues(alpha: 0.2), // ИСПРАВЛЕНО: небесно-голубой цвет
+                    color: const Color(0xFF87CEEB).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.cloud_sync,
+                    Icons.cyclone, // Используем cyclone как вы хотели
                     size: 64,
-                    color: const Color(0xFF4A90E2), // ИСПРАВЛЕНО: синий цвет вместо зеленого
+                    color: const Color(0xFF4A90E2),
                   ),
                 ),
               );
@@ -593,110 +490,102 @@ class _WeatherScreenState extends State<WeatherScreen>
   Widget _buildErrorState() {
     final localizations = AppLocalizations.of(context);
 
-    return RefreshIndicator(
-      onRefresh: _loadWeather,
-      color: AppConstants.primaryColor,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverFillRemaining(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.cloud_off,
-                        size: 64,
-                        color: Colors.red[400],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      localizations.translate('weather_error'),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: _loadWeather,
-                      icon: const Icon(Icons.refresh),
-                      label: Text(localizations.translate('try_again')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppConstants.primaryColor,
-                        foregroundColor: AppConstants.textColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoDataState() {
-    final localizations = AppLocalizations.of(context);
-
-    return RefreshIndicator(
-      onRefresh: _loadWeather,
-      color: AppConstants.primaryColor,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverFillRemaining(
-            child: Center(
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverFillRemaining(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.cloud_queue,
-                    size: 64,
-                    color: AppConstants.textColor.withValues(alpha: 0.5),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.cloud_off,
+                      size: 64,
+                      color: Colors.red[400],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    localizations.translate('weather_error'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    localizations.translate('no_data_to_display'),
+                    _errorMessage!,
                     style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
+                      color: AppConstants.textColor.withValues(alpha: 0.7),
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton.icon(
+                    onPressed: _loadWeather,
+                    icon: const Icon(Icons.refresh),
+                    label: Text(localizations.translate('try_again')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: AppConstants.textColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoDataState() {
+    final localizations = AppLocalizations.of(context);
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverFillRemaining(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.cloud_queue,
+                  size: 64,
+                  color: AppConstants.textColor.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  localizations.translate('no_data_to_display'),
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
