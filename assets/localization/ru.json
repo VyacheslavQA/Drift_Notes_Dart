@@ -1845,6 +1845,8 @@
   "password_no_special": "Только буквы и цифры",
   "password_requirements_not_met": "Требования к паролю не выполнены:",
   "password_requirements": "Требования к паролю:",
-  "required_field": "Обязательное поле"
+  "required_field": "Обязательное поле",
+  "sync_completed": "синхронизация завершена"
+
 
 }

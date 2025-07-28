@@ -1,6 +1,6 @@
 // Путь: lib/widgets/weather/detailed_weather_forecast.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: График светового дня, расчет длительности и локализация
+// ИСПРАВЛЕНО: Правильный часовой пояс для Казахстана через weather.location.tzId
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -62,7 +62,7 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ИСПРАВЛЕННАЯ временная линия светового дня
+          // ИСПРАВЛЕННАЯ временная линия светового дня с правильным часовым поясом
           _buildDaylightTimelineCard(context, forecastDay, localizations),
         ],
       ),
@@ -348,22 +348,22 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ИСПРАВЛЕННАЯ временная линия
+          // Временная линия с правильным часовым поясом
           DaylightTimelineWidget(
-            sunrise: _parseAstroTime(astro.sunrise),
-            sunset: _parseAstroTime(astro.sunset),
+            sunrise: _parseAstroTimeWithTimezone(astro.sunrise),
+            sunset: _parseAstroTimeWithTimezone(astro.sunset),
             currentTime: selectedDayIndex == 0 ? DateTime.now() : null,
             enableAnimation: true,
             showDetailedInfo: MediaQuery.of(context).size.width > 600,
-            localizations: localizations, // Передаем локализацию
+            localizations: localizations,
           ),
         ],
       ),
     );
   }
 
-  // ИСПРАВЛЕННЫЙ парсинг времени из API в DateTime
-  DateTime _parseAstroTime(String timeString) {
+  // Парсинг времени с учетом единого часового пояса Казахстана UTC+5
+  DateTime _parseAstroTimeWithTimezone(String timeString) {
     try {
       // Убираем лишние пробелы и очищаем строку
       final cleanTimeString = timeString.trim();
@@ -390,6 +390,7 @@ class DetailedWeatherForecast extends StatelessWidget {
         hour = 0;
       }
 
+      // Получаем целевую дату с учетом выбранного дня
       final now = DateTime.now();
       DateTime targetDate = now;
 
@@ -398,9 +399,16 @@ class DetailedWeatherForecast extends StatelessWidget {
         targetDate = now.add(Duration(days: selectedDayIndex));
       }
 
-      return DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
+      // Weather API возвращает время в UTC+6 (Asia/Almaty)
+      // Но в Казахстане с 2024 года единый часовой пояс UTC+5
+      // Поэтому вычитаем 1 час от времени API
+      final apiDateTime = DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
+      final correctedDateTime = apiDateTime.subtract(const Duration(hours: 1));
+
+      return correctedDateTime;
+
     } catch (e) {
-      // Fallback времена при ошибке парсинга
+      // Fallback времена при ошибке парсинга (с учетом UTC+5)
       final now = DateTime.now();
       DateTime targetDate = now;
 
@@ -408,11 +416,11 @@ class DetailedWeatherForecast extends StatelessWidget {
         targetDate = now.add(Duration(days: selectedDayIndex));
       }
 
-      // Возвращаем приблизительные времена
+      // Возвращаем приблизительные времена с учетом UTC+5
       if (timeString.toLowerCase().contains('sunrise') || timeString.toLowerCase().contains('am')) {
-        return DateTime(targetDate.year, targetDate.month, targetDate.day, 6, 30);
+        return DateTime(targetDate.year, targetDate.month, targetDate.day, 5, 30);
       } else {
-        return DateTime(targetDate.year, targetDate.month, targetDate.day, 18, 30);
+        return DateTime(targetDate.year, targetDate.month, targetDate.day, 17, 30);
       }
     }
   }

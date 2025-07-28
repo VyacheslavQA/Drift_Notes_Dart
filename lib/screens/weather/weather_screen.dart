@@ -1,6 +1,6 @@
 // Путь: lib/screens/weather/weather_screen.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: Убран весь отладочный код
+// ИСПРАВЛЕНО: Удален AIBiteMeter, добавлена простая кнопка перехода на AI-экран
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,9 +16,9 @@ import '../../localization/app_localizations.dart';
 import '../../widgets/weather/forecast_period_selector.dart';
 import '../../widgets/weather/detailed_weather_forecast.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
-import '../../widgets/weather/ai_bite_meter.dart';
 import '../../screens/weather/pressure_detail_screen.dart';
 import '../../screens/weather/wind_detail_screen.dart';
+import '../../screens/ai_fishing/ai_bite_screen.dart';
 import '../debug/openai_test_screen.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -345,12 +345,8 @@ class _WeatherScreenState extends State<WeatherScreen>
 
                   const SizedBox(height: 24),
 
-                  // ИИ прогноз клева
-                  AIBiteMeter(
-                    aiPrediction: _aiPrediction,
-                    onCompareTypes: () => _showCompareTypesDialog(),
-                    onSelectType: (type) => _onFishingTypeSelected(type),
-                  ),
+                  // Простая кнопка перехода на AI-анализ
+                  _buildSimpleAIButton(),
 
                   const SizedBox(height: 100),
                 ],
@@ -368,6 +364,35 @@ class _WeatherScreenState extends State<WeatherScreen>
       weatherSettings: _weatherSettings,
       onPressureCardTap: _openPressureDetailScreen,
       onWindCardTap: _openWindDetailScreen,
+    );
+  }
+
+  // Простая кнопка для перехода на AI-экран
+  Widget _buildSimpleAIButton() {
+    final localizations = AppLocalizations.of(context);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _openAIBiteScreen,
+          icon: const Text('🧠', style: TextStyle(fontSize: 20)),
+          label: Text(
+            localizations.translate('ai_bite_forecast'),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1B3A36),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 4,
+          ),
+        ),
+      ),
     );
   }
 
@@ -526,17 +551,17 @@ class _WeatherScreenState extends State<WeatherScreen>
             animation: _loadingController,
             builder: (context, child) {
               return Transform.rotate(
-                angle: _loadingController.value * 2 * 3.14159,
+                angle: -_loadingController.value * 2 * 3.14159, // ИСПРАВЛЕНО: меняем направление на противоположное
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.1),
+                    color: const Color(0xFF87CEEB).withValues(alpha: 0.2), // ИСПРАВЛЕНО: небесно-голубой цвет
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.cloud_sync,
                     size: 64,
-                    color: AppConstants.primaryColor,
+                    color: const Color(0xFF4A90E2), // ИСПРАВЛЕНО: синий цвет вместо зеленого
                   ),
                 ),
               );
@@ -675,6 +700,24 @@ class _WeatherScreenState extends State<WeatherScreen>
     );
   }
 
+  // Открытие AI-экрана
+  void _openAIBiteScreen() {
+    if (_currentWeather == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AIBiteScreen(
+          weatherData: _currentWeather!,
+          weatherSettings: _weatherSettings,
+          aiPrediction: _aiPrediction,
+          locationName: _locationName,
+          preferredTypes: null,
+        ),
+      ),
+    );
+  }
+
   // Методы для открытия детальных экранов
   void _openPressureDetailScreen() {
     if (_currentWeather != null) {
@@ -704,165 +747,5 @@ class _WeatherScreenState extends State<WeatherScreen>
         ),
       );
     }
-  }
-
-  void _showCompareTypesDialog() {
-    if (_aiPrediction == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => _buildCompareTypesDialog(),
-    );
-  }
-
-  void _onFishingTypeSelected(String fishingType) {
-    // Обработка выбора типа рыбалки
-  }
-
-  Widget _buildCompareTypesDialog() {
-    final localizations = AppLocalizations.of(context);
-
-    return Dialog(
-      backgroundColor: AppConstants.surfaceColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxHeight: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '🎣 ${localizations.translate('fishing_types_comparison') ?? 'Сравнение типов рыбалки'}',
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _aiPrediction!.comparison.rankings.length,
-                itemBuilder: (context, index) {
-                  final ranking = _aiPrediction!.comparison.rankings[index];
-                  return _buildTypeComparisonCard(ranking, index == 0);
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      localizations.translate('close'),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _onFishingTypeSelected(_aiPrediction!.bestFishingType);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      localizations.translate('select_best') ??
-                          'Выбрать лучший',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeComparisonCard(FishingTypeRanking ranking, bool isBest) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:
-        isBest
-            ? AppConstants.primaryColor.withValues(alpha: 0.1)
-            : AppConstants.backgroundColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border:
-        isBest
-            ? Border.all(color: AppConstants.primaryColor, width: 2)
-            : Border.all(
-          color: AppConstants.textColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/fishing_types/${ranking.fishingType}.png',
-              width: 24,
-              height: 24,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Text(ranking.icon, style: const TextStyle(fontSize: 24));
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ranking.typeName,
-                  style: TextStyle(
-                    color: AppConstants.textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  ranking.shortRecommendation,
-                  style: TextStyle(
-                    color: AppConstants.textColor.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: ranking.scoreColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${ranking.score}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

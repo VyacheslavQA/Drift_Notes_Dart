@@ -1,14 +1,21 @@
 // Путь: lib/widgets/weather/ai_bite_meter.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
+// ИСПРАВЛЕНО: Единый источник данных - используем WeatherApiResponse + WeatherSettingsService
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../constants/app_constants.dart';
+import '../../models/weather_api_model.dart';
 import '../../models/ai_bite_prediction_model.dart';
+import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
 import '../animated_border_widget.dart';
 import '../../screens/weather/fishing_type_detail_screen.dart';
 
 class AIBiteMeter extends StatefulWidget {
+  // ОБНОВЛЕНО: Теперь принимаем оригинальные данные Weather API
+  final WeatherApiResponse weatherData;
+  final WeatherSettingsService weatherSettings;
   final MultiFishingTypePrediction? aiPrediction;
   final VoidCallback? onCompareTypes;
   final Function(String)? onSelectType;
@@ -16,6 +23,8 @@ class AIBiteMeter extends StatefulWidget {
 
   const AIBiteMeter({
     super.key,
+    required this.weatherData, // ДОБАВЛЕНО: оригинальные данные
+    required this.weatherSettings, // ДОБАВЛЕНО: сервис форматирования
     this.aiPrediction,
     this.onCompareTypes,
     this.onSelectType,
@@ -72,12 +81,28 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       'icon': 'assets/images/fishing_types/trolling.png',
       'nameKey': 'trolling',
     },
+    // ДОБАВЛЕНО: Fallback для "Обычная рыбалка"
+    'Обычная рыбалка': {
+      'name': 'Обычная рыбалка',
+      'icon': 'assets/images/fishing_types/general_fishing.png',
+      'nameKey': 'general_fishing',
+    },
+    'general_fishing': {
+      'name': 'Обычная рыбалка',
+      'icon': 'assets/images/fishing_types/general_fishing.png',
+      'nameKey': 'general_fishing',
+    },
   };
 
   @override
   void initState() {
     super.initState();
     _initAnimations();
+    // ДОБАВЛЕНО: Устанавливаем локаль для WeatherSettingsService
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final localizations = AppLocalizations.of(context);
+      widget.weatherSettings.setLocale(localizations.locale.languageCode);
+    });
   }
 
   void _initAnimations() {
@@ -174,6 +199,23 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
     final prediction = widget.aiPrediction!.allPredictions[bestType];
     return prediction?.overallScore ?? 50;
+  }
+
+  // НОВЫЙ метод: безопасное получение информации о типе рыбалки
+  Map<String, String> _getTypeInfo(String type) {
+    final typeInfo = fishingTypes[type];
+
+    if (typeInfo != null) {
+      return typeInfo;
+    }
+
+    // Fallback для неизвестных типов
+    debugPrint('⚠️ Неизвестный тип рыбалки: $type');
+    return {
+      'name': type,
+      'icon': 'assets/images/fishing_types/general_fishing.png',
+      'nameKey': 'general_fishing',
+    };
   }
 
   /// Перевод фазы луны с английского на локализованный язык
@@ -309,7 +351,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
           const SizedBox(height: 24),
 
-          // Информация о погоде - СТОЛБИК
+          // ИСПРАВЛЕНО: Информация о погоде теперь из оригинального API
           _buildWeatherInfo(localizations),
 
           const SizedBox(height: 20),
@@ -517,8 +559,14 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
+  // ИСПРАВЛЕНО: Информация о погоде теперь из ОРИГИНАЛЬНОГО API
   Widget _buildWeatherInfo(AppLocalizations localizations) {
-    final weatherSummary = widget.aiPrediction!.weatherSummary;
+    final current = widget.weatherData.current;
+
+    // ИСПРАВЛЕНО: Получаем фазу луны из оригинальных данных
+    final moonPhase = widget.weatherData.forecast.isNotEmpty
+        ? widget.weatherData.forecast.first.astro.moonPhase
+        : 'Unknown';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -548,28 +596,28 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
           const SizedBox(height: 16),
 
-          // Параметры в столбик с описаниями
+          // ИСПРАВЛЕНО: Параметры в столбик с ОРИГИНАЛЬНЫМИ данными из API
           _buildWeatherMetricRow(
             '🌡️',
-            '${(weatherSummary.pressure / 1.333).round()} мм',
+            widget.weatherSettings.formatPressure(current.pressureMb),
             localizations.translate('pressure'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
             '💨',
-            '${(weatherSummary.windSpeed / 3.6).round()} м/с',
+            widget.weatherSettings.formatWindSpeed(current.windKph),
             localizations.translate('wind'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
             '🌙',
-            _translateMoonPhase(weatherSummary.moonPhase, localizations),
+            _translateMoonPhase(moonPhase, localizations),
             localizations.translate('moon_phase'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
             '💧',
-            '${weatherSummary.humidity}%',
+            '${current.humidity}%',
             localizations.translate('humidity'),
           ),
           const SizedBox(height: 8),
@@ -678,8 +726,9 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       String bestType,
       AppLocalizations localizations,
       ) {
-    final typeInfo = fishingTypes[type]!;
-    final prediction = widget.aiPrediction!.allPredictions[type];
+    // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
+    final typeInfo = _getTypeInfo(type);
+    final prediction = widget.aiPrediction?.allPredictions[type];
     final score = prediction?.overallScore ?? 0;
 
     return GestureDetector( // ДОБАВЛЕНО: GestureDetector для обработки нажатий
@@ -716,26 +765,26 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             children: [
               // Левая часть - иконка
               Container(
-                width: 80, // УМЕНЬШЕНО с 85 до 80
+                width: 80,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6), // УМЕНЬШЕНО с 8 до 6
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10), // УМЕНЬШЕНО с 12 до 10
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.4),
                           width: 2,
                         ),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6), // УМЕНЬШЕНО с 8 до 6
+                        borderRadius: BorderRadius.circular(6),
                         child: Image.asset(
                           typeInfo['icon']!,
-                          width: 50, // УМЕНЬШЕНО с 55 до 50
-                          height: 50, // УМЕНЬШЕНО с 55 до 50
+                          width: 50,
+                          height: 50,
                           fit: BoxFit.contain,
                           color: Colors.white,
                           errorBuilder: (context, error, stackTrace) {
@@ -748,7 +797,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 ),
               ),
 
-              const SizedBox(width: 12), // УМЕНЬШЕНО с 16 до 12
+              const SizedBox(width: 12),
 
               // Правая часть - информация
               Expanded(
@@ -760,29 +809,29 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 17, // УМЕНЬШЕНО с 18 до 17
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        height: 1.0, // УМЕНЬШЕНО с 1.1 до 1.0
+                        height: 1.0,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8), // УМЕНЬШЕНО с 10 до 8
+                    const SizedBox(height: 8),
 
                     // Размещаем "Активность:" и скор в столбик для экономии места
                     Text(
                       '${localizations.translate('activity')}:',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13, // УМЕНЬШЕНО с 14 до 13
+                        fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), // УМЕНЬШЕНО padding
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10), // УМЕНЬШЕНО с 12 до 10
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.4),
                           width: 1,
@@ -792,7 +841,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         '$score ${localizations.translate('points')}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 15, // УМЕНЬШЕНО с 16 до 15
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -802,7 +851,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       _getScoreText(score, localizations),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13, // УМЕНЬШЕНО с 14 до 13
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -823,12 +872,13 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       AppLocalizations localizations,
       ) {
     return SizedBox(
-      height: 150, // УВЕЛИЧЕНО с 130 до 150
+      height: 150,
       child: Row(
         children: selectedTypes.map((type) {
-          final typeInfo = fishingTypes[type]!;
+          // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
+          final typeInfo = _getTypeInfo(type);
           final isBest = type == bestType;
-          final prediction = widget.aiPrediction!.allPredictions[type];
+          final prediction = widget.aiPrediction?.allPredictions[type];
           final score = prediction?.overallScore ?? 0;
 
           return Expanded(
@@ -874,13 +924,13 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       : null,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(10), // ОПТИМИЗИРОВАНО с 12 до 10
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Иконка с рамкой для лучшего типа
                       Container(
-                        padding: EdgeInsets.all(isBest ? 6 : 5), // ОПТИМИЗИРОВАНО с 8/6 до 6/5
+                        padding: EdgeInsets.all(isBest ? 6 : 5),
                         decoration: isBest
                             ? BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
@@ -895,7 +945,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
                             typeInfo['icon']!,
-                            width: isBest ? 40 : 36, // ОПТИМИЗИРОВАНО с 44/40 до 40/36
+                            width: isBest ? 40 : 36,
                             height: isBest ? 40 : 36,
                             fit: BoxFit.contain,
                             color: Colors.white,
@@ -914,18 +964,18 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: isBest ? 13 : 12, // ОПТИМИЗИРОВАНО с 14/13 до 13/12
+                          fontSize: isBest ? 13 : 12,
                           fontWeight: isBest ? FontWeight.w600 : FontWeight.w500,
-                          height: 1.0, // УМЕНЬШЕНО с 1.1 до 1.0
+                          height: 1.0,
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (score > 0) ...[
-                        const SizedBox(height: 4), // УМЕНЬШЕНО с 6 до 4
+                        const SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // ОПТИМИЗИРОВАНО
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
@@ -934,7 +984,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                             '$score',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: isBest ? 14 : 13, // ОПТИМИЗИРОВАНО с 15/14 до 14/13
+                              fontSize: isBest ? 14 : 13,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -964,20 +1014,21 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     } else if (selectedTypes.length == 4) {
       cardWidth = (MediaQuery.of(context).size.width - 80) / 3.5; // 3.5 карточки на экране
     } else {
-      cardWidth = 120; // УВЕЛИЧЕНО с 110 до 120
+      cardWidth = 120;
     }
 
     return SizedBox(
-      height: 120, // УВЕЛИЧЕНО с 100 до 120
+      height: 120,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
         itemCount: selectedTypes.length,
         itemBuilder: (context, index) {
           final type = selectedTypes[index];
-          final typeInfo = fishingTypes[type]!;
+          // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
+          final typeInfo = _getTypeInfo(type);
           final isBest = type == bestType;
-          final prediction = widget.aiPrediction!.allPredictions[type];
+          final prediction = widget.aiPrediction?.allPredictions[type];
           final score = prediction?.overallScore ?? 0;
 
           return GestureDetector(
@@ -1020,17 +1071,17 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                     : null,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(8), // УВЕЛИЧЕНО с 6 до 8
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Иконка с рамкой для лучшего типа
                     Container(
-                      padding: EdgeInsets.all(isBest ? 6 : 4), // УВЕЛИЧЕНО с 4/2 до 6/4
+                      padding: EdgeInsets.all(isBest ? 6 : 4),
                       decoration: isBest
                           ? BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10), // УВЕЛИЧЕНО с 8 до 10
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.4),
                           width: 1,
@@ -1038,10 +1089,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       )
                           : null,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8), // УВЕЛИЧЕНО с 6 до 8
+                        borderRadius: BorderRadius.circular(8),
                         child: Image.asset(
                           typeInfo['icon']!,
-                          width: isBest ? 36 : 32, // УВЕЛИЧЕНО с 30/26 до 36/32
+                          width: isBest ? 36 : 32,
                           height: isBest ? 36 : 32,
                           fit: BoxFit.contain,
                           color: Colors.white,
@@ -1055,12 +1106,12 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6), // УВЕЛИЧЕНО с 4 до 6
+                    const SizedBox(height: 6),
                     Text(
                       localizations.translate(typeInfo['nameKey']!) ?? typeInfo['name']!,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: cardWidth > 110 ? (isBest ? 12 : 11) : (isBest ? 11 : 10), // УВЕЛИЧЕНО на 1
+                        fontSize: cardWidth > 110 ? (isBest ? 12 : 11) : (isBest ? 11 : 10),
                         fontWeight: isBest ? FontWeight.w600 : FontWeight.w500,
                         height: 1.1,
                       ),
@@ -1069,18 +1120,18 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (score > 0) ...[
-                      const SizedBox(height: 4), // УВЕЛИЧЕНО с 2 до 4
+                      const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // УВЕЛИЧЕНО с 4/1 до 6/2
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8), // УВЕЛИЧЕНО с 6 до 8
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '$score',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: cardWidth > 110 ? 12 : 11, // УВЕЛИЧЕНО с 11/10 до 12/11
+                            fontSize: cardWidth > 110 ? 12 : 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1097,8 +1148,11 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   void _openFishingTypeDetail(String type, AppLocalizations localizations) {
-    final prediction = widget.aiPrediction!.allPredictions[type];
+    final prediction = widget.aiPrediction?.allPredictions[type];
     if (prediction == null) return;
+
+    // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
+    final typeInfo = _getTypeInfo(type);
 
     Navigator.push(
       context,
@@ -1107,7 +1161,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             (context) => FishingTypeDetailScreen(
           fishingType: type,
           prediction: prediction,
-          typeInfo: fishingTypes[type]!,
+          typeInfo: typeInfo,
         ),
       ),
     );

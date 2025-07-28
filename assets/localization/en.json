@@ -1890,7 +1890,7 @@
   "password_no_special": "Letters and digits only",
   "password_requirements_not_met": "Password requirements not met:",
   "password_requirements": "Password requirements:",
-  "required_field": "Required field"
-
+  "required_field": "Required field",
+  "sync_completed": "sync completed"
 
 }
