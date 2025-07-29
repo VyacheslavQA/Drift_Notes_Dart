@@ -1,6 +1,6 @@
 // Путь: lib/screens/ai_fishing/ai_bite_screen.dart
-// НОВЫЙ ФАЙЛ: Отдельный экран для AI-анализа клева
-// Перенесена вся логика из AIBiteMeter + расширенный функционал
+// ИСПРАВЛЕНО: Короткое название "ИИ Прогноз" в AppBar вместо полного
+// ИСПРАВЛЕНО: Размещение местоположения в AppBar без перекрытия
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -250,7 +250,7 @@ class _AIBiteScreenState extends State<AIBiteScreen>
       backgroundColor: AppConstants.backgroundColor,
       body: CustomScrollView(
         slivers: [
-          // Кастомный AppBar с градиентом
+          // ИСПРАВЛЕНО: Кастомный AppBar с коротким названием
           _buildCustomAppBar(localizations),
 
           // Основной контент
@@ -265,12 +265,13 @@ class _AIBiteScreenState extends State<AIBiteScreen>
     );
   }
 
+  // ИСПРАВЛЕНО: Простой AppBar без перекрытия
   Widget _buildCustomAppBar(AppLocalizations localizations) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 100,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF1B3A36),
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -284,7 +285,7 @@ class _AIBiteScreenState extends State<AIBiteScreen>
         ),
         child: FlexibleSpaceBar(
           title: Text(
-            localizations.translate('ai_bite_forecast'),
+            'ИИ Прогноз',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -293,35 +294,7 @@ class _AIBiteScreenState extends State<AIBiteScreen>
           ),
           centerTitle: true,
           titlePadding: const EdgeInsets.only(bottom: 16),
-          background: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('🧠', style: TextStyle(fontSize: 24)),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Text(
-                          widget.locationName,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // УБРАНО: background - убираем дублирующий контент
         ),
       ),
       leading: IconButton(
@@ -341,6 +314,42 @@ class _AIBiteScreenState extends State<AIBiteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ДОБАВЛЕНО: Отображение местоположения в основном контенте
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppConstants.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppConstants.primaryColor.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: AppConstants.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.locationName,
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Главный спидометр
           _buildSpeedometerCard(localizations),
 

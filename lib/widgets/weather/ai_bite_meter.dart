@@ -1,6 +1,7 @@
 // Путь: lib/widgets/weather/ai_bite_meter.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: Единый источник данных - используем WeatherApiResponse + WeatherSettingsService
+// ИСПРАВЛЕНО: Убрана иконка мозга, заголовок перенесен в AppBar экрана
+// ДОБАВЛЕНО: Компактный виджет без перекрытия местоположения
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -13,7 +14,6 @@ import '../animated_border_widget.dart';
 import '../../screens/weather/fishing_type_detail_screen.dart';
 
 class AIBiteMeter extends StatefulWidget {
-  // ОБНОВЛЕНО: Теперь принимаем оригинальные данные Weather API
   final WeatherApiResponse weatherData;
   final WeatherSettingsService weatherSettings;
   final MultiFishingTypePrediction? aiPrediction;
@@ -23,8 +23,8 @@ class AIBiteMeter extends StatefulWidget {
 
   const AIBiteMeter({
     super.key,
-    required this.weatherData, // ДОБАВЛЕНО: оригинальные данные
-    required this.weatherSettings, // ДОБАВЛЕНО: сервис форматирования
+    required this.weatherData,
+    required this.weatherSettings,
     this.aiPrediction,
     this.onCompareTypes,
     this.onSelectType,
@@ -44,7 +44,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   late Animation<double> _pulseAnimation;
   late Animation<double> _needleAnimation;
 
-  // ОБНОВЛЕНО: Конфигурация типов рыбалки с реальными иконками
+  // Конфигурация типов рыбалки с реальными иконками
   static const Map<String, Map<String, String>> fishingTypes = {
     'carp_fishing': {
       'name': 'Карповая рыбалка',
@@ -81,7 +81,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       'icon': 'assets/images/fishing_types/trolling.png',
       'nameKey': 'trolling',
     },
-    // ДОБАВЛЕНО: Fallback для "Обычная рыбалка"
     'Обычная рыбалка': {
       'name': 'Обычная рыбалка',
       'icon': 'assets/images/fishing_types/general_fishing.png',
@@ -98,7 +97,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   void initState() {
     super.initState();
     _initAnimations();
-    // ДОБАВЛЕНО: Устанавливаем локаль для WeatherSettingsService
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final localizations = AppLocalizations.of(context);
       widget.weatherSettings.setLocale(localizations.locale.languageCode);
@@ -147,23 +145,17 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 
   List<String> _getFilteredTypes() {
-    // Проверяем переданные предпочтения
     if (widget.preferredTypes != null && widget.preferredTypes!.isNotEmpty) {
-      debugPrint('🎯 Используем переданные предпочтения: ${widget.preferredTypes}');
       return widget.preferredTypes!;
     }
 
-    // Проверяем есть ли предпочтения в самом прогнозе
     if (widget.aiPrediction != null) {
       final availableTypes = widget.aiPrediction!.allPredictions.keys.toList();
       if (availableTypes.isNotEmpty) {
-        debugPrint('🎯 Используем типы из прогноза: $availableTypes');
         return availableTypes;
       }
     }
 
-    // Fallback - пустой список (покажем сообщение о настройке профиля)
-    debugPrint('⚠️ Нет выбранных типов рыбалки');
     return [];
   }
 
@@ -171,37 +163,35 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     final filteredTypes = _getFilteredTypes();
 
     if (filteredTypes.isEmpty) {
-      return ''; // Нет типов
+      return '';
     }
 
     if (widget.aiPrediction == null) {
-      return filteredTypes.first; // Возвращаем первый доступный
+      return filteredTypes.first;
     }
 
     final rankings = widget.aiPrediction!.comparison.rankings;
 
-    // Ищем лучший тип среди доступных
     for (final ranking in rankings) {
       if (filteredTypes.contains(ranking.fishingType)) {
         return ranking.fishingType;
       }
     }
 
-    return filteredTypes.first; // Fallback
+    return filteredTypes.first;
   }
 
   int _getBestFilteredScore() {
     final bestType = _getBestFilteredType();
 
     if (bestType.isEmpty || widget.aiPrediction == null) {
-      return 50; // Базовый скор
+      return 50;
     }
 
     final prediction = widget.aiPrediction!.allPredictions[bestType];
     return prediction?.overallScore ?? 50;
   }
 
-  // НОВЫЙ метод: безопасное получение информации о типе рыбалки
   Map<String, String> _getTypeInfo(String type) {
     final typeInfo = fishingTypes[type];
 
@@ -209,8 +199,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       return typeInfo;
     }
 
-    // Fallback для неизвестных типов
-    debugPrint('⚠️ Неизвестный тип рыбалки: $type');
     return {
       'name': type,
       'icon': 'assets/images/fishing_types/general_fishing.png',
@@ -218,7 +206,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     };
   }
 
-  /// Перевод фазы луны с английского на локализованный язык
   String _translateMoonPhase(
       String englishPhase,
       AppLocalizations localizations,
@@ -242,7 +229,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       return localizations.translate(localizationKey);
     }
 
-    // Если перевод не найден, возвращаем оригинал
     return englishPhase;
   }
 
@@ -271,28 +257,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text('🧠', style: TextStyle(fontSize: 20)),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                localizations.translate('ai_bite_forecast'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(
               AppConstants.primaryColor,
@@ -336,10 +300,10 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       ),
       child: Column(
         children: [
-          // Заголовок
-          _buildHeader(localizations),
+          // Информация о уверенности
+          _buildConfidenceInfo(localizations),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // Главный спидометр
           _buildSpeedometer(score, localizations),
@@ -351,7 +315,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
 
           const SizedBox(height: 24),
 
-          // ИСПРАВЛЕНО: Информация о погоде теперь из оригинального API
+          // Информация о погоде
           _buildWeatherInfo(localizations),
 
           const SizedBox(height: 20),
@@ -363,43 +327,28 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  Widget _buildHeader(AppLocalizations localizations) {
+  // НОВЫЙ: Компактная информация о уверенности
+  Widget _buildConfidenceInfo(AppLocalizations localizations) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.blue.withValues(alpha: 0.3),
-                Colors.cyan.withValues(alpha: 0.3),
-              ],
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
             ),
-            borderRadius: BorderRadius.circular(16),
           ),
-          child: const Text('🧠', style: TextStyle(fontSize: 24)),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                localizations.translate('ai_bite_forecast'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${localizations.translate('confidence')}: ${widget.aiPrediction!.bestPrediction.confidencePercent}%',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ],
+          child: Text(
+            '${localizations.translate('confidence')}: ${widget.aiPrediction!.bestPrediction.confidencePercent}%',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -423,7 +372,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Размещаем цифры в верхней части круга
                   const SizedBox(height: 20),
                   AnimatedBuilder(
                     animation: _pulseAnimation,
@@ -465,10 +413,8 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       AppLocalizations localizations,
       String bestType,
       ) {
-    // ИЗМЕНЕНО: Показываем только выбранные пользователем типы
     final selectedTypes = _getFilteredTypes();
 
-    // НОВОЕ: Если нет выбранных типов - показываем сообщение
     if (selectedTypes.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,7 +480,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 ),
               ),
               const SizedBox(width: 8),
-              // НОВОЕ: Показываем количество выбранных типов
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -553,17 +498,14 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             ],
           ),
         ),
-        // НОВОЕ: Адаптивное отображение карточек
         _buildAdaptiveFishingCards(selectedTypes, bestType, localizations),
       ],
     );
   }
 
-  // ИСПРАВЛЕНО: Информация о погоде теперь из ОРИГИНАЛЬНОГО API
   Widget _buildWeatherInfo(AppLocalizations localizations) {
     final current = widget.weatherData.current;
 
-    // ИСПРАВЛЕНО: Получаем фазу луны из оригинальных данных
     final moonPhase = widget.weatherData.forecast.isNotEmpty
         ? widget.weatherData.forecast.first.astro.moonPhase
         : 'Unknown';
@@ -580,7 +522,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       ),
       child: Column(
         children: [
-          // Основная рекомендация - 2 строки максимум
           Text(
             widget.aiPrediction!.bestPrediction.recommendation,
             style: const TextStyle(
@@ -593,10 +534,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-
           const SizedBox(height: 16),
-
-          // ИСПРАВЛЕНО: Параметры в столбик с ОРИГИНАЛЬНЫМИ данными из API
           _buildWeatherMetricRow(
             '🌡️',
             widget.weatherSettings.formatPressure(current.pressureMb),
@@ -624,7 +562,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           _buildWeatherMetricRow(
             '🕐',
             _getBestTimeString(),
-            localizations.translate('best_time'),
+            localizations.translate('best_fishing_times'),
           ),
           const SizedBox(height: 8),
           _buildWeatherMetricRow(
@@ -643,7 +581,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       final window = prediction!.bestTimeWindows.first;
       return window.timeRange;
     }
-    return '05:00-06:30'; // Fallback
+    return '05:00-06:30';
   }
 
   Widget _buildWeatherMetricRow(String icon, String value, String description) {
@@ -685,7 +623,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         onPressed: widget.onCompareTypes,
         icon: const Icon(Icons.analytics, size: 18),
         label: Text(
-          localizations.translate('more_details'),
+          localizations.translate('detailed_comparison'),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
@@ -701,40 +639,33 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  /// НОВЫЙ метод - адаптивные карточки рыбалки
   Widget _buildAdaptiveFishingCards(
       List<String> selectedTypes,
       String bestType,
       AppLocalizations localizations,
       ) {
-    // Определяем как отображать карточки в зависимости от количества
     if (selectedTypes.length == 1) {
-      // 1 тип - на всю ширину
       return _buildSingleCard(selectedTypes.first, bestType, localizations);
     } else if (selectedTypes.length == 2) {
-      // 2 типа - по половине экрана
       return _buildTwoCards(selectedTypes, bestType, localizations);
     } else {
-      // 3+ типов - скроллируемый список с фиксированной шириной
       return _buildScrollableCards(selectedTypes, bestType, localizations);
     }
   }
 
-  /// Одна карточка на всю ширину
   Widget _buildSingleCard(
       String type,
       String bestType,
       AppLocalizations localizations,
       ) {
-    // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
     final typeInfo = _getTypeInfo(type);
     final prediction = widget.aiPrediction?.allPredictions[type];
     final score = prediction?.overallScore ?? 0;
 
-    return GestureDetector( // ДОБАВЛЕНО: GestureDetector для обработки нажатий
+    return GestureDetector(
       onTap: () => _openFishingTypeDetail(type, localizations),
       child: Container(
-        height: 170, // УВЕЛИЧЕНО с 160 до 170
+        height: 170,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -763,7 +694,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Левая часть - иконка
               Container(
                 width: 80,
                 child: Column(
@@ -796,10 +726,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   ],
                 ),
               ),
-
               const SizedBox(width: 12),
-
-              // Правая часть - информация
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -817,8 +744,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-
-                    // Размещаем "Активность:" и скор в столбик для экономии места
                     Text(
                       '${localizations.translate('activity')}:',
                       style: TextStyle(
@@ -865,7 +790,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  /// Две карточки рядом
   Widget _buildTwoCards(
       List<String> selectedTypes,
       String bestType,
@@ -875,7 +799,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
       height: 150,
       child: Row(
         children: selectedTypes.map((type) {
-          // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
           final typeInfo = _getTypeInfo(type);
           final isBest = type == bestType;
           final prediction = widget.aiPrediction?.allPredictions[type];
@@ -928,7 +851,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Иконка с рамкой для лучшего типа
                       Container(
                         padding: EdgeInsets.all(isBest ? 6 : 5),
                         decoration: isBest
@@ -1001,18 +923,16 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  /// Скроллируемые карточки для 3+ типов
   Widget _buildScrollableCards(
       List<String> selectedTypes,
       String bestType,
       AppLocalizations localizations,
       ) {
-    // Вычисляем ширину карточки в зависимости от количества типов
     double cardWidth;
     if (selectedTypes.length == 3) {
-      cardWidth = (MediaQuery.of(context).size.width - 64) / 3; // 3 карточки на экране
+      cardWidth = (MediaQuery.of(context).size.width - 64) / 3;
     } else if (selectedTypes.length == 4) {
-      cardWidth = (MediaQuery.of(context).size.width - 80) / 3.5; // 3.5 карточки на экране
+      cardWidth = (MediaQuery.of(context).size.width - 80) / 3.5;
     } else {
       cardWidth = 120;
     }
@@ -1025,7 +945,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
         itemCount: selectedTypes.length,
         itemBuilder: (context, index) {
           final type = selectedTypes[index];
-          // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
           final typeInfo = _getTypeInfo(type);
           final isBest = type == bestType;
           final prediction = widget.aiPrediction?.allPredictions[type];
@@ -1075,7 +994,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Иконка с рамкой для лучшего типа
                     Container(
                       padding: EdgeInsets.all(isBest ? 6 : 4),
                       decoration: isBest
@@ -1151,14 +1069,12 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     final prediction = widget.aiPrediction?.allPredictions[type];
     if (prediction == null) return;
 
-    // ИСПРАВЛЕНО: Используем безопасный метод получения информации о типе
     final typeInfo = _getTypeInfo(type);
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => FishingTypeDetailScreen(
+        builder: (context) => FishingTypeDetailScreen(
           fishingType: type,
           prediction: prediction,
           typeInfo: typeInfo,
@@ -1167,7 +1083,6 @@ class _AIBiteMeterState extends State<AIBiteMeter>
     );
   }
 
-  // Вспомогательные методы
   Color _getScoreColor(int score) {
     if (score >= 80) return const Color(0xFF4CAF50);
     if (score >= 60) return const Color(0xFF8BC34A);
@@ -1193,7 +1108,7 @@ class _AIBiteMeterState extends State<AIBiteMeter>
   }
 }
 
-// Кастомный painter для спидометра с треугольником ОСТРИЕМ НАРУЖУ
+// Кастомный painter для спидометра
 class SpeedometerPainter extends CustomPainter {
   final double progress;
   final int score;
@@ -1210,19 +1125,13 @@ class SpeedometerPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2 + 20);
     final radius = size.width * 0.32;
 
-    // Рисуем фоновую дугу
     _drawBackgroundArc(canvas, center, radius);
-
-    // Рисуем цветную дугу (градиент)
     _drawColoredArc(canvas, center, radius);
-
-    // Рисуем треугольник НА ДУГЕ (острием НАРУЖУ)
     _drawTriangleOnArc(canvas, center, radius);
   }
 
   void _drawBackgroundArc(Canvas canvas, Offset center, double radius) {
-    final paint =
-    Paint()
+    final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.15)
       ..strokeWidth = 16
       ..style = PaintingStyle.stroke
@@ -1245,21 +1154,19 @@ class SpeedometerPainter extends CustomPainter {
     const totalSweepAngle = math.pi - 0.8;
     final currentSweepAngle = totalSweepAngle * progress;
 
-    // Создаем градиент
     final gradient = SweepGradient(
       startAngle: startAngle,
       endAngle: startAngle + totalSweepAngle,
       colors: const [
-        Color(0xFFEF5350), // Красный
-        Color(0xFFFF9800), // Оранжевый
-        Color(0xFFFFC107), // Желтый
-        Color(0xFF8BC34A), // Светло-зеленый
-        Color(0xFF4CAF50), // Зеленый
+        Color(0xFFEF5350),
+        Color(0xFFFF9800),
+        Color(0xFFFFC107),
+        Color(0xFF8BC34A),
+        Color(0xFF4CAF50),
       ],
     );
 
-    final paint =
-    Paint()
+    final paint = Paint()
       ..shader = gradient.createShader(
         Rect.fromCircle(center: center, radius: radius),
       )
@@ -1282,11 +1189,9 @@ class SpeedometerPainter extends CustomPainter {
     const startAngle = math.pi + 0.4;
     const totalSweepAngle = math.pi - 0.8;
     final scoreProgress = score / 100.0;
-    final triangleAngle =
-        startAngle + (totalSweepAngle * scoreProgress * needleProgress);
+    final triangleAngle = startAngle + (totalSweepAngle * scoreProgress * needleProgress);
 
-    // Позиция треугольника НА ВНУТРЕННЕЙ СТОРОНЕ ДУГИ (ближе к центру)
-    final innerRadius = radius - 8; // Сдвигаем треугольник ближе к центру
+    final innerRadius = radius - 8;
     final trianglePosition = Offset(
       center.dx + innerRadius * math.cos(triangleAngle),
       center.dy + innerRadius * math.sin(triangleAngle),
@@ -1294,16 +1199,13 @@ class SpeedometerPainter extends CustomPainter {
 
     const triangleSize = 12.0;
 
-    // Треугольник острием НАРУЖУ (к дуге)
     final path = Path();
 
-    // Острие треугольника направлено К ДУГЕ (наружу от центра)
     final tip = Offset(
-      trianglePosition.dx + 12 * math.cos(triangleAngle), // Острие к дуге
+      trianglePosition.dx + 12 * math.cos(triangleAngle),
       trianglePosition.dy + 12 * math.sin(triangleAngle),
     );
 
-    // Два угла основания треугольника (перпендикулярно к радиусу)
     final perpAngle1 = triangleAngle + math.pi / 2;
     final perpAngle2 = triangleAngle - math.pi / 2;
 
@@ -1322,42 +1224,26 @@ class SpeedometerPainter extends CustomPainter {
     path.lineTo(rightBase.dx, rightBase.dy);
     path.close();
 
-    // Тень треугольника
     final shadowPath = Path();
     final shadowOffset = const Offset(1.5, 1.5);
 
     shadowPath.moveTo(tip.dx + shadowOffset.dx, tip.dy + shadowOffset.dy);
-    shadowPath.lineTo(
-      leftBase.dx + shadowOffset.dx,
-      leftBase.dy + shadowOffset.dy,
-    );
-    shadowPath.lineTo(
-      rightBase.dx + shadowOffset.dx,
-      rightBase.dy + shadowOffset.dy,
-    );
+    shadowPath.lineTo(leftBase.dx + shadowOffset.dx, leftBase.dy + shadowOffset.dy);
+    shadowPath.lineTo(rightBase.dx + shadowOffset.dx, rightBase.dy + shadowOffset.dy);
     shadowPath.close();
 
     final shadowPaint = Paint()..color = Colors.black.withValues(alpha: 0.5);
-
     canvas.drawPath(shadowPath, shadowPaint);
 
-    // Основной треугольник - белый цвет
-    final trianglePaint =
-    Paint()
-      ..color =
-          Colors
-              .white // Белый цвет
+    final trianglePaint = Paint()
+      ..color = Colors.white
       ..style = PaintingStyle.fill;
-
     canvas.drawPath(path, trianglePaint);
 
-    // Обводка треугольника
-    final strokePaint =
-    Paint()
+    final strokePaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-
     canvas.drawPath(path, strokePaint);
   }
 

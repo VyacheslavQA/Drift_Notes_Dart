@@ -1922,5 +1922,8 @@
   "Moderate or heavy snow with thunder": "Умеренный или сильный снег с грозой",
   "Partly Cloudy": "Переменная облачность",
   "Patchy rain nearby": "Местами дождь поблизости",
-  "weather_today": "Погода на сегодня"
+  "weather_today": "Погода на сегодня",
+  "weather_conditions": "Погодные условия",
+  "best_fishing_times": "Лучшее время для рыбалки",
+  "detailed_comparison": "Подробное сравнение"
 }
