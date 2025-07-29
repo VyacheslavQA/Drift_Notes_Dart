@@ -1,3 +1,7 @@
+// Путь: lib/widgets/weather/weather_summary_card.dart
+// ВАЖНО: Заменить весь существующий файл на этот код
+// ОБНОВЛЕНО: Изменен заголовок для сегодняшнего дня - показывает "Погода на [время]"
+
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
@@ -37,10 +41,11 @@ class WeatherSummaryCard extends StatelessWidget {
         : currentTemp; // Для других дней используем среднюю
 
     // Описание погоды с переводом
-    final conditionText = isToday
+    final conditionText = (isToday
         ? weather.current.condition.text
-        : selectedDay.day.condition.text;
+        : selectedDay.day.condition.text).trim();
     final condition = localizations.translate(conditionText) ?? conditionText;
+
 
     // Влажность - вычисляем среднюю из почасовых данных для других дней
     final humidity = isToday
@@ -268,13 +273,16 @@ class WeatherSummaryCard extends StatelessWidget {
     );
   }
 
-  // Метод для получения динамического заголовка
+  // ОБНОВЛЕННЫЙ: Метод для получения динамического заголовка с временем для сегодня
   String _getWeatherTitle(BuildContext context, int dayIndex) {
     final localizations = AppLocalizations.of(context);
 
     switch (dayIndex) {
       case 0:
-        return localizations.translate('current_weather');
+      // Для сегодня показываем "Погода на [время]"
+        final currentTime = DateTime.now();
+        final timeString = '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
+        return '${localizations.translate('weather_at')} $timeString';
       case 1:
         return localizations.translate('tomorrow_forecast');
       default:

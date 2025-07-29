@@ -1,5 +1,6 @@
 // Путь: lib/widgets/weather/weather_metrics_grid.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
+// ОБНОВЛЕНО: Добавлена поддержка selectedDayIndex для синхронизации данных
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -12,6 +13,7 @@ import '../animated_border_widget.dart';
 class WeatherMetricsGrid extends StatefulWidget {
   final WeatherApiResponse weather;
   final WeatherSettingsService weatherSettings;
+  final int selectedDayIndex; // НОВЫЙ: Индекс выбранного дня
   final VoidCallback? onPressureCardTap;
   final VoidCallback? onWindCardTap;
 
@@ -19,6 +21,7 @@ class WeatherMetricsGrid extends StatefulWidget {
     super.key,
     required this.weather,
     required this.weatherSettings,
+    required this.selectedDayIndex, // НОВЫЙ: Обязательный параметр
     this.onPressureCardTap,
     this.onWindCardTap,
   });
@@ -51,7 +54,25 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   Widget _buildPressureCard() {
     final localizations = AppLocalizations.of(context);
-    final pressure = widget.weather.current.pressureMb;
+
+    // ИСПРАВЛЕНО: Используем данные выбранного дня
+    late double pressure;
+
+    if (widget.selectedDayIndex == 0) {
+      // Для сегодня берем текущие данные
+      pressure = widget.weather.current.pressureMb;
+    } else {
+      // Для других дней берем данные из полуденного часа
+      final selectedDay = widget.weather.forecast[widget.selectedDayIndex];
+      final middayHour = selectedDay.hour.length > 12
+          ? selectedDay.hour[12]
+          : selectedDay.hour.isNotEmpty
+          ? selectedDay.hour.first
+          : null;
+
+      pressure = middayHour?.pressureMb ?? widget.weather.current.pressureMb;
+    }
+
     final formattedPressure = widget.weatherSettings.formatPressure(pressure);
     final pressureTrend = _getPressureTrend(pressure);
     final pressureStatus = _getPressureStatus(pressure, localizations);
@@ -141,8 +162,28 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   Widget _buildWindCard() {
     final localizations = AppLocalizations.of(context);
-    final windSpeed = widget.weather.current.windKph;
-    final windDirection = widget.weather.current.windDir;
+
+    // ИСПРАВЛЕНО: Используем данные выбранного дня
+    late double windSpeed;
+    late String windDirection;
+
+    if (widget.selectedDayIndex == 0) {
+      // Для сегодня берем текущие данные
+      windSpeed = widget.weather.current.windKph;
+      windDirection = widget.weather.current.windDir;
+    } else {
+      // Для других дней берем данные из полуденного часа
+      final selectedDay = widget.weather.forecast[widget.selectedDayIndex];
+      final middayHour = selectedDay.hour.length > 12
+          ? selectedDay.hour[12]
+          : selectedDay.hour.isNotEmpty
+          ? selectedDay.hour.first
+          : null;
+
+      windSpeed = middayHour?.windKph ?? widget.weather.current.windKph;
+      windDirection = middayHour?.windDir ?? widget.weather.current.windDir;
+    }
+
     final formattedWind = widget.weatherSettings.formatWindSpeed(windSpeed);
     final windStatus = _getWindStatus(windSpeed, localizations);
 
@@ -234,11 +275,16 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   Widget _buildMoonPhaseCard() {
     final localizations = AppLocalizations.of(context);
-    final moonPhase =
-    widget.weather.forecast.isNotEmpty
-        ? widget.weather.forecast.first.astro.moonPhase
-        : 'Unknown';
 
+    // ИСПРАВЛЕНО: Используем данные выбранного дня
+    final selectedDay = widget.weather.forecast.isNotEmpty &&
+        widget.selectedDayIndex < widget.weather.forecast.length
+        ? widget.weather.forecast[widget.selectedDayIndex]
+        : widget.weather.forecast.isNotEmpty
+        ? widget.weather.forecast.first
+        : null;
+
+    final moonPhase = selectedDay?.astro.moonPhase ?? 'Unknown';
     final moonInfo = _getMoonPhaseInfo(moonPhase, localizations);
 
     return Container(
@@ -325,8 +371,35 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
 
   Widget _buildHumidityCard() {
     final localizations = AppLocalizations.of(context);
-    final humidity = widget.weather.current.humidity;
-    final dewPoint = _calculateDewPoint(widget.weather.current.tempC, humidity);
+
+    // ИСПРАВЛЕНО: Используем данные выбранного дня
+    late int humidity;
+    late double temperature;
+
+    if (widget.selectedDayIndex == 0) {
+      // Для сегодня берем текущие данные
+      humidity = widget.weather.current.humidity;
+      temperature = widget.weather.current.tempC;
+    } else {
+      // Для других дней берем данные из полуденного часа (или средние)
+      final selectedDay = widget.weather.forecast[widget.selectedDayIndex];
+      final middayHour = selectedDay.hour.length > 12
+          ? selectedDay.hour[12]
+          : selectedDay.hour.isNotEmpty
+          ? selectedDay.hour.first
+          : null;
+
+      if (middayHour != null) {
+        humidity = middayHour.humidity;
+        temperature = middayHour.tempC;
+      } else {
+        // Fallback на средние значения дня
+        humidity = _calculateAverageHumidity(selectedDay.hour);
+        temperature = (selectedDay.day.maxtempC + selectedDay.day.mintempC) / 2;
+      }
+    }
+
+    final dewPoint = _calculateDewPoint(temperature, humidity);
     final humidityStatus = _getHumidityStatus(humidity, localizations);
 
     return Container(
@@ -420,6 +493,13 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
         ],
       ),
     );
+  }
+
+  // НОВЫЙ: Вспомогательный метод для расчета средней влажности
+  int _calculateAverageHumidity(List<Hour> hours) {
+    if (hours.isEmpty) return 50; // значение по умолчанию
+    final total = hours.fold<int>(0, (sum, hour) => sum + hour.humidity);
+    return (total / hours.length).round();
   }
 
   // Вспомогательные методы для анализа данных

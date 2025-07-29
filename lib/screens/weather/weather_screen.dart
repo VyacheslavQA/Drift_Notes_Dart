@@ -1,6 +1,6 @@
 // Путь: lib/screens/weather/weather_screen.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ОБНОВЛЕНО: Убран pull-to-refresh, добавлена кнопка обновления в заголовок
+// ОБНОВЛЕНО: Добавлена передача selectedDayIndex в WeatherMetricsGrid для синхронизации данных
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -281,7 +281,7 @@ class _WeatherScreenState extends State<WeatherScreen>
               children: [
                 const SizedBox(height: 24),
 
-                // Карточки метрик
+                // Карточки метрик (ОБНОВЛЕНО: передается selectedDayIndex)
                 _buildMetricsGrid(),
 
                 const SizedBox(height: 24),
@@ -298,10 +298,12 @@ class _WeatherScreenState extends State<WeatherScreen>
     );
   }
 
+  // ОБНОВЛЕНО: Добавлена передача selectedDayIndex для синхронизации данных
   Widget _buildMetricsGrid() {
     return WeatherMetricsGrid(
       weather: _currentWeather!,
       weatherSettings: _weatherSettings,
+      selectedDayIndex: _selectedDayIndex, // НОВЫЙ: Передаем выбранный день
       onPressureCardTap: _openPressureDetailScreen,
       onWindCardTap: _openWindDetailScreen,
     );

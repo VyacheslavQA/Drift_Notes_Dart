@@ -1,6 +1,6 @@
 // Путь: lib/widgets/weather/detailed_weather_forecast.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ИСПРАВЛЕНО: Правильный часовой пояс для Казахстана через weather.location.tzId
+// ОБНОВЛЕНО: Убрана карточка _buildWindMetricsCard для избежания дублирования данных
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -52,17 +52,14 @@ class DetailedWeatherForecast extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Основная карточка времен дня
+          // Основная карточка времен дня с заголовком внутри
           _buildMainWeatherCard(forecastDay, localizations),
 
           const SizedBox(height: 16),
 
-          // Карточка ветра и метрик
-          _buildWindMetricsCard(forecastDay, localizations),
+          // УБРАНО: _buildWindMetricsCard - теперь эти данные только в карточках метрик
 
-          const SizedBox(height: 16),
-
-          // ИСПРАВЛЕННАЯ временная линия светового дня с правильным часовым поясом
+          // Временная линия светового дня с правильным часовым поясом
           _buildDaylightTimelineCard(context, forecastDay, localizations),
         ],
       ),
@@ -83,6 +80,25 @@ class DetailedWeatherForecast extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Динамический заголовок с датой
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            child: Row(
+              children: [
+                const Text('📅', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  _getWeatherTitle(localizations, selectedDayIndex),
+                  style: TextStyle(
+                    color: AppConstants.primaryColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Заголовки времен дня
           Row(
             children: [
@@ -178,6 +194,43 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
+  // Метод для получения динамического заголовка
+  String _getWeatherTitle(AppLocalizations localizations, int dayIndex) {
+    switch (dayIndex) {
+      case 0:
+        return localizations.translate('weather_today') ?? 'Погода на сегодня';
+      case 1:
+        return localizations.translate('tomorrow_forecast') ?? 'Прогноз на завтра';
+      default:
+      // Для других дней показываем дату
+        final selectedDay = weather.forecast[dayIndex];
+        final date = DateTime.parse(selectedDay.date);
+        final formattedDate = _formatDate(date, localizations);
+        return '${localizations.translate('forecast_for') ?? 'Прогноз на'} $formattedDate';
+    }
+  }
+
+  // Метод для форматирования даты
+  String _formatDate(DateTime date, AppLocalizations localizations) {
+    // Используем ключи месяцев в родительном падеже (для дат)
+    final monthsGenitive = [
+      localizations.translate('january_genitive') ?? 'января',
+      localizations.translate('february_genitive') ?? 'февраля',
+      localizations.translate('march_genitive') ?? 'марта',
+      localizations.translate('april_genitive') ?? 'апреля',
+      localizations.translate('may_genitive') ?? 'мая',
+      localizations.translate('june_genitive') ?? 'июня',
+      localizations.translate('july_genitive') ?? 'июля',
+      localizations.translate('august_genitive') ?? 'августа',
+      localizations.translate('september_genitive') ?? 'сентября',
+      localizations.translate('october_genitive') ?? 'октября',
+      localizations.translate('november_genitive') ?? 'ноября',
+      localizations.translate('december_genitive') ?? 'декабря',
+    ];
+
+    return '${date.day} ${monthsGenitive[date.month - 1]}';
+  }
+
   Widget _buildTimeHeader(String title) {
     return Text(
       title,
@@ -190,126 +243,7 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
-  Widget _buildWindMetricsCard(ForecastDay forecastDay, AppLocalizations localizations) {
-    // Берем данные полудня для выбранного дня (или первый доступный час)
-    final middayHour = forecastDay.hour.length > 12 ? forecastDay.hour[12] : forecastDay.hour.first;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: AppConstants.cardGradient,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppConstants.cardShadow,
-      ),
-      child: Column(
-        children: [
-          // Строка ветра, влажности и давления (3 колонки)
-          Row(
-            children: [
-              // Ветер
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.air, color: AppConstants.secondaryTextColor, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${weatherSettings.convertWindSpeed(middayHour.windKph).round()} ${weatherSettings.getWindSpeedUnitSymbol()}',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_translateWindDirection(middayHour.windDir, localizations)}',
-                      style: TextStyle(
-                        color: AppConstants.secondaryTextColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Влажность
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.water_drop, color: AppConstants.secondaryTextColor, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${middayHour.humidity}%',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      localizations.translate('humidity') ?? 'Влажность',
-                      style: TextStyle(
-                        color: AppConstants.secondaryTextColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Давление
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.speed, color: AppConstants.secondaryTextColor, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${weatherSettings.convertPressure(middayHour.pressureMb).round()}',
-                          style: TextStyle(
-                            color: AppConstants.textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      weatherSettings.getPressureUnitSymbol(),
-                      style: TextStyle(
-                        color: AppConstants.secondaryTextColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ИСПРАВЛЕННЫЙ МЕТОД: Временная линия светового дня
+  // Временная линия светового дня
   Widget _buildDaylightTimelineCard(BuildContext context, ForecastDay forecastDay, AppLocalizations localizations) {
     final astro = forecastDay.astro;
 
@@ -425,7 +359,7 @@ class DetailedWeatherForecast extends StatelessWidget {
     }
   }
 
-  // Вспомогательные методы (ВОССТАНОВЛЕНЫ все методы)
+  // Вспомогательные методы
   Map<String, dynamic> _getTimeOfDayData(ForecastDay forecastDay, TimeOfDay timeOfDay) {
     final hours = forecastDay.hour;
     if (hours.isEmpty) {
@@ -495,7 +429,7 @@ class DetailedWeatherForecast extends StatelessWidget {
   }
 }
 
-// ИСПРАВЛЕННЫЙ ВИДЖЕТ: Временная линия светового дня
+// Временная линия светового дня
 class DaylightTimelineWidget extends StatefulWidget {
   /// Время восхода солнца
   final DateTime sunrise;
@@ -643,7 +577,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     }
   }
 
-  /// ИСПРАВЛЕНО: Форматирование длительности в читаемый вид с локализацией
+  /// Форматирование длительности в читаемый вид с локализацией
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
@@ -671,7 +605,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     }
   }
 
-  /// ИСПРАВЛЕНО: Получение продолжительности светового дня
+  /// Получение продолжительности светового дня
   String _getDaylightDuration() {
     final duration = widget.sunset.difference(widget.sunrise);
     return _formatDuration(duration);
@@ -686,7 +620,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ИСПРАВЛЕННАЯ временная линия с правильным расчетом ширины
+          // Временная линия с правильным расчетом ширины
           _buildTimeline(context),
 
           const SizedBox(height: 24),
@@ -707,10 +641,6 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     final screenWidth = MediaQuery.of(context).size.width;
     final timelineHeight = screenWidth > 600 ? 120.0 : 100.0;
 
-    // ИСПРАВЛЕНО: Правильный расчет доступной ширины с учетом отступов
-    final containerPadding = 40.0; // 20 слева + 20 справа от контейнера
-    final availableWidth = screenWidth - containerPadding;
-
     return SizedBox(
       height: timelineHeight,
       child: LayoutBuilder(
@@ -719,7 +649,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
 
           return Stack(
             children: [
-              // Фоновая линия с градиентом - ИСПРАВЛЕНО: точная ширина
+              // Фоновая линия с градиентом
               Positioned(
                 left: 0,
                 right: 0,
@@ -753,14 +683,14 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
                 ),
               ),
 
-              // Анимированный маркер текущего времени - красивое солнышко
+              // Анимированный маркер текущего времени
               if (widget.currentTime != null)
                 AnimatedBuilder(
                   animation: _markerAnimation,
                   builder: (context, child) {
                     final position = _getCurrentPosition();
                     return Positioned(
-                      left: (timelineWidth * position) - 16, // Центрируем маркер
+                      left: (timelineWidth * position) - 16,
                       top: timelineHeight / 2 - 16,
                       child: Container(
                         width: 32.0,
@@ -798,7 +728,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
                   },
                 ),
 
-              // Метки времени - ИСПРАВЛЕНО: правильное позиционирование
+              // Метки времени
               Positioned(
                 left: (timelineWidth * 0.2) - 30,
                 top: timelineHeight / 2 - 40,
@@ -825,7 +755,7 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
                 ),
               ),
 
-              // Метка "Сейчас" (только если показываем текущее время)
+              // Метка "Сейчас"
               if (widget.currentTime != null)
                 AnimatedBuilder(
                   animation: _markerAnimation,
