@@ -137,6 +137,8 @@ class SyncService {
         'weight': bite.fishWeight, // fishWeight -> weight для Firebase
         'length': bite.fishLength, // fishLength -> length для Firebase
         'photoUrls': bite.photoUrls,
+        'dayIndex': bite.dayIndex,    // ✅ ДОБАВИТЬ ЭТУ СТРОКУ
+        'spotIndex': bite.spotIndex,  // ✅ ДОБАВИТЬ ЭТУ СТРОКУ
       };
 
       // Добавляем время если есть
@@ -253,7 +255,9 @@ class SyncService {
           ..fishType = biteMap['fishType']
           ..notes = biteMap['notes']
           ..fishWeight = biteMap['weight']?.toDouble() // weight -> fishWeight
-          ..fishLength = biteMap['length']?.toDouble(); // length -> fishLength
+          ..fishLength = biteMap['length']?.toDouble() // length -> fishLength
+          ..dayIndex = biteMap['dayIndex'] ?? 0        // ✅ ДОБАВЛЕНО
+          ..spotIndex = biteMap['spotIndex'] ?? 0;     // ✅ ДОБАВЛЕНО
 
         // Время поклевки
         if (biteMap['time'] != null) {

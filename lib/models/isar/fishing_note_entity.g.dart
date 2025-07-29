@@ -5294,38 +5294,48 @@ const BiteRecordEntitySchema = Schema(
       name: r'biteId',
       type: IsarType.string,
     ),
-    r'fishLength': PropertySchema(
+    r'dayIndex': PropertySchema(
       id: 2,
+      name: r'dayIndex',
+      type: IsarType.long,
+    ),
+    r'fishLength': PropertySchema(
+      id: 3,
       name: r'fishLength',
       type: IsarType.double,
     ),
     r'fishType': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'fishType',
       type: IsarType.string,
     ),
     r'fishWeight': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'fishWeight',
       type: IsarType.double,
     ),
     r'notes': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'notes',
       type: IsarType.string,
     ),
     r'photoUrls': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'photoUrls',
       type: IsarType.stringList,
     ),
+    r'spotIndex': PropertySchema(
+      id: 8,
+      name: r'spotIndex',
+      type: IsarType.long,
+    ),
     r'success': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'success',
       type: IsarType.bool,
     ),
     r'time': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'time',
       type: IsarType.dateTime,
     )
@@ -5384,13 +5394,15 @@ void _biteRecordEntitySerialize(
 ) {
   writer.writeString(offsets[0], object.baitUsed);
   writer.writeString(offsets[1], object.biteId);
-  writer.writeDouble(offsets[2], object.fishLength);
-  writer.writeString(offsets[3], object.fishType);
-  writer.writeDouble(offsets[4], object.fishWeight);
-  writer.writeString(offsets[5], object.notes);
-  writer.writeStringList(offsets[6], object.photoUrls);
-  writer.writeBool(offsets[7], object.success);
-  writer.writeDateTime(offsets[8], object.time);
+  writer.writeLong(offsets[2], object.dayIndex);
+  writer.writeDouble(offsets[3], object.fishLength);
+  writer.writeString(offsets[4], object.fishType);
+  writer.writeDouble(offsets[5], object.fishWeight);
+  writer.writeString(offsets[6], object.notes);
+  writer.writeStringList(offsets[7], object.photoUrls);
+  writer.writeLong(offsets[8], object.spotIndex);
+  writer.writeBool(offsets[9], object.success);
+  writer.writeDateTime(offsets[10], object.time);
 }
 
 BiteRecordEntity _biteRecordEntityDeserialize(
@@ -5402,13 +5414,15 @@ BiteRecordEntity _biteRecordEntityDeserialize(
   final object = BiteRecordEntity();
   object.baitUsed = reader.readStringOrNull(offsets[0]);
   object.biteId = reader.readStringOrNull(offsets[1]);
-  object.fishLength = reader.readDoubleOrNull(offsets[2]);
-  object.fishType = reader.readStringOrNull(offsets[3]);
-  object.fishWeight = reader.readDoubleOrNull(offsets[4]);
-  object.notes = reader.readStringOrNull(offsets[5]);
-  object.photoUrls = reader.readStringList(offsets[6]) ?? [];
-  object.success = reader.readBool(offsets[7]);
-  object.time = reader.readDateTimeOrNull(offsets[8]);
+  object.dayIndex = reader.readLong(offsets[2]);
+  object.fishLength = reader.readDoubleOrNull(offsets[3]);
+  object.fishType = reader.readStringOrNull(offsets[4]);
+  object.fishWeight = reader.readDoubleOrNull(offsets[5]);
+  object.notes = reader.readStringOrNull(offsets[6]);
+  object.photoUrls = reader.readStringList(offsets[7]) ?? [];
+  object.spotIndex = reader.readLong(offsets[8]);
+  object.success = reader.readBool(offsets[9]);
+  object.time = reader.readDateTimeOrNull(offsets[10]);
   return object;
 }
 
@@ -5424,18 +5438,22 @@ P _biteRecordEntityDeserializeProp<P>(
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
-    case 4:
       return (reader.readDoubleOrNull(offset)) as P;
-    case 5:
+    case 4:
       return (reader.readStringOrNull(offset)) as P;
+    case 5:
+      return (reader.readDoubleOrNull(offset)) as P;
     case 6:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 8:
+      return (reader.readLong(offset)) as P;
+    case 9:
+      return (reader.readBool(offset)) as P;
+    case 10:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -5748,6 +5766,62 @@ extension BiteRecordEntityQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'biteId',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      dayIndexEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dayIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      dayIndexGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'dayIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      dayIndexLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'dayIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      dayIndexBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'dayIndex',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -6450,6 +6524,62 @@ extension BiteRecordEntityQueryFilter
         upper,
         includeUpper,
       );
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      spotIndexEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'spotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      spotIndexGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'spotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      spotIndexLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'spotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BiteRecordEntity, BiteRecordEntity, QAfterFilterCondition>
+      spotIndexBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'spotIndex',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
     });
   }
 

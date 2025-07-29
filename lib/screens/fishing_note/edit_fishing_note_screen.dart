@@ -65,6 +65,10 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   late List<BiteRecord> _biteRecords;
   late String _selectedFishingType;
 
+  // ✅ НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ СЕЛЕКТОРА ДНЯ
+  int _selectedDayIndex = 0;
+  final List<DateTime> _fishingDays = [];
+
   // Переменные для ИИ-анализа
   AIBitePrediction? _aiPrediction;
   bool _isLoadingAI = false;
@@ -100,6 +104,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     _biteRecords = List.from(widget.note.biteRecords);
     _selectedFishingType = widget.note.fishingType;
 
+    // ✅ ИНИЦИАЛИЗАЦИЯ ДНЕЙ РЫБАЛКИ
+    _initializeFishingDays();
+
     // ИСПРАВЛЕНО: Загружаем ИИ-анализ из заметки, если он есть
     if (widget.note.aiPrediction != null) {
       _loadAIFromMap(widget.note.aiPrediction!);
@@ -127,6 +134,53 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     _notesController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  // ✅ НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ДНЯМИ РЫБАЛКИ
+  void _initializeFishingDays() {
+    _fishingDays.clear();
+    DateTime currentDay = DateTime(_startDate.year, _startDate.month, _startDate.day);
+
+    if (_isMultiDay) {
+      DateTime endDay = DateTime(_endDate.year, _endDate.month, _endDate.day);
+      while (!currentDay.isAfter(endDay)) {
+        _fishingDays.add(currentDay);
+        currentDay = currentDay.add(const Duration(days: 1));
+      }
+    } else {
+      _fishingDays.add(currentDay);
+    }
+
+    // Выбираем текущий день или первый день рыбалки
+    _selectedDayIndex = _determineCurrentFishingDay();
+  }
+
+  int _determineCurrentFishingDay() {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    for (int i = 0; i < _fishingDays.length; i++) {
+      if (_fishingDays[i].isAtSameMomentAs(todayDate)) {
+        return i;
+      }
+    }
+
+    // Если сегодня не в диапазоне рыбалки, выбираем первый день
+    return 0;
+  }
+
+  String _getDayName(int index) {
+    final localizations = AppLocalizations.of(context);
+    if (index < _fishingDays.length) {
+      final date = _fishingDays[index];
+      return '${localizations.translate('day_fishing')} ${index + 1} (${DateFormat('dd.MM.yyyy').format(date)})';
+    }
+    return '${localizations.translate('day_fishing')} ${index + 1}';
+  }
+
+  bool _isToday(DateTime date) {
+    final today = DateTime.now();
+    return date.year == today.year && date.month == today.month && date.day == today.day;
   }
 
   // НОВЫЙ МЕТОД: Загрузка ИИ-анализа из сохраненных данных
@@ -185,6 +239,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         _tripDays = 1;
       });
     }
+
+    // ✅ ПЕРЕСЧИТЫВАЕМ ДНИ РЫБАЛКИ
+    _initializeFishingDays();
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
@@ -411,6 +468,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           fishingStartDate: _startDate,
           fishingEndDate: _isMultiDay ? _endDate : null,
           isMultiDay: _isMultiDay,
+          dayIndex: _selectedDayIndex, // ✅ ПЕРЕДАЕМ ВЫБРАННЫЙ ДЕНЬ
         ),
       ),
     );
@@ -1011,6 +1069,88 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     }
   }
 
+  // ✅ НОВЫЙ ВИДЖЕТ СЕЛЕКТОРА ДНЯ
+  Widget _buildDaySelector(AppLocalizations localizations) {
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        minHeight: ResponsiveConstants.minTouchTarget,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12332E),
+        borderRadius: BorderRadius.circular(
+          ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+        ),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: ResponsiveConstants.spacingM),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _selectedDayIndex,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF12332E),
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
+            fontWeight: FontWeight.w500,
+          ),
+          icon: Icon(
+            Icons.arrow_drop_down,
+            color: AppConstants.textColor,
+            size: ResponsiveUtils.getIconSize(context),
+          ),
+          items: List.generate(_tripDays, (index) {
+            final isToday = index < _fishingDays.length && _isToday(_fishingDays[index]);
+
+            return DropdownMenuItem<int>(
+              value: index,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _getDayName(index),
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  if (isToday)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ResponsiveConstants.spacingXS,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        localizations.translate('today'),
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+          onChanged: (int? value) {
+            if (value != null) {
+              setState(() {
+                _selectedDayIndex = value;
+              });
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -1085,6 +1225,13 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 _buildSectionHeader(localizations.translate('fishing_dates')),
                 _buildDateSelectors(localizations),
                 SizedBox(height: ResponsiveConstants.spacingL),
+
+                // ✅ СЕЛЕКТОР ДНЯ РЫБАЛКИ (только для многодневной)
+                if (_isMultiDay && _tripDays > 1) ...[
+                  _buildSectionHeader(localizations.translate('day_fishing')),
+                  _buildDaySelector(localizations),
+                  SizedBox(height: ResponsiveConstants.spacingL),
+                ],
 
                 // Точка на карте
                 _buildSectionHeader(localizations.translate('map_point')),
@@ -2081,7 +2228,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: ResponsiveConstants.spacingM),
-        // График поклевок
+        // ✅ ГРАФИК ПОКЛЕВОК С ФИЛЬТРАЦИЕЙ ПО ДНЮ
         _buildBiteRecordsTimeline(localizations),
         SizedBox(height: ResponsiveConstants.spacingM),
         // Список поклевок
@@ -2117,6 +2264,16 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ✅ ПОКАЗЫВАЕМ ДЕНЬ ПОКЛЕВКИ
+                    if (_isMultiDay && _tripDays > 1)
+                      Text(
+                        '${localizations.translate('day_fishing')} ${record.dayIndex + 1}',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     Text(
                       '${localizations.translate('bite_time')}: ${DateFormat('HH:mm').format(record.time)}',
                       style: TextStyle(
@@ -2231,9 +2388,53 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     );
   }
 
+  // ✅ ОБНОВЛЕННЫЙ МЕТОД С ФИЛЬТРАЦИЕЙ ПО ДНЮ
   Widget _buildBiteRecordsTimeline(AppLocalizations localizations) {
-    // Если нет записей, не показываем график
     if (_biteRecords.isEmpty) return const SizedBox();
+
+    // ✅ ФИЛЬТРУЕМ ПОКЛЕВКИ ПО ВЫБРАННОМУ ДНЮ
+    final filteredBiteRecords = _biteRecords.where((record) {
+      return record.dayIndex == _selectedDayIndex;
+    }).toList();
+
+    if (filteredBiteRecords.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('bite_chart'),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: ResponsiveConstants.spacingS),
+          Container(
+            height: 60,
+            padding: EdgeInsets.all(ResponsiveConstants.spacingM),
+            decoration: BoxDecoration(
+              color: const Color(0xFF12332E),
+              borderRadius: BorderRadius.circular(
+                ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                _isMultiDay && _tripDays > 1
+                    ? '${localizations.translate('no_bites_for_day')} ${_selectedDayIndex + 1}'
+                    : localizations.translate('no_bites_yet'),
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     // Создаем временную шкалу от 00:00 до 23:59
     const hoursInDay = 24;
@@ -2245,7 +2446,9 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         Padding(
           padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingS),
           child: Text(
-            localizations.translate('bite_chart'),
+            _isMultiDay && _tripDays > 1
+                ? '${localizations.translate('bite_chart')} - ${_getDayName(_selectedDayIndex)}'
+                : localizations.translate('bite_chart'),
             style: TextStyle(
               color: Colors.white,
               fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
@@ -2275,7 +2478,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                     40,
                   ),
                   painter: _BiteRecordsTimelinePainter(
-                    biteRecords: _biteRecords,
+                    biteRecords: filteredBiteRecords, // ✅ ПЕРЕДАЕМ ОТФИЛЬТРОВАННЫЕ ПОКЛЕВКИ
                     divisions: divisions,
                   ),
                 ),

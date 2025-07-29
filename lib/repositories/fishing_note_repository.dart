@@ -436,7 +436,9 @@ class FishingNoteRepository {
           ..fishWeight = bite.weight
           ..fishLength = bite.length
           ..notes = bite.notes
-          ..photoUrls = bite.photoUrls;
+          ..photoUrls = bite.photoUrls
+          ..dayIndex = bite.dayIndex      // ✅ ДОБАВИТЬ
+          ..spotIndex = bite.spotIndex;   // ✅ ДОБАВИТЬ (точка с запятой только в конце!)
       }).toList();
     }
 
@@ -496,8 +498,8 @@ class FishingNoteRepository {
           weight: bite.fishWeight ?? 0.0,
           length: bite.fishLength ?? 0.0,
           notes: bite.notes ?? '',
-          dayIndex: 0,
-          spotIndex: 0,
+          dayIndex: bite.dayIndex ?? 0,     // ✅ ИСПРАВЛЕНО
+          spotIndex: bite.spotIndex ?? 0,   // ✅ ИСПРАВЛЕНО
           photoUrls: bite.photoUrls,
         );
       }).toList();

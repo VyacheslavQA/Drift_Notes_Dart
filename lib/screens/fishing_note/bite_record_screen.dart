@@ -445,6 +445,9 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
         photoUrls: allPhotoUrls,
       );
 
+      // ✅ ДОБАВИТЬ ЭТОТ ЛОГ:
+      debugPrint('🐛 СОЗДАНИЕ ПОКЛЕВКИ: dayIndex=${_selectedDayIndex}, selectedDay=${_selectedDayIndex + 1}');
+
       if (mounted) {
         Navigator.pop(context, biteRecord);
       }
