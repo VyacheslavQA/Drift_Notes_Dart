@@ -187,6 +187,7 @@ class SyncService {
       ..createdAt = _parseTimestamp(data['createdAt'])
       ..updatedAt = _parseTimestamp(data['updatedAt'])
       ..isSynced = true;
+    entity.userId = _auth.currentUser?.uid ?? '';
 
     // ✅ ДОБАВЛЕНО: Основные недостающие поля
     entity.tackle = data['tackle'];

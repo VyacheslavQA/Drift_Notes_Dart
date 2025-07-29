@@ -62,75 +62,14 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Инициализация локали для форматирования дат
-  await initializeDateFormatting('ru_RU', null);
-  await initializeDateFormatting('en_US', null);
-
-  // Устанавливаем ориентацию экрана только на портретный режим
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  // Показываем системную навигацию
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
-
-  // Запрос разрешений на уведомления ПЕРЕД инициализацией Firebase
-  await _requestNotificationPermissions();
-
-  // Инициализация flutter_local_notifications
-  await _initializeNotifications();
-
-  // Инициализация Firebase с защитой от дублирования
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-  } catch (e) {
-    // Silent error handling for production
-  }
-
-  // ✅ ИСПРАВЛЕНО: Правильная инициализация App Check
-  await _initializeAppCheck();
-
-  // Тест Firebase Auth с диагностикой
-  if (kDebugMode) {
-    await _testFirebaseAuthentication();
-  }
-
-  // Тест подключения к Firebase
-  if (kDebugMode) {
-    try {
-      // Простой тест Auth
-      final auth = FirebaseAuth.instance;
-
-      // Простой тест Firestore
-      final firestore = FirebaseFirestore.instance;
-      await firestore.enableNetwork();
-    } catch (e) {
-      // Silent error handling
-    }
-  }
+  // ✅ ОПТИМИЗИРОВАНО: Только критические операции для быстрого запуска UI
+  await _initializeCriticalOnly();
 
   // Инициализация LanguageProvider ДО создания приложения
   final languageProvider = LanguageProvider();
   await languageProvider.initialize();
 
-  // ✅ ИСПРАВЛЕНО: Инициализация новых Isar сервисов с MarkerMap
-  await _initializeIsarServices();
-
-  // Инициализация сервисов уведомлений
-  await _initializeServices();
-
-  // Инициализация сервисов для офлайн режима (старые)
-  await _initializeOfflineServices();
-
-  // Запуск мониторинга сети
-  _startNetworkMonitoring();
-
-  // Передаем уже инициализированный languageProvider
+  // ✅ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Запускаем приложение СРАЗУ - остальное в фоне
   runApp(
     MultiProvider(
       providers: [
@@ -144,17 +83,211 @@ void main() async {
   );
 }
 
+// ✅ НОВАЯ ФУНКЦИЯ: Только критические операции для быстрого запуска
+Future<void> _initializeCriticalOnly() async {
+  try {
+    // Инициализация локали для форматирования дат
+    await initializeDateFormatting('ru_RU', null);
+    await initializeDateFormatting('en_US', null);
+
+    // Устанавливаем ориентацию экрана только на портретный режим
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    // Показываем системную навигацию
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+
+    // Инициализация Firebase с защитой от дублирования - ТОЛЬКО FIREBASE
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
+    debugPrint('✅ Критические сервисы инициализированы');
+  } catch (e) {
+    debugPrint('❌ Ошибка критической инициализации: $e');
+  }
+}
+
+// ✅ НОВАЯ ФУНКЦИЯ: Асинхронная инициализация всех сервисов в фоне
+Future<void> _initializeAllServicesAsync() async {
+  try {
+    debugPrint('🔄 Начинаем фоновую инициализацию сервисов...');
+
+    // Этап 1: Разрешения и базовые уведомления (критично для работы)
+    await _initializeCriticalServices();
+
+    // Этап 2: App Check и debug тесты (важно для безопасности)
+    await _initializeSecurityServices();
+
+    // Этап 3: Базы данных и репозитории (параллельно)
+    await _initializeDatabaseServices();
+
+    // Этап 4: Сервисы приложения (параллельно с задержками)
+    await _initializeApplicationServices();
+
+    // Этап 5: Офлайн сервисы и сеть (последними)
+    await _initializeNetworkServices();
+
+    debugPrint('✅ Все сервисы инициализированы успешно');
+  } catch (e) {
+    debugPrint('❌ Ошибка фоновой инициализации: $e');
+  }
+}
+
+// Этап 1: Критические сервисы для базовой работы
+Future<void> _initializeCriticalServices() async {
+  try {
+    debugPrint('🔧 Инициализация критических сервисов...');
+
+    // Разрешения на уведомления
+    await _requestNotificationPermissions();
+
+    // Базовые уведомления
+    await _initializeNotifications();
+
+    debugPrint('✅ Критические сервисы готовы');
+  } catch (e) {
+    debugPrint('❌ Ошибка критических сервисов: $e');
+  }
+}
+
+// Этап 2: Сервисы безопасности (асинхронно)
+Future<void> _initializeSecurityServices() async {
+  try {
+    debugPrint('🔐 Инициализация сервисов безопасности...');
+
+    // ✅ ИСПРАВЛЕНО: App Check в микротаске чтобы не блокировать UI
+    Future.microtask(() async {
+      await _initializeAppCheck();
+    });
+
+    // Debug тесты тоже в микротаске
+    if (kDebugMode) {
+      Future.microtask(() async {
+        await _testFirebaseAuthentication();
+        try {
+          final auth = FirebaseAuth.instance;
+          final firestore = FirebaseFirestore.instance;
+          await firestore.enableNetwork();
+        } catch (e) {
+          // Silent error handling
+        }
+      });
+    }
+
+    debugPrint('✅ Сервисы безопасности готовы');
+  } catch (e) {
+    debugPrint('❌ Ошибка сервисов безопасности: $e');
+  }
+}
+
+// Этап 3: Базы данных (параллельно)
+Future<void> _initializeDatabaseServices() async {
+  try {
+    debugPrint('🗄️ Инициализация баз данных...');
+
+    // Инициализируем все БД параллельно
+    final futures = [
+      _initializeIsarServices(),
+      _initializeOfflineServices(),
+    ];
+
+    await Future.wait(futures, eagerError: false);
+    debugPrint('✅ Базы данных готовы');
+  } catch (e) {
+    debugPrint('❌ Ошибка инициализации БД: $e');
+  }
+}
+
+// Этап 4: Сервисы приложения (все в микротасках)
+Future<void> _initializeApplicationServices() async {
+  try {
+    debugPrint('⚙️ Инициализация сервисов приложения...');
+
+    // ✅ ИСПРАВЛЕНО: Все сервисы в микротасках с задержками
+    final criticalServices = [
+          () async {
+        await Future.delayed(Duration(milliseconds: 10));
+        await LocalPushNotificationService().initialize();
+      },
+          () async {
+        await Future.delayed(Duration(milliseconds: 20));
+        await NotificationService().initialize();
+      },
+    ];
+
+    final secondaryServices = [
+          () async {
+        await Future.delayed(Duration(milliseconds: 30));
+        await TimerService().initialize();
+      },
+          () async {
+        await Future.delayed(Duration(milliseconds: 40));
+        await WeatherNotificationService().initialize();
+      },
+          () async {
+        await Future.delayed(Duration(milliseconds: 50));
+        await WeatherSettingsService().initialize();
+      },
+          () async {
+        await Future.delayed(Duration(milliseconds: 60));
+        await ScheduledReminderService().initialize();
+      },
+          () async {
+        await Future.delayed(Duration(milliseconds: 70));
+        await LocationService().initialize();
+      },
+    ];
+
+    // Запускаем все в микротасках
+    criticalServices.forEach((service) {
+      Future.microtask(service);
+    });
+
+    secondaryServices.forEach((service) {
+      Future.microtask(service);
+    });
+
+    // Ждем только первые критические (но не блокируем UI)
+    await Future.delayed(Duration(milliseconds: 100));
+
+    debugPrint('✅ Сервисы приложения готовы');
+  } catch (e) {
+    debugPrint('❌ Ошибка сервисов приложения: $e');
+  }
+}
+
+// Этап 5: Сетевые сервисы
+Future<void> _initializeNetworkServices() async {
+  try {
+    debugPrint('🌐 Инициализация сетевых сервисов...');
+
+    // Запуск мониторинга сети (не блокирующий)
+    _startNetworkMonitoring();
+
+    debugPrint('✅ Сетевые сервисы готовы');
+  } catch (e) {
+    debugPrint('❌ Ошибка сетевых сервисов: $e');
+  }
+}
+
 // ✅ ИСПРАВЛЕНО: Инициализация Isar сервисов с поддержкой MarkerMap
 Future<void> _initializeIsarServices() async {
   try {
     // Инициализация IsarService (теперь поддерживает MarkerMap)
     await IsarService.instance.init();
 
-    // Инициализация FishingNoteRepository
-    await FishingNoteRepository().initialize();
+    // Инициализация репозиториев параллельно
+    final repoFutures = [
+      FishingNoteRepository().initialize(),
+      BudgetNotesRepository().initialize(),
+    ];
 
-    // Инициализация BudgetNotesRepository
-    await BudgetNotesRepository().initialize();
+    await Future.wait(repoFutures, eagerError: false);
 
     // ✅ ИСПРАВЛЕНО: Инициализация MarkerMapRepository (создадим если нет)
     try {
@@ -191,41 +324,6 @@ Future<void> _initializeAppCheck() async {
 
   } catch (e) {
     // Silent error handling for production
-  }
-}
-
-// Инициализация всех сервисов
-Future<void> _initializeServices() async {
-  final services = [
-        () async {
-      await LocalPushNotificationService().initialize();
-    },
-        () async {
-      await NotificationService().initialize();
-    },
-        () async {
-      await TimerService().initialize();
-    },
-        () async {
-      await WeatherNotificationService().initialize();
-    },
-        () async {
-      await WeatherSettingsService().initialize();
-    },
-        () async {
-      await ScheduledReminderService().initialize();
-    },
-        () async {
-      await LocationService().initialize();
-    },
-  ];
-
-  for (final service in services) {
-    try {
-      await service();
-    } catch (e) {
-      // Silent error handling for production
-    }
   }
 }
 
@@ -433,6 +531,9 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void initState() {
     super.initState();
 
+    // ✅ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Запускаем инициализацию сервисов В ФОНЕ
+    _initializeAllServicesInBackground();
+
     WeatherNotificationService.setNavigatorKey(globalNavigatorKey);
 
     _initializeQuickActions();
@@ -443,6 +544,14 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScheduledReminderContext();
       _initializeSubscriptionProvider();
+    });
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Фоновая инициализация без блокировки UI
+  void _initializeAllServicesInBackground() {
+    // Запускаем через микротаск чтобы не блокировать первый кадр
+    Future.microtask(() async {
+      await _initializeAllServicesAsync();
     });
   }
 

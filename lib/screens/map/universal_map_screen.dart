@@ -1,12 +1,12 @@
 // Путь: lib/screens/map/universal_map_screen.dart
-// ИСПРАВЛЕНИЯ ДЛЯ УСТРАНЕНИЯ УТЕЧЕК ПАМЯТИ GPU
+// ✅ ОПТИМИЗИРОВАНО ДЛЯ УСТРАНЕНИЯ JNI БЛОКИРОВОК GOOGLE MAPS
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:async';  // ✅ ДОБАВЛЕНО для Completer
+import 'dart:async';
 import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
 import '../../repositories/fishing_note_repository.dart';
@@ -17,8 +17,8 @@ import '../fishing_note/fishing_type_selection_screen.dart';
 
 // 🎯 РЕЖИМЫ РАБОТЫ УНИВЕРСАЛЬНОЙ КАРТЫ
 enum MapMode {
-  homeView,        // Главная карта - просмотр всех заметок (заменяет MapScreen)
-  selectLocation,  // Выбор точки для новой заметки (заменяет MapLocationScreen)
+  homeView,        // Главная карта - просмотр всех заметок
+  selectLocation,  // Выбор точки для новой заметки
   editLocation,    // Изменение точки существующей заметки
 }
 
@@ -26,7 +26,7 @@ class UniversalMapScreen extends StatefulWidget {
   final MapMode mode;
   final double? initialLatitude;
   final double? initialLongitude;
-  final String? noteId;  // Для режима редактирования
+  final String? noteId;
 
   const UniversalMapScreen({
     super.key,
@@ -43,17 +43,23 @@ class UniversalMapScreen extends StatefulWidget {
 class _UniversalMapScreenState extends State<UniversalMapScreen> {
   final _fishingNoteRepository = FishingNoteRepository();
 
-  // ✅ ИСПРАВЛЕНО: Используем Completer для безопасной работы с контроллером
+  // ✅ ОПТИМИЗИРОВАНО: Контроллер карты
   final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
 
-  final Set<Marker> _markers = {};
+  // ✅ ОПТИМИЗИРОВАНО: Управление маркерами
+  final Set<Marker> _visibleMarkers = {};
+  final Map<String, Marker> _markerPool = {}; // Пул для переиспользования
   bool _isLoading = true;
   bool _errorLoadingMap = false;
   String _errorMessage = '';
-  bool _isDisposed = false;  // ✅ ДОБАВЛЕНО: флаг для проверки disposed состояния
+  bool _isDisposed = false;
 
-  // Общие настройки карты
+  // ✅ ОПТИМИЗИРОВАНО: Throttling для операций с картой
+  Timer? _mapOperationTimer;
+  Timer? _markerUpdateTimer;
+
+  // Настройки карты
   MapType _currentMapType = MapType.normal;
   bool _showCoordinates = false;
 
@@ -63,63 +69,54 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     zoom: 11.0,
   );
 
-  // Для режима homeView - заметки рыбалки
+  // Данные
   List<FishingNoteModel> _fishingNotes = [];
-
-  // Для режимов selectLocation и editLocation - выбранная позиция
   LatLng _selectedPosition = const LatLng(52.2788, 76.9419);
+
+  // ✅ ОПТИМИЗИРОВАНО: Виртуализация маркеров
+  static const int _maxVisibleMarkers = 50;
+  static const int _markerBatchSize = 10;
 
   @override
   void initState() {
     super.initState();
-    _initializeMap();
+    // ✅ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Отложенная инициализация
+    _deferredInitialization();
   }
 
-  // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильное освобождение ресурсов
+  // ✅ НОВЫЙ МЕТОД: Отложенная инициализация для предотвращения блокировок
+  void _deferredInitialization() {
+    // Запускаем инициализацию в следующем кадре
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isDisposed) {
+        _initializeMapAsync();
+      }
+    });
+  }
+
   @override
   void dispose() {
     debugPrint('🗺️ UniversalMapScreen: Начинаем dispose...');
     _isDisposed = true;
 
-    // Очищаем маркеры немедленно
-    _markers.clear();
+    // ✅ ОПТИМИЗИРОВАНО: Отмена всех таймеров
+    _mapOperationTimer?.cancel();
+    _markerUpdateTimer?.cancel();
 
-    // Обнуляем контроллер
+    // Очищаем маркеры и пул
+    _visibleMarkers.clear();
+    _markerPool.clear();
+
+    // Освобождаем контроллер
     _mapController = null;
-
-    // Освобождаем ресурсы асинхронно
-    _disposeMapResources();
 
     debugPrint('🗺️ UniversalMapScreen: dispose завершен');
     super.dispose();
   }
 
-  // ✅ НОВЫЙ МЕТОД: Асинхронное освобождение ресурсов карты
-  Future<void> _disposeMapResources() async {
-    try {
-      debugPrint('🗺️ Очищаем маркеры...');
-
-      // Очищаем маркеры немедленно
-      _markers.clear();
-
-      // Освобождаем контроллер карты
-      if (_controller.isCompleted) {
-        debugPrint('🗺️ Освобождаем контроллер карты...');
-        // GoogleMapController не имеет метода dispose(), просто обнуляем ссылку
-        _mapController = null;
-        debugPrint('🗺️ Контроллер карты освобожден');
-      }
-
-      debugPrint('🗺️ UniversalMapScreen: dispose завершен успешно');
-    } catch (e) {
-      debugPrint('❌ Ошибка при dispose карты: $e');
-    }
-  }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Обновляем ошибки с локализацией
     if (_errorLoadingMap && _errorMessage == 'Google Maps API ключ не настроен') {
       final localizations = AppLocalizations.of(context);
       if (mounted && !_isDisposed) {
@@ -130,25 +127,46 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
-  // 🚀 ИНИЦИАЛИЗАЦИЯ КАРТЫ В ЗАВИСИМОСТИ ОТ РЕЖИМА
-  Future<void> _initializeMap() async {
+  // ✅ ОПТИМИЗИРОВАНО: Асинхронная инициализация карты
+  Future<void> _initializeMapAsync() async {
     if (_isDisposed) return;
 
-    await _loadSavedMapType();
+    try {
+      // Загружаем настройки карты в фоне
+      _loadSavedMapTypeAsync();
 
-    // Проверяем API ключ
-    if (!ApiKeys.hasGoogleMapsKey) {
+      // Проверяем API ключ
+      if (!ApiKeys.hasGoogleMapsKey) {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _isLoading = false;
+            _errorLoadingMap = true;
+            _errorMessage = 'Google Maps API ключ не настроен';
+          });
+        }
+        return;
+      }
+
+      // Устанавливаем начальную позицию
+      _setInitialPosition();
+
+      // Инициализируем режим в микротаске
+      Future.microtask(() => _initializeByMode());
+
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации карты: $e');
       if (mounted && !_isDisposed) {
         setState(() {
           _isLoading = false;
           _errorLoadingMap = true;
-          _errorMessage = 'Google Maps API ключ не настроен';
+          _errorMessage = 'Ошибка инициализации: $e';
         });
       }
-      return;
     }
+  }
 
-    // Устанавливаем начальную позицию если есть
+  // ✅ ОПТИМИЗИРОВАНО: Установка начальной позиции без блокировок
+  void _setInitialPosition() {
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
       _selectedPosition = LatLng(widget.initialLatitude!, widget.initialLongitude!);
       _initialPosition = CameraPosition(
@@ -156,107 +174,106 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         zoom: widget.mode == MapMode.homeView ? 11.0 : 15.0,
       );
     }
-
-    // Инициализируем в зависимости от режима
-    switch (widget.mode) {
-      case MapMode.homeView:
-        await _initializeHomeView();
-        break;
-      case MapMode.selectLocation:
-        await _initializeLocationSelection();
-        break;
-      case MapMode.editLocation:
-        await _initializeLocationEditing();
-        break;
-    }
   }
 
-  // 🏠 ИНИЦИАЛИЗАЦИЯ РЕЖИМА ПРОСМОТРА ЗАМЕТОК
-  Future<void> _initializeHomeView() async {
+  // ✅ ОПТИМИЗИРОВАНО: Инициализация по режимам без блокировок
+  Future<void> _initializeByMode() async {
     if (_isDisposed) return;
 
     try {
-      await _loadUserLocationWithoutLocalization();
-      await _loadFishingSpotsWithoutLocalization();
-    } catch (e) {
-      debugPrint('Ошибка инициализации режима просмотра: $e');
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-          _errorLoadingMap = true;
-          _errorMessage = 'Ошибка загрузки карты: $e';
-        });
+      switch (widget.mode) {
+        case MapMode.homeView:
+          await _initializeHomeViewAsync();
+          break;
+        case MapMode.selectLocation:
+          await _initializeLocationSelectionAsync();
+          break;
+        case MapMode.editLocation:
+          await _initializeLocationEditingAsync();
+          break;
       }
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации режима: $e');
     }
   }
 
-  // 📍 ИНИЦИАЛИЗАЦИЯ РЕЖИМА ВЫБОРА ТОЧКИ
-  Future<void> _initializeLocationSelection() async {
+  // ✅ ОПТИМИЗИРОВАНО: Инициализация домашнего режима без блокировок UI
+  Future<void> _initializeHomeViewAsync() async {
     if (_isDisposed) return;
 
+    // Запускаем операции параллельно в микротасках
+    final futures = <Future>[
+      Future.microtask(() => _loadUserLocationSafe()),
+      Future.microtask(() => _loadFishingSpotsAsync()),
+    ];
+
     try {
-      if (widget.initialLatitude != null && widget.initialLongitude != null) {
-        // Есть начальные координаты - используем их
-        _updateLocationMarker();
+      await Future.wait(futures, eagerError: false);
+    } catch (e) {
+      debugPrint('❌ Ошибка домашнего режима: $e');
+    }
+
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ✅ ОПТИМИЗИРОВАНО: Инициализация выбора локации
+  Future<void> _initializeLocationSelectionAsync() async {
+    if (_isDisposed) return;
+
+    if (widget.initialLatitude != null && widget.initialLongitude != null) {
+      // Есть координаты - обновляем маркер в микротаске
+      Future.microtask(() => _updateLocationMarkerSafe());
+    } else {
+      // Определяем позицию в фоне
+      Future.microtask(() => _determineCurrentPositionSafe());
+    }
+
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ✅ ОПТИМИЗИРОВАНО: Инициализация редактирования локации
+  Future<void> _initializeLocationEditingAsync() async {
+    if (_isDisposed) return;
+
+    if (widget.initialLatitude != null && widget.initialLongitude != null) {
+      _selectedPosition = LatLng(widget.initialLatitude!, widget.initialLongitude!);
+      Future.microtask(() => _updateLocationMarkerSafe());
+    }
+
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ✅ ОПТИМИЗИРОВАНО: Загрузка настроек карты асинхронно
+  void _loadSavedMapTypeAsync() {
+    Future.microtask(() async {
+      if (_isDisposed) return;
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final key = widget.mode == MapMode.homeView ? 'map_type' : 'location_map_type';
+        final savedMapTypeIndex = prefs.getInt(key) ?? 0;
+
         if (mounted && !_isDisposed) {
           setState(() {
-            _isLoading = false;
+            _currentMapType = MapType.values[savedMapTypeIndex];
           });
         }
-      } else {
-        // Определяем текущее местоположение
-        await _determineCurrentPosition();
+      } catch (e) {
+        debugPrint('❌ Ошибка загрузки типа карты: $e');
       }
-    } catch (e) {
-      debugPrint('Ошибка инициализации выбора точки: $e');
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // ✏️ ИНИЦИАЛИЗАЦИЯ РЕЖИМА РЕДАКТИРОВАНИЯ ТОЧКИ
-  Future<void> _initializeLocationEditing() async {
-    if (_isDisposed) return;
-
-    try {
-      if (widget.initialLatitude != null && widget.initialLongitude != null) {
-        _selectedPosition = LatLng(widget.initialLatitude!, widget.initialLongitude!);
-        _updateLocationMarker();
-      }
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Ошибка инициализации редактирования: $e');
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // 💾 ЗАГРУЗКА/СОХРАНЕНИЕ НАСТРОЕК КАРТЫ
-  Future<void> _loadSavedMapType() async {
-    if (_isDisposed) return;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = widget.mode == MapMode.homeView ? 'map_type' : 'location_map_type';
-      final savedMapTypeIndex = prefs.getInt(key) ?? 0;
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _currentMapType = MapType.values[savedMapTypeIndex];
-        });
-      }
-    } catch (e) {
-      debugPrint('Ошибка при загрузке типа карты: $e');
-    }
+    });
   }
 
   Future<void> _saveMapType(MapType mapType) async {
@@ -265,7 +282,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       final key = widget.mode == MapMode.homeView ? 'map_type' : 'location_map_type';
       await prefs.setInt(key, mapType.index);
     } catch (e) {
-      debugPrint('Ошибка при сохранении типа карты: $e');
+      debugPrint('❌ Ошибка сохранения типа карты: $e');
     }
   }
 
@@ -278,412 +295,211 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     _saveMapType(_currentMapType);
   }
 
-  // 🌍 РАБОТА С ГЕОЛОКАЦИЕЙ
-  Future<void> _loadUserLocationWithoutLocalization() async {
+  // ✅ ОПТИМИЗИРОВАНО: Безопасная загрузка локации пользователя
+  Future<void> _loadUserLocationSafe() async {
     if (_isDisposed) return;
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _errorLoadingMap = true;
-            _errorMessage = 'Службы геолокации отключены';
-          });
-        }
-        return;
-      }
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted && !_isDisposed) {
-            setState(() {
-              _errorLoadingMap = true;
-              _errorMessage = 'Разрешение на геолокацию отклонено';
-            });
-          }
-          return;
-        }
+        if (permission == LocationPermission.denied) return;
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _errorLoadingMap = true;
-            _errorMessage = 'Разрешение на геолокацию отклонено навсегда';
-          });
-        }
-        return;
-      }
+      if (permission == LocationPermission.deniedForever) return;
 
-      Position position = await Geolocator.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition();
 
       if (mounted && !_isDisposed) {
-        setState(() {
-          _initialPosition = CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: 11.0,
-          );
-
-          // Добавляем маркер текущей позиции только в режиме homeView
-          if (widget.mode == MapMode.homeView) {
-            _addMarkerSafely(
-              Marker(
-                markerId: const MarkerId('currentLocation'),
-                position: LatLng(position.latitude, position.longitude),
-                infoWindow: const InfoWindow(title: 'Ваше местоположение'),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-              ),
-            );
-          }
-
-          _isLoading = false;
-        });
-
-        _animateCameraSafely(CameraUpdate.newCameraPosition(_initialPosition));
-      }
-    } catch (e) {
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _errorLoadingMap = true;
-          _errorMessage = 'Ошибка определения местоположения: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // ✅ НОВЫЙ МЕТОД: Безопасное добавление маркеров
-  void _addMarkerSafely(Marker marker) {
-    if (_isDisposed) return;
-    _markers.add(marker);
-  }
-
-  // ✅ НОВЫЙ МЕТОД: Безопасная анимация камеры
-  Future<void> _animateCameraSafely(CameraUpdate cameraUpdate) async {
-    if (_isDisposed) return;
-
-    try {
-      if (_controller.isCompleted) {
-        final controller = await _controller.future;
-        await controller.animateCamera(cameraUpdate);
-      }
-    } catch (e) {
-      debugPrint('Ошибка анимации камеры: $e');
-    }
-  }
-
-  Future<void> _loadUserLocation() async {
-    if (_isDisposed) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _errorLoadingMap = true;
-            _errorMessage = localizations.translate('location_services_disabled');
-          });
-        }
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted && !_isDisposed) {
-            setState(() {
-              _errorLoadingMap = true;
-              _errorMessage = localizations.translate('location_permission_denied');
-            });
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _errorLoadingMap = true;
-            _errorMessage = localizations.translate('location_permission_denied_forever');
-          });
-        }
-        return;
-      }
-
-      Position position = await Geolocator.getCurrentPosition();
-
-      if (mounted && !_isDisposed) {
-        if (widget.mode == MapMode.homeView) {
-          // В режиме просмотра - обновляем маркер текущей позиции
-          setState(() {
-            _initialPosition = CameraPosition(
-              target: LatLng(position.latitude, position.longitude),
-              zoom: 11.0,
-            );
-
-            _markers.removeWhere((marker) => marker.markerId.value == 'currentLocation');
-            _addMarkerSafely(
-              Marker(
-                markerId: const MarkerId('currentLocation'),
-                position: LatLng(position.latitude, position.longitude),
-                infoWindow: InfoWindow(title: localizations.translate('your_location')),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-              ),
-            );
-
-            _isLoading = false;
-            _errorLoadingMap = false;
-            _errorMessage = '';
-          });
-        } else {
-          // В режимах выбора/редактирования - перемещаем выбранную точку
-          setState(() {
-            _selectedPosition = LatLng(position.latitude, position.longitude);
-            _isLoading = false;
-            _errorLoadingMap = false;
-            _errorMessage = '';
-          });
-          _updateLocationMarker();
-        }
-
-        _animateCameraSafely(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: widget.mode == MapMode.homeView
-                  ? LatLng(position.latitude, position.longitude)
-                  : _selectedPosition,
-              zoom: widget.mode == MapMode.homeView ? 11.0 : 15.0,
-            ),
-          ),
+        _initialPosition = CameraPosition(
+          target: LatLng(position.latitude, position.longitude),
+          zoom: 11.0,
         );
+
+        // Добавляем маркер текущей позиции в пул
+        if (widget.mode == MapMode.homeView) {
+          _addMarkerToPool(
+            'currentLocation',
+            Marker(
+              markerId: const MarkerId('currentLocation'),
+              position: LatLng(position.latitude, position.longitude),
+              infoWindow: const InfoWindow(title: 'Ваше местоположение'),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+            ),
+          );
+          _updateVisibleMarkers();
+        }
+
+        // Анимируем камеру через throttling
+        _scheduleMapOperation(() => _animateCamera(_initialPosition));
       }
     } catch (e) {
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _errorLoadingMap = true;
-          _errorMessage = '${localizations.translate('location_error')}: $e';
-          _isLoading = false;
-        });
-      }
+      debugPrint('❌ Ошибка определения местоположения: $e');
     }
   }
 
-  Future<void> _determineCurrentPosition() async {
+  // ✅ ОПТИМИЗИРОВАНО: Асинхронная загрузка точек рыбалки порциями
+  Future<void> _loadFishingSpotsAsync() async {
     if (_isDisposed) return;
 
-    setState(() {
-      _isLoading = true;
+    try {
+      final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
+      final notesWithCoordinates = fishingNotes
+          .where((note) => note.latitude != 0 && note.longitude != 0)
+          .toList();
+
+      _fishingNotes = notesWithCoordinates;
+
+      // ✅ КЛЮЧЕВАЯ ОПТИМИЗАЦИЯ: Загружаем маркеры порциями
+      await _loadMarkersInBatches(notesWithCoordinates);
+
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки точек рыбалки: $e');
+    }
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Загрузка маркеров порциями для предотвращения JNI блокировок
+  Future<void> _loadMarkersInBatches(List<FishingNoteModel> notes) async {
+    if (_isDisposed) return;
+
+    for (int i = 0; i < notes.length; i += _markerBatchSize) {
+      if (_isDisposed) break;
+
+      final batch = notes.skip(i).take(_markerBatchSize);
+
+      // Создаем маркеры для текущей порции
+      for (final note in batch) {
+        final marker = Marker(
+          markerId: MarkerId(note.id),
+          position: LatLng(note.latitude, note.longitude),
+          infoWindow: InfoWindow(
+            title: note.location,
+            snippet: note.isMultiDay
+                ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
+                : 'Дата: ${note.date.day}.${note.date.month}.${note.date.year}',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          onTap: () => _showFishingNoteInfo(note),
+        );
+
+        _addMarkerToPool(note.id, marker);
+      }
+
+      // ✅ КРИТИЧНО: Даем UI потоку время на обработку между порциями
+      await Future.delayed(const Duration(milliseconds: 16)); // ~60 FPS
+    }
+
+    // Обновляем видимые маркеры после загрузки всех
+    _scheduleMarkerUpdate();
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Управление пулом маркеров
+  void _addMarkerToPool(String id, Marker marker) {
+    if (_isDisposed) return;
+    _markerPool[id] = marker;
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Обновление видимых маркеров с лимитом
+  void _updateVisibleMarkers() {
+    if (_isDisposed) return;
+
+    final markers = _markerPool.values.take(_maxVisibleMarkers).toSet();
+
+    if (mounted) {
+      setState(() {
+        _visibleMarkers.clear();
+        _visibleMarkers.addAll(markers);
+      });
+    }
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Throttling обновления маркеров
+  void _scheduleMarkerUpdate() {
+    _markerUpdateTimer?.cancel();
+    _markerUpdateTimer = Timer(const Duration(milliseconds: 100), () {
+      if (!_isDisposed) {
+        _updateVisibleMarkers();
+      }
     });
+  }
+
+  // ✅ НОВЫЙ МЕТОД: Throttling операций с картой
+  void _scheduleMapOperation(VoidCallback operation) {
+    _mapOperationTimer?.cancel();
+    _mapOperationTimer = Timer(const Duration(milliseconds: 50), operation);
+  }
+
+  // ✅ ОПТИМИЗИРОВАНО: Безопасная анимация камеры без блокировок
+  Future<void> _animateCamera(CameraPosition position) async {
+    if (_isDisposed) return;
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _isLoading = false;
-          });
-          _showLocationError('Location services are disabled');
-        }
-        return;
+      if (_controller.isCompleted && _mapController != null) {
+        await _mapController!.animateCamera(CameraUpdate.newCameraPosition(position));
       }
+    } catch (e) {
+      debugPrint('❌ Ошибка анимации камеры: $e');
+    }
+  }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+  // ✅ ОПТИМИЗИРОВАНО: Безопасное определение текущей позиции
+  Future<void> _determineCurrentPositionSafe() async {
+    if (_isDisposed) return;
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted && !_isDisposed) {
-            setState(() {
-              _isLoading = false;
-            });
-            _showLocationError('Location permissions are denied');
-          }
-          return;
-        }
+        if (permission == LocationPermission.denied) return;
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _isLoading = false;
-          });
-          _showLocationError('Location permissions are permanently denied');
-        }
-        return;
-      }
+      if (permission == LocationPermission.deniedForever) return;
 
       final position = await Geolocator.getCurrentPosition();
 
       if (mounted && !_isDisposed) {
         setState(() {
           _selectedPosition = LatLng(position.latitude, position.longitude);
-          _isLoading = false;
         });
 
-        _updateLocationMarker();
-
-        _animateCameraSafely(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: _selectedPosition, zoom: 15.0),
-          ),
-        );
+        _updateLocationMarkerSafe();
+        _scheduleMapOperation(() => _animateCamera(
+          CameraPosition(target: _selectedPosition, zoom: 15.0),
+        ));
       }
     } catch (e) {
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-        });
-        _showLocationError('Error getting location: $e');
-      }
+      debugPrint('❌ Ошибка определения позиции: $e');
     }
   }
 
-  void _showLocationError(String fallbackMessage) {
+  // ✅ ОПТИМИЗИРОВАНО: Безопасное обновление маркера локации
+  void _updateLocationMarkerSafe() {
     if (_isDisposed) return;
 
-    try {
-      final localizations = AppLocalizations.of(context);
-      final localizedMessage = _getLocalizedError(fallbackMessage, localizations);
+    final marker = Marker(
+      markerId: const MarkerId('selected_location'),
+      position: _selectedPosition,
+      draggable: true,
+      onDragEnd: (newPosition) {
+        if (!_isDisposed) {
+          setState(() {
+            _selectedPosition = newPosition;
+          });
+        }
+      },
+    );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizedMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(fallbackMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    _addMarkerToPool('selected_location', marker);
+    _scheduleMarkerUpdate();
   }
 
-  String _getLocalizedError(String fallbackMessage, AppLocalizations localizations) {
-    if (fallbackMessage.contains('disabled')) {
-      return localizations.translate('location_services_disabled') ?? 'Location services are disabled';
-    } else if (fallbackMessage.contains('denied')) {
-      return localizations.translate('location_permissions_denied') ?? 'Location permissions denied';
-    } else if (fallbackMessage.contains('permanently')) {
-      return localizations.translate('location_permissions_permanently_denied') ?? 'Location permissions permanently denied';
-    } else {
-      return localizations.translate('error_loading') ?? fallbackMessage;
-    }
-  }
-
-  // 🎣 РАБОТА С ЗАМЕТКАМИ РЫБАЛКИ (для режима homeView)
-  Future<void> _loadFishingSpotsWithoutLocalization() async {
-    if (_isDisposed) return;
-
-    try {
-      final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
-      final notesWithCoordinates = fishingNotes
-          .where((note) => note.latitude != 0 && note.longitude != 0)
-          .toList();
-
-      _fishingNotes = notesWithCoordinates;
-
-      for (var note in notesWithCoordinates) {
-        _addMarkerSafely(
-          Marker(
-            markerId: MarkerId(note.id),
-            position: LatLng(note.latitude, note.longitude),
-            infoWindow: InfoWindow(
-              title: note.location,
-              snippet: note.isMultiDay
-                  ? 'Дата: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
-                  : 'Дата: ${note.date.day}.${note.date.month}.${note.date.year}',
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-            onTap: () => _showFishingNoteInfo(note),
-          ),
-        );
-      }
-
-      if (mounted && !_isDisposed) {
-        setState(() {});
-      }
-    } catch (e) {
-      debugPrint('Ошибка при загрузке точек рыбалки: $e');
-    }
-  }
-
-  Future<void> _loadFishingSpots() async {
-    if (_isDisposed) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      final fishingNotes = await _fishingNoteRepository.getUserFishingNotes();
-      final notesWithCoordinates = fishingNotes
-          .where((note) => note.latitude != 0 && note.longitude != 0)
-          .toList();
-
-      _fishingNotes = notesWithCoordinates;
-
-      _markers.removeWhere((marker) => marker.markerId.value != 'currentLocation');
-
-      for (var note in notesWithCoordinates) {
-        _addMarkerSafely(
-          Marker(
-            markerId: MarkerId(note.id),
-            position: LatLng(note.latitude, note.longitude),
-            infoWindow: InfoWindow(
-              title: note.location,
-              snippet: note.isMultiDay
-                  ? '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year} - ${note.endDate!.day}.${note.endDate!.month}.${note.endDate!.day}'
-                  : '${localizations.translate('date')}: ${note.date.day}.${note.date.month}.${note.date.year}',
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-            onTap: () => _showFishingNoteInfo(note),
-          ),
-        );
-      }
-
-      if (mounted && !_isDisposed) {
-        setState(() {});
-      }
-    } catch (e) {
-      if (mounted && !_isDisposed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.translate('error_loading_fishing_spots')}: $e'),
-          ),
-        );
-      }
-    }
-  }
-
-  // 📍 РАБОТА С ВЫБОРОМ ТОЧКИ (для режимов selectLocation и editLocation)
-  void _updateLocationMarker() {
-    if (_isDisposed) return;
-
-    setState(() {
-      _markers.removeWhere((marker) => marker.markerId.value == 'selected_location');
-      _addMarkerSafely(
-        Marker(
-          markerId: const MarkerId('selected_location'),
-          position: _selectedPosition,
-          draggable: true,
-          onDragEnd: (newPosition) {
-            if (!_isDisposed) {
-              setState(() {
-                _selectedPosition = newPosition;
-              });
-            }
-          },
-        ),
-      );
-    });
-  }
-
+  // ✅ ОПТИМИЗИРОВАНО: Обработка нажатий на карту
   void _onMapTapped(LatLng position) {
     if (_isDisposed) return;
 
@@ -691,11 +507,51 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       setState(() {
         _selectedPosition = position;
       });
-      _updateLocationMarker();
+      _updateLocationMarkerSafe();
     }
   }
 
-  // 💾 СОХРАНЕНИЕ ВЫБРАННОЙ ТОЧКИ
+  // ✅ ОПТИМИЗИРОВАНО: Создание карты с отложенной инициализацией
+  void _onMapCreated(GoogleMapController controller) {
+    debugPrint('🗺️ Карта создана, инициализируем контроллер...');
+
+    if (!_controller.isCompleted && !_isDisposed) {
+      _controller.complete(controller);
+      _mapController = controller;
+
+      // Финальная инициализация в микротаске
+      Future.microtask(() {
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      });
+
+      debugPrint('🗺️ Контроллер карты успешно инициализирован');
+    }
+  }
+
+  // ✅ ОПТИМИЗИРОВАНО: Операции зума через throttling
+  void _zoomIn() {
+    if (_isDisposed) return;
+    _scheduleMapOperation(() async {
+      if (_mapController != null) {
+        await _mapController!.animateCamera(CameraUpdate.zoomIn());
+      }
+    });
+  }
+
+  void _zoomOut() {
+    if (_isDisposed) return;
+    _scheduleMapOperation(() async {
+      if (_mapController != null) {
+        await _mapController!.animateCamera(CameraUpdate.zoomOut());
+      }
+    });
+  }
+
+  // Сохранение выбранной точки
   void _saveLocation() {
     if (_isDisposed) return;
 
@@ -705,39 +561,9 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     });
   }
 
-  // 🗺️ УПРАВЛЕНИЕ КАРТОЙ
-  void _onMapCreated(GoogleMapController controller) {
-    debugPrint('🗺️ Карта создана, инициализируем контроллер...');
-
-    if (!_controller.isCompleted && !_isDisposed) {
-      _controller.complete(controller);
-      _mapController = controller;
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-
-      debugPrint('🗺️ Контроллер карты успешно инициализирован');
-    }
-  }
-
-  void _zoomIn() {
-    if (_isDisposed) return;
-    _animateCameraSafely(CameraUpdate.zoomIn());
-  }
-
-  void _zoomOut() {
-    if (_isDisposed) return;
-    _animateCameraSafely(CameraUpdate.zoomOut());
-  }
-
-  // 🔄 ПОВТОРНАЯ ЗАГРУЗКА
+  // ✅ ОПТИМИЗИРОВАНО: Повторная загрузка без блокировок
   void _retryLoading() {
     if (_isDisposed) return;
-
-    final localizations = AppLocalizations.of(context);
 
     if (!ApiKeys.hasGoogleMapsKey) {
       _showApiKeyInfo();
@@ -750,16 +576,8 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       _errorMessage = '';
     });
 
-    switch (widget.mode) {
-      case MapMode.homeView:
-        _loadUserLocation();
-        _loadFishingSpots();
-        break;
-      case MapMode.selectLocation:
-      case MapMode.editLocation:
-        _loadUserLocation();
-        break;
-    }
+    // Перезапускаем инициализацию асинхронно
+    Future.microtask(() => _initializeMapAsync());
   }
 
   void _showApiKeyInfo() {
@@ -811,7 +629,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     );
   }
 
-  // 🎣 ИНФОРМАЦИЯ О ЗАМЕТКЕ РЫБАЛКИ (только для режима homeView)
+  // Информация о заметке рыбалки
   void _showFishingNoteInfo(FishingNoteModel note) {
     if (_isDisposed) return;
 
@@ -988,7 +806,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
-  // 🧭 НАВИГАЦИЯ К МЕСТУ РЫБАЛКИ
+  // Навигация к месту рыбалки
   Future<void> _navigateToFishingSpot(FishingNoteModel note) async {
     if (_isDisposed) return;
 
@@ -1240,7 +1058,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
-  // 🎯 ДИНАМИЧЕСКИЙ ЗАГОЛОВОК В ЗАВИСИМОСТИ ОТ РЕЖИМА
+  // UI методы
   String _getAppBarTitle() {
     final localizations = AppLocalizations.of(context);
 
@@ -1254,7 +1072,6 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
-  // 🎨 ДИНАМИЧЕСКИЕ ДЕЙСТВИЯ В ЗАВИСИМОСТИ ОТ РЕЖИМА
   List<Widget> _getAppBarActions() {
     final localizations = AppLocalizations.of(context);
 
@@ -1279,7 +1096,6 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     }
   }
 
-  // 🎈 ДИНАМИЧЕСКИЙ FAB В ЗАВИСИМОСТИ ОТ РЕЖИМА
   Widget? _getFloatingActionButton() {
     final localizations = AppLocalizations.of(context);
 
@@ -1296,7 +1112,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
           child: FloatingActionButton(
             backgroundColor: AppConstants.primaryColor,
             foregroundColor: AppConstants.textColor,
-            onPressed: _loadUserLocation,
+            onPressed: () => Future.microtask(() => _loadUserLocationSafe()),
             tooltip: localizations.translate('my_location'),
             child: const Icon(Icons.my_location),
           ),
@@ -1306,7 +1122,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
         return FloatingActionButton(
           backgroundColor: AppConstants.primaryColor,
           foregroundColor: AppConstants.textColor,
-          onPressed: _determineCurrentPosition,
+          onPressed: () => Future.microtask(() => _determineCurrentPositionSafe()),
           heroTag: 'location_button',
           child: const Icon(Icons.my_location),
         );
@@ -1321,19 +1137,6 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       case MapMode.editLocation:
         return FloatingActionButtonLocation.startFloat;
     }
-  }
-
-  // 🎯 СОЗДАНИЕ ЗАМЕТКИ (только для режима homeView)
-  void _navigateToCreateNote() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const FishingTypeSelectionScreen(),
-      ),
-    ).then((_) {
-      // Обновляем карту после создания заметки
-      _loadFishingSpots();
-    });
   }
 
   @override
@@ -1449,7 +1252,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
                 : GoogleMap(
               onMapCreated: _onMapCreated,
               initialCameraPosition: _initialPosition,
-              markers: _markers,
+              markers: _visibleMarkers, // ✅ ОПТИМИЗИРОВАНО: Используем только видимые маркеры
               onTap: _onMapTapped,
               myLocationEnabled: true,
               myLocationButtonEnabled: false,
@@ -1511,7 +1314,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
                 ),
               ),
 
-            // Кнопки зума (только для режимов выбора точки)
+            // Кнопки зума
             if ((widget.mode == MapMode.selectLocation || widget.mode == MapMode.editLocation) &&
                 !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
               Positioned(
@@ -1590,7 +1393,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
                 ),
               ),
 
-            // Кнопка показа координат (только для режимов выбора точки)
+            // Кнопка показа координат
             if ((widget.mode == MapMode.selectLocation || widget.mode == MapMode.editLocation) &&
                 !_isLoading && !_errorLoadingMap && ApiKeys.hasGoogleMapsKey)
               Positioned(
@@ -1612,7 +1415,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
                 ),
               ),
 
-            // Панель координат (только для режимов выбора точки)
+            // Панель координат
             if (_showCoordinates &&
                 (widget.mode == MapMode.selectLocation || widget.mode == MapMode.editLocation))
               Positioned(
@@ -1712,7 +1515,6 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
       )
           : null,
 
-      // FAB для создания заметки (только в режиме homeView)
       extendBody: widget.mode == MapMode.homeView,
     );
   }
