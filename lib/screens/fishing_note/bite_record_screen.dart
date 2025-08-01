@@ -1,10 +1,8 @@
 // Путь: lib/screens/fishing_note/bite_record_screen.dart
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
@@ -44,8 +42,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
   final _firebaseService = FirebaseService();
 
   DateTime _selectedTime = DateTime.now();
-  final List<File> _selectedPhotos = []; // Для новых фото
-  final List<String> _existingPhotoUrls = []; // Для существующих фото
   bool _isLoading = false;
   bool _isEditing = false;
 
@@ -91,7 +87,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
     // Установка времени
     if (_isEditing) {
       _selectedTime = widget.initialRecord!.time;
-      _existingPhotoUrls.addAll(widget.initialRecord!.photoUrls);
     }
 
     // Инициализация дней рыбалки и автоматический выбор дня
@@ -279,129 +274,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
     }
   }
 
-  // Метод для выбора фото из галереи
-  Future<void> _pickImages() async {
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      final picker = ImagePicker();
-      final pickedFiles = await picker.pickMultiImage(
-        imageQuality: 70, // Компрессия для оптимизации размера
-      );
-
-      if (pickedFiles.isNotEmpty) {
-        setState(() {
-          // Добавляем новые фото к уже существующим
-          _selectedPhotos.addAll(
-            pickedFiles.map((xFile) => File(xFile.path)).toList(),
-          );
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${localizations.translate('error_selecting_images')}: $e',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  // Сделать фото с камеры
-  Future<void> _takePhoto() async {
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 70,
-      );
-
-      if (pickedFile != null) {
-        setState(() {
-          _selectedPhotos.add(File(pickedFile.path));
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${localizations.translate('error_taking_photo')}: $e',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  // Удаление фото из списка
-  void _removePhoto(int index, bool isExisting) {
-    setState(() {
-      if (isExisting) {
-        _existingPhotoUrls.removeAt(index);
-      } else {
-        _selectedPhotos.removeAt(index);
-      }
-    });
-  }
-
-  // Загрузка выбранных фото в Firebase Storage
-  Future<List<String>> _uploadPhotos() async {
-    if (_selectedPhotos.isEmpty) return [];
-
-    final List<String> photoUrls = [];
-
-    try {
-      setState(() => _isLoading = true);
-
-      for (var photo in _selectedPhotos) {
-        try {
-          final bytes = await photo.readAsBytes();
-          final fileName =
-              '${DateTime.now().millisecondsSinceEpoch}_${_selectedPhotos.indexOf(photo)}.jpg';
-          final userId = _firebaseService.currentUserId;
-
-          if (userId == null) {
-            if (mounted) {
-              throw Exception(
-                AppLocalizations.of(context).translate('user_not_found'),
-              );
-            }
-            return [];
-          }
-
-          final path = 'users/$userId/bite_photos/$fileName';
-          final url = await _firebaseService.uploadImage(path, bytes);
-          photoUrls.add(url);
-        } catch (e) {
-          debugPrint('Error uploading image: $e');
-        }
-      }
-
-      return photoUrls;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${AppLocalizations.of(context).translate('error_loading_image')}: $e',
-            ),
-          ),
-        );
-      }
-      return [];
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   // Сохранение записи о поклёвке
   Future<void> _saveBiteRecord() async {
     final localizations = AppLocalizations.of(context);
@@ -427,12 +299,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
         length = double.tryParse(lengthText) ?? 0.0;
       }
 
-      // Загружаем новые фотографии
-      final newPhotoUrls = await _uploadPhotos();
-
-      // Объединяем с существующими URL
-      final allPhotoUrls = [..._existingPhotoUrls, ...newPhotoUrls];
-
       final biteRecord = BiteRecord(
         id: _isEditing ? widget.initialRecord!.id : const Uuid().v4(),
         time: _selectedTime,
@@ -442,7 +308,7 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
         notes: _notesController.text.trim(),
         dayIndex: _selectedDayIndex, // Используем выбранный день
         spotIndex: _isEditing ? widget.initialRecord!.spotIndex : 0,
-        photoUrls: allPhotoUrls,
+        photoUrls: [], // Пустой массив фото
       );
 
       // ✅ ДОБАВИТЬ ЭТОТ ЛОГ:
@@ -813,14 +679,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
                       maxLines: 3,
                     ),
 
-                    SizedBox(height: ResponsiveConstants.spacingL),
-
-                    // Фотографии - динамический layout
-                    _buildPhotosSection(localizations, shouldUseCompactLayout),
-
-                    // Отображение фото галерей
-                    _buildPhotoGalleries(localizations),
-
                     SizedBox(height: ResponsiveUtils.getVerticalPadding(context)),
 
                     // Кнопка сохранения - адаптивная ширина
@@ -876,130 +734,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
         SizedBox(width: ResponsiveConstants.spacingM),
         Expanded(child: _buildLengthField(localizations)),
       ],
-    );
-  }
-
-  // Динамическая секция для фотографий
-  Widget _buildPhotosSection(AppLocalizations localizations, bool useCompactLayout) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(localizations.translate('photos')),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // Если ширина меньше 300px или компактный режим - используем Column
-            if (constraints.maxWidth < 300 || useCompactLayout) {
-              return Column(
-                children: [
-                  _buildPhotoButton(
-                    Icons.photo_library,
-                    localizations.translate('gallery'),
-                    _pickImages,
-                  ),
-                  SizedBox(height: ResponsiveConstants.spacingS),
-                  _buildPhotoButton(
-                    Icons.camera_alt,
-                    localizations.translate('camera'),
-                    _takePhoto,
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              children: [
-                Expanded(
-                  child: _buildPhotoButton(
-                    Icons.photo_library,
-                    localizations.translate('gallery'),
-                    _pickImages,
-                  ),
-                ),
-                SizedBox(width: ResponsiveConstants.spacingS),
-                Expanded(
-                  child: _buildPhotoButton(
-                    Icons.camera_alt,
-                    localizations.translate('camera'),
-                    _takePhoto,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  // Секция галерей фотографий с адаптивным количеством колонок
-  Widget _buildPhotoGalleries(AppLocalizations localizations) {
-    final isTablet = ResponsiveUtils.isTablet(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // Динамическое определение размера фото и количества в ряду
-    final photoSize = ResponsiveUtils.getValueByBreakpoint(
-      context,
-      mobileSmall: 80.0,
-      mobileMedium: 90.0,
-      mobileLarge: 100.0,
-      tabletSmall: 110.0,
-      tabletLarge: 120.0,
-      defaultValue: 100.0,
-    );
-
-    // Определяем количество фото в ряду на основе ширины экрана
-    final photosPerRow = isTablet
-        ? (screenWidth > 800 ? 6 : 4)
-        : (screenWidth > 400 ? 4 : 3);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Существующие фото
-        if (_existingPhotoUrls.isNotEmpty) ...[
-          SizedBox(height: ResponsiveConstants.spacingS),
-          _buildSectionHeader(localizations.translate('existing_photos')),
-          _buildPhotoGrid(_existingPhotoUrls, true, photoSize, photosPerRow),
-        ],
-
-        // Новые фото
-        if (_selectedPhotos.isNotEmpty) ...[
-          SizedBox(height: ResponsiveConstants.spacingS),
-          _buildSectionHeader(localizations.translate('new_photos')),
-          _buildPhotoGrid(
-            _selectedPhotos.map((file) => file.path).toList(),
-            false,
-            photoSize,
-            photosPerRow,
-          ),
-        ],
-      ],
-    );
-  }
-
-  // Адаптивная сетка фотографий
-  Widget _buildPhotoGrid(List<String> photos, bool isExisting, double photoSize, int photosPerRow) {
-    if (photos.length <= photosPerRow) {
-      // Если фото помещаются в один ряд - используем горизонтальный список
-      return SizedBox(
-        height: photoSize,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: photos.length,
-          itemBuilder: (context, index) {
-            return _buildPhotoItem(photos[index], index, isExisting);
-          },
-        ),
-      );
-    }
-
-    // Если фото много - используем обёртку
-    return Wrap(
-      spacing: ResponsiveConstants.spacingXS,
-      runSpacing: ResponsiveConstants.spacingXS,
-      children: photos.asMap().entries.map((entry) {
-        return _buildPhotoItem(entry.value, entry.key, isExisting);
-      }).toList(),
     );
   }
 
@@ -1157,96 +891,6 @@ class _BiteRecordScreenState extends State<BiteRecordScreen>
             }
             return null;
           },
-        ),
-      ],
-    );
-  }
-
-  // Виджет для кнопки фото
-  Widget _buildPhotoButton(IconData icon, String label, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      icon: Icon(
-        icon,
-        size: ResponsiveUtils.getIconSize(context),
-      ),
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: AppConstants.textColor,
-        minimumSize: Size(
-          double.infinity,
-          ResponsiveConstants.minTouchTarget,
-        ),
-        padding: EdgeInsets.symmetric(
-          vertical: ResponsiveConstants.spacingS,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            ResponsiveUtils.getBorderRadius(context, baseRadius: 12),
-          ),
-        ),
-      ),
-      onPressed: onPressed,
-    );
-  }
-
-  // Построитель карточки фото - адаптивный размер
-  Widget _buildPhotoItem(String source, int index, bool isExisting) {
-    final photoSize = ResponsiveUtils.getValueByBreakpoint(
-      context,
-      mobileSmall: 80.0,
-      mobileMedium: 90.0,
-      mobileLarge: 100.0,
-      tabletSmall: 110.0,
-      tabletLarge: 120.0,
-      defaultValue: 100.0,
-    );
-
-    final iconSize = ResponsiveUtils.getIconSize(context, baseSize: 16);
-
-    return Stack(
-      children: [
-        Container(
-          width: photoSize,
-          height: photoSize,
-          margin: EdgeInsets.only(right: ResponsiveConstants.spacingXS),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(
-              ResponsiveUtils.getBorderRadius(context, baseRadius: 8),
-            ),
-            image: DecorationImage(
-              image:
-              isExisting
-                  ? NetworkImage(source) as ImageProvider
-                  : FileImage(File(source)),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        Positioned(
-          top: ResponsiveConstants.spacingXXS,
-          right: ResponsiveConstants.spacingXS + ResponsiveConstants.spacingXXS,
-          child: GestureDetector(
-            onTap: () => _removePhoto(index, isExisting),
-            child: Container(
-              width: ResponsiveConstants.minTouchTarget * 0.6,
-              height: ResponsiveConstants.minTouchTarget * 0.6,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.close,
-                color: Colors.white,
-                size: iconSize,
-              ),
-            ),
-          ),
         ),
       ],
     );

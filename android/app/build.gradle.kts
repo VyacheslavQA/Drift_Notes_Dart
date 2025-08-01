@@ -19,7 +19,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.driftnotes.app"
 
-    compileSdk = 35
+    compileSdk = 34
     // ИСПРАВЛЕНО: Версия NDK как требуют плагины
     ndkVersion = "27.0.12077973"
 
@@ -48,7 +48,7 @@ android {
     defaultConfig {
         applicationId = "com.driftnotes.app"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 34
 
         // ДОБАВЛЕНО: Включаем multidex для поддержки больших приложений
         multiDexEnabled = true
@@ -74,8 +74,10 @@ android {
             ndk {
                 debugSymbolLevel = "NONE"
             }
-            packagingOptions {
-                doNotStrip("**/*.so")
+            packaging {
+                jniLibs {
+                    keepDebugSymbols += "**/*.so"
+                }
             }
         }
 
@@ -109,18 +111,16 @@ android {
         }
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
             useLegacyPackaging = true
+            keepDebugSymbols += "*/arm64-v8a/libc++_shared.so"
+            keepDebugSymbols += "*/x86_64/libc++_shared.so"
+            keepDebugSymbols += "*/x86/libc++_shared.so"
+            keepDebugSymbols += "*/armeabi-v7a/libc++_shared.so"
+            pickFirsts += "**/libc++_shared.so"
+            pickFirsts += "**/libjsc.so"
         }
-        // ДОБАВЛЕНО: Настройки для решения проблемы с символами
-        doNotStrip("*/arm64-v8a/libc++_shared.so")
-        doNotStrip("*/x86_64/libc++_shared.so")
-        doNotStrip("*/x86/libc++_shared.so")
-        doNotStrip("*/armeabi-v7a/libc++_shared.so")
-
-        pickFirst("**/libc++_shared.so")
-        pickFirst("**/libjsc.so")
     }
 }
 

@@ -5,7 +5,7 @@ buildscript {
     }
     dependencies {
         // ОБНОВЛЕННЫЕ версии для совместимости с Gradle 8.10.2 и Isar
-        classpath("com.android.tools.build:gradle:8.3.0")
+        classpath("com.android.tools.build:gradle:8.1.4")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10")
         classpath("com.google.gms:google-services:4.4.0")
     }
