@@ -1,6 +1,6 @@
 // Путь: lib/widgets/weather/detailed_weather_forecast.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ОБНОВЛЕНО: Убрана карточка _buildWindMetricsCard для избежания дублирования данных
+// ОБНОВЛЕНО: Упрощен график светового дня - убраны анимации, сложные тени и эффекты
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -57,10 +57,8 @@ class DetailedWeatherForecast extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // УБРАНО: _buildWindMetricsCard - теперь эти данные только в карточках метрик
-
-          // Временная линия светового дня с правильным часовым поясом
-          _buildDaylightTimelineCard(context, forecastDay, localizations),
+          // Упрощенная временная линия светового дня
+          _buildSimpleDaylightCard(context, forecastDay, localizations),
         ],
       ),
     );
@@ -194,6 +192,56 @@ class DetailedWeatherForecast extends StatelessWidget {
     );
   }
 
+  // Упрощенная карточка светового дня
+  Widget _buildSimpleDaylightCard(BuildContext context, ForecastDay forecastDay, AppLocalizations localizations) {
+    final astro = forecastDay.astro;
+    final sunrise = _parseAstroTimeWithTimezone(astro.sunrise);
+    final sunset = _parseAstroTimeWithTimezone(astro.sunset);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppConstants.cardGradient,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppConstants.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок
+          Row(
+            children: [
+              const Text('🌅', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(
+                localizations.translate('daylight_hours') ?? 'Световой день',
+                style: TextStyle(
+                  color: AppConstants.primaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Упрощенная временная линия
+          SimpleDaylightTimeline(
+            sunrise: sunrise,
+            sunset: sunset,
+            currentTime: selectedDayIndex == 0 ? DateTime.now() : null,
+            localizations: localizations,
+          ),
+        ],
+      ),
+    );
+  }
+
   // Метод для получения динамического заголовка
   String _getWeatherTitle(AppLocalizations localizations, int dayIndex) {
     switch (dayIndex) {
@@ -240,59 +288,6 @@ class DetailedWeatherForecast extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       textAlign: TextAlign.center,
-    );
-  }
-
-  // Временная линия светового дня
-  Widget _buildDaylightTimelineCard(BuildContext context, ForecastDay forecastDay, AppLocalizations localizations) {
-    final astro = forecastDay.astro;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: AppConstants.cardGradient,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppConstants.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Заголовок
-          Row(
-            children: [
-              Text(
-                '🌅',
-                style: TextStyle(fontSize: 20),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                localizations.translate('daylight_hours') ?? 'Daylight Hours',
-                style: TextStyle(
-                  color: AppConstants.primaryColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Временная линия с правильным часовым поясом
-          DaylightTimelineWidget(
-            sunrise: _parseAstroTimeWithTimezone(astro.sunrise),
-            sunset: _parseAstroTimeWithTimezone(astro.sunset),
-            currentTime: selectedDayIndex == 0 ? DateTime.now() : null,
-            enableAnimation: true,
-            showDetailedInfo: MediaQuery.of(context).size.width > 600,
-            localizations: localizations,
-          ),
-        ],
-      ),
     );
   }
 
@@ -411,177 +406,320 @@ class DetailedWeatherForecast extends StatelessWidget {
       default: return isDay ? Icons.wb_sunny : Icons.brightness_2;
     }
   }
-
-  String _translateWindDirection(String direction, AppLocalizations localizations) {
-    final locale = localizations.locale.languageCode;
-
-    if (locale == 'ru') {
-      const Map<String, String> directionsRu = {
-        'N': 'С', 'NNE': 'ССВ', 'NE': 'СВ', 'ENE': 'ВСВ',
-        'E': 'В', 'ESE': 'ВЮВ', 'SE': 'ЮВ', 'SSE': 'ЮЮВ',
-        'S': 'Ю', 'SSW': 'ЮЮЗ', 'SW': 'ЮЗ', 'WSW': 'ЗЮЗ',
-        'W': 'З', 'WNW': 'ЗСЗ', 'NW': 'СЗ', 'NNW': 'ССЗ',
-      };
-      return directionsRu[direction] ?? direction;
-    }
-
-    return direction; // Для английского и казахского возвращаем как есть
-  }
 }
 
-// Временная линия светового дня
-class DaylightTimelineWidget extends StatefulWidget {
-  /// Время восхода солнца
+// Упрощенная временная линия светового дня (StatelessWidget)
+class SimpleDaylightTimeline extends StatelessWidget {
   final DateTime sunrise;
-
-  /// Время заката солнца
   final DateTime sunset;
-
-  /// Текущее время (по умолчанию - сейчас)
   final DateTime? currentTime;
-
-  /// Показывать ли анимацию
-  final bool enableAnimation;
-
-  /// Кастомная высота виджета
-  final double? height;
-
-  /// Показывать ли подробную информацию
-  final bool showDetailedInfo;
-
-  /// Локализация для правильного форматирования
   final AppLocalizations localizations;
 
-  const DaylightTimelineWidget({
+  const SimpleDaylightTimeline({
     super.key,
     required this.sunrise,
     required this.sunset,
     required this.localizations,
     this.currentTime,
-    this.enableAnimation = true,
-    this.height,
-    this.showDetailedInfo = true,
   });
 
   @override
-  State<DaylightTimelineWidget> createState() => _DaylightTimelineWidgetState();
-}
-
-class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
-    with TickerProviderStateMixin {
-  late AnimationController _markerController;
-  late AnimationController _fadeController;
-  late Animation<double> _markerAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAnimations();
-  }
-
-  void _initAnimations() {
-    _markerController = AnimationController(
-      duration: const Duration(seconds: 8),
-      vsync: this,
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Простая временная линия
+        _buildSimpleTimeline(context),
+        const SizedBox(height: 20),
+        // Информация о времени
+        _buildTimeInfo(context),
+        const SizedBox(height: 16),
+        // Простая дополнительная информация
+        _buildSimpleInfo(context),
+      ],
     );
+  }
 
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
+  Widget _buildSimpleTimeline(BuildContext context) {
+    return SizedBox(
+      height: 60,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final timelineWidth = constraints.maxWidth;
+          final currentPosition = _getCurrentPosition();
+
+          return Stack(
+            children: [
+              // Простая линия без градиента
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 25,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4a4a6a),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+
+              // Простой маркер текущего времени (только эмодзи)
+              if (currentTime != null)
+                Positioned(
+                  left: (timelineWidth * currentPosition) - 12,
+                  top: 13,
+                  child: const Text(
+                    '☀️',
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ),
+
+              // Простые метки времени - точно над позициями на линии
+              Positioned(
+                left: (timelineWidth * 0.2) - 25,
+                top: 0,
+                child: Text(
+                  localizations.translate('sunrise') ?? 'Восход',
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B35),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              Positioned(
+                left: (timelineWidth * 0.8) - 25,
+                top: 0,
+                child: Text(
+                  localizations.translate('sunset') ?? 'Закат',
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B35),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
-
-    _markerAnimation = Tween<double>(
-      begin: _getCurrentPosition(),
-      end: _getCurrentPosition() + 0.05, // Небольшое движение для анимации
-    ).animate(CurvedAnimation(
-      parent: _markerController,
-      curve: Curves.easeInOut,
-    ));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
-
-    if (widget.enableAnimation) {
-      _fadeController.forward();
-      _markerController.repeat(reverse: true);
-    } else {
-      _fadeController.forward();
-    }
   }
 
-  @override
-  void dispose() {
-    _markerController.dispose();
-    _fadeController.dispose();
-    super.dispose();
+  Widget _buildTimeInfo(BuildContext context) {
+    final phaseInfo = _getCurrentPhaseInfo();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Восход
+        _buildTimeCard(
+          icon: '🌅',
+          time: DateFormat('HH:mm').format(sunrise),
+          label: localizations.translate('sunrise') ?? 'Восход',
+        ),
+
+        // Текущая фаза (только если показываем текущее время)
+        if (currentTime != null)
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppConstants.primaryColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '${phaseInfo.icon} ${phaseInfo.phase}',
+                    style: TextStyle(
+                      color: AppConstants.primaryColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    phaseInfo.timeLeft,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.8),
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Закат
+        _buildTimeCard(
+          icon: '🌇',
+          time: DateFormat('HH:mm').format(sunset),
+          label: localizations.translate('sunset') ?? 'Закат',
+        ),
+      ],
+    );
   }
 
-  /// Вычисление текущей позиции маркера на временной линии (0.0 - 1.0)
+  Widget _buildTimeCard({
+    required String icon,
+    required String time,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Text(
+          '$icon $time',
+          style: TextStyle(
+            color: AppConstants.textColor,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSimpleInfo(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.backgroundColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatCard(
+            icon: '⏱️',
+            value: _getDaylightDuration(),
+            label: localizations.translate('daylight_duration') ?? 'Длительность дня',
+          ),
+          Container(
+            width: 1,
+            height: 30,
+            color: AppConstants.textColor.withOpacity(0.2),
+          ),
+          _buildStatCard(
+            icon: '🕐',
+            value: DateFormat('HH:mm').format(currentTime ?? DateTime.now()),
+            label: localizations.translate('current_time') ?? 'Текущее время',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String icon,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 14)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: AppConstants.primaryColor,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppConstants.textColor.withOpacity(0.7),
+            fontSize: 10,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  // Вычисление текущей позиции маркера на временной линии (0.0 - 1.0)
   double _getCurrentPosition() {
-    final currentTime = widget.currentTime ?? DateTime.now();
-    final sunrise = widget.sunrise;
-    final sunset = widget.sunset;
+    final current = currentTime;
+    if (current == null) return 0.5;
 
     // Если до восхода - позиция в начале
-    if (currentTime.isBefore(sunrise)) {
+    if (current.isBefore(sunrise)) {
       return 0.2; // 20% от начала линии
     }
 
     // Если после заката - позиция в конце
-    if (currentTime.isAfter(sunset)) {
+    if (current.isAfter(sunset)) {
       return 0.8; // 80% от начала линии
     }
 
     // Во время светового дня - пропорциональная позиция
     final totalDaylight = sunset.difference(sunrise).inMinutes;
-    final currentProgress = currentTime.difference(sunrise).inMinutes;
+    final currentProgress = current.difference(sunrise).inMinutes;
 
     // Маппим от восхода (20%) до заката (80%)
     final position = 0.2 + (currentProgress / totalDaylight) * 0.6;
     return position.clamp(0.2, 0.8);
   }
 
-  /// Получение информации о текущей фазе дня
+  // Получение информации о текущей фазе дня
   ({String phase, String timeLeft, String icon}) _getCurrentPhaseInfo() {
-    final currentTime = widget.currentTime ?? DateTime.now();
-    final sunrise = widget.sunrise;
-    final sunset = widget.sunset;
-
-    if (currentTime.isBefore(sunrise)) {
-      final timeUntilSunrise = sunrise.difference(currentTime);
+    final current = currentTime;
+    if (current == null) {
       return (
-      phase: widget.localizations.translate('night') ?? 'Night',
-      timeLeft: '${widget.localizations.translate('until_sunrise') ?? 'Until sunrise'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: localizations.translate('day') ?? 'День',
+      timeLeft: '',
+      icon: '☀️'
+      );
+    }
+
+    if (current.isBefore(sunrise)) {
+      final timeUntilSunrise = sunrise.difference(current);
+      return (
+      phase: localizations.translate('night') ?? 'Ночь',
+      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
-    } else if (currentTime.isAfter(sunset)) {
-      final timeUntilSunrise = sunrise.add(const Duration(days: 1)).difference(currentTime);
+    } else if (current.isAfter(sunset)) {
+      final timeUntilSunrise = sunrise.add(const Duration(days: 1)).difference(current);
       return (
-      phase: widget.localizations.translate('night') ?? 'Night',
-      timeLeft: '${widget.localizations.translate('until_sunrise') ?? 'Until sunrise'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: localizations.translate('night') ?? 'Ночь',
+      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
     } else {
-      final timeUntilSunset = sunset.difference(currentTime);
+      final timeUntilSunset = sunset.difference(current);
       return (
-      phase: widget.localizations.translate('day') ?? 'Day',
-      timeLeft: '${widget.localizations.translate('until_sunset') ?? 'Until sunset'}: ${_formatDuration(timeUntilSunset)}',
+      phase: localizations.translate('day') ?? 'День',
+      timeLeft: '${localizations.translate('until_sunset') ?? 'До заката'}: ${_formatDuration(timeUntilSunset)}',
       icon: '☀️'
       );
     }
   }
 
-  /// Форматирование длительности в читаемый вид с локализацией
+  // Форматирование длительности в читаемый вид с локализацией
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
-    final locale = widget.localizations.locale.languageCode;
+    final locale = localizations.locale.languageCode;
 
     if (locale == 'ru') {
       if (hours > 0) {
@@ -605,334 +743,9 @@ class _DaylightTimelineWidgetState extends State<DaylightTimelineWidget>
     }
   }
 
-  /// Получение продолжительности светового дня
+  // Получение продолжительности светового дня
   String _getDaylightDuration() {
-    final duration = widget.sunset.difference(widget.sunrise);
+    final duration = sunset.difference(sunrise);
     return _formatDuration(duration);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final phaseInfo = _getCurrentPhaseInfo();
-
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Временная линия с правильным расчетом ширины
-          _buildTimeline(context),
-
-          const SizedBox(height: 24),
-
-          // Информация о времени
-          _buildTimeInfo(context, phaseInfo),
-
-          if (widget.showDetailedInfo) ...[
-            const SizedBox(height: 16),
-            _buildDetailedInfo(context),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeline(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final timelineHeight = screenWidth > 600 ? 120.0 : 100.0;
-
-    return SizedBox(
-      height: timelineHeight,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final timelineWidth = constraints.maxWidth;
-
-          return Stack(
-            children: [
-              // Фоновая линия с градиентом
-              Positioned(
-                left: 0,
-                right: 0,
-                top: timelineHeight / 2 - 5,
-                child: Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF1a1a2e), // Ночь
-                        Color(0xFF4a4a6a), // Предрассветный
-                        Color(0xFFFF6B35), // Рассвет
-                        Color(0xFFFFD93D), // Утро
-                        Color(0xFFFFE55C), // День
-                        Color(0xFFFFD93D), // Полдень
-                        Color(0xFFFF6B35), // Закат
-                        Color(0xFF4a4a6a), // Сумерки
-                        Color(0xFF1a1a2e), // Ночь
-                      ],
-                      stops: [0.0, 0.15, 0.2, 0.25, 0.5, 0.75, 0.8, 0.85, 1.0],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Анимированный маркер текущего времени
-              if (widget.currentTime != null)
-                AnimatedBuilder(
-                  animation: _markerAnimation,
-                  builder: (context, child) {
-                    final position = _getCurrentPosition();
-                    return Positioned(
-                      left: (timelineWidth * position) - 16,
-                      top: timelineHeight / 2 - 16,
-                      child: Container(
-                        width: 32.0,
-                        height: 32.0,
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            colors: [
-                              const Color(0xFFFFD93D), // Желтый центр
-                              const Color(0xFFFF8C00), // Оранжевый край
-                            ],
-                          ),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFFFFFFF), width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD93D).withValues(alpha: 0.8),
-                              blurRadius: 15,
-                              spreadRadius: 3,
-                            ),
-                            BoxShadow(
-                              color: const Color(0xFFFF8C00).withValues(alpha: 0.6),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            '☀️',
-                            style: TextStyle(fontSize: 14.0),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-              // Метки времени
-              Positioned(
-                left: (timelineWidth * 0.2) - 30,
-                top: timelineHeight / 2 - 40,
-                child: Text(
-                  widget.localizations.translate('sunrise') ?? 'Sunrise',
-                  style: const TextStyle(
-                    color: Color(0xFFFF6B35),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              Positioned(
-                left: (timelineWidth * 0.8) - 30,
-                top: timelineHeight / 2 - 40,
-                child: Text(
-                  widget.localizations.translate('sunset') ?? 'Sunset',
-                  style: const TextStyle(
-                    color: Color(0xFFFF6B35),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              // Метка "Сейчас"
-              if (widget.currentTime != null)
-                AnimatedBuilder(
-                  animation: _markerAnimation,
-                  builder: (context, child) {
-                    final position = _getCurrentPosition();
-                    return Positioned(
-                      left: (timelineWidth * position) - 20,
-                      top: timelineHeight / 2 + 25,
-                      child: Text(
-                        widget.localizations.translate('now') ?? 'Now',
-                        style: TextStyle(
-                          color: AppConstants.primaryColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTimeInfo(BuildContext context, ({String phase, String timeLeft, String icon}) phaseInfo) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Восход
-        _buildTimeCard(
-          context,
-          icon: '🌅',
-          time: DateFormat('HH:mm').format(widget.sunrise),
-          label: widget.localizations.translate('sunrise') ?? 'Sunrise',
-        ),
-
-        // Текущая фаза (только если показываем текущее время)
-        if (widget.currentTime != null)
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppConstants.primaryColor.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '${phaseInfo.icon} ${phaseInfo.phase}',
-                    style: TextStyle(
-                      color: AppConstants.primaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    phaseInfo.timeLeft,
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.8),
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // Закат
-        _buildTimeCard(
-          context,
-          icon: '🌇',
-          time: DateFormat('HH:mm').format(widget.sunset),
-          label: widget.localizations.translate('sunset') ?? 'Sunset',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeCard(BuildContext context, {
-    required String icon,
-    required String time,
-    required String label,
-  }) {
-    return Column(
-      children: [
-        Text(
-          '$icon $time',
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailedInfo(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatCard(
-            context,
-            icon: '⏱️',
-            value: _getDaylightDuration(),
-            label: widget.localizations.translate('daylight_duration') ?? 'Daylight Duration',
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: AppConstants.textColor.withValues(alpha: 0.2),
-          ),
-          _buildStatCard(
-            context,
-            icon: '🕐',
-            value: DateFormat('HH:mm').format(widget.currentTime ?? DateTime.now()),
-            label: widget.localizations.translate('current_time') ?? 'Current Time',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, {
-    required String icon,
-    required String value,
-    required String label,
-  }) {
-    return Column(
-      children: [
-        Text(
-          icon,
-          style: const TextStyle(fontSize: 16),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppConstants.primaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppConstants.textColor.withValues(alpha: 0.7),
-            fontSize: 11,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
   }
 }
