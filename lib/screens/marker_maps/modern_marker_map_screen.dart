@@ -284,6 +284,85 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     }
   }
 
+  // Удаление маркера с подтверждением
+  Future<void> _deleteMarker(String markerId) async {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем диалог подтверждения
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            localizations.translate('delete_marker'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            localizations.translate('delete_marker_confirmation'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                localizations.translate('cancel'),
+                style: TextStyle(color: AppConstants.textColor),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text(
+                localizations.translate('delete'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Если пользователь подтвердил удаление
+    if (confirmed == true) {
+      try {
+        final updatedMarkers = _markerMap.markers
+            .where((marker) => marker['id'] != markerId)
+            .toList();
+
+        if (!_isDisposed) {
+          _safeSetState(() {
+            _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+          });
+        }
+
+        await _autoSaveChanges(localizations.translate('marker_deleted'));
+      } catch (e) {
+        debugPrint('❌ Ошибка удаления маркера: $e');
+        if (!_isDisposed && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${localizations.translate('error')}: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   // Показ информации о маркерах с типами дна
   void _showMarkerInfo() {
     if (_isDisposed) return;
@@ -588,7 +667,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     );
   }
 
-  // Показ деталей маркера
+  // Показ деталей маркера с кнопкой удаления
   void _showMarkerDetails(Map<String, dynamic> marker) {
     if (_isDisposed) return;
 
@@ -643,10 +722,23 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Кнопка удаления
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context); // Закрываем текущий диалог
+                      _deleteMarker(marker['id']); // Удаляем маркер
+                    },
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    label: Text(
+                      localizations.translate('delete'),
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  // Кнопка закрытия
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(localizations.translate('close')),

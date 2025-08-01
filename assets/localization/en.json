@@ -1970,5 +1970,6 @@
   "weather_today": "Weather for today",
   "weather_conditions": "Weather Conditions",
   "best_fishing_times": "Best Fishing Times",
-  "detailed_comparison": "Detailed Comparison"
+  "detailed_comparison": "Detailed Comparison",
+  "delete_marker_confirmation": "Are you sure you want to delete this marker?"
 }

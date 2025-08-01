@@ -1925,5 +1925,7 @@
   "weather_today": "Погода на сегодня",
   "weather_conditions": "Погодные условия",
   "best_fishing_times": "Лучшее время для рыбалки",
-  "detailed_comparison": "Подробное сравнение"
+  "detailed_comparison": "Подробное сравнение",
+  "delete_marker_confirmation": "Вы уверены, что хотите удалить этот маркер?"
+
 }

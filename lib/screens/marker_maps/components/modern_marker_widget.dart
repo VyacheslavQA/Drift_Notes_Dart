@@ -107,15 +107,18 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
             onTapDown: (_) => _handleTapDown(),
             onTapUp: (_) => _handleTapUp(),
             onTapCancel: () => _handleTapUp(),
+            // 🎯 ОПТИМАЛЬНАЯ область нажатия 24x24 (удобно, но без перекрытий)
             child: Container(
-              width: 14, // 🔥 УМЕНЬШИЛИ контейнер
-              height: 14,
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
               child: Stack(
-                clipBehavior: Clip.none, // Позволяем подписям выходить за границы
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  // Основной маркер БЕЗ белой точки и в 3 раза меньше
+                  // Основной маркер 14x14
                   Container(
-                    width: 14, // 🔥 УМЕНЬШИЛИ в 3 раза (было 40, стало ~14)
+                    width: 14,
                     height: 14,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -123,12 +126,12 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4, // Уменьшили тень
+                          blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
                         BoxShadow(
                           color: widget.color.withOpacity(0.5),
-                          blurRadius: 8, // Уменьшили свечение
+                          blurRadius: 8,
                           offset: const Offset(0, 0),
                         ),
                       ],
@@ -140,46 +143,41 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                     child: Icon(
                       widget.icon,
                       color: Colors.black87,
-                      size: 8, // Уменьшили иконку
+                      size: 8,
                     ),
                   ),
 
-                  // 🔥 УБРАЛИ БЕЛУЮ ТОЧКУ ПОСЕРЕДИНЕ
-
-                  // 🔥 ИСПРАВЛЕНО: Только глубина рядом с маркером
-                  Positioned(
-                    left: 18, // Справа от маркера
-                    top: -4, // Центрируем по вертикали
-                    child:
-                    // Подпись глубины (если есть)
-                    depth != null
-                        ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.yellow.shade300.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
+                  // Подпись глубины (если есть)
+                  if (depth != null)
+                    Positioned(
+                      left: 16, // Справа от маркера (чуть ближе из-за меньшей области)
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.yellow.shade300.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '${depth.toStringAsFixed(1)}м',
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
-                      child: Text(
-                        '${depth.toStringAsFixed(1)}м',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    )
-                        : const SizedBox.shrink(), // Пустой виджет если глубины нет
-                  ),
+                    ),
                 ],
               ),
             ),

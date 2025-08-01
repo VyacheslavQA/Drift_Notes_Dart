@@ -102,8 +102,8 @@ class ModernMapMarkers extends StatelessWidget {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutBack,
-      left: dx - 7, // 🔥 ИСПРАВИЛИ центрирование (было -20, стало -7 для маркера 14px)
-      top: dy - 7,
+      left: dx - 12, // 🎯 ИСПРАВЛЕНО: центрирование для области 24x24 (24/2 = 12)
+      top: dy - 12,  // 🎯 ИСПРАВЛЕНО: центрирование для области 24x24 (24/2 = 12)
       child: Hero(
         tag: marker['id'] ?? 'marker_${rayIndex}_$distance',
         child: ModernMarkerWidget(
