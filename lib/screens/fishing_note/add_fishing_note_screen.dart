@@ -1665,49 +1665,123 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         ResponsiveUtils.isSmallScreen(context)
             ? Column(
           children: [
-            _buildWeatherInfoItem(
-              icon: Icons.air,
-              label: localizations.translate('wind_short'),
-              value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.air,
+                    label: localizations.translate('wind_short'),
+                    value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.water_drop,
+                    label: localizations.translate('humidity_short'),
+                    value: '${_weather!.humidity}%',
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.water_drop,
-              label: localizations.translate('humidity_short'),
-              value: '${_weather!.humidity}%',
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.speed,
+                    label: localizations.translate('pressure_short'),
+                    value: _formatPressure(_weather!.pressure),
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.cloud,
+                    label: localizations.translate('cloudiness_short'),
+                    value: '${_weather!.cloudCover}%',
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.speed,
-              label: localizations.translate('pressure_short'),
-              value: _formatPressure(_weather!.pressure),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.wb_twilight,
+                    label: localizations.translate('sunrise'),
+                    value: _weather!.sunrise,
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.nights_stay,
+                    label: localizations.translate('sunset'),
+                    value: _weather!.sunset,
+                  ),
+                ),
+              ],
             ),
           ],
         )
-            : Row(
+            : Column(
           children: [
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.air,
-                label: localizations.translate('wind_short'),
-                value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.air,
+                    label: localizations.translate('wind_short'),
+                    value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.water_drop,
+                    label: localizations.translate('humidity_short'),
+                    value: '${_weather!.humidity}%',
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.speed,
+                    label: localizations.translate('pressure_short'),
+                    value: _formatPressure(_weather!.pressure),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(width: ResponsiveConstants.spacingM),
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.water_drop,
-                label: localizations.translate('humidity_short'),
-                value: '${_weather!.humidity}%',
-              ),
-            ),
-            SizedBox(width: ResponsiveConstants.spacingM),
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.speed,
-                label: localizations.translate('pressure_short'),
-                value: _formatPressure(_weather!.pressure),
-              ),
+            SizedBox(height: ResponsiveConstants.spacingS),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.cloud,
+                    label: localizations.translate('cloudiness_short'),
+                    value: '${_weather!.cloudCover}%',
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.wb_twilight,
+                    label: localizations.translate('sunrise'),
+                    value: _weather!.sunrise,
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.nights_stay,
+                    label: localizations.translate('sunset'),
+                    value: _weather!.sunset,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
