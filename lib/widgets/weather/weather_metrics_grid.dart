@@ -1,6 +1,6 @@
 // Путь: lib/widgets/weather/weather_metrics_grid.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ОБНОВЛЕНО: Добавлена поддержка selectedDayIndex для синхронизации данных
+// ОБНОВЛЕНО: Упрощена навигация - убраны колбэки, добавлена прямая навигация
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -8,22 +8,21 @@ import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
-import '../animated_border_widget.dart';
+import '../../screens/weather/pressure_detail_screen.dart';
+import '../../screens/weather/wind_detail_screen.dart';
 
 class WeatherMetricsGrid extends StatefulWidget {
   final WeatherApiResponse weather;
   final WeatherSettingsService weatherSettings;
-  final int selectedDayIndex; // НОВЫЙ: Индекс выбранного дня
-  final VoidCallback? onPressureCardTap;
-  final VoidCallback? onWindCardTap;
+  final int selectedDayIndex;
+  final String locationName; // НОВЫЙ: Название локации
 
   const WeatherMetricsGrid({
     super.key,
     required this.weather,
     required this.weatherSettings,
-    required this.selectedDayIndex, // НОВЫЙ: Обязательный параметр
-    this.onPressureCardTap,
-    this.onWindCardTap,
+    required this.selectedDayIndex,
+    required this.locationName, // НОВЫЙ: Обязательный параметр
   });
 
   @override
@@ -77,83 +76,103 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final pressureTrend = _getPressureTrend(pressure);
     final pressureStatus = _getPressureStatus(pressure, localizations);
 
-    return AnimatedBorderWidget(
-      borderRadius: 16.0,
-      glowColor: Colors.green,
-      baseColor: Colors.green.withValues(alpha: 0.3),
-      animationDuration: const Duration(seconds: 6),
-      glowSize: 25.0,
-      glowIntensity: 0.9,
-      onTap: widget.onPressureCardTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openPressureDetailScreen(),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppConstants.surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.green.withValues(alpha: 0.3),
+              width: 1.5,
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: pressureStatus['color'].withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.speed,
-                      color: pressureStatus['color'],
-                      size: 20,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _getPressureTrendIcon(pressureTrend),
-                    color: _getPressureTrendColor(pressureTrend),
-                    size: 16,
-                  ),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: AppConstants.textColor.withValues(alpha: 0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
               ),
-              const SizedBox(height: 12),
-              Text(
-                localizations.translate('pressure'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                formattedPressure,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                pressureStatus['description'],
-                style: TextStyle(
-                  color: pressureStatus['color'],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              BoxShadow(
+                color: Colors.green.withValues(alpha: 0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: pressureStatus['color'].withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.speed,
+                        color: pressureStatus['color'],
+                        size: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    // УЛУЧШЕНО: Визуальные индикаторы кликабельности
+                    Row(
+                      children: [
+                        Icon(
+                          _getPressureTrendIcon(pressureTrend),
+                          color: _getPressureTrendColor(pressureTrend),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right,
+                          color: AppConstants.textColor.withValues(alpha: 0.6),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  localizations.translate('pressure'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  formattedPressure,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  pressureStatus['description'],
+                  style: TextStyle(
+                    color: pressureStatus['color'],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -187,86 +206,106 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
     final formattedWind = widget.weatherSettings.formatWindSpeed(windSpeed);
     final windStatus = _getWindStatus(windSpeed, localizations);
 
-    return AnimatedBorderWidget(
-      borderRadius: 16.0,
-      glowColor: Colors.blue,
-      baseColor: Colors.blue.withValues(alpha: 0.3),
-      animationDuration: const Duration(seconds: 6),
-      glowSize: 30.0,
-      glowIntensity: 0.8,
-      onTap: widget.onWindCardTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppConstants.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openWindDetailScreen(),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppConstants.surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.blue.withValues(alpha: 0.3),
+              width: 1.5,
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: windStatus['color'].withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.air,
-                      color: windStatus['color'],
-                      size: 20,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _translateWindDirection(windDirection),
-                    style: TextStyle(
-                      color: AppConstants.textColor.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: AppConstants.textColor.withValues(alpha: 0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
               ),
-              const SizedBox(height: 12),
-              Text(
-                localizations.translate('wind'),
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                formattedWind,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                windStatus['description'],
-                style: TextStyle(
-                  color: windStatus['color'],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              BoxShadow(
+                color: Colors.blue.withValues(alpha: 0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: windStatus['color'].withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.air,
+                        color: windStatus['color'],
+                        size: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    // УЛУЧШЕНО: Визуальные индикаторы кликабельности
+                    Row(
+                      children: [
+                        Text(
+                          _translateWindDirection(windDirection),
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.7),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right,
+                          color: AppConstants.textColor.withValues(alpha: 0.6),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  localizations.translate('wind'),
+                  style: TextStyle(
+                    color: AppConstants.textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  formattedWind,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  windStatus['description'],
+                  style: TextStyle(
+                    color: windStatus['color'],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -491,6 +530,31 @@ class _WeatherMetricsGridState extends State<WeatherMetricsGrid> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // НОВЫЕ: Простые методы навигации
+  void _openPressureDetailScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PressureDetailScreen(
+          weatherData: widget.weather,
+          locationName: widget.locationName,
+        ),
+      ),
+    );
+  }
+
+  void _openWindDetailScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WindDetailScreen(
+          weatherData: widget.weather,
+          locationName: widget.locationName,
+        ),
       ),
     );
   }

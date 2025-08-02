@@ -1,6 +1,6 @@
 // Путь: lib/screens/weather/weather_screen.dart
 // ВАЖНО: Заменить весь существующий файл на этот код
-// ОБНОВЛЕНО: Добавлена передача selectedDayIndex в WeatherMetricsGrid для синхронизации данных
+// ОБНОВЛЕНО: Упрощена система навигации - убраны сложные колбэки
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,8 +16,6 @@ import '../../widgets/weather/forecast_period_selector.dart';
 import '../../widgets/weather/weather_summary_card.dart';
 import '../../widgets/weather/detailed_weather_forecast.dart';
 import '../../widgets/weather/weather_metrics_grid.dart';
-import '../../screens/weather/pressure_detail_screen.dart';
-import '../../screens/weather/wind_detail_screen.dart';
 import '../../screens/ai_fishing/ai_bite_screen.dart';
 import '../debug/openai_test_screen.dart';
 
@@ -280,7 +278,7 @@ class _WeatherScreenState extends State<WeatherScreen>
               children: [
                 const SizedBox(height: 24),
 
-                // Карточки метрик (ОБНОВЛЕНО: передается selectedDayIndex)
+                // УПРОЩЕНО: Карточки метрик без колбэков
                 _buildMetricsGrid(),
 
                 const SizedBox(height: 24),
@@ -297,14 +295,13 @@ class _WeatherScreenState extends State<WeatherScreen>
     );
   }
 
-  // ОБНОВЛЕНО: Добавлена передача selectedDayIndex для синхронизации данных
+  // УПРОЩЕНО: Убраны колбэки, добавлен locationName
   Widget _buildMetricsGrid() {
     return WeatherMetricsGrid(
       weather: _currentWeather!,
       weatherSettings: _weatherSettings,
-      selectedDayIndex: _selectedDayIndex, // НОВЫЙ: Передаем выбранный день
-      onPressureCardTap: _openPressureDetailScreen,
-      onWindCardTap: _openWindDetailScreen,
+      selectedDayIndex: _selectedDayIndex,
+      locationName: _locationName, // НОВЫЙ: Передаем название локации
     );
   }
 
@@ -606,36 +603,5 @@ class _WeatherScreenState extends State<WeatherScreen>
         ),
       ),
     );
-  }
-
-  // Методы для открытия детальных экранов
-  void _openPressureDetailScreen() {
-    if (_currentWeather != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (context) => PressureDetailScreen(
-            weatherData: _currentWeather!,
-            locationName: _locationName,
-          ),
-        ),
-      );
-    }
-  }
-
-  void _openWindDetailScreen() {
-    if (_currentWeather != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (context) => WindDetailScreen(
-            weatherData: _currentWeather!,
-            locationName: _locationName,
-          ),
-        ),
-      );
-    }
   }
 }
