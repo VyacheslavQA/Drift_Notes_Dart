@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
-import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';
 import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';

@@ -1,18 +1,15 @@
 // Путь: lib/screens/budget/fishing_budget_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
-import '../../models/fishing_expense_model.dart';
 import '../../models/fishing_trip_model.dart';
 import '../../repositories/budget_notes_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
 import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
-import '../../widgets/responsive/responsive_button.dart';
 import '../../widgets/subscription/usage_badge.dart';
 import '../../constants/subscription_constants.dart';
 import '../../services/subscription/subscription_service.dart';

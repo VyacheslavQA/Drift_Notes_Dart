@@ -1,13 +1,10 @@
 // Путь: lib/screens/budget/budget_statistics_screen.dart
 
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_trip_model.dart';
-import '../../models/fishing_expense_model.dart';
 import '../../repositories/budget_notes_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
-import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 

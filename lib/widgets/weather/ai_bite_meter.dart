@@ -10,7 +10,6 @@ import '../../models/weather_api_model.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/weather_settings_service.dart';
 import '../../localization/app_localizations.dart';
-import '../animated_border_widget.dart';
 import '../../screens/weather/fishing_type_detail_screen.dart';
 
 class AIBiteMeter extends StatefulWidget {

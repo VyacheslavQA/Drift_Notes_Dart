@@ -142,17 +142,17 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     // Определяем какие документы нужно принять
     List<String> requiredDocs = [];
     if (widget.showPrivacyPolicy && !_privacyPolicyAccepted) {
-      requiredDocs.add(localizations.translate('privacy_policy') ?? 'Политику конфиденциальности');
+      requiredDocs.add(localizations.translate('privacy_policy'));
     }
     if (widget.showTermsOfService && !_termsOfServiceAccepted) {
-      requiredDocs.add(localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
+      requiredDocs.add(localizations.translate('terms_of_service'));
     }
 
     String message;
     if (requiredDocs.length == 1) {
-      message = '${localizations.translate('need_to_accept') ?? 'Необходимо принять'} ${requiredDocs.first}';
+      message = '${localizations.translate('need_to_accept')} ${requiredDocs.first}';
     } else {
-      message = localizations.translate('agreements_required') ?? 'Необходимо принять все соглашения для продолжения';
+      message = localizations.translate('agreements_required');
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -170,8 +170,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          localizations.translate('error_saving_agreements') ??
-              'Ошибка сохранения согласий. Попробуйте снова.',
+          localizations.translate('error_saving_agreements'),
         ),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
@@ -182,16 +181,16 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
   /// ✅ АДАПТИВНЫЙ заголовок в зависимости от контекста
   String _getDialogTitle(AppLocalizations localizations) {
     if (widget.isRegistration) {
-      return localizations.translate('accept_agreements_title') ?? 'Принятие соглашений';
+      return localizations.translate('accept_agreements_title');
     } else {
       // Для обновлений показываем более конкретную информацию
       if (widget.outdatedPolicies.length == 1) {
         String policyName = widget.outdatedPolicies.first == 'privacy'
-            ? (localizations.translate('privacy_policy') ?? 'Политика конфиденциальности')
-            : (localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
-        return '${localizations.translate('update_single_policy') ?? 'Обновление'} $policyName';
+            ? localizations.translate('privacy_policy')
+            : localizations.translate('terms_of_service');
+        return '${localizations.translate('update_single_policy')} $policyName';
       } else {
-        return localizations.translate('agreements_update_title') ?? 'Обновление соглашений';
+        return localizations.translate('agreements_update_title');
       }
     }
   }
@@ -199,18 +198,16 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
   /// ✅ АДАПТИВНОЕ описание в зависимости от контекста
   String _getDialogDescription(AppLocalizations localizations) {
     if (widget.isRegistration) {
-      return localizations.translate('accept_agreements_description') ??
-          'Для использования приложения необходимо принять соглашения';
+      return localizations.translate('accept_agreements_description');
     } else {
       // Для обновлений показываем что именно обновилось
       if (widget.outdatedPolicies.length == 1) {
         String policyName = widget.outdatedPolicies.first == 'privacy'
-            ? (localizations.translate('privacy_policy') ?? 'Политика конфиденциальности')
-            : (localizations.translate('terms_of_service') ?? 'Пользовательское соглашение');
-        return '${localizations.translate('single_policy_updated') ?? 'Обновилась'} $policyName. ${localizations.translate('please_review_accept') ?? 'Пожалуйста, ознакомьтесь и примите новую версию.'}';
+            ? localizations.translate('privacy_policy')
+            : localizations.translate('terms_of_service');
+        return '${localizations.translate('single_policy_updated')} $policyName. ${localizations.translate('please_review_accept')}';
       } else {
-        return localizations.translate('agreements_update_description') ??
-            'Обновились соглашения. Для продолжения работы необходимо принять новые версии.';
+        return localizations.translate('agreements_update_description');
       }
     }
   }
@@ -248,8 +245,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
       return const SizedBox.shrink();
     }
 
-    return WillPopScope(
-      onWillPop: () async => false, // Нельзя закрыть без принятия
+    return PopScope(
+      canPop: false, // Нельзя закрыть без принятия
       child: Dialog(
         backgroundColor: AppConstants.backgroundColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -266,7 +263,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppConstants.primaryColor.withOpacity(0.1),
+                  color: AppConstants.primaryColor.withValues(alpha: 0.1),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -294,7 +291,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                       _getDialogDescription(localizations),
                       style: TextStyle(
                         fontSize: 14 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
-                        color: AppConstants.textColor.withOpacity(0.8),
+                        color: AppConstants.textColor.withValues(alpha: 0.8),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -314,8 +311,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                         _buildSelectiveAgreementCheckbox(
                           value: _privacyPolicyAccepted,
                           onChanged: (value) => setState(() => _privacyPolicyAccepted = value ?? false),
-                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                          linkText: localizations.translate('privacy_policy') ?? 'Политикой конфиденциальности',
+                          text: localizations.translate('i_agree_to'),
+                          linkText: localizations.translate('privacy_policy'),
                           onLinkTap: _showPrivacyPolicy,
                           isUpdated: widget.outdatedPolicies.contains('privacy'),
                         ),
@@ -327,8 +324,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                         _buildSelectiveAgreementCheckbox(
                           value: _termsOfServiceAccepted,
                           onChanged: (value) => setState(() => _termsOfServiceAccepted = value ?? false),
-                          text: localizations.translate('i_agree_to') ?? 'Я согласен с',
-                          linkText: localizations.translate('terms_of_service') ?? 'Пользовательским соглашением',
+                          text: localizations.translate('i_agree_to'),
+                          linkText: localizations.translate('terms_of_service'),
                           onLinkTap: _showTermsOfService,
                           isUpdated: widget.outdatedPolicies.contains('terms'),
                         ),
@@ -344,7 +341,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                             child: OutlinedButton(
                               onPressed: _isProcessing ? null : _handleDeclineAgreements,
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.red.withOpacity(0.7)),
+                                side: BorderSide(color: Colors.red.withValues(alpha: 0.7)),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -352,8 +349,8 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                               ),
                               child: Text(
                                 widget.isRegistration
-                                    ? (localizations.translate('exit_app') ?? 'Выйти из приложения')
-                                    : (localizations.translate('decline') ?? 'Отклонить'),
+                                    ? localizations.translate('exit_app')
+                                    : localizations.translate('decline'),
                                 style: TextStyle(
                                   color: Colors.red,
                                   fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
@@ -371,7 +368,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                               onPressed: (_isProcessing || !_canAccept()) ? null : _handleAcceptAgreements,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppConstants.primaryColor,
-                                disabledBackgroundColor: AppConstants.primaryColor.withOpacity(0.3),
+                                disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.3),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -387,7 +384,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                                 ),
                               )
                                   : Text(
-                                localizations.translate('accept') ?? 'Принять',
+                                localizations.translate('accept'),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
@@ -427,10 +424,10 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
       // ✅ Выделяем обновленные документы
       decoration: isUpdated && !widget.isRegistration
           ? BoxDecoration(
-        color: AppConstants.primaryColor.withOpacity(0.05),
+        color: AppConstants.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppConstants.primaryColor.withOpacity(0.2),
+          color: AppConstants.primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       )
@@ -451,7 +448,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    localizations.translate('document_updated') ?? 'Документ обновлен',
+                    localizations.translate('document_updated'),
                     style: TextStyle(
                       color: AppConstants.primaryColor,
                       fontSize: 12 * (textScaler.scale(1.0) > 1.2 ? 1.2 / textScaler.scale(1.0) : 1),
@@ -475,7 +472,7 @@ class _UserAgreementsDialogState extends State<UserAgreementsDialog> {
                   activeColor: AppConstants.primaryColor,
                   checkColor: Colors.white,
                   side: BorderSide(
-                    color: AppConstants.textColor.withOpacity(0.5),
+                    color: AppConstants.textColor.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                 ),

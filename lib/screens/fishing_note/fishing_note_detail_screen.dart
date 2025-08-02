@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io' show Platform;
 import '../../constants/app_constants.dart';
-import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/fishing_note_model.dart';
 import '../../services/firebase/firebase_service.dart';
@@ -23,8 +22,7 @@ import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
-import 'package:provider/provider.dart';
-import '../../providers/subscription_provider.dart';
+
 
 class FishingNoteDetailScreen extends StatefulWidget {
   final String noteId;

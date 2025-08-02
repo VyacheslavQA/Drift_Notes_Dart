@@ -9,7 +9,7 @@ import '../models/usage_limits_model.dart';
 import '../services/subscription/subscription_service.dart';
 import '../services/firebase/firebase_service.dart';
 import '../utils/network_utils.dart';
-import 'package:flutter/foundation.dart';
+
 
 /// ✅ ИСПРАВЛЕННЫЙ Provider для управления состоянием подписки
 /// Правильно синхронизируется с Isar через SubscriptionService

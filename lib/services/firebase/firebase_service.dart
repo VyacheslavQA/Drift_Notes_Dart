@@ -8,9 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../offline/offline_storage_service.dart';
-import '../../utils/network_utils.dart';
 import '../../localization/app_localizations.dart';
-import '../../constants/app_constants.dart';
 import '../../constants/subscription_constants.dart';
 
 class FirebaseService {

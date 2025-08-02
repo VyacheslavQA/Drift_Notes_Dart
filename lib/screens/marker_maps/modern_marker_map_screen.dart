@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
@@ -13,7 +12,6 @@ import 'dart:math' as math;
 import '../../localization/app_localizations.dart';
 import 'depth_chart_screen.dart';
 import '../../services/subscription/subscription_service.dart';
-import '../../constants/subscription_constants.dart';
 import '../subscription/paywall_screen.dart';
 import '../../repositories/marker_map_repository.dart';
 import '../../providers/subscription_provider.dart';
@@ -24,7 +22,6 @@ import 'components/modern_map_grid.dart';
 import 'components/modern_map_rays.dart';
 import 'components/modern_map_labels.dart';
 import 'components/modern_map_markers.dart';
-import 'utils/map_calculations.dart';
 
 class ModernMarkerMapScreen extends StatefulWidget {
   final MarkerMapModel markerMap;

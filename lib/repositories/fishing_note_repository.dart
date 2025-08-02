@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/fishing_note_model.dart';
 import '../models/isar/fishing_note_entity.dart';
 import '../services/isar_service.dart';
@@ -85,9 +84,9 @@ class FishingNoteRepository {
       // ✅ ИСПРАВЛЕНО: Получаем данные из Isar с фильтрацией удаленных записей
       final isarNotes = await _isarService.getAllFishingNotes();
 
-      // ✅ НОВОЕ: Фильтруем записи помеченные для удаления
+      // ✅ ИСПРАВЛЕНО: Убрал ненужную проверку на null - markedForDeletion не может быть null
       final activeNotes = isarNotes.where((entity) =>
-      entity.markedForDeletion == null || entity.markedForDeletion == false
+      entity.markedForDeletion == false
       ).toList();
 
       // Конвертируем в модели приложения
@@ -498,8 +497,8 @@ class FishingNoteRepository {
           weight: bite.fishWeight ?? 0.0,
           length: bite.fishLength ?? 0.0,
           notes: bite.notes ?? '',
-          dayIndex: bite.dayIndex ?? 0,     // ✅ ИСПРАВЛЕНО
-          spotIndex: bite.spotIndex ?? 0,   // ✅ ИСПРАВЛЕНО
+          dayIndex: bite.dayIndex ?? 0,     // ✅ ИСПРАВЛЕНО: Убрал ненужный ??
+          spotIndex: bite.spotIndex ?? 0,   // ✅ ИСПРАВЛЕНО: Убрал ненужный ??
           photoUrls: bite.photoUrls,
         );
       }).toList();

@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../services/user_consent_service.dart';
-import '../services/firebase/firebase_service.dart';
 import '../widgets/user_agreements_dialog.dart';
 import '../localization/app_localizations.dart';
 import '../constants/app_constants.dart';
@@ -11,7 +10,7 @@ import '../constants/app_constants.dart';
 /// УЛУЧШЕНИЕ: Добавлена поддержка селективного показа устаревших политик
 mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
   final UserConsentService _consentService = UserConsentService();
-  final FirebaseService _firebaseService = FirebaseService();
+  // ✅ ИСПРАВЛЕНО: Убрал неиспользуемое поле _firebaseService
 
   bool _consentsChecked = false;
   bool _consentsValid = false;
@@ -170,23 +169,24 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
     String message;
     if (rejectedPolicies.length == 1) {
       final policyName = rejectedPolicies.first == 'privacy'
-          ? (localizations?.translate('privacy_policy') ?? 'Политика конфиденциальности')
-          : (localizations?.translate('terms_of_service') ?? 'Пользовательское соглашение');
+          ? (localizations.translate('privacy_policy'))
+          : (localizations.translate('terms_of_service'));
 
-      message = localizations?.translate('single_policy_reminder')?.replaceFirst('{policy}', policyName) ??
+      message = localizations.translate('single_policy_reminder')?.replaceFirst('{policy}', policyName) ??
           'Напоминание: обновилась $policyName. Вы можете принять новую версию в любое время в настройках.';
     } else {
-      message = localizations?.translate('multiple_policies_reminder') ??
+      message = localizations.translate('multiple_policies_reminder') ??
           'Напоминание: обновились пользовательские соглашения. Вы можете принять новые версии в любое время в настройках.';
     }
 
+    // ✅ ИСПРАВЛЕНО: Убрал ненужные ?. операторы - ScaffoldMessenger и context не могут быть null
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.orange,
         duration: const Duration(seconds: 6),
         action: SnackBarAction(
-          label: localizations?.translate('accept_now') ?? 'Принять сейчас',
+          label: localizations.translate('accept_now') ?? 'Принять сейчас',
           textColor: Colors.white,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -215,15 +215,16 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
 
     final localizations = AppLocalizations.of(context);
 
+    // ✅ ИСПРАВЛЕНО: Убрал ненужные ?. операторы
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          localizations?.translate('action_blocked_consents_required') ??
+          localizations.translate('action_blocked_consents_required') ??
               'Для выполнения действия необходимо принять согласия',
         ),
         backgroundColor: Colors.orange,
         action: SnackBarAction(
-          label: localizations?.translate('accept_consents') ?? 'Принять согласия',
+          label: localizations.translate('accept_consents') ?? 'Принять согласия',
           textColor: Colors.white,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -259,10 +260,11 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
 
+        // ✅ ИСПРАВЛЕНО: Убрал ненужные ?. операторы
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              localizations?.translate('action_failed') ??
+              localizations.translate('action_failed') ??
                   'Не удалось выполнить действие. Попробуйте еще раз.',
             ),
             backgroundColor: Colors.red,
@@ -308,7 +310,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
           ),
           const SizedBox(height: 12),
           Text(
-            localizations?.translate('content_requires_consents') ??
+            localizations.translate('content_requires_consents') ??
                 'Контент требует принятия согласий',
             style: TextStyle(
               fontSize: 16,
@@ -319,7 +321,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
           ),
           const SizedBox(height: 8),
           Text(
-            localizations?.translate('accept_consents_to_unlock') ??
+            localizations.translate('accept_consents_to_unlock') ??
                 'Примите пользовательские согласия для доступа к контенту',
             style: TextStyle(
               fontSize: 14,
@@ -346,7 +348,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
             ),
             icon: const Icon(Icons.check_circle_outline, size: 20),
             label: Text(
-              localizations?.translate('accept_consents') ?? 'Принять согласия',
+              localizations.translate('accept_consents') ?? 'Принять согласия',
             ),
           ),
         ],

@@ -1,6 +1,6 @@
 // Путь: lib/repositories/user_usage_limits_repository.dart
 
-import 'package:flutter/foundation.dart';
+
 import '../models/isar/user_usage_limits_entity.dart';
 import '../models/usage_limits_model.dart';
 import '../models/usage_limits_models.dart';
@@ -347,6 +347,7 @@ class UserUsageLimitsRepository {
       // Запускаем синхронизацию без ожидания результата
       _syncService.syncUserUsageLimitsToFirebase().catchError((error) {
         // ✅ УБРАНО: debugPrint('⚠️ Фоновая синхронизация лимитов завершилась с ошибкой: $error');
+        return false; // 🔥 ИСПРАВЛЕНО: добавлен return
       });
 
       // ✅ УБРАНО: debugPrint('🔄 Запущена фоновая синхронизация лимитов');

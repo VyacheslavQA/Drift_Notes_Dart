@@ -1,12 +1,8 @@
 // Путь: lib/screens/debug/openai_test_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
 import '../../services/ai_bite_prediction_service.dart';
-import '../../config/api_keys.dart';
 import '../../localization/app_localizations.dart';
 
 class OpenAITestScreen extends StatefulWidget {

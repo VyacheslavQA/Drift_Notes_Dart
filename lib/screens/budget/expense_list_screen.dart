@@ -5,13 +5,10 @@ import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_expense_model.dart';
-import '../../models/fishing_trip_model.dart';
 import '../../repositories/budget_notes_repository.dart'; // ИСПРАВЛЕНО: Используем новый репозиторий
-import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
-import '../../widgets/responsive/responsive_button.dart';
-import 'add_fishing_trip_expenses_screen.dart';
+
 
 
 /// Экран списка суммированных расходов по категориям

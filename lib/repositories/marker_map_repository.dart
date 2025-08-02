@@ -85,6 +85,7 @@ class MarkerMapRepository {
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
           // ✅ УБРАНО: debugPrint с деталями ошибки фоновой синхронизации
+          return false; // 🔥 ИСПРАВЛЕНО: добавлен return
         });
       }
 
@@ -158,6 +159,7 @@ class MarkerMapRepository {
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
           // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после создания
+          return false; // 🔥 ИСПРАВЛЕНО: добавлен return
         });
       }
 
@@ -213,6 +215,7 @@ class MarkerMapRepository {
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
           // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после обновления
+          return false; // 🔥 ИСПРАВЛЕНО: добавлен return
         });
       }
     } catch (e) {
@@ -279,6 +282,7 @@ class MarkerMapRepository {
       if (isOnline) {
         SyncService.instance.fullSync().catchError((e) {
           // ✅ УБРАНО: debugPrint с деталями ошибки синхронизации после удаления
+          return false; // 🔥 ИСПРАВЛЕНО: добавлен return
         });
       }
 

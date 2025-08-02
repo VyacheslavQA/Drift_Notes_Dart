@@ -384,7 +384,7 @@ class UserRepository {
       debugPrint('📧 Новый email: $newEmail');
 
       // Обновляем email в Firebase Auth
-      await user.updateEmail(newEmail);
+      await user.verifyBeforeUpdateEmail(newEmail);
 
       // Обновляем email в профиле пользователя
       await updateUserData({'email': newEmail});

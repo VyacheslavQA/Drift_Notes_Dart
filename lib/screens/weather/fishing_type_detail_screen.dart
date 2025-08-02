@@ -1,7 +1,6 @@
 // Путь: lib/screens/weather/fishing_type_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart'; // Добавил этот импорт

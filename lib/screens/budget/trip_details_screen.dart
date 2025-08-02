@@ -14,7 +14,6 @@ import '../../utils/responsive_utils.dart';
 import '../../widgets/responsive/responsive_container.dart';
 import '../../widgets/responsive/responsive_text.dart';
 import '../../services/subscription/subscription_service.dart';
-import '../../constants/subscription_constants.dart';
 import 'add_fishing_trip_expenses_screen.dart';
 
 /// Экран деталей поездки с расходами

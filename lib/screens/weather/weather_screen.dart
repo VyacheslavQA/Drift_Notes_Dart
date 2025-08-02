@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart'; // для kDebugMode
 import '../../constants/app_constants.dart';
 import '../../models/weather_api_model.dart';

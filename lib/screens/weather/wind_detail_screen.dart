@@ -10,7 +10,7 @@ import '../../models/weather_api_model.dart';
 import '../../services/weather_settings_service.dart';
 import '../../services/ai_bite_prediction_service.dart'; // ДОБАВЛЕНО
 import '../../localization/app_localizations.dart';
-import '../../localization/app_localizations.dart';
+
 
 class WindDetailScreen extends StatefulWidget {
   final WeatherApiResponse weatherData;

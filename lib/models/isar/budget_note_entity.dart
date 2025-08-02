@@ -65,7 +65,7 @@ class BudgetNoteEntity {
   }
 
   /// Установить расходы (конвертирует в JSON)
-  @ignore
+  // 🔥 ИСПРАВЛЕНО: убрана аннотация @ignore с сеттера
   set expenses(List<FishingExpenseModel> newExpenses) {
     if (newExpenses.isEmpty) {
       expensesJson = '[]';

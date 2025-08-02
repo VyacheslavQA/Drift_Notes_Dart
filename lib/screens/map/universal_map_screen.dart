@@ -13,7 +13,7 @@ import '../../repositories/fishing_note_repository.dart';
 import '../../config/api_keys.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_note_model.dart';
-import '../fishing_note/fishing_type_selection_screen.dart';
+
 
 // 🎯 РЕЖИМЫ РАБОТЫ УНИВЕРСАЛЬНОЙ КАРТЫ
 enum MapMode {

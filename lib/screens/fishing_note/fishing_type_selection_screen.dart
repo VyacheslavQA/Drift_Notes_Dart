@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
-import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/fishing_type_icons.dart';
 import '../../localization/app_localizations.dart';
@@ -55,7 +54,8 @@ class _FishingTypeSelectionScreenState
     }
   }
 
-  Future<bool> _onWillPop() async {
+  // 🔥 ИСПРАВЛЕНО: Изменили сигнатуру для PopScope
+  bool _onPopInvoked(bool didPop) {
     return true;
   }
 
@@ -67,11 +67,13 @@ class _FishingTypeSelectionScreenState
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async {
-            Navigator.pop(context);
-            _cancelAndClose();
-            return false;
+        return PopScope(
+          // 🔥 ИСПРАВЛЕНО: Заменили WillPopScope на PopScope
+          onPopInvokedWithResult: (bool didPop, dynamic result) {
+            if (!didPop) {
+              Navigator.pop(context);
+              _cancelAndClose();
+            }
           },
           child: Dialog(
             backgroundColor: Colors.transparent,
@@ -249,8 +251,12 @@ class _FishingTypeSelectionScreenState
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      // 🔥 ИСПРАВЛЕНО: Заменили WillPopScope на PopScope
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        // PopScope автоматически обрабатывает навигацию назад
+        // Дополнительная логика не требуется, так как _onPopInvoked возвращает true
+      },
       child: Scaffold(
         backgroundColor: AppConstants.backgroundColor,
         appBar: AppBar(

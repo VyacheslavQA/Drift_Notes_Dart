@@ -39,7 +39,7 @@ class DetailedWeatherForecast extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
-          localizations.translate('no_data_to_display') ?? 'Нет данных для отображения',
+          localizations.translate('no_data_to_display'),
           style: TextStyle(color: AppConstants.textColor),
           textAlign: TextAlign.center,
         ),
@@ -100,10 +100,10 @@ class DetailedWeatherForecast extends StatelessWidget {
           // Заголовки времен дня
           Row(
             children: [
-              Expanded(child: _buildTimeHeader(localizations.translate('morning') ?? 'Утро')),
-              Expanded(child: _buildTimeHeader(localizations.translate('day') ?? 'День')),
-              Expanded(child: _buildTimeHeader(localizations.translate('evening') ?? 'Вечер')),
-              Expanded(child: _buildTimeHeader(localizations.translate('night') ?? 'Ночь')),
+              Expanded(child: _buildTimeHeader(localizations.translate('morning'))),
+              Expanded(child: _buildTimeHeader(localizations.translate('day'))),
+              Expanded(child: _buildTimeHeader(localizations.translate('evening'))),
+              Expanded(child: _buildTimeHeader(localizations.translate('night'))),
             ],
           ),
 
@@ -166,7 +166,7 @@ class DetailedWeatherForecast extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      localizations.translate('feels_like') ?? 'Ощущается',
+                      localizations.translate('feels_like'),
                       style: TextStyle(
                         color: AppConstants.secondaryTextColor,
                         fontSize: 10,
@@ -218,7 +218,7 @@ class DetailedWeatherForecast extends StatelessWidget {
               const Text('🌅', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
               Text(
-                localizations.translate('daylight_hours') ?? 'Световой день',
+                localizations.translate('daylight_hours'),
                 style: TextStyle(
                   color: AppConstants.primaryColor,
                   fontSize: 18,
@@ -246,15 +246,15 @@ class DetailedWeatherForecast extends StatelessWidget {
   String _getWeatherTitle(AppLocalizations localizations, int dayIndex) {
     switch (dayIndex) {
       case 0:
-        return localizations.translate('weather_today') ?? 'Погода на сегодня';
+        return localizations.translate('weather_today');
       case 1:
-        return localizations.translate('tomorrow_forecast') ?? 'Прогноз на завтра';
+        return localizations.translate('tomorrow_forecast');
       default:
       // Для других дней показываем дату
         final selectedDay = weather.forecast[dayIndex];
         final date = DateTime.parse(selectedDay.date);
         final formattedDate = _formatDate(date, localizations);
-        return '${localizations.translate('forecast_for') ?? 'Прогноз на'} $formattedDate';
+        return '${localizations.translate('forecast_for')} $formattedDate';
     }
   }
 
@@ -262,18 +262,18 @@ class DetailedWeatherForecast extends StatelessWidget {
   String _formatDate(DateTime date, AppLocalizations localizations) {
     // Используем ключи месяцев в родительном падеже (для дат)
     final monthsGenitive = [
-      localizations.translate('january_genitive') ?? 'января',
-      localizations.translate('february_genitive') ?? 'февраля',
-      localizations.translate('march_genitive') ?? 'марта',
-      localizations.translate('april_genitive') ?? 'апреля',
-      localizations.translate('may_genitive') ?? 'мая',
-      localizations.translate('june_genitive') ?? 'июня',
-      localizations.translate('july_genitive') ?? 'июля',
-      localizations.translate('august_genitive') ?? 'августа',
-      localizations.translate('september_genitive') ?? 'сентября',
-      localizations.translate('october_genitive') ?? 'октября',
-      localizations.translate('november_genitive') ?? 'ноября',
-      localizations.translate('december_genitive') ?? 'декабря',
+      localizations.translate('january_genitive'),
+      localizations.translate('february_genitive'),
+      localizations.translate('march_genitive'),
+      localizations.translate('april_genitive'),
+      localizations.translate('may_genitive'),
+      localizations.translate('june_genitive'),
+      localizations.translate('july_genitive'),
+      localizations.translate('august_genitive'),
+      localizations.translate('september_genitive'),
+      localizations.translate('october_genitive'),
+      localizations.translate('november_genitive'),
+      localizations.translate('december_genitive'),
     ];
 
     return '${date.day} ${monthsGenitive[date.month - 1]}';
@@ -479,7 +479,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
                 left: (timelineWidth * 0.2) - 25,
                 top: 0,
                 child: Text(
-                  localizations.translate('sunrise') ?? 'Восход',
+                  localizations.translate('sunrise'),
                   style: const TextStyle(
                     color: Color(0xFFFF6B35),
                     fontSize: 12,
@@ -492,7 +492,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
                 left: (timelineWidth * 0.8) - 25,
                 top: 0,
                 child: Text(
-                  localizations.translate('sunset') ?? 'Закат',
+                  localizations.translate('sunset'),
                   style: const TextStyle(
                     color: Color(0xFFFF6B35),
                     fontSize: 12,
@@ -517,7 +517,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
         _buildTimeCard(
           icon: '🌅',
           time: DateFormat('HH:mm').format(sunrise),
-          label: localizations.translate('sunrise') ?? 'Восход',
+          label: localizations.translate('sunrise'),
         ),
 
         // Текущая фаза (только если показываем текущее время)
@@ -527,10 +527,10 @@ class SimpleDaylightTimeline extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppConstants.primaryColor.withOpacity(0.1),
+                color: AppConstants.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppConstants.primaryColor.withOpacity(0.3),
+                  color: AppConstants.primaryColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -549,7 +549,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
                   Text(
                     phaseInfo.timeLeft,
                     style: TextStyle(
-                      color: AppConstants.textColor.withOpacity(0.8),
+                      color: AppConstants.textColor.withValues(alpha: 0.8),
                       fontSize: 11,
                     ),
                     textAlign: TextAlign.center,
@@ -563,7 +563,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
         _buildTimeCard(
           icon: '🌇',
           time: DateFormat('HH:mm').format(sunset),
-          label: localizations.translate('sunset') ?? 'Закат',
+          label: localizations.translate('sunset'),
         ),
       ],
     );
@@ -588,7 +588,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 11,
           ),
         ),
@@ -600,7 +600,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppConstants.backgroundColor.withOpacity(0.3),
+        color: AppConstants.backgroundColor.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -609,17 +609,17 @@ class SimpleDaylightTimeline extends StatelessWidget {
           _buildStatCard(
             icon: '⏱️',
             value: _getDaylightDuration(),
-            label: localizations.translate('daylight_duration') ?? 'Длительность дня',
+            label: localizations.translate('daylight_duration'),
           ),
           Container(
             width: 1,
             height: 30,
-            color: AppConstants.textColor.withOpacity(0.2),
+            color: AppConstants.textColor.withValues(alpha: 0.2),
           ),
           _buildStatCard(
             icon: '🕐',
             value: DateFormat('HH:mm').format(currentTime ?? DateTime.now()),
-            label: localizations.translate('current_time') ?? 'Текущее время',
+            label: localizations.translate('current_time'),
           ),
         ],
       ),
@@ -647,7 +647,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: AppConstants.textColor.withOpacity(0.7),
+            color: AppConstants.textColor.withValues(alpha: 0.7),
             fontSize: 10,
           ),
           textAlign: TextAlign.center,
@@ -685,7 +685,7 @@ class SimpleDaylightTimeline extends StatelessWidget {
     final current = currentTime;
     if (current == null) {
       return (
-      phase: localizations.translate('day') ?? 'День',
+      phase: localizations.translate('day'),
       timeLeft: '',
       icon: '☀️'
       );
@@ -694,22 +694,22 @@ class SimpleDaylightTimeline extends StatelessWidget {
     if (current.isBefore(sunrise)) {
       final timeUntilSunrise = sunrise.difference(current);
       return (
-      phase: localizations.translate('night') ?? 'Ночь',
-      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: localizations.translate('night'),
+      timeLeft: '${localizations.translate('until_sunrise')}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
     } else if (current.isAfter(sunset)) {
       final timeUntilSunrise = sunrise.add(const Duration(days: 1)).difference(current);
       return (
-      phase: localizations.translate('night') ?? 'Ночь',
-      timeLeft: '${localizations.translate('until_sunrise') ?? 'До восхода'}: ${_formatDuration(timeUntilSunrise)}',
+      phase: localizations.translate('night'),
+      timeLeft: '${localizations.translate('until_sunrise')}: ${_formatDuration(timeUntilSunrise)}',
       icon: '🌙'
       );
     } else {
       final timeUntilSunset = sunset.difference(current);
       return (
-      phase: localizations.translate('day') ?? 'День',
-      timeLeft: '${localizations.translate('until_sunset') ?? 'До заката'}: ${_formatDuration(timeUntilSunset)}',
+      phase: localizations.translate('day'),
+      timeLeft: '${localizations.translate('until_sunset')}: ${_formatDuration(timeUntilSunset)}',
       icon: '☀️'
       );
     }
@@ -723,22 +723,22 @@ class SimpleDaylightTimeline extends StatelessWidget {
 
     if (locale == 'ru') {
       if (hours > 0) {
-        return '${hours}ч ${minutes}мин';
+        return '$hours}ч $minutes}мин';
       } else {
-        return '${minutes}мин';
+        return '$minutes}мин';
       }
     } else if (locale == 'kk') {
       if (hours > 0) {
-        return '${hours}с ${minutes}мин';
+        return '$hours}с $minutes}мин';
       } else {
-        return '${minutes}мин';
+        return '$minutes}мин';
       }
     } else {
       // Английский и другие языки
       if (hours > 0) {
-        return '${hours}h ${minutes}min';
+        return '$hours}h $minutes}min';
       } else {
-        return '${minutes}min';
+        return '$minutes}min';
       }
     }
   }

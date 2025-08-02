@@ -2,7 +2,6 @@
 // ВАЖНО: Заменить весь существующий файл на этот код
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/weather_api_model.dart';

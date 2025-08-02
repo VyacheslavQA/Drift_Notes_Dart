@@ -170,7 +170,6 @@ Future<void> _initializeSecurityServices() async {
       Future.microtask(() async {
         await _testFirebaseAuthentication();
         try {
-          final auth = FirebaseAuth.instance;
           final firestore = FirebaseFirestore.instance;
           await firestore.enableNetwork();
         } catch (e) {
@@ -243,14 +242,14 @@ Future<void> _initializeApplicationServices() async {
       },
     ];
 
-    // Запускаем все в микротасках
-    criticalServices.forEach((service) {
+    // ✅ ИСПРАВЛЕНО: Заменил forEach на обычный for loop
+    for (final service in criticalServices) {
       Future.microtask(service);
-    });
+    }
 
-    secondaryServices.forEach((service) {
+    for (final service in secondaryServices) {
       Future.microtask(service);
-    });
+    }
 
     // Ждем только первые критические (но не блокируем UI)
     await Future.delayed(Duration(milliseconds: 100));
@@ -319,8 +318,8 @@ Future<void> _initializeAppCheck() async {
       );
     }
 
-    // Проверяем статус App Check
-    final token = await FirebaseAppCheck.instance.getToken();
+    // ✅ ИСПРАВЛЕНО: Убрал неиспользуемую переменную token
+    await FirebaseAppCheck.instance.getToken();
 
   } catch (e) {
     // Silent error handling for production
@@ -369,15 +368,16 @@ Future<void> _testFirebaseAuthentication() async {
   try {
     final auth = FirebaseAuth.instance;
 
-    // Проверяем текущего пользователя
-    final currentUser = auth.currentUser;
+    // ✅ ИСПРАВЛЕНО: Убрал неиспользуемую переменную currentUser
+    auth.currentUser;
 
-    // Проверяем доступность методов Auth
-    try {
-      // Попробуем получить провайдеры для несуществующего email
-      await auth.fetchSignInMethodsForEmail('test@nonexistent.com');
-    } catch (e) {
-      // Expected error for non-existent email - this is fine
+    // 🔥 ИСПРАВЛЕНО: Убрали deprecated fetchSignInMethodsForEmail
+    // Этот метод устарел по соображениям безопасности (защита от перечисления email)
+    // Для debug целей достаточно проверить, что Auth инициализирован
+
+    // Проверяем что Firebase Auth доступен
+    if (auth.app.name.isNotEmpty) {
+      // Firebase Auth успешно инициализирован
     }
 
   } catch (e) {
@@ -390,12 +390,12 @@ Future<void> _requestNotificationPermissions() async {
   try {
     if (Platform.isAndroid) {
       // Для Android 13+ запрашиваем разрешение на уведомления
-      final notificationStatus = await Permission.notification.request();
+      await Permission.notification.request();
 
       // Запрашиваем разрешение на точные будильники
       if (Platform.isAndroid) {
         try {
-          final exactAlarmStatus = await Permission.scheduleExactAlarm.request();
+          await Permission.scheduleExactAlarm.request();
         } catch (e) {
           // Silent error handling - not supported on all Android versions
         }

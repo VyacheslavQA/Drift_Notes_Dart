@@ -1,14 +1,15 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 
 void main(List<String> arguments) async {
-  print('🧪 Запуск полного тестирования DriftNotes приложения...\n');
+  developer.log('🧪 Запуск полного тестирования DriftNotes приложения...\n');
 
   // Определяем путь к Flutter
   final flutterPath = await findFlutterPath();
 
   if (flutterPath == null) {
-    print('❌ Flutter не найден в PATH');
-    print('💡 Попробуйте запустить напрямую: flutter test');
+    developer.log('❌ Flutter не найден в PATH');
+    developer.log('💡 Попробуйте запустить напрямую: flutter test');
     return;
   }
 
@@ -21,16 +22,17 @@ void main(List<String> arguments) async {
   };
 
   if (arguments.isEmpty) {
-    print('Выберите набор тестов для запуска:');
+    developer.log('Выберите набор тестов для запуска:');
     var index = 1;
-    testSuites.keys.forEach((suite) {
-      print('$index. $suite');
+    // Исправлено: заменили forEach на обычный цикл for
+    for (final suite in testSuites.keys) {
+      developer.log('$index. $suite');
       index++;
-    });
-    print('6. Запустить ВСЕ тесты');
-    print('7. Запустить тесты с покрытием кода');
-    print('8. Быстрые тесты (только провайдеры)');
-    print('0. Выход');
+    }
+    developer.log('6. Запустить ВСЕ тесты');
+    developer.log('7. Запустить тесты с покрытием кода');
+    developer.log('8. Быстрые тесты (только провайдеры)');
+    developer.log('0. Выход');
 
     stdout.write('\nВведите номер (0-8): ');
     final input = stdin.readLineSync();
@@ -62,7 +64,7 @@ void main(List<String> arguments) async {
         await runQuickTests(flutterPath);
         break;
       default:
-        print('Выход из тестирования.');
+        developer.log('Выход из тестирования.');
         exit(0);
     }
   } else {
@@ -94,61 +96,61 @@ Future<String?> findFlutterPath() async {
 }
 
 Future<void> runTestSuite(String flutterPath, String suiteName, String path) async {
-  print('🎯 Запуск: $suiteName');
-  print('📁 Путь: $path\n');
+  developer.log('🎯 Запуск: $suiteName');
+  developer.log('📁 Путь: $path\n');
 
   if (await Directory(path).exists() || await File(path).exists()) {
     await runCommand(flutterPath, ['test', path]);
   } else {
-    print('⚠️  Путь не найден: $path');
-    print('💡 Создайте тесты в этой папке:');
+    developer.log('⚠️  Путь не найден: $path');
+    developer.log('💡 Создайте тесты в этой папке:');
     if (path.contains('models')) {
-      print('   - Тесты для моделей данных (FishingNoteModel, BiteRecordModel)');
+      developer.log('   - Тесты для моделей данных (FishingNoteModel, BiteRecordModel)');
     } else if (path.contains('utils')) {
-      print('   - Тесты для валидаторов (email, пароли, вес рыбы)');
+      developer.log('   - Тесты для валидаторов (email, пароли, вес рыбы)');
     } else if (path.contains('integration')) {
-      print('   - Интеграционные тесты (полные сценарии использования)');
+      developer.log('   - Интеграционные тесты (полные сценарии использования)');
     }
-    print('');
+    developer.log('');
   }
 }
 
 Future<void> runAllTests(String flutterPath) async {
-  print('🚀 Запуск ВСЕХ тестов...\n');
+  developer.log('🚀 Запуск ВСЕХ тестов...\n');
 
   final startTime = DateTime.now();
 
   await runCommand(flutterPath, ['test']);
 
   final duration = DateTime.now().difference(startTime);
-  print('\n⏱️  Общее время выполнения: ${duration.inSeconds} секунд');
-  print('✅ Полное тестирование завершено!');
+  developer.log('\n⏱️  Общее время выполнения: ${duration.inSeconds} секунд');
+  developer.log('✅ Полное тестирование завершено!');
 }
 
 Future<void> runTestsWithCoverage(String flutterPath) async {
-  print('📊 Запуск тестов с анализом покрытия кода...\n');
+  developer.log('📊 Запуск тестов с анализом покрытия кода...\n');
 
   await runCommand(flutterPath, ['test', '--coverage']);
 
-  print('\n📈 Анализ покрытия кода:');
+  developer.log('\n📈 Анализ покрытия кода:');
   if (await File('coverage/lcov.info').exists()) {
-    print('✅ Отчет о покрытии создан: coverage/lcov.info');
-    print('💡 Для просмотра HTML отчета:');
-    print('   1. Установите lcov (если нет)');
-    print('   2. Выполните: genhtml coverage/lcov.info -o coverage/html');
-    print('   3. Откройте: coverage/html/index.html');
+    developer.log('✅ Отчет о покрытии создан: coverage/lcov.info');
+    developer.log('💡 Для просмотра HTML отчета:');
+    developer.log('   1. Установите lcov (если нет)');
+    developer.log('   2. Выполните: genhtml coverage/lcov.info -o coverage/html');
+    developer.log('   3. Откройте: coverage/html/index.html');
   } else {
-    print('⚠️  Файл покрытия не найден');
+    developer.log('⚠️  Файл покрытия не найден');
   }
 }
 
 Future<void> runQuickTests(String flutterPath) async {
-  print('⚡ Запуск быстрых тестов (только провайдеры)...\n');
+  developer.log('⚡ Запуск быстрых тестов (только провайдеры)...\n');
 
   if (await Directory('test/providers/').exists()) {
     await runCommand(flutterPath, ['test', 'test/providers/']);
   } else {
-    print('⚠️  Папка test/providers/ не найдена');
+    developer.log('⚠️  Папка test/providers/ не найдена');
   }
 }
 
@@ -176,13 +178,13 @@ Future<void> handleCommandLineArgs(String flutterPath, List<String> arguments) a
       await runQuickTests(flutterPath);
       break;
     default:
-      print('❌ Неизвестная команда: ${arguments[0]}');
+      developer.log('❌ Неизвестная команда: ${arguments[0]}');
       printUsage();
   }
 }
 
 Future<void> runCommand(String command, List<String> arguments) async {
-  print('🔧 Выполняется: $command ${arguments.join(' ')}');
+  developer.log('🔧 Выполняется: $command ${arguments.join(' ')}');
 
   try {
     final process = await Process.start(
@@ -202,37 +204,37 @@ Future<void> runCommand(String command, List<String> arguments) async {
     final exitCode = await process.exitCode;
 
     if (exitCode == 0) {
-      print('✅ Тесты прошли успешно');
+      developer.log('✅ Тесты прошли успешно');
     } else {
-      print('❌ Тесты завершились с ошибкой (код: $exitCode)');
+      developer.log('❌ Тесты завершились с ошибкой (код: $exitCode)');
     }
   } catch (e) {
-    print('❌ Ошибка выполнения команды: $e');
-    print('💡 Попробуйте запустить напрямую: $command ${arguments.join(' ')}');
+    developer.log('❌ Ошибка выполнения команды: $e');
+    developer.log('💡 Попробуйте запустить напрямую: $command ${arguments.join(' ')}');
   }
 }
 
 void printUsage() {
-  print('📚 Использование:');
-  print('dart test_runner.dart [команда]');
-  print('');
-  print('🎯 Доступные команды:');
-  print('  all         # Все тесты');
-  print('  providers   # Только провайдеры');
-  print('  models      # Только модели данных');
-  print('  utils       # Только утилиты и валидаторы');
-  print('  integration # Только интеграционные тесты');
-  print('  coverage    # Тесты с анализом покрытия кода');
-  print('  quick       # Быстрые тесты (провайдеры)');
-  print('');
-  print('💡 Примеры:');
-  print('  dart test_runner.dart all');
-  print('  dart test_runner.dart providers');
-  print('  dart test_runner.dart coverage');
-  print('');
-  print('🎯 Текущий статус тестов:');
-  print('  ✅ Провайдеры: 35 тестов работают');
-  print('  🆕 Модели: создайте test/models/');
-  print('  🆕 Утилиты: создайте test/utils/');
-  print('  🆕 Интеграция: создайте test/integration/');
+  developer.log('📚 Использование:');
+  developer.log('dart test_runner.dart [команда]');
+  developer.log('');
+  developer.log('🎯 Доступные команды:');
+  developer.log('  all         # Все тесты');
+  developer.log('  providers   # Только провайдеры');
+  developer.log('  models      # Только модели данных');
+  developer.log('  utils       # Только утилиты и валидаторы');
+  developer.log('  integration # Только интеграционные тесты');
+  developer.log('  coverage    # Тесты с анализом покрытия кода');
+  developer.log('  quick       # Быстрые тесты (провайдеры)');
+  developer.log('');
+  developer.log('💡 Примеры:');
+  developer.log('  dart test_runner.dart all');
+  developer.log('  dart test_runner.dart providers');
+  developer.log('  dart test_runner.dart coverage');
+  developer.log('');
+  developer.log('🎯 Текущий статус тестов:');
+  developer.log('  ✅ Провайдеры: 35 тестов работают');
+  developer.log('  🆕 Модели: создайте test/models/');
+  developer.log('  🆕 Утилиты: создайте test/utils/');
+  developer.log('  🆕 Интеграция: создайте test/integration/');
 }

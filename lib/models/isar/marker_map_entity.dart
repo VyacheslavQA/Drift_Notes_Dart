@@ -62,7 +62,7 @@ class MarkerMapEntity {
     }
   }
 
-  @ignore
+  // 🔥 ИСПРАВЛЕНО: убрана аннотация @ignore с сеттера
   set markers(List<Map<String, dynamic>> value) {
     try {
       markersJson = _encodeJson(value);
