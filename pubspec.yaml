@@ -2,7 +2,7 @@ name: drift_notes_dart
 description: "Мобильное приложение для рыболовов."
 publish_to: 'none'
 
-version: 1.0.2+8
+version: 1.0.2+13
 
 environment:
   sdk: ^3.7.2
@@ -48,7 +48,7 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # Карты
-  google_maps_flutter: ^2.5.3
+  google_maps_flutter: 2.12.3
   geolocator: ^10.1.0
 
   # Управление состоянием

@@ -1,4 +1,5 @@
 // Путь: lib/main.dart
+// ✅ ИСПРАВЛЕНО ДЛЯ ПРОДАКШЕНА: Правильная инициализация с IsarService в критических сервисах
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -62,14 +63,14 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ ОПТИМИЗИРОВАНО: Только критические операции для быстрого запуска UI
-  await _initializeCriticalOnly();
+  // 🔥 ИСПРАВЛЕНО: Критические сервисы теперь включают IsarService
+  await _initializeCriticalServices();
 
   // Инициализация LanguageProvider ДО создания приложения
   final languageProvider = LanguageProvider();
   await languageProvider.initialize();
 
-  // ✅ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Запускаем приложение СРАЗУ - остальное в фоне
+  // ✅ ИСПРАВЛЕНО: Запускаем приложение после инициализации критических сервисов
   runApp(
     MultiProvider(
       providers: [
@@ -81,99 +82,148 @@ void main() async {
       child: DriftNotesApp(consentService: UserConsentService()),
     ),
   );
+
+  // 🔥 НОВОЕ: Остальные сервисы инициализируем в фоне ПОСЛЕ запуска UI
+  _initializeSecondaryServicesInBackground();
 }
 
-// ✅ НОВАЯ ФУНКЦИЯ: Только критические операции для быстрого запуска
-Future<void> _initializeCriticalOnly() async {
+// 🔥 ИСПРАВЛЕНО: Критические сервисы теперь включают IsarService и базовые зависимости
+Future<void> _initializeCriticalServices() async {
   try {
-    // Инициализация локали для форматирования дат
+    debugPrint('🔧 Инициализация критических сервисов...');
+
+    // 1. ПЕРВЫМ делом инициализируем Isar - он нужен сразу для SyncService
+    await IsarService.instance.init();
+    debugPrint('✅ IsarService инициализирован');
+
+    // 2. Инициализация локали для форматирования дат
     await initializeDateFormatting('ru_RU', null);
     await initializeDateFormatting('en_US', null);
 
-    // Устанавливаем ориентацию экрана только на портретный режим
+    // 3. Устанавливаем ориентацию экрана только на портретный режим
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
 
-    // Показываем системную навигацию
+    // 4. Показываем системную навигацию
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
 
-    // Инициализация Firebase с защитой от дублирования - ТОЛЬКО FIREBASE
+    // 5. Инициализация Firebase с защитой от дублирования
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      debugPrint('✅ Firebase инициализирован');
     }
 
-    debugPrint('✅ Критические сервисы инициализированы');
-  } catch (e) {
-    debugPrint('❌ Ошибка критической инициализации: $e');
-  }
-}
+    // 6. Инициализация базовых репозиториев (нужны для работы с данными)
+    await _initializeBasicRepositories();
 
-// ✅ НОВАЯ ФУНКЦИЯ: Асинхронная инициализация всех сервисов в фоне
-Future<void> _initializeAllServicesAsync() async {
-  try {
-    debugPrint('🔄 Начинаем фоновую инициализацию сервисов...');
-
-    // Этап 1: Разрешения и базовые уведомления (критично для работы)
-    await _initializeCriticalServices();
-
-    // Этап 2: App Check и debug тесты (важно для безопасности)
-    await _initializeSecurityServices();
-
-    // Этап 3: Базы данных и репозитории (параллельно)
-    await _initializeDatabaseServices();
-
-    // Этап 4: Сервисы приложения (параллельно с задержками)
-    await _initializeApplicationServices();
-
-    // Этап 5: Офлайн сервисы и сеть (последними)
-    await _initializeNetworkServices();
-
-    debugPrint('✅ Все сервисы инициализированы успешно');
-  } catch (e) {
-    debugPrint('❌ Ошибка фоновой инициализации: $e');
-  }
-}
-
-// Этап 1: Критические сервисы для базовой работы
-Future<void> _initializeCriticalServices() async {
-  try {
-    debugPrint('🔧 Инициализация критических сервисов...');
-
-    // Разрешения на уведомления
+    // 7. Базовые разрешения и уведомления (критично для пользовательского опыта)
     await _requestNotificationPermissions();
-
-    // Базовые уведомления
     await _initializeNotifications();
 
-    debugPrint('✅ Критические сервисы готовы');
-  } catch (e) {
-    debugPrint('❌ Ошибка критических сервисов: $e');
+    debugPrint('✅ Критические сервисы инициализированы');
+  } catch (e, stackTrace) {
+    debugPrint('❌ Критическая ошибка инициализации: $e');
+    debugPrint('Stack trace: $stackTrace');
+    // В продакшене продолжаем работу даже при ошибках
   }
 }
 
-// Этап 2: Сервисы безопасности (асинхронно)
+// 🔥 НОВОЕ: Инициализация базовых репозиториев
+Future<void> _initializeBasicRepositories() async {
+  try {
+    // Инициализируем репозитории параллельно для быстроты
+    final futures = [
+          () async {
+        try {
+          await FishingNoteRepository().initialize();
+          debugPrint('✅ FishingNoteRepository инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка FishingNoteRepository: $e');
+        }
+      }(),
+          () async {
+        try {
+          await BudgetNotesRepository().initialize();
+          debugPrint('✅ BudgetNotesRepository инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка BudgetNotesRepository: $e');
+        }
+      }(),
+          () async {
+        try {
+          await MarkerMapRepository().initialize();
+          debugPrint('✅ MarkerMapRepository инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка MarkerMapRepository: $e');
+          // MarkerMap может использовать legacy систему
+        }
+      }(),
+    ];
+
+    await Future.wait(futures, eagerError: false);
+    debugPrint('✅ Базовые репозитории инициализированы');
+  } catch (e) {
+    debugPrint('⚠️ Ошибка инициализации репозиториев: $e');
+    // Продолжаем работу - репозитории могут инициализироваться позже
+  }
+}
+
+// 🔥 НОВОЕ: Вторичные сервисы в фоне ПОСЛЕ запуска UI
+void _initializeSecondaryServicesInBackground() {
+  // Запускаем через микротаск чтобы не блокировать отрисовку первого кадра
+  Future.microtask(() async {
+    try {
+      debugPrint('🔄 Начинаем фоновую инициализацию вторичных сервисов...');
+
+      // Этап 1: App Check и безопасность
+      await _initializeSecurityServices();
+
+      // Этап 2: Совместимость со старыми сервисами
+      await _initializeLegacyServices();
+
+      // Этап 3: Сервисы приложения (параллельно с задержками)
+      await _initializeApplicationServices();
+
+      // Этап 4: Сетевые сервисы (последними)
+      await _initializeNetworkServices();
+
+      debugPrint('✅ Все вторичные сервисы инициализированы успешно');
+    } catch (e) {
+      debugPrint('❌ Ошибка фоновой инициализации: $e');
+      // В продакшене не крашим приложение из-за ошибок вторичных сервисов
+    }
+  });
+}
+
+// Этап 1: Сервисы безопасности (асинхронно)
 Future<void> _initializeSecurityServices() async {
   try {
     debugPrint('🔐 Инициализация сервисов безопасности...');
 
-    // ✅ ИСПРАВЛЕНО: App Check в микротаске чтобы не блокировать UI
+    // App Check в микротаске чтобы не блокировать UI
     Future.microtask(() async {
-      await _initializeAppCheck();
+      try {
+        await _initializeAppCheck();
+        debugPrint('✅ App Check инициализирован');
+      } catch (e) {
+        debugPrint('⚠️ Ошибка App Check: $e');
+      }
     });
 
     // Debug тесты тоже в микротаске
     if (kDebugMode) {
       Future.microtask(() async {
-        await _testFirebaseAuthentication();
         try {
+          await _testFirebaseAuthentication();
           final firestore = FirebaseFirestore.instance;
           await firestore.enableNetwork();
+          debugPrint('✅ Firebase debug тесты пройдены');
         } catch (e) {
-          // Silent error handling
+          debugPrint('⚠️ Ошибка Firebase debug тестов: $e');
         }
       });
     }
@@ -184,69 +234,108 @@ Future<void> _initializeSecurityServices() async {
   }
 }
 
-// Этап 3: Базы данных (параллельно)
-Future<void> _initializeDatabaseServices() async {
+// Этап 2: Инициализация legacy сервисов для совместимости
+Future<void> _initializeLegacyServices() async {
   try {
-    debugPrint('🗄️ Инициализация баз данных...');
+    debugPrint('🗄️ Инициализация legacy сервисов...');
 
-    // Инициализируем все БД параллельно
-    final futures = [
-      _initializeIsarServices(),
-      _initializeOfflineServices(),
-    ];
+    // Инициализируем старый OfflineStorageService для совместимости
+    try {
+      final offlineStorage = OfflineStorageService();
+      await offlineStorage.initialize();
+      debugPrint('✅ OfflineStorageService (legacy) инициализирован');
+    } catch (e) {
+      debugPrint('⚠️ Ошибка OfflineStorageService: $e');
+    }
 
-    await Future.wait(futures, eagerError: false);
-    debugPrint('✅ Базы данных готовы');
+    debugPrint('✅ Legacy сервисы готовы');
   } catch (e) {
-    debugPrint('❌ Ошибка инициализации БД: $e');
+    debugPrint('❌ Ошибка legacy сервисов: $e');
   }
 }
 
-// Этап 4: Сервисы приложения (все в микротасках)
+// Этап 3: Сервисы приложения (все в микротасках)
 Future<void> _initializeApplicationServices() async {
   try {
     debugPrint('⚙️ Инициализация сервисов приложения...');
 
-    // ✅ ИСПРАВЛЕНО: Все сервисы в микротасках с задержками
+    // Критически важные сервисы уведомлений
     final criticalServices = [
           () async {
-        await Future.delayed(Duration(milliseconds: 10));
-        await LocalPushNotificationService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 10));
+          await LocalPushNotificationService().initialize();
+          debugPrint('✅ LocalPushNotificationService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка LocalPushNotificationService: $e');
+        }
       },
           () async {
-        await Future.delayed(Duration(milliseconds: 20));
-        await NotificationService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 20));
+          await NotificationService().initialize();
+          debugPrint('✅ NotificationService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка NotificationService: $e');
+        }
       },
     ];
 
+    // Вторичные сервисы
     final secondaryServices = [
           () async {
-        await Future.delayed(Duration(milliseconds: 30));
-        await TimerService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 30));
+          await TimerService().initialize();
+          debugPrint('✅ TimerService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка TimerService: $e');
+        }
       },
           () async {
-        await Future.delayed(Duration(milliseconds: 40));
-        await WeatherNotificationService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 40));
+          await WeatherNotificationService().initialize();
+          debugPrint('✅ WeatherNotificationService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка WeatherNotificationService: $e');
+        }
       },
           () async {
-        await Future.delayed(Duration(milliseconds: 50));
-        await WeatherSettingsService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 50));
+          await WeatherSettingsService().initialize();
+          debugPrint('✅ WeatherSettingsService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка WeatherSettingsService: $e');
+        }
       },
           () async {
-        await Future.delayed(Duration(milliseconds: 60));
-        await ScheduledReminderService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 60));
+          await ScheduledReminderService().initialize();
+          debugPrint('✅ ScheduledReminderService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка ScheduledReminderService: $e');
+        }
       },
           () async {
-        await Future.delayed(Duration(milliseconds: 70));
-        await LocationService().initialize();
+        try {
+          await Future.delayed(Duration(milliseconds: 70));
+          await LocationService().initialize();
+          debugPrint('✅ LocationService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка LocationService: $e');
+        }
       },
     ];
 
-    // ✅ ИСПРАВЛЕНО: Заменил forEach на обычный for loop
+    // Запускаем критические сервисы
     for (final service in criticalServices) {
       Future.microtask(service);
     }
 
+    // Запускаем вторичные сервисы
     for (final service in secondaryServices) {
       Future.microtask(service);
     }
@@ -260,7 +349,7 @@ Future<void> _initializeApplicationServices() async {
   }
 }
 
-// Этап 5: Сетевые сервисы
+// Этап 4: Сетевые сервисы
 Future<void> _initializeNetworkServices() async {
   try {
     debugPrint('🌐 Инициализация сетевых сервисов...');
@@ -274,33 +363,7 @@ Future<void> _initializeNetworkServices() async {
   }
 }
 
-// ✅ ИСПРАВЛЕНО: Инициализация Isar сервисов с поддержкой MarkerMap
-Future<void> _initializeIsarServices() async {
-  try {
-    // Инициализация IsarService (теперь поддерживает MarkerMap)
-    await IsarService.instance.init();
-
-    // Инициализация репозиториев параллельно
-    final repoFutures = [
-      FishingNoteRepository().initialize(),
-      BudgetNotesRepository().initialize(),
-    ];
-
-    await Future.wait(repoFutures, eagerError: false);
-
-    // ✅ ИСПРАВЛЕНО: Инициализация MarkerMapRepository (создадим если нет)
-    try {
-      await MarkerMapRepository().initialize();
-    } catch (e) {
-      // Silent error handling - markers may use legacy system
-    }
-
-  } catch (e) {
-    // Silent error handling for production
-  }
-}
-
-// ✅ НОВАЯ ФУНКЦИЯ: Правильная инициализация App Check
+// ✅ ИСПРАВЛЕНО: Инициализация App Check
 Future<void> _initializeAppCheck() async {
   try {
     // Настройка провайдеров в зависимости от режима сборки
@@ -318,21 +381,12 @@ Future<void> _initializeAppCheck() async {
       );
     }
 
-    // ✅ ИСПРАВЛЕНО: Убрал неиспользуемую переменную token
+    // Получаем токен для проверки работоспособности
     await FirebaseAppCheck.instance.getToken();
 
   } catch (e) {
-    // Silent error handling for production
-  }
-}
-
-// Инициализация офлайн сервисов (СТАРЫЕ - для совместимости)
-Future<void> _initializeOfflineServices() async {
-  try {
-    final offlineStorage = OfflineStorageService();
-    await offlineStorage.initialize();
-  } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка App Check: $e');
+    // В продакшене не крашим приложение из-за App Check
   }
 }
 
@@ -344,12 +398,16 @@ void _startNetworkMonitoring() {
 
     networkMonitor.addConnectionListener((isConnected) {
       if (isConnected) {
-        // ✅ ИСПРАВЛЕНО: Используем новый SyncService.instance для Isar
-        SyncService.instance.fullSync().then((_) {
-          // Silent success
-        }).catchError((e) {
-          // Silent error handling
-        });
+        // 🔥 ИСПРАВЛЕНО: Проверяем готовность IsarService перед синхронизацией
+        if (IsarService.instance.isInitialized) {
+          SyncService.instance.fullSync().then((_) {
+            debugPrint('✅ Автоматическая синхронизация выполнена');
+          }).catchError((e) {
+            debugPrint('⚠️ Ошибка автоматической синхронизации: $e');
+          });
+        } else {
+          debugPrint('⚠️ IsarService не готов для синхронизации');
+        }
       }
     });
 
@@ -357,7 +415,7 @@ void _startNetworkMonitoring() {
     SyncService.instance.startPeriodicSync();
 
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка мониторинга сети: $e');
   }
 }
 
@@ -368,20 +426,13 @@ Future<void> _testFirebaseAuthentication() async {
   try {
     final auth = FirebaseAuth.instance;
 
-    // ✅ ИСПРАВЛЕНО: Убрал неиспользуемую переменную currentUser
-    auth.currentUser;
-
-    // 🔥 ИСПРАВЛЕНО: Убрали deprecated fetchSignInMethodsForEmail
-    // Этот метод устарел по соображениям безопасности (защита от перечисления email)
-    // Для debug целей достаточно проверить, что Auth инициализирован
-
     // Проверяем что Firebase Auth доступен
     if (auth.app.name.isNotEmpty) {
-      // Firebase Auth успешно инициализирован
+      debugPrint('✅ Firebase Auth готов');
     }
 
   } catch (e) {
-    // Silent error handling
+    debugPrint('⚠️ Ошибка тестирования Firebase Auth: $e');
   }
 }
 
@@ -397,7 +448,7 @@ Future<void> _requestNotificationPermissions() async {
         try {
           await Permission.scheduleExactAlarm.request();
         } catch (e) {
-          // Silent error handling - not supported on all Android versions
+          debugPrint('⚠️ scheduleExactAlarm не поддерживается: $e');
         }
       }
     } else if (Platform.isIOS) {
@@ -411,8 +462,9 @@ Future<void> _requestNotificationPermissions() async {
         critical: true,
       );
     }
+    debugPrint('✅ Разрешения на уведомления запрошены');
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка запроса разрешений: $e');
   }
 }
 
@@ -447,8 +499,10 @@ Future<void> _initializeNotifications() async {
     if (Platform.isAndroid) {
       await _createNotificationChannel();
     }
+
+    debugPrint('✅ Flutter Local Notifications инициализированы');
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка инициализации уведомлений: $e');
   }
 }
 
@@ -470,7 +524,7 @@ Future<void> _createNotificationChannel() async {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка создания канала уведомлений: $e');
   }
 }
 
@@ -489,11 +543,11 @@ void _onNotificationTap(NotificationResponse notificationResponse) {
           _navigateToTimers();
         }
       } catch (e) {
-        // Silent error handling for malformed payload
+        debugPrint('⚠️ Ошибка обработки payload уведомления: $e');
       }
     }
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка обработки нажатия на уведомление: $e');
   }
 }
 
@@ -507,7 +561,7 @@ void _navigateToTimers() {
       navigator.pushNamed('/timers');
     }
   } catch (e) {
-    // Silent error handling for production
+    debugPrint('⚠️ Ошибка навигации к таймерам: $e');
   }
 }
 
@@ -531,8 +585,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void initState() {
     super.initState();
 
-    // ✅ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Запускаем инициализацию сервисов В ФОНЕ
-    _initializeAllServicesInBackground();
+    // ✅ ИСПРАВЛЕНО: Убрана фоновая инициализация - все критическое уже инициализировано в main()
 
     WeatherNotificationService.setNavigatorKey(globalNavigatorKey);
 
@@ -547,14 +600,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     });
   }
 
-  // ✅ НОВЫЙ МЕТОД: Фоновая инициализация без блокировки UI
-  void _initializeAllServicesInBackground() {
-    // Запускаем через микротаск чтобы не блокировать первый кадр
-    Future.microtask(() async {
-      await _initializeAllServicesAsync();
-    });
-  }
-
   // Инициализация SubscriptionProvider
   void _initializeSubscriptionProvider() {
     try {
@@ -564,12 +609,12 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       subscriptionProvider.setFirebaseService(_firebaseService);
 
       subscriptionProvider.initialize().then((_) {
-        // Silent success
+        debugPrint('✅ SubscriptionProvider инициализирован');
       }).catchError((error) {
-        // Silent error handling
+        debugPrint('⚠️ Ошибка SubscriptionProvider: $error');
       });
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка инициализации SubscriptionProvider: $e');
     }
   }
 
@@ -584,7 +629,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       ScheduledReminderService().dispose();
       TimerService().dispose();
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка dispose сервисов: $e');
     }
 
     super.dispose();
@@ -597,7 +642,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _ensureNotificationHandlerIsActive();
       }
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка инициализации ScheduledReminder контекста: $e');
     }
   }
 
@@ -605,7 +650,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     try {
       _setupNotificationHandlers();
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка активации обработчика уведомлений: $e');
     }
   }
 
@@ -618,7 +663,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
           _handleNotificationTap(payload);
         },
         onError: (error) {
-          // Silent error handling
+          debugPrint('⚠️ Ошибка потока уведомлений: $error');
         },
       );
     } catch (e) {
@@ -634,7 +679,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
           _handleNotificationTap(payload);
         });
       } catch (e) {
-        // Silent error handling for production
+        debugPrint('⚠️ Ошибка альтернативного обработчика уведомлений: $e');
       }
     });
   }
@@ -663,7 +708,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _navigateToNotifications();
       }
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка обработки нажатия на уведомление: $e');
     }
   }
 
@@ -755,14 +800,14 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
         const ShortcutItem(type: 'timers', localizedTitle: 'Таймеры'),
       ]).catchError((error) {
-        // Silent error handling
+        debugPrint('⚠️ Ошибка установки Quick Actions: $error');
       });
 
       quickActions.initialize((String shortcutType) {
         _handleShortcutAction(shortcutType);
       });
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка инициализации Quick Actions: $e');
     }
   }
 
@@ -774,7 +819,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _handleDeepLink(uri);
       },
       onError: (err) {
-        // Silent error handling
+        debugPrint('⚠️ Ошибка Deep Link: $err');
       },
     );
 
@@ -789,7 +834,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         _handleDeepLink(initialLink);
       }
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка обработки начального Deep Link: $e');
     }
   }
 
@@ -936,7 +981,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
       _initializeScheduledReminderContext();
     } catch (e) {
-      // Silent error handling for production
+      debugPrint('⚠️ Ошибка при возобновлении приложения: $e');
     }
   }
 
@@ -972,7 +1017,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
               try {
                 ScheduledReminderService().setContext(context);
               } catch (e) {
-                // Silent error handling for production
+                debugPrint('⚠️ Ошибка установки контекста ScheduledReminderService: $e');
               }
             });
 
