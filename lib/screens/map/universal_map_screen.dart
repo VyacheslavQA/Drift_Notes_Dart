@@ -629,7 +629,7 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
     );
   }
 
-  // Информация о заметке рыбалки
+  // Информация о заметке рыбалки - ИСПРАВЛЕНО для стабильной работы с нижними панелями
   void _showFishingNoteInfo(FishingNoteModel note) {
     if (_isDisposed) return;
 
@@ -637,125 +637,154 @@ class _UniversalMapScreenState extends State<UniversalMapScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppConstants.backgroundColor,
+      backgroundColor: Colors.transparent, // ✅ ИЗМЕНЕНИЕ: прозрачный фон для SafeArea
+      isScrollControlled: true, // ✅ ДОБАВЛЕНО: полный контроль над высотой
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.location_on,
-                    color: AppConstants.primaryColor,
-                    size: 24,
-                  ),
+      builder: (context) => SafeArea( // ✅ ДОБАВЛЕНО: SafeArea для учета системных панелей
+        child: Container(
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom, // ✅ ДОБАВЛЕНО: отступ для клавиатуры
+          ),
+          decoration: BoxDecoration( // ✅ ПЕРЕНЕСЕНО: декорация в SafeArea
+            color: AppConstants.backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ✅ ДОБАВЛЕНО: индикатор для перетаскивания
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 8, bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppConstants.textColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        note.location,
-                        style: TextStyle(
-                          color: AppConstants.textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        localizations.translate(note.fishingType),
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: AppConstants.textColor),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            _buildInfoRow(
-              Icons.calendar_today,
-              localizations.translate('date'),
-              note.isMultiDay && note.endDate != null
-                  ? '${_formatDate(note.date)} - ${_formatDate(note.endDate!)}'
-                  : _formatDate(note.date),
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildInfoRow(
-              Icons.set_meal,
-              localizations.translate('bite_records'),
-              '${note.biteRecords.length} ${_getBiteRecordsText(note.biteRecords.length)}',
-            ),
-
-            const SizedBox(height: 12),
-
-            if (note.photoUrls.isNotEmpty)
-              _buildInfoRow(
-                Icons.photo_library,
-                localizations.translate('photos'),
-                '${note.photoUrls.length} ${localizations.translate('photos')}',
               ),
 
-            const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), // ✅ ИЗМЕНЕНО: убрал верхний отступ
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.location_on,
+                            color: AppConstants.primaryColor,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                note.location,
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                localizations.translate(note.fishingType),
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close, color: AppConstants.textColor),
+                        ),
+                      ],
+                    ),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _navigateToFishingSpot(note);
-                    },
-                    icon: Icon(
-                      Icons.navigation,
-                      color: AppConstants.textColor,
-                      size: 20,
+                    const SizedBox(height: 16),
+
+                    _buildInfoRow(
+                      Icons.calendar_today,
+                      localizations.translate('date'),
+                      note.isMultiDay && note.endDate != null
+                          ? '${_formatDate(note.date)} - ${_formatDate(note.endDate!)}'
+                          : _formatDate(note.date),
                     ),
-                    label: Text(
-                      localizations.translate('build_route'),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+
+                    const SizedBox(height: 12),
+
+                    _buildInfoRow(
+                      Icons.set_meal,
+                      localizations.translate('bite_records'),
+                      '${note.biteRecords.length} ${_getBiteRecordsText(note.biteRecords.length)}',
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    if (note.photoUrls.isNotEmpty)
+                      _buildInfoRow(
+                        Icons.photo_library,
+                        localizations.translate('photos'),
+                        '${note.photoUrls.length} ${localizations.translate('photos')}',
                       ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _navigateToFishingSpot(note);
+                            },
+                            icon: Icon(
+                              Icons.navigation,
+                              color: AppConstants.textColor,
+                              size: 20,
+                            ),
+                            label: Text(
+                              localizations.translate('build_route'),
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
+
+                    // ✅ ДОБАВЛЕНО: дополнительный отступ снизу для стабильности
+                    SizedBox(height: MediaQuery.of(context).padding.bottom > 0 ? 10 : 20),
+                  ],
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
