@@ -93,7 +93,10 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     _startDate = widget.note.date;
     _endDate = widget.note.endDate ?? widget.note.date;
     _isMultiDay = widget.note.isMultiDay;
-    _tripDays = _isMultiDay ? _endDate.difference(_startDate).inDays + 1 : 1;
+    // Приводим даты к началу дня для корректного подсчета
+    final startDay = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    final endDay = DateTime(_endDate.year, _endDate.month, _endDate.day);
+    _tripDays = _isMultiDay ? endDay.difference(startDay).inDays + 1 : 1;
 
     _existingPhotoUrls = List.from(widget.note.photoUrls);
 
@@ -230,11 +233,13 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     }
   }
 
-  // Обновление количества дней рыбалки
   void _updateTripDays() {
     if (_isMultiDay) {
+      // Приводим даты к началу дня для корректного подсчета
+      final startDay = DateTime(_startDate.year, _startDate.month, _startDate.day);
+      final endDay = DateTime(_endDate.year, _endDate.month, _endDate.day);
       setState(() {
-        _tripDays = _endDate.difference(_startDate).inDays + 1;
+        _tripDays = endDay.difference(startDay).inDays + 1;
       });
     } else {
       setState(() {
@@ -1268,87 +1273,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
     }
   }
 
-  // ✅ НОВЫЙ ВИДЖЕТ СЕЛЕКТОРА ДНЯ
-  Widget _buildDaySelector(AppLocalizations localizations) {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        minHeight: ResponsiveConstants.minTouchTarget,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
-        ),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: ResponsiveConstants.spacingM),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedDayIndex,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF12332E),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-            fontWeight: FontWeight.w500,
-          ),
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context),
-          ),
-          items: List.generate(_tripDays, (index) {
-            final isToday = index < _fishingDays.length && _isToday(_fishingDays[index]);
-
-            return DropdownMenuItem<int>(
-              value: index,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _getDayName(index),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  if (isToday)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveConstants.spacingXS,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        localizations.translate('today'),
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }),
-          onChanged: (int? value) {
-            if (value != null) {
-              setState(() {
-                _selectedDayIndex = value;
-              });
-            }
-          },
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1425,12 +1349,6 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 _buildDateSelectors(localizations),
                 SizedBox(height: ResponsiveConstants.spacingL),
 
-                // ✅ СЕЛЕКТОР ДНЯ РЫБАЛКИ (только для многодневной)
-                if (_isMultiDay && _tripDays > 1) ...[
-                  _buildSectionHeader(localizations.translate('day_fishing')),
-                  _buildDaySelector(localizations),
-                  SizedBox(height: ResponsiveConstants.spacingL),
-                ],
 
                 // Точка на карте
                 _buildSectionHeader(localizations.translate('map_point')),
@@ -1880,26 +1798,67 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   Widget _buildWeatherGrid(AppLocalizations localizations) {
     return Column(
       children: [
-        // Первая строка
         ResponsiveUtils.isSmallScreen(context)
-            ? Column( // На маленьких экранах - вертикально
+            ? Column(
           children: [
-            _buildWeatherInfoItem(
-              icon: Icons.air,
-              label: localizations.translate('wind_short'),
-              value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.air,
+                    label: localizations.translate('wind_short'),
+                    value: '${_weather!.windDirection}\n${_formatWindSpeed(_weather!.windSpeed)}',
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.water_drop,
+                    label: localizations.translate('humidity_short'),
+                    value: '${_weather!.humidity}%',
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.water_drop,
-              label: localizations.translate('humidity_short'),
-              value: '${_weather!.humidity}%',
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.speed,
+                    label: localizations.translate('pressure_short'),
+                    value: _formatPressure(_weather!.pressure),
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.cloud,
+                    label: localizations.translate('cloudiness_short'),
+                    value: '${_weather!.cloudCover}%',
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.speed,
-              label: localizations.translate('pressure_short'),
-              value: _formatPressure(_weather!.pressure),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.wb_twilight,
+                    label: localizations.translate('sunrise'),
+                    value: _weather!.sunrise,
+                  ),
+                ),
+                SizedBox(width: ResponsiveConstants.spacingM),
+                Expanded(
+                  child: _buildWeatherInfoItem(
+                    icon: Icons.nights_stay,
+                    label: localizations.translate('sunset'),
+                    value: _weather!.sunset,
+                  ),
+                ),
+              ],
             ),
           ],
         )
@@ -1931,56 +1890,35 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
           ],
         ),
         SizedBox(height: ResponsiveConstants.spacingM),
-        // Вторая строка
-        ResponsiveUtils.isSmallScreen(context)
-            ? Column(
-          children: [
-            _buildWeatherInfoItem(
-              icon: Icons.cloud,
-              label: localizations.translate('cloudiness_short'),
-              value: '${_weather!.cloudCover}%',
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.wb_twilight,
-              label: localizations.translate('sunrise'),
-              value: _weather!.sunrise,
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            _buildWeatherInfoItem(
-              icon: Icons.nights_stay,
-              label: localizations.translate('sunset'),
-              value: _weather!.sunset,
-            ),
-          ],
-        )
-            : Row(
-          children: [
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.cloud,
-                label: localizations.translate('cloudiness_short'),
-                value: '${_weather!.cloudCover}%',
+        // Вторая строка для больших экранов
+        if (!ResponsiveUtils.isSmallScreen(context))
+          Row(
+            children: [
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.cloud,
+                  label: localizations.translate('cloudiness_short'),
+                  value: '${_weather!.cloudCover}%',
+                ),
               ),
-            ),
-            SizedBox(width: ResponsiveConstants.spacingM),
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.wb_twilight,
-                label: localizations.translate('sunrise'),
-                value: _weather!.sunrise,
+              SizedBox(width: ResponsiveConstants.spacingM),
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.wb_twilight,
+                  label: localizations.translate('sunrise'),
+                  value: _weather!.sunrise,
+                ),
               ),
-            ),
-            SizedBox(width: ResponsiveConstants.spacingM),
-            Expanded(
-              child: _buildWeatherInfoItem(
-                icon: Icons.nights_stay,
-                label: localizations.translate('sunset'),
-                value: _weather!.sunset,
+              SizedBox(width: ResponsiveConstants.spacingM),
+              Expanded(
+                child: _buildWeatherInfoItem(
+                  icon: Icons.nights_stay,
+                  label: localizations.translate('sunset'),
+                  value: _weather!.sunset,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }

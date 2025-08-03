@@ -186,8 +186,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
   void _updateTripDays() {
     if (_isMultiDay) {
+      // Приводим даты к началу дня для корректного подсчета
+      final startDay = DateTime(_startDate.year, _startDate.month, _startDate.day);
+      final endDay = DateTime(_endDate.year, _endDate.month, _endDate.day);
       setState(() {
-        _tripDays = _endDate.difference(_startDate).inDays + 1;
+        _tripDays = endDay.difference(startDay).inDays + 1;
       });
     } else {
       setState(() {
@@ -1069,87 +1072,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ✅ НОВЫЙ ВИДЖЕТ СЕЛЕКТОРА ДНЯ
-  Widget _buildDaySelector(AppLocalizations localizations) {
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        minHeight: ResponsiveConstants.minTouchTarget,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12332E),
-        borderRadius: BorderRadius.circular(
-          ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
-        ),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: ResponsiveConstants.spacingM),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedDayIndex,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF12332E),
-          style: TextStyle(
-            color: AppConstants.textColor,
-            fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-            fontWeight: FontWeight.w500,
-          ),
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: AppConstants.textColor,
-            size: ResponsiveUtils.getIconSize(context),
-          ),
-          items: List.generate(_tripDays, (index) {
-            final isToday = index < _fishingDays.length && _isToday(_fishingDays[index]);
-
-            return DropdownMenuItem<int>(
-              value: index,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _getDayName(index),
-                      style: TextStyle(
-                        color: AppConstants.textColor,
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  if (isToday)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: ResponsiveConstants.spacingXS,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        localizations.translate('today'),
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }),
-          onChanged: (int? value) {
-            if (value != null) {
-              setState(() {
-                _selectedDayIndex = value;
-              });
-            }
-          },
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1239,12 +1161,6 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                   _buildDateSelectors(localizations),
                   SizedBox(height: ResponsiveConstants.spacingL),
 
-                  // ✅ СЕЛЕКТОР ДНЯ РЫБАЛКИ (только для многодневной)
-                  if (_isMultiDay && _tripDays > 1) ...[
-                    _buildSectionHeader(localizations.translate('day_fishing')),
-                    _buildDaySelector(localizations),
-                    SizedBox(height: ResponsiveConstants.spacingL),
-                  ],
 
                   // Точка на карте
                   _buildSectionHeader(localizations.translate('map_point')),
