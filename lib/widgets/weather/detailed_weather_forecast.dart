@@ -723,22 +723,22 @@ class SimpleDaylightTimeline extends StatelessWidget {
 
     if (locale == 'ru') {
       if (hours > 0) {
-        return '$hours}ч $minutes}мин';
+        return '${hours}ч ${minutes}мин';
       } else {
-        return '$minutes}мин';
+        return '${minutes}мин';
       }
     } else if (locale == 'kk') {
       if (hours > 0) {
-        return '$hours}с $minutes}мин';
+        return '${hours}с ${minutes}мин';
       } else {
-        return '$minutes}мин';
+        return '${minutes}мин';
       }
     } else {
       // Английский и другие языки
       if (hours > 0) {
-        return '$hours}h $minutes}min';
+        return '${hours}h ${minutes}min';
       } else {
-        return '$minutes}min';
+        return '${minutes}min';
       }
     }
   }
