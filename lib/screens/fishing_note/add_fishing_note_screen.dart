@@ -32,6 +32,8 @@ import '../subscription/paywall_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 import '../../services/calendar_event_service.dart';
+import '../../services/photo/photo_service.dart'; // ДОБАВИТЬ ЭТУ СТРОКУ
+
 
 class AddFishingNoteScreen extends StatefulWidget {
   final String? fishingType;
@@ -56,6 +58,8 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   AIBitePredictionService? _aiService;
   SubscriptionService? _subscriptionService;
   FishingNoteRepository? _repository;
+  PhotoService? _photoService;
+
 
   final _weatherSettings = WeatherSettingsService();
 
@@ -238,38 +242,44 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   }
 
   // ✅ ОПТИМИЗАЦИЯ 2: СЖАТИЕ ФОТО (экономия ~27MB на 3 фото)
-  Future<File> _createTempFile(Uint8List bytes) async {
-    final tempDir = await getTemporaryDirectory();
-    final tempPath = '${tempDir.path}/${const Uuid().v4()}.jpg';
-    final tempFile = File(tempPath);
-    await tempFile.writeAsBytes(bytes);
-    return tempFile;
+  Future<File> _createPermanentFile(Uint8List bytes) async {
+    _photoService ??= PhotoService();
+    return await _photoService!.savePermanentPhoto(bytes);
   }
 
   Future<void> _addCompressedPhoto(XFile pickedFile) async {
     try {
-      final bytes = await pickedFile.readAsBytes();
+      _photoService ??= PhotoService();
 
-      final compressedBytes = await FlutterImageCompress.compressWithList(
-        bytes,
-        minWidth: 800,   // вместо 4000px
-        minHeight: 600,  // вместо 3000px
-        quality: 60,     // 60% качества
-      );
+      // Умное сжатие и сохранение в постоянную папку
+      final permanentFile = await _photoService!.processAndSavePhoto(pickedFile);
 
-      // Сохраняем сжатое фото: ~1MB вместо 15MB
-      final tempFile = await _createTempFile(compressedBytes);
       setState(() {
-        _selectedPhotos.add(tempFile);
+        _selectedPhotos.add(permanentFile);
       });
       _markAsChanged();
+
+      // Показываем информацию о сжатии
+      final originalBytes = await pickedFile.readAsBytes();
+      final compressedBytes = await permanentFile.readAsBytes();
+      final originalSizeMB = (originalBytes.length / (1024 * 1024)).toStringAsFixed(1);
+      final compressedSizeMB = (compressedBytes.length / (1024 * 1024)).toStringAsFixed(1);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Фото добавлено: $originalSizeMB MB → $compressedSizeMB MB'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${localizations.translate('error_compressing_photo')}: $e'),
-            backgroundColor: Colors.orange,
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -765,7 +775,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
-  // ✅ ДОБАВИТЬ ЭТОТ НОВЫЙ МЕТОД:
+  // ✅ ИСПРАВЛЕННЫЙ МЕТОД:
   FishingNoteModel _createFishingNoteModel(String userId, AppLocalizations localizations) {
     // AI предсказание в правильном формате
     Map<String, dynamic>? aiPredictionMap;
@@ -810,10 +820,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       length: record.length,
       notes: record.notes,
       photoUrls: record.photoUrls,
-      dayIndex: record.dayIndex, // ✅ СОХРАНЯЕМ ДЕНЬ ПОКЛЕВКИ
+      dayIndex: record.dayIndex,
       spotIndex: record.spotIndex,
     )).toList();
-
 
     return FishingNoteModel(
       id: const Uuid().v4(),
@@ -830,9 +839,9 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       weather: weather,
       biteRecords: biteRecords,
       aiPrediction: aiPredictionMap,
-      photoUrls: const [], // Repository сам обработает фото
-      mapMarkers: const [], // Пустой список для совместимости
-      title: _locationController.text.trim(), // Используем локацию как заголовок
+      photoUrls: const [], // ✅ ИСПРАВЛЕНИЕ: Пустой список! Repository сам добавит фото
+      mapMarkers: const [],
+      title: _locationController.text.trim(),
 
       // Поля которые есть только в старой модели (значения по умолчанию)
       dayBiteMaps: const {},

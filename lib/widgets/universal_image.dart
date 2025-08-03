@@ -38,7 +38,7 @@ class UniversalImage extends StatelessWidget {
     }
 
     // Если URL начинается с 'file://', это локальный файл
-    if (LocalFileService().isLocalFileUri(imageUrl)) {
+    if (imageUrl.startsWith('file://')) {
       return _buildLocalImage(context);
     }
 

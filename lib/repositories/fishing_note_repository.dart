@@ -10,6 +10,7 @@ import '../services/isar_service.dart';
 import '../services/offline/sync_service.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/local/local_file_service.dart';
+import '../services/photo/photo_service.dart';
 import '../services/subscription/subscription_service.dart';
 import '../constants/subscription_constants.dart';
 import '../utils/network_utils.dart';
@@ -28,6 +29,7 @@ class FishingNoteRepository {
   final SyncService _syncService = SyncService.instance;
   final FirebaseService _firebaseService = FirebaseService();
   final LocalFileService _localFileService = LocalFileService();
+  final PhotoService _photoService = PhotoService();
   final SubscriptionService _subscriptionService = SubscriptionService();
 
   // Кэш для предотвращения повторных загрузок
@@ -39,6 +41,17 @@ class FishingNoteRepository {
   Future<void> initialize() async {
     try {
       await _isarService.init();
+
+      // ✅ НОВОЕ: Очищаем старые временные файлы при запуске
+      _photoService.cleanupOldTempFiles();
+
+      // ✅ НОВОЕ: Запускаем синхронизацию офлайн фото в фоне
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      if (isOnline) {
+        syncAllOfflinePhotos().catchError((e) {
+          debugPrint('❌ Ошибка фоновой синхронизации фото: $e');
+        });
+      }
     } catch (e) {
       rethrow;
     }
@@ -113,7 +126,7 @@ class FishingNoteRepository {
     }
   }
 
-  /// Создание новой заметки
+  /// ✅ ИСПРАВЛЕННОЕ СОЗДАНИЕ новой заметки (убрано дублирование фото)
   Future<String> addFishingNote(
       FishingNoteModel note,
       List<File>? photos,
@@ -130,38 +143,42 @@ class FishingNoteRepository {
       // Создаем копию заметки с установленным ID и UserID
       final noteToAdd = note.copyWith(id: noteId, userId: userId);
 
-      // Обрабатываем фотографии
+      // ✅ ИСПРАВЛЕНИЕ: Обрабатываем ТОЛЬКО новые фото
       List<String> photoUrls = [];
-      final isOnline = await NetworkUtils.isNetworkAvailable();
 
-      if (isOnline && photos != null && photos.isNotEmpty) {
-        // Онлайн: загружаем фото в Firebase Storage
-        for (var photo in photos) {
-          try {
-            final bytes = await photo.readAsBytes();
-            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photos.indexOf(photo)}.jpg';
-            final path = 'users/$userId/photos/$fileName';
-            final url = await _firebaseService.uploadImage(path, bytes);
-            photoUrls.add(url);
-          } catch (e) {
-            // Игнорируем ошибки загрузки отдельных фото
-          }
+      if (photos != null && photos.isNotEmpty) {
+        debugPrint('📸 Обрабатываем ${photos.length} фото для заметки $noteId');
+
+        final isOnline = await NetworkUtils.isNetworkAvailable();
+
+        if (isOnline) {
+          // Онлайн: загружаем в Firebase Storage через PhotoService
+          photoUrls = await _photoService.uploadPhotosToFirebase(photos, noteId);
+          debugPrint('✅ Загружено ${photoUrls.length}/${photos.length} фото в Firebase');
+        } else {
+          // Офлайн: сохраняем локальные пути для последующей синхронизации
+          debugPrint('📱 Офлайн режим: сохраняем локальные пути фото');
+          photoUrls = photos.map((file) => file.path).toList();
+
+          // Помечаем заметку как требующую синхронизации фото
+          debugPrint('📝 Заметка помечена для синхронизации фото при подключении к сети');
         }
-      } else if (photos != null && photos.isNotEmpty) {
-        // Офлайн: сохраняем локальные копии
-        photoUrls = await _localFileService.saveLocalCopies(photos);
       }
+
+      // ✅ ИСПРАВЛЕНИЕ: УБРАЛИ дублирование - модель приходит с пустым photoUrls
+      // Теперь photoUrls содержит только фото из PhotoService
 
       final noteWithPhotos = noteToAdd.copyWith(photoUrls: photoUrls);
 
       // Конвертируем в Isar entity и сохраняем в Isar
       final entity = _modelToEntity(noteWithPhotos);
       entity.isSynced = false; // Помечаем как несинхронизированную
-      entity.markedForDeletion = false; // ✅ НОВОЕ: Явно помечаем как не удаленную
+      entity.markedForDeletion = false; // Явно помечаем как не удаленную
 
       await _isarService.insertFishingNote(entity);
 
       // Если онлайн, запускаем синхронизацию
+      final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
         _syncService.syncFishingNotesToFirebase().then((_) {
           // Синхронизация завершена
@@ -179,7 +196,7 @@ class FishingNoteRepository {
     }
   }
 
-  /// Обновление существующей заметки
+  /// ✅ ИСПРАВЛЕННОЕ ОБНОВЛЕНИЕ заметки с поддержкой новых фото
   Future<void> updateFishingNote(FishingNoteModel note) async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -202,12 +219,52 @@ class FishingNoteRepository {
         throw Exception('Нельзя обновлять удаленную заметку');
       }
 
+      // ✅ НОВОЕ: Обрабатываем фото при редактировании
+      List<String> finalPhotoUrls = List.from(note.photoUrls);
+
+      // Проверяем есть ли локальные пути (новые фото из edit screen)
+      final localPhotos = finalPhotoUrls
+          .where((url) => !url.startsWith('http')) // Локальные пути
+          .map((path) => File(path))
+          .where((file) => file.existsSync())
+          .toList();
+
+      if (localPhotos.isNotEmpty) {
+        debugPrint('📸 Найдено ${localPhotos.length} новых фото для загрузки при редактировании');
+
+        final isOnline = await NetworkUtils.isNetworkAvailable();
+
+        if (isOnline) {
+          // Онлайн: загружаем новые фото в Firebase
+          final uploadedUrls = await _photoService.uploadPhotosToFirebase(localPhotos, note.id);
+
+          // Заменяем локальные пути на Firebase URL
+          for (int i = 0; i < localPhotos.length && i < uploadedUrls.length; i++) {
+            final localPath = localPhotos[i].path;
+            final firebaseUrl = uploadedUrls[i];
+
+            final index = finalPhotoUrls.indexOf(localPath);
+            if (index != -1) {
+              finalPhotoUrls[index] = firebaseUrl;
+            }
+          }
+
+          debugPrint('✅ Загружено ${uploadedUrls.length} новых фото при редактировании');
+        } else {
+          debugPrint('📱 Офлайн: новые фото сохранены локально');
+          // В офлайн режиме оставляем локальные пути как есть
+        }
+      }
+
+      // Создаем обновленную модель с финальными URL фото
+      final noteWithFinalPhotos = note.copyWith(photoUrls: finalPhotoUrls);
+
       // Обновляем данные
-      final updatedEntity = _modelToEntity(note);
+      final updatedEntity = _modelToEntity(noteWithFinalPhotos);
       updatedEntity.id = existingEntity.id; // Сохраняем локальный ID
       updatedEntity.firebaseId = note.id; // Firebase ID
       updatedEntity.isSynced = false; // Помечаем как несинхронизированную
-      updatedEntity.markedForDeletion = false; // ✅ НОВОЕ: Сохраняем статус не удаленной
+      updatedEntity.markedForDeletion = false; // Сохраняем статус не удаленной
       updatedEntity.updatedAt = DateTime.now();
 
       await _isarService.updateFishingNote(updatedEntity);
@@ -262,18 +319,46 @@ class FishingNoteRepository {
     }
   }
 
-  /// ✅ ПОЛНОСТЬЮ ИСПРАВЛЕНО: Удаление заметки с поддержкой офлайн режима
+  /// ✅ ИСПРАВЛЕННОЕ УДАЛЕНИЕ с удалением фото из Firebase Storage
   Future<void> deleteFishingNote(String noteId) async {
     try {
       if (noteId.isEmpty) {
         throw Exception('ID заметки не может быть пустым');
       }
 
+      // ✅ НОВОЕ: Получаем заметку для удаления фото
+      final entity = await _isarService.getFishingNoteByFirebaseId(noteId);
+      if (entity == null) {
+        throw Exception('Заметка не найдена в локальной базе');
+      }
+
+      // ✅ НОВОЕ: Удаляем фото из Firebase Storage
+      if (entity.photoUrls.isNotEmpty) {
+        debugPrint('🗑️ Удаляем ${entity.photoUrls.length} фото из Firebase Storage');
+
+        try {
+          await _photoService.deletePhotosFromFirebase(entity.photoUrls);
+          debugPrint('✅ Фото удалены из Firebase Storage');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка удаления фото из Firebase: $e');
+          // Продолжаем удаление заметки даже если фото не удалились
+        }
+
+        // ✅ НОВОЕ: Удаляем локальные файлы фото
+        try {
+          await _photoService.deleteLocalPhotos(entity.photoUrls);
+          debugPrint('✅ Локальные фото удалены');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка удаления локальных фото: $e');
+          // Продолжаем удаление заметки
+        }
+      }
+
       final isOnline = await NetworkUtils.isNetworkAvailable();
       bool deletionSuccessful = false;
 
       if (isOnline) {
-        // ✅ ОНЛАЙН РЕЖИМ: Сразу удаляем из Firebase и Isar
+        // ОНЛАЙН РЕЖИМ: Сразу удаляем из Firebase и Isar
         try {
           deletionSuccessful = await _syncService.deleteNoteByFirebaseId(noteId);
 
@@ -287,13 +372,8 @@ class FishingNoteRepository {
           throw Exception('Не удалось удалить заметку: $e');
         }
       } else {
-        // ✅ ОФЛАЙН РЕЖИМ: Помечаем для удаления, НЕ удаляем физически
+        // ОФЛАЙН РЕЖИМ: Помечаем для удаления, НЕ удаляем физически
         try {
-          final entity = await _isarService.getFishingNoteByFirebaseId(noteId);
-          if (entity == null) {
-            throw Exception('Заметка не найдена в локальной базе');
-          }
-
           // Помечаем как удаленную, но оставляем в базе для синхронизации
           entity.markedForDeletion = true;
           entity.updatedAt = DateTime.now();
@@ -309,7 +389,7 @@ class FishingNoteRepository {
         }
       }
 
-      // ✅ ВСЕГДА обновляем лимиты при успешном удалении
+      // ВСЕГДА обновляем лимиты при успешном удалении
       if (deletionSuccessful) {
         try {
           await _subscriptionService.decrementUsage(ContentType.fishingNotes);
@@ -365,6 +445,108 @@ class FishingNoteRepository {
         'hasInternet': false,
         'error': e.toString(),
       };
+    }
+  }
+
+  /// ✅ НОВОЕ: Синхронизация фото для заметки (для офлайн → онлайн)
+  Future<void> syncPhotosForNote(String noteId) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        debugPrint('❌ Пользователь не авторизован для синхронизации фото');
+        return;
+      }
+
+      // Получаем заметку
+      final entity = await _isarService.getFishingNoteByFirebaseId(noteId);
+      if (entity == null) {
+        debugPrint('❌ Заметка $noteId не найдена для синхронизации фото');
+        return;
+      }
+
+      // Проверяем есть ли локальные фото для загрузки
+      final localPhotos = entity.photoUrls
+          .where((url) => !url.startsWith('http')) // Локальные пути
+          .map((path) => File(path))
+          .where((file) => file.existsSync())
+          .toList();
+
+      if (localPhotos.isEmpty) {
+        debugPrint('📸 Нет локальных фото для синхронизации заметки $noteId');
+        return;
+      }
+
+      debugPrint('📤 Синхронизируем ${localPhotos.length} локальных фото для заметки $noteId');
+
+      // Загружаем локальные фото в Firebase
+      final uploadedUrls = await _photoService.uploadPhotosToFirebase(localPhotos, noteId);
+
+      if (uploadedUrls.isNotEmpty) {
+        // Обновляем URL'ы в заметке
+        final updatedPhotoUrls = List<String>.from(entity.photoUrls);
+
+        // Заменяем локальные пути на Firebase URL'ы
+        for (int i = 0; i < localPhotos.length && i < uploadedUrls.length; i++) {
+          final localPath = localPhotos[i].path;
+          final firebaseUrl = uploadedUrls[i];
+
+          final index = updatedPhotoUrls.indexOf(localPath);
+          if (index != -1) {
+            updatedPhotoUrls[index] = firebaseUrl;
+          }
+        }
+
+        entity.photoUrls = updatedPhotoUrls;
+        entity.updatedAt = DateTime.now();
+        await _isarService.updateFishingNote(entity);
+
+        debugPrint('✅ Синхронизация фото завершена: ${uploadedUrls.length} фото загружено');
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка синхронизации фото для заметки $noteId: $e');
+    }
+  }
+
+  /// ✅ НОВОЕ: Синхронизация всех офлайн фото при подключении к сети
+  Future<void> syncAllOfflinePhotos() async {
+    try {
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      if (!isOnline) {
+        debugPrint('📱 Нет подключения к сети для синхронизации фото');
+        return;
+      }
+
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        debugPrint('❌ Пользователь не авторизован для синхронизации фото');
+        return;
+      }
+
+      // Получаем все заметки с локальными фото
+      final allNotes = await _isarService.getAllFishingNotes();
+      final notesWithLocalPhotos = allNotes.where((note) {
+        return note.photoUrls.any((url) => !url.startsWith('http'));
+      }).toList();
+
+      if (notesWithLocalPhotos.isEmpty) {
+        debugPrint('📸 Нет заметок с локальными фото для синхронизации');
+        return;
+      }
+
+      debugPrint('📤 Найдено ${notesWithLocalPhotos.length} заметок с локальными фото');
+
+      for (final note in notesWithLocalPhotos) {
+        if (note.firebaseId != null) {
+          await syncPhotosForNote(note.firebaseId!);
+
+          // Небольшая задержка между синхронизацией заметок
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+
+      debugPrint('✅ Синхронизация всех офлайн фото завершена');
+    } catch (e) {
+      debugPrint('❌ Ошибка массовой синхронизации фото: $e');
     }
   }
 
@@ -436,8 +618,8 @@ class FishingNoteRepository {
           ..fishLength = bite.length
           ..notes = bite.notes
           ..photoUrls = bite.photoUrls
-          ..dayIndex = bite.dayIndex      // ✅ ДОБАВИТЬ
-          ..spotIndex = bite.spotIndex;   // ✅ ДОБАВИТЬ (точка с запятой только в конце!)
+          ..dayIndex = bite.dayIndex
+          ..spotIndex = bite.spotIndex;
       }).toList();
     }
 
@@ -497,8 +679,8 @@ class FishingNoteRepository {
           weight: bite.fishWeight ?? 0.0,
           length: bite.fishLength ?? 0.0,
           notes: bite.notes ?? '',
-          dayIndex: bite.dayIndex ?? 0,     // ✅ ИСПРАВЛЕНО: Убрал ненужный ??
-          spotIndex: bite.spotIndex ?? 0,   // ✅ ИСПРАВЛЕНО: Убрал ненужный ??
+          dayIndex: bite.dayIndex ?? 0,
+          spotIndex: bite.spotIndex ?? 0,
           photoUrls: bite.photoUrls,
         );
       }).toList();

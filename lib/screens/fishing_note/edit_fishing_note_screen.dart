@@ -24,6 +24,7 @@ import '../../services/ai_bite_prediction_service.dart';
 // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем импорты для Provider
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
+import '../../services/photo/photo_service.dart'; // ДОБАВИТЬ ЭТУ СТРОКУ
 
 class EditFishingNoteScreen extends StatefulWidget {
   final FishingNoteModel note;
@@ -45,6 +46,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   final _weatherService = WeatherService();
   final _weatherSettings = WeatherSettingsService();
   final _fishingNoteRepository = FishingNoteRepository(); // 🚨 ДОБАВЛЕНО: Repository
+  final _photoService = PhotoService();
 
   late DateTime _startDate;
   late DateTime _endDate;
@@ -294,25 +296,44 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
     try {
       final picker = ImagePicker();
-      final pickedFiles = await picker.pickMultiImage(
-        imageQuality: 70, // Компрессия для оптимизации размера
-      );
+      final pickedFiles = await picker.pickMultiImage(imageQuality: 85);
 
       if (pickedFiles.isNotEmpty && mounted) {
-        setState(() {
-          // Добавляем новые фото к уже существующим
-          _newPhotos.addAll(
-            pickedFiles.map((xFile) => File(xFile.path)).toList(),
-          );
-        });
+        for (final pickedFile in pickedFiles) {
+          try {
+            // Умное сжатие и сохранение в постоянную папку
+            final permanentFile = await _photoService.processAndSavePhoto(pickedFile);
+
+            setState(() {
+              _newPhotos.add(permanentFile);
+            });
+
+            // Показываем информацию о сжатии
+            final originalBytes = await pickedFile.readAsBytes();
+            final compressedBytes = await permanentFile.readAsBytes();
+            final originalSizeMB = (originalBytes.length / (1024 * 1024)).toStringAsFixed(1);
+            final compressedSizeMB = (compressedBytes.length / (1024 * 1024)).toStringAsFixed(1);
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Фото обработано: $originalSizeMB MB → $compressedSizeMB MB'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Ошибка обработки фото: $e');
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_selecting_images')}: $e',
-            ),
+            content: Text('${localizations.translate('error_selecting_images')}: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -326,37 +347,222 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 70,
+        imageQuality: 85,
       );
 
       if (pickedFile != null && mounted) {
-        setState(() {
-          _newPhotos.add(File(pickedFile.path));
-        });
+        try {
+          // Умное сжатие и сохранение в постоянную папку
+          final permanentFile = await _photoService.processAndSavePhoto(pickedFile);
+
+          setState(() {
+            _newPhotos.add(permanentFile);
+          });
+
+          // Показываем информацию о сжатии
+          final originalBytes = await pickedFile.readAsBytes();
+          final compressedBytes = await permanentFile.readAsBytes();
+          final originalSizeMB = (originalBytes.length / (1024 * 1024)).toStringAsFixed(1);
+          final compressedSizeMB = (compressedBytes.length / (1024 * 1024)).toStringAsFixed(1);
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Фото сделано: $originalSizeMB MB → $compressedSizeMB MB'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${localizations.translate('error_compressing_photo')}: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${localizations.translate('error_taking_photo')}: $e',
-            ),
+            content: Text('${localizations.translate('error_taking_photo')}: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
 
-  void _removeNewPhoto(int index) {
-    setState(() {
-      _newPhotos.removeAt(index);
-    });
+  // ✅ ИСПРАВЛЕННЫЙ МЕТОД: Удаление существующих фото
+  Future<void> _removeExistingPhoto(int index) async {
+    final localizations = AppLocalizations.of(context);
+
+    // Показываем диалог подтверждения
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          title: Text(
+            localizations.translate('delete_photo'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 16, maxSize: 18),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            localizations.translate('delete_photo_confirmation'),
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                localizations.translate('cancel'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                localizations.translate('delete'),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Получаем URL фото для удаления
+      final photoUrl = _existingPhotoUrls[index];
+
+      debugPrint('🗑️ Удаляем фото: $photoUrl');
+
+      // Показываем индикатор загрузки
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text(localizations.translate('deleting_photo')),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      // ✅ УДАЛЯЕМ ФОТО ИЗ FIREBASE STORAGE
+      await _photoService.deletePhotosFromFirebase([photoUrl]);
+
+      // ✅ УДАЛЯЕМ ЛОКАЛЬНЫЕ ФАЙЛЫ (если есть)
+      await _photoService.deleteLocalPhotos([photoUrl]);
+
+      // Удаляем из списка UI
+      setState(() {
+        _existingPhotoUrls.removeAt(index);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('photo_deleted_successfully')),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      debugPrint('✅ Фото успешно удалено из Firebase и UI');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка удаления фото: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_deleting_photo')}: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
-  void _removeExistingPhoto(int index) {
-    setState(() {
-      _existingPhotoUrls.removeAt(index);
-    });
+  // ✅ ОБНОВЛЕННЫЙ МЕТОД: Удаление новых фото (локальных файлов)
+  Future<void> _removeNewPhoto(int index) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      // Получаем файл для удаления
+      final photoFile = _newPhotos[index];
+
+      debugPrint('🗑️ Удаляем локальное фото: ${photoFile.path}');
+
+      // ✅ УДАЛЯЕМ ЛОКАЛЬНЫЙ ФАЙЛ
+      await _photoService.deleteLocalPhotos([photoFile.path]);
+
+      // Удаляем из списка UI
+      setState(() {
+        _newPhotos.removeAt(index);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('photo_deleted_successfully')),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      debugPrint('✅ Локальное фото успешно удалено');
+
+    } catch (e) {
+      debugPrint('❌ Ошибка удаления локального фото: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_deleting_photo')}: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _selectLocation() async {
@@ -546,25 +752,18 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       debugPrint('🌐 Подключение к интернету: ${isOnline ? "есть" : "нет"}');
 
       if (isOnline && _newPhotos.isNotEmpty) {
-        // Если есть интернет и новые фото, загружаем их
+        // Если есть интернет и новые фото, загружаем их через PhotoService
         debugPrint('📸 Загружаем ${_newPhotos.length} новых фото...');
-        for (int i = 0; i < _newPhotos.length; i++) {
-          final photo = _newPhotos[i];
-          try {
-            final photoBytes = await photo.readAsBytes();
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final photoPath = 'fishing_notes/${widget.note.id}/photos/${timestamp}_$i.jpg';
-
-            final photoUrl = await _firebaseService.uploadImage(photoPath, photoBytes);
-            allPhotoUrls.add(photoUrl);
-            debugPrint('✅ Фото ${i + 1} загружено: $photoUrl');
-          } catch (e) {
-            debugPrint('❌ Ошибка загрузки фото ${i + 1}: $e');
-            // Продолжаем загрузку остальных фото
-          }
-        }
+        final uploadedUrls = await _photoService.uploadPhotosToFirebase(
+          _newPhotos,
+          widget.note.id,
+        );
+        allPhotoUrls.addAll(uploadedUrls);
+        debugPrint('✅ Загружено ${uploadedUrls.length} из ${_newPhotos.length} фото');
       } else if (_newPhotos.isNotEmpty) {
-        debugPrint('⚠️ Новые фото не загружены - нет интернета');
+        debugPrint('⚠️ Новые фото сохранены локально - нет интернета');
+        // Добавляем локальные пути для офлайн режима
+        allPhotoUrls.addAll(_newPhotos.map((file) => file.path));
       }
 
       // Обновляем модель заметки
