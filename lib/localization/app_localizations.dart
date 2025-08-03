@@ -18,7 +18,7 @@ class AppLocalizations {
 
   // Статический метод для инициализации делегата
   static const LocalizationsDelegate<AppLocalizations> delegate =
-      AppLocalizationDelegate();
+  AppLocalizationDelegate();
 
   // Кэш для переводов
   late Map<String, String> _localizedStrings;
@@ -61,6 +61,7 @@ class AppLocalizations {
     return [
       const Locale('ru', 'RU'), // Русский
       const Locale('en', 'US'), // Английский
+      const Locale('kk', 'KZ'), // Казахский - ДОБАВЛЕНО
     ];
   }
 
@@ -71,6 +72,8 @@ class AppLocalizations {
         return 'Русский';
       case 'en':
         return 'English';
+      case 'kk':                    // ДОБАВЛЕНО
+        return 'Қазақша';           // ДОБАВЛЕНО
       default:
         return 'Unknown';
     }

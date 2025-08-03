@@ -36,7 +36,7 @@ class LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
 
     setState(() {
       _selectedLanguageCode =
-          _isSystemLanguage ? 'system' : currentLocale.languageCode;
+      _isSystemLanguage ? 'system' : currentLocale.languageCode;
       _isLoading = false;
     });
   }
@@ -95,35 +95,42 @@ class LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         ),
       ),
       body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(color: AppConstants.textColor),
-              )
-              : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildLanguageOption(
-                    title: localizations.translate('system_language'),
-                    languageCode: 'system',
-                    subtitle: 'Использовать язык системы',
-                    icon: Icons.language,
-                  ),
-                  const SizedBox(height: 8),
-                  _buildLanguageOption(
-                    title: 'Русский',
-                    languageCode: 'ru',
-                    subtitle: 'Russian',
-                    icon: Icons.language,
-                  ),
-                  const SizedBox(height: 8),
-                  _buildLanguageOption(
-                    title: 'English',
-                    languageCode: 'en',
-                    subtitle: 'Английский',
-                    icon: Icons.language,
-                  ),
-                ],
-              ),
+      _isLoading
+          ? Center(
+        child: CircularProgressIndicator(color: AppConstants.textColor),
+      )
+          : ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildLanguageOption(
+            title: localizations.translate('system_language'),
+            languageCode: 'system',
+            subtitle: 'Использовать язык системы',
+            icon: Icons.language,
+          ),
+          const SizedBox(height: 8),
+          _buildLanguageOption(
+            title: 'Русский',
+            languageCode: 'ru',
+            subtitle: 'Russian',
+            icon: Icons.language,
+          ),
+          const SizedBox(height: 8),
+          _buildLanguageOption(
+            title: 'English',
+            languageCode: 'en',
+            subtitle: 'Английский',
+            icon: Icons.language,
+          ),
+          const SizedBox(height: 8),
+          _buildLanguageOption(               // ДОБАВЛЕНО
+            title: 'Қазақша',                 // ДОБАВЛЕНО
+            languageCode: 'kk',               // ДОБАВЛЕНО
+            subtitle: 'Казахский',            // ДОБАВЛЕНО
+            icon: Icons.language,             // ДОБАВЛЕНО
+          ),                                  // ДОБАВЛЕНО
+        ],
+      ),
     );
   }
 
@@ -154,9 +161,9 @@ class LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         ),
         leading: Icon(icon, color: AppConstants.textColor),
         trailing:
-            isSelected
-                ? Icon(Icons.check_circle, color: AppConstants.primaryColor)
-                : null,
+        isSelected
+            ? Icon(Icons.check_circle, color: AppConstants.primaryColor)
+            : null,
         onTap: () => _changeLanguage(languageCode),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),

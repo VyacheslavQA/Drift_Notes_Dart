@@ -2013,7 +2013,8 @@
   "delete_photo_confirmation": "Вы уверены, что хотите удалить это фото? Оно будет удалено безвозвратно.",
   "deleting_photo": "Удаляем фото...",
   "photo_deleted_successfully": "Фото успешно удалено",
-  "error_deleting_photo": "Ошибка удаления фото"
+  "error_deleting_photo": "Ошибка удаления фото",
+  "general_fishing": "Рыбалка"
 
 
 }

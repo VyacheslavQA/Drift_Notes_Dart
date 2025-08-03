@@ -2056,5 +2056,6 @@
   "delete_photo_confirmation": "Are you sure you want to delete this photo? It will be permanently removed.",
   "deleting_photo": "Deleting photo...",
   "photo_deleted_successfully": "Photo deleted successfully",
-  "error_deleting_photo": "Error deleting photo"
+  "error_deleting_photo": "Error deleting photo",
+  "general_fishing": "Fishing"
 }

@@ -158,8 +158,8 @@ class LanguageProvider extends ChangeNotifier {
       final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
       // ✅ УБРАНО: debugPrint('📱 Системный язык устройства: ${deviceLocale.languageCode}');
 
-      // Проверяем, поддерживается ли системный язык
-      if (['ru', 'en'].contains(deviceLocale.languageCode)) {
+      // ОБНОВЛЕНО: Проверяем, поддерживается ли системный язык (добавлен 'kk')
+      if (['ru', 'en', 'kk'].contains(deviceLocale.languageCode)) {
         return Locale(deviceLocale.languageCode);
       }
 
@@ -172,19 +172,21 @@ class LanguageProvider extends ChangeNotifier {
     }
   }
 
-  // Получение локализованного названия языка
+  // ОБНОВЛЕНО: Получение локализованного названия языка (добавлен казахский)
   String getLanguageName(String languageCode) {
     switch (languageCode) {
       case 'ru':
         return 'Русский';
       case 'en':
         return 'English';
+      case 'kk':                    // ДОБАВЛЕНО
+        return 'Қазақша';           // ДОБАВЛЕНО
       default:
         return 'Unknown';
     }
   }
 
-  // Получение списка поддерживаемых языков
+  // ОБНОВЛЕНО: Получение списка поддерживаемых языков (добавлен казахский)
   List<Map<String, String>> getSupportedLanguages() {
     return [
       {
@@ -194,6 +196,7 @@ class LanguageProvider extends ChangeNotifier {
       },
       {'code': 'ru', 'name': 'Русский', 'nativeName': 'Russian'},
       {'code': 'en', 'name': 'English', 'nativeName': 'Английский'},
+      {'code': 'kk', 'name': 'Қазақша', 'nativeName': 'Казахский'},  // ДОБАВЛЕНО
     ];
   }
 

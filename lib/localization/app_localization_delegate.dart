@@ -10,7 +10,7 @@ class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {
   @override
   bool isSupported(Locale locale) {
     // Проверяем, есть ли язык в списке поддерживаемых
-    return ['ru', 'en'].contains(locale.languageCode);
+    return ['ru', 'en', 'kk'].contains(locale.languageCode); // ДОБАВЛЕН 'kk'
   }
 
   // Загрузка ресурсов для нужного языка
