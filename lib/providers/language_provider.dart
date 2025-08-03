@@ -159,7 +159,7 @@ class LanguageProvider extends ChangeNotifier {
       // ✅ УБРАНО: debugPrint('📱 Системный язык устройства: ${deviceLocale.languageCode}');
 
       // ОБНОВЛЕНО: Проверяем, поддерживается ли системный язык (добавлен 'kk')
-      if (['ru', 'en', 'kk'].contains(deviceLocale.languageCode)) {
+      if (['ru', 'en'].contains(deviceLocale.languageCode)) {
         return Locale(deviceLocale.languageCode);
       }
 
