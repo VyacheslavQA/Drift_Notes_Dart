@@ -54,7 +54,7 @@ class TimerService {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // ✅ УБРАНО: debugPrint('⏰ Инициализация TimerService...');
+    print('⏰ Инициализация TimerService...');
 
     // Инициализируем уведомления для таймеров
     await _initializeNotifications();
@@ -76,7 +76,7 @@ class TimerService {
     _isInitialized = true;
     _notifyListeners();
 
-    // ✅ УБРАНО: debugPrint('✅ TimerService инициализирован');
+    print('✅ TimerService инициализирован');
   }
 
   // Инициализация уведомлений для таймеров
@@ -96,9 +96,9 @@ class TimerService {
       );
 
       await _notifications.initialize(initSettings);
-      // ✅ УБРАНО: debugPrint('✅ Уведомления для таймеров инициализированы');
+      print('✅ Уведомления для таймеров инициализированы');
     } catch (e) {
-      // ✅ УБРАНО: debugPrint с деталями ошибки инициализации уведомлений таймеров
+      print('❌ Ошибка инициализации уведомлений: $e');
     }
   }
 
@@ -113,7 +113,7 @@ class TimerService {
       );
     }
     await _saveTimers();
-    // ✅ УБРАНО: debugPrint('Созданы таймеры по умолчанию с ключами локализации');
+    print('Созданы таймеры по умолчанию с ключами локализации');
   }
 
   // Миграция существующих названий таймеров на ключи локализации
@@ -127,13 +127,13 @@ class TimerService {
       if (_shouldMigrateTimerName(timer.name, timer.id)) {
         _timers[i] = timer.copyWith(name: 'timer_${timer.id}');
         needsSave = true;
-        // ✅ УБРАНО: debugPrint('Мигрировали таймер ${timer.id}: "${timer.name}" -> "timer_${timer.id}"');
+        print('Мигрировали таймер ${timer.id}: "${timer.name}" -> "timer_${timer.id}"');
       }
     }
 
     if (needsSave) {
       await _saveTimers();
-      // ✅ УБРАНО: debugPrint('Миграция названий таймеров завершена');
+      print('Миграция названий таймеров завершена');
     }
   }
 
@@ -200,6 +200,8 @@ class TimerService {
     _runningTimers.add(timer);
     _saveTimers();
     _notifyListeners();
+
+    print('🟢 Таймер $id запущен');
   }
 
   // Планирование системного уведомления
@@ -266,13 +268,13 @@ class TimerService {
           }),
         );
 
-        // ✅ УБРАНО: debugPrint('✅ Системное уведомление показано для таймера: $displayName');
+        print('✅ Системное уведомление показано для таймера: $displayName');
       } catch (e) {
-        // ✅ УБРАНО: debugPrint с деталями ошибки показа уведомления
+        print('❌ Ошибка показа уведомления: $e');
       }
     });
 
-    // ✅ УБРАНО: debugPrint('✅ Системное уведомление запланировано на ${duration.inMinutes} минут для таймера: $displayName');
+    print('✅ Системное уведомление запланировано на ${duration.inMinutes} минут для таймера: $displayName');
   }
 
   // Отмена системного уведомления
@@ -280,7 +282,7 @@ class TimerService {
     if (_notificationTimers.containsKey(timerId)) {
       _notificationTimers[timerId]?.cancel();
       _notificationTimers.remove(timerId);
-      // ✅ УБРАНО: debugPrint('✅ Отменено системное уведомление для таймера: $timerId');
+      print('✅ Отменено системное уведомление для таймера: $timerId');
     }
   }
 
@@ -345,17 +347,17 @@ class TimerService {
       // Проверяем, есть ли такой звук в ресурсах
       final soundResource = alertSoundResources[soundFile];
       if (soundResource != null) {
-        // ✅ УБРАНО: debugPrint('Воспроизведение звука: $soundResource');
+        print('🔊 Воспроизведение звука: $soundResource');
         await _alertPlayers[timerId]!.play(AssetSource(soundResource));
       } else {
         // Если звук не найден, воспроизводим звук по умолчанию
-        // ✅ УБРАНО: debugPrint('Звук не найден, воспроизведение звука по умолчанию');
+        print('🔊 Звук не найден, воспроизведение звука по умолчанию');
         await _alertPlayers[timerId]!.play(
           AssetSource(alertSoundResources['default_alert.mp3']!),
         );
       }
     } catch (e) {
-      // ✅ УБРАНО: debugPrint('Ошибка при воспроизведении звука: $e');
+      print('❌ Ошибка при воспроизведении звука: $e');
       _isPlayingAlert[timerId] = false;
     }
   }
@@ -367,7 +369,7 @@ class TimerService {
         _alertPlayers[timerId]!.stop();
         _alertPlayers[timerId]!.dispose();
       } catch (e) {
-        // ✅ УБРАНО: debugPrint('⚠️ AudioPlayer уже освобожден для таймера $timerId');
+        print('⚠️ AudioPlayer уже освобожден для таймера $timerId');
       }
       _alertPlayers.remove(timerId);
     }
@@ -383,7 +385,7 @@ class TimerService {
         await previewPlayer.play(AssetSource(soundResource));
       }
     } catch (e) {
-      // ✅ УБРАНО: debugPrint('Ошибка при предварительном воспроизведении: $e');
+      print('❌ Ошибка при предварительном воспроизведении: $e');
     } finally {
       // Освобождаем ресурсы после воспроизведения
       Timer(Duration(milliseconds: _maxAlertDuration), () {
@@ -391,7 +393,7 @@ class TimerService {
           previewPlayer.stop();
           previewPlayer.dispose();
         } catch (e) {
-          // ✅ УБРАНО: debugPrint('⚠️ PreviewPlayer уже освобожден');
+          print('⚠️ PreviewPlayer уже освобожден');
         }
       });
     }
@@ -438,6 +440,8 @@ class TimerService {
     // Сохраняем состояние
     _saveTimers();
     _notifyListeners();
+
+    print('🔴 Таймер $id остановлен');
   }
 
   // Сброс таймера
@@ -470,6 +474,8 @@ class TimerService {
     // Сохраняем состояние
     _saveTimers();
     _notifyListeners();
+
+    print('🔄 Таймер $id сброшен');
   }
 
   // Обновление настроек таймера
@@ -537,7 +543,7 @@ class TimerService {
           final Map<String, dynamic> timerMap = jsonDecode(timerJson);
           _timers.add(FishingTimerModel.fromJson(timerMap));
         } catch (e) {
-          // ✅ УБРАНО: debugPrint('Ошибка при загрузке таймера: $e');
+          print('❌ Ошибка при загрузке таймера: $e');
         }
       }
     }
@@ -555,13 +561,15 @@ class TimerService {
         if (index == -1) continue;
 
         if (remainingTime <= 0) {
-          // Время истекло, останавливаем таймер
+          // Время истекло, останавливаем таймер и воспроизводим звук
           _timers[index] = timer.copyWith(
             isRunning: false,
             remainingTime: Duration.zero,
             startTime: null,
           );
-          // ✅ УБРАНО: debugPrint('⏰ Таймер ${timer.id} завершился пока приложение было закрыто');
+          // Воспроизводим звук для завершившегося таймера
+          _notifyTimeIsUp(timer.id);
+          print('⏰ Таймер ${timer.id} завершился пока приложение было закрыто');
         } else {
           // Таймер еще работает, обновляем оставшееся время и перепланируем уведомление
           _timers[index] = timer.copyWith(
@@ -577,7 +585,7 @@ class TimerService {
           });
           _runningTimers.add(timerInstance);
 
-          // ✅ УБРАНО: debugPrint('⏰ Восстановлен таймер ${timer.id}, осталось: ${remainingTime}с');
+          print('⏰ Восстановлен таймер ${timer.id}, осталось: ${remainingTime}с');
         }
       }
     }
@@ -606,7 +614,7 @@ class TimerService {
         player.stop();
         player.dispose();
       } catch (e) {
-        // ✅ УБРАНО: debugPrint('⚠️ AudioPlayer уже освобожден при dispose');
+        print('⚠️ AudioPlayer уже освобожден при dispose');
       }
     }
     _alertPlayers.clear();
