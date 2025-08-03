@@ -819,7 +819,7 @@ class _AIBiteScreenState extends State<AIBiteScreen>
           children: [
             Expanded(child: _buildWeatherMetric('🌡️', '${current.tempC.round()}°C', localizations.translate('temperature'))),
             const SizedBox(width: 12),
-            Expanded(child: _buildWeatherMetric('☁️', '${current.cloud}%', localizations.translate('cloudiness'))),
+            Expanded(child: _buildWeatherMetric('☁️', '${current.cloud}%', localizations.translate('cloud_cover'))),
           ],
         ),
       ],

@@ -538,11 +538,17 @@ class NotificationService {
     required String title,
     required String message,
   }) async {
+    // Для тестового уведомления добавляем только полезные для пользователя данные
     await createNotification(
       title: title,
       message: message,
       type: NotificationType.general,
-      data: {'test': true, 'timestamp': DateTime.now().millisecondsSinceEpoch},
+      data: {
+        // Добавляем пример полезных данных, которые пользователь может увидеть
+        'fishing_score': '85',
+        'weather_conditions': 'Благоприятные',
+        'best_time_period': 'Утро (06:00-09:00)',
+      },
     );
   }
 

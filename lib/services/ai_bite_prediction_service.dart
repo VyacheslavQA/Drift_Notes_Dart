@@ -82,7 +82,7 @@ class AIBitePredictionService {
       }
 
       // Собираем данные пользователя
-      final userData = await _collectUserData(userHistory, latitude, longitude);
+      final userData = await _collectUserData(userHistory, latitude, longitude, l10n);
 
       // Анализируем погодные условия
       final weatherAnalysis = _analyzeWeatherConditions(weather, l10n);
@@ -146,20 +146,20 @@ class AIBitePredictionService {
       final userData = await _userRepository.getCurrentUserData();
       if (userData?.fishingTypes?.isNotEmpty == true) {
         if (kDebugMode) {
-          debugPrint('📋 Загружены предпочтения из профиля: ${userData!.fishingTypes}');
+          debugPrint('📋 Loaded preferences from profile: ${userData!.fishingTypes}');
         }
         return userData!.fishingTypes!;
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('⚠️ Ошибка загрузки предпочтений пользователя: $e');
+        debugPrint('⚠️ Error loading user preferences: $e');
       }
     }
 
     // Fallback - базовые популярные типы
     final fallbackTypes = ['spinning', 'feeder', 'float_fishing'];
     if (kDebugMode) {
-      debugPrint('🔄 Используем fallback типы: $fallbackTypes');
+      debugPrint('🔄 Using fallback types: $fallbackTypes');
     }
     return fallbackTypes;
   }
@@ -220,7 +220,7 @@ class AIBitePredictionService {
       }
 
       if (kDebugMode) {
-        debugPrint('✅ Прогноз для $fishingType ${l10n.translate("ai_ready")}: ${prediction.overallScore} ${l10n.translate("ai_points")}');
+        debugPrint('✅ Prediction for $fishingType ${l10n.translate("ai_ready")}: ${prediction.overallScore} ${l10n.translate("ai_points")}');
       }
       return prediction;
     } catch (e) {
@@ -241,12 +241,12 @@ class AIBitePredictionService {
           key.length > 20;
 
       if (kDebugMode) {
-        debugPrint('🔑 OpenAI ключ проверка: длина=${key.length}, начинается с sk-=${key.startsWith('sk-')}, настроен=$isConfigured');
+        debugPrint('🔑 OpenAI key check: length=${key.length}, starts with sk-=${key.startsWith('sk-')}, configured=$isConfigured');
       }
       return isConfigured;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка проверки OpenAI ключа: $e');
+        debugPrint('❌ Error checking OpenAI key: $e');
       }
       return false;
     }
@@ -486,9 +486,10 @@ class AIBitePredictionService {
       List<FishingNoteModel>? userHistory,
       double latitude,
       double longitude,
+      AppLocalizations l10n,
       ) async {
     if (kDebugMode) {
-      debugPrint('📊 Собираем данные пользователя...');
+      debugPrint('📊 Collecting user data...');
     }
 
     try {
@@ -578,7 +579,7 @@ class AIBitePredictionService {
       };
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('❌ Ошибка сбора данных пользователя: $e');
+        debugPrint('❌ Error collecting user data: $e');
       }
       return {
         'has_data': false,
@@ -863,7 +864,7 @@ class AIBitePredictionService {
       factors.add(
         BiteFactorAnalysis(
           name: l10n.translate('ai_wind'),
-          value: '${windKph.round()} ${l10n.translate("kilometers")}/ч',
+          value: '${windKph.round()} ${l10n.translate("ai_kmh")}',
           impact: windBonus.round(),
           weight: 0.8,
           description: '${l10n.translate("ai_suitable_wind")} ${config['name']}',
@@ -877,7 +878,7 @@ class AIBitePredictionService {
       factors.add(
         BiteFactorAnalysis(
           name: l10n.translate('ai_wind'),
-          value: '${windKph.round()} ${l10n.translate("kilometers")}/ч',
+          value: '${windKph.round()} ${l10n.translate("ai_kmh")}',
           impact: windPenalty.round(),
           weight: 0.8,
           description: '${l10n.translate("ai_strong_wind")} ${config['name']}',
@@ -942,7 +943,7 @@ class AIBitePredictionService {
       factors.add(
         BiteFactorAnalysis(
           name: l10n.translate('ai_pressure'),
-          value: '${pressure.round()} мб',
+          value: '${pressure.round()} ${l10n.translate("ai_mb")}',
           impact: pressureBonus.round(),
           weight: pressureSensitivity,
           description: l10n.translate('ai_stable_pressure'),
@@ -955,7 +956,7 @@ class AIBitePredictionService {
       factors.add(
         BiteFactorAnalysis(
           name: l10n.translate('ai_pressure'),
-          value: '${pressure.round()} мб',
+          value: '${pressure.round()} ${l10n.translate("ai_mb")}',
           impact: pressurePenalty.round(),
           weight: pressureSensitivity,
           description: pressure < 1000
@@ -1217,7 +1218,7 @@ class AIBitePredictionService {
       allPredictions: predictions,
       comparison: comparison,
       generalRecommendations: generalRecommendations,
-      weatherSummary: _createWeatherSummary(weather),
+      weatherSummary: _createWeatherSummary(weather, l10n),
       generatedAt: DateTime.now(),
     );
   }
@@ -1439,14 +1440,95 @@ class AIBitePredictionService {
     return recommendations;
   }
 
-  WeatherSummary _createWeatherSummary(WeatherApiResponse weather) {
+  /// Перевод погодных условий на локальный язык
+  String _translateWeatherCondition(String condition, int conditionCode, AppLocalizations l10n) {
+    // Используем код условий для точного перевода
+    final weatherTranslations = {
+      1000: l10n.translate('weather_clear'),
+      1003: l10n.translate('weather_partly_cloudy'),
+      1006: l10n.translate('weather_cloudy'),
+      1009: l10n.translate('weather_overcast'),
+      1030: l10n.translate('weather_mist'),
+      1063: l10n.translate('weather_patchy_rain'),
+      1066: l10n.translate('weather_patchy_snow'),
+      1069: l10n.translate('weather_patchy_sleet'),
+      1072: l10n.translate('weather_patchy_freezing_drizzle'),
+      1087: l10n.translate('weather_thundery_outbreaks'),
+      1114: l10n.translate('weather_blowing_snow'),
+      1117: l10n.translate('weather_blizzard'),
+      1135: l10n.translate('weather_fog'),
+      1147: l10n.translate('weather_freezing_fog'),
+      1150: l10n.translate('weather_patchy_light_drizzle'),
+      1153: l10n.translate('weather_light_drizzle'),
+      1168: l10n.translate('weather_freezing_drizzle'),
+      1171: l10n.translate('weather_heavy_freezing_drizzle'),
+      1180: l10n.translate('weather_patchy_light_rain'),
+      1183: l10n.translate('weather_light_rain'),
+      1186: l10n.translate('weather_moderate_rain'),
+      1189: l10n.translate('weather_moderate_rain'),
+      1192: l10n.translate('weather_heavy_rain'),
+      1195: l10n.translate('weather_heavy_rain'),
+      1198: l10n.translate('weather_light_freezing_rain'),
+      1201: l10n.translate('weather_moderate_heavy_freezing_rain'),
+      1204: l10n.translate('weather_light_sleet'),
+      1207: l10n.translate('weather_moderate_heavy_sleet'),
+      1210: l10n.translate('weather_patchy_light_snow'),
+      1213: l10n.translate('weather_light_snow'),
+      1216: l10n.translate('weather_patchy_moderate_snow'),
+      1219: l10n.translate('weather_moderate_snow'),
+      1222: l10n.translate('weather_patchy_heavy_snow'),
+      1225: l10n.translate('weather_heavy_snow'),
+      1237: l10n.translate('weather_ice_pellets'),
+      1240: l10n.translate('weather_light_rain_shower'),
+      1243: l10n.translate('weather_moderate_heavy_rain_shower'),
+      1246: l10n.translate('weather_torrential_rain_shower'),
+      1249: l10n.translate('weather_light_sleet_shower'),
+      1252: l10n.translate('weather_moderate_heavy_sleet_shower'),
+      1255: l10n.translate('weather_light_snow_shower'),
+      1258: l10n.translate('weather_moderate_heavy_snow_shower'),
+      1261: l10n.translate('weather_light_shower_ice_pellets'),
+      1264: l10n.translate('weather_moderate_heavy_shower_ice_pellets'),
+      1273: l10n.translate('weather_patchy_light_rain_thunder'),
+      1276: l10n.translate('weather_moderate_heavy_rain_thunder'),
+      1279: l10n.translate('weather_patchy_light_snow_thunder'),
+      1282: l10n.translate('weather_moderate_heavy_snow_thunder'),
+    };
+
+    // Возвращаем переведенное условие или оригинальное, если перевод не найден
+    return weatherTranslations[conditionCode] ?? condition;
+  }
+
+  /// Перевод фазы луны на локальный язык
+  String _translateMoonPhase(String moonPhase, AppLocalizations l10n) {
+    final moonTranslations = {
+      'new moon': l10n.translate('moon_new'),
+      'waxing crescent': l10n.translate('moon_waxing_crescent'),
+      'first quarter': l10n.translate('moon_first_quarter'),
+      'waxing gibbous': l10n.translate('moon_waxing_gibbous'),
+      'full moon': l10n.translate('moon_full'),
+      'waning gibbous': l10n.translate('moon_waning_gibbous'),
+      'last quarter': l10n.translate('moon_last_quarter'),
+      'waning crescent': l10n.translate('moon_waning_crescent'),
+    };
+
+    final lowercasePhase = moonPhase.toLowerCase();
+    return moonTranslations[lowercasePhase] ?? moonPhase;
+  }
+
+  WeatherSummary _createWeatherSummary(WeatherApiResponse weather, AppLocalizations l10n) {
     return WeatherSummary(
       temperature: weather.current.tempC,
       pressure: weather.current.pressureMb,
       windSpeed: weather.current.windKph,
       humidity: weather.current.humidity,
-      condition: weather.current.condition.text,
-      moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
+      condition: _translateWeatherCondition(
+        weather.current.condition.text,
+        weather.current.condition.code,
+        l10n,
+      ),
+      moonPhase: weather.forecast.isNotEmpty
+          ? _translateMoonPhase(weather.forecast.first.astro.moonPhase, l10n)
+          : l10n.translate('moon_unknown'),
     );
   }
 
@@ -1521,8 +1603,14 @@ class AIBitePredictionService {
         pressure: weather.current.pressureMb,
         windSpeed: weather.current.windKph,
         humidity: weather.current.humidity,
-        condition: weather.current.condition.text,
-        moonPhase: weather.forecast.isNotEmpty ? weather.forecast.first.astro.moonPhase : 'Unknown',
+        condition: _translateWeatherCondition(
+          weather.current.condition.text,
+          weather.current.condition.code,
+          l10n,
+        ),
+        moonPhase: weather.forecast.isNotEmpty
+            ? _translateMoonPhase(weather.forecast.first.astro.moonPhase, l10n)
+            : l10n.translate('moon_unknown'),
       ),
       generatedAt: DateTime.now(),
     );

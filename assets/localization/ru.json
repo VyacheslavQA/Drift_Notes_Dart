@@ -1926,6 +1926,32 @@
   "weather_conditions": "Погодные условия",
   "best_fishing_times": "Лучшее время для рыбалки",
   "detailed_comparison": "Подробное сравнение",
-  "delete_marker_confirmation": "Вы уверены, что хотите удалить этот маркер?"
+  "delete_marker_confirmation": "Вы уверены, что хотите удалить этот маркер?",
+  "cloud_cover": "Облачность",
+  "difficult": "Сложно",
+  "notification_created_time": "Время создания",
+  "fishing_score_points": "Баллы рыбалки",
+  "best_fishing_time": "Лучшее время",
+  "scheduled_time": "Запланированное время",
+  "weather_change_type": "Тип изменения погоды",
+  "weather_conditions_changed": "Изменились погодные условия",
+  "points": "баллов",
+
+  "recommended_time": "Рекомендуемое время",
+  "fishing_rating": "Рейтинг рыбалки",
+  "conditions_quality": "Качество условий",
+  "recommended_activity": "Рекомендуемая активность",
+  "pressure_change": "Изменение давления",
+  "pressure_direction": "Направление",
+  "bite_impact": "Влияние на клев",
+  "temperature_change": "Изменение температуры",
+  "new_temperature": "Новая температура",
+  "wind_speed_change": "Изменение скорости ветра",
+  "direction_change": "Направление изменения",
+  "current_speed": "Текущая скорость",
+  "air_temperature": "Температура воздуха",
+  "atmospheric_pressure": "Атмосферное давление",
+  "weather_condition_type": "Тип погодных условий",
+  "danger_level": "Уровень опасности"
 
 }

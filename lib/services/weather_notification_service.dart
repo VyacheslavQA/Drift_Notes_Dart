@@ -370,10 +370,9 @@ class WeatherNotificationService {
             : WeatherAlertPriority.medium,
         createdAt: DateTime.now(),
         data: {
-          'oldPressure': oldPressureMmHg,
-          'newPressure': newPressureMmHg,
-          'change': pressureChange,
-          'isRising': isRising,
+          'Изменение давления': '${pressureChange.toStringAsFixed(1)} $pressureUnit',
+          'Направление': isRising ? 'Повышение' : 'Понижение',
+          'Влияние на клев': isRising ? 'Положительное' : 'Отрицательное',
         },
       );
 
@@ -403,10 +402,9 @@ class WeatherNotificationService {
         priority: WeatherAlertPriority.medium,
         createdAt: DateTime.now(),
         data: {
-          'oldTemp': oldCurrent.tempC,
-          'newTemp': newCurrent.tempC,
-          'change': tempChange,
-          'isRising': isRising,
+          'Изменение температуры': '${tempChange.toStringAsFixed(1)}°C',
+          'Направление': isRising ? 'Повышение' : 'Понижение',
+          'Новая температура': '${newCurrent.tempC.round()}°C',
         },
       );
 
@@ -434,10 +432,9 @@ class WeatherNotificationService {
         priority: WeatherAlertPriority.low,
         createdAt: DateTime.now(),
         data: {
-          'oldWindKph': oldCurrent.windKph,
-          'newWindKph': newCurrent.windKph,
-          'change': windSpeedChange,
-          'isIncreasing': isIncreasing,
+          'Изменение скорости ветра': '${(windSpeedChange / 3.6).toStringAsFixed(1)} $windUnit',
+          'Направление изменения': isIncreasing ? 'Усиление' : 'Ослабление',
+          'Текущая скорость': '${(newCurrent.windKph / 3.6).toStringAsFixed(1)} $windUnit',
         },
       );
 
@@ -490,9 +487,11 @@ class WeatherNotificationService {
           priority: WeatherAlertPriority.medium,
           createdAt: DateTime.now(),
           data: {
-            'activity': activity,
-            'scorePoints': scorePoints,
-            'bestWindows': bestWindows,
+            // ✅ ИСПРАВЛЕНО: Убираем технические поля и добавляем полезные для пользователя
+            'Рейтинг рыбалки': '$scorePoints баллов из 100',
+            'Качество условий': activity >= 0.9 ? 'Превосходные' : 'Отличные',
+            'Рекомендуемая активность': 'Активная рыбалка',
+            // Убираем: activity, bestWindows (сложная структура)
           },
         );
 
@@ -552,9 +551,9 @@ class WeatherNotificationService {
         priority: priority,
         createdAt: DateTime.now(),
         data: {
-          'windKph': current.windKph,
-          'condition': current.condition.text,
-          'conditionCode': current.condition.code,
+          'Скорость ветра': '${(current.windKph / 3.6).toStringAsFixed(1)} м/с',
+          'Тип погодных условий': current.condition.text,
+          'Уровень опасности': priority == WeatherAlertPriority.high ? 'Высокий' : 'Средний',
         },
       );
 
@@ -620,11 +619,13 @@ class WeatherNotificationService {
         priority: WeatherAlertPriority.low,
         createdAt: DateTime.now(),
         data: {
-          'activity': activity,
-          'scorePoints': scorePoints,
-          'temperature': temperature,
-          'windSpeed': windSpeed,
-          'pressure': pressure,
+          // ✅ ИСПРАВЛЕНО: Заменяем технические поля на понятные пользователю
+          'Баллы рыбалки': '$scorePoints баллов',
+          'Качество условий': activityText,
+          'Температура воздуха': '$temperature°C',
+          'Скорость ветра': '$windSpeed $windUnit',
+          'Атмосферное давление': '$pressure $pressureUnit',
+          // Убираем: activity, temperature, windSpeed, pressure (сырые числа)
         },
       );
 

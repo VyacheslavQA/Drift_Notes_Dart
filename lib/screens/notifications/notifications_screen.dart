@@ -538,6 +538,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return;
     }
 
+    // Фильтруем и форматируем дополнительные данные
+    final filteredData = _getFilteredNotificationData(notification.data, localizations);
+
     // Для других типов уведомлений показываем диалог
     showDialog(
       context: context,
@@ -609,7 +612,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ],
               ),
-              if (notification.data.isNotEmpty &&
+              if (filteredData.isNotEmpty &&
                   notification.type != NotificationType.tournamentReminder) ...[
                 SizedBox(height: ResponsiveConstants.spacingM),
                 Container(
@@ -631,14 +634,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ),
                       SizedBox(height: ResponsiveConstants.spacingS),
-                      ...notification.data.entries
-                          .where((entry) => ![
-                        'sourceId',
-                        'eventId',
-                        'eventType',
-                        'eventTitle',
-                      ].contains(entry.key))
-                          .map(
+                      ...filteredData.entries.map(
                             (entry) => Padding(
                           padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
                           child: Text(
@@ -673,6 +669,143 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
     );
+  }
+
+  /// Фильтрация и форматирование дополнительных данных уведомления
+  Map<String, String> _getFilteredNotificationData(
+      Map<String, dynamic> data,
+      AppLocalizations localizations
+      ) {
+    final Map<String, String> filtered = {};
+
+    for (final entry in data.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      // Пропускаем технические поля
+      if (_isHiddenField(key)) {
+        continue;
+      }
+
+      // Форматируем значения
+      final formattedKey = _formatDataKey(key, localizations);
+      final formattedValue = _formatDataValue(key, value, localizations);
+
+      filtered[formattedKey] = formattedValue;
+    }
+
+    return filtered;
+  }
+
+  /// Проверяет, нужно ли скрывать поле от пользователя
+  bool _isHiddenField(String key) {
+    const hiddenFields = {
+      'test',
+      'sourceId',
+      'eventId',
+      'eventType',
+      'eventTitle',
+      'notification_source',  // Скрываем техническое поле источника
+      'notification_created_time', // Скрываем, так как время уже показано вверху
+      'activity', // Скрываем техническое поле активности (показано в основном тексте)
+      'temperature', // Скрываем, уже показано в основном тексте
+      'windSpeed', // Скрываем, уже показано в основном тексте
+      'pressure', // Скрываем, уже показано в основном тексте
+      'wind_speed', // Альтернативное название
+      'temp', // Альтернативное название
+    };
+    return hiddenFields.contains(key);
+  }
+
+  /// Форматирует ключ данных для отображения пользователю
+  String _formatDataKey(String key, AppLocalizations localizations) {
+    switch (key) {
+      case 'timestamp':
+        return localizations.translate('notification_created_time');
+      case 'scorePoints':
+      case 'score':
+        return localizations.translate('fishing_score_points');
+      case 'bestTime':
+        return localizations.translate('best_fishing_time');
+      case 'location':
+        return localizations.translate('location');
+      case 'scheduledTime':
+        return localizations.translate('scheduled_time');
+      case 'weatherChange':
+        return localizations.translate('weather_change_type');
+      case 'fishing_score':
+      case 'fishing_rating':
+        return localizations.translate('fishing_score');
+      case 'weather_conditions':
+        return localizations.translate('weather_conditions');
+      case 'best_time_period':
+        return localizations.translate('recommended_time');
+      case 'conditions_quality':
+        return localizations.translate('conditions_quality');
+      case 'recommended_activity':
+        return localizations.translate('recommended_activity');
+      case 'Баллы рыбалки': // Обрабатываем уже переведенный ключ
+      case 'Качество условий':
+      case 'Температура воздуха':
+      case 'Скорость ветра':
+      case 'Атмосферное давление':
+        return key; // Возвращаем как есть, уже переведено
+      default:
+        return key;
+    }
+  }
+
+  /// Форматирует значение данных для отображения пользователю
+  String _formatDataValue(String key, dynamic value, AppLocalizations localizations) {
+    switch (key) {
+      case 'timestamp':
+        if (value is int) {
+          final dateTime = DateTime.fromMillisecondsSinceEpoch(value);
+          return DateFormat('dd.MM.yyyy HH:mm').format(dateTime);
+        }
+        return value.toString();
+
+      case 'scorePoints':
+      case 'fishing_score':
+      case 'score':
+        return '$value ${localizations.translate('points')}';
+
+      case 'Баллы рыбалки': // Обрабатываем уже переведенный ключ
+      case 'Качество условий':
+      case 'Температура воздуха':
+      case 'Скорость ветра':
+      case 'Атмосферное давление':
+      // Эти поля уже отформатированы в сервисе
+        return value.toString();
+
+      case 'weatherChange':
+        if (value == true) {
+          return localizations.translate('weather_conditions_changed');
+        }
+        return value.toString();
+
+      case 'scheduledTime':
+        if (value is String) {
+          try {
+            final dateTime = DateTime.parse(value);
+            return DateFormat('dd.MM.yyyy HH:mm').format(dateTime);
+          } catch (e) {
+            return value;
+          }
+        }
+        return value.toString();
+
+      case 'weather_conditions':
+      case 'best_time_period':
+      case 'fishing_rating':
+      case 'conditions_quality':
+      case 'recommended_activity':
+      // Эти поля уже в понятном виде
+        return value.toString();
+
+      default:
+        return value.toString();
+    }
   }
 
   Future<void> _showClearAllDialog() async {
