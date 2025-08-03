@@ -17,6 +17,8 @@ import '../subscription/paywall_screen.dart';
 import '../../localization/app_localizations.dart';
 // 🚀 ИНТЕГРАЦИЯ: Заменяем старый экран на современный
 import 'modern_marker_map_screen.dart';
+// 🆕 НОВОЕ: Импорт экрана фильтрации
+import 'water_body_filter_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
   const MarkerMapsListScreen({super.key});
@@ -29,16 +31,20 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   final _markerMapRepository = MarkerMapRepository();
   final _subscriptionService = SubscriptionService();
 
-  List<MarkerMapModel> _maps = [];
+  List<MarkerMapModel> _allMaps = [];
+  List<MarkerMapModel> _filteredMaps = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  // 🆕 НОВОЕ: Простая фильтрация по водоему
+  String? _selectedWaterBody;
 
   @override
   void initState() {
     super.initState();
     _loadData();
     if (kDebugMode) {
-      debugPrint('🗺️ MarkerMapsListScreen: Инициализация экрана списка карт');
+      debugPrint('🗺️ MarkerMapsListScreen: Инициализация экрана списка карт с фильтрацией по водоемам');
     }
   }
 
@@ -103,14 +109,53 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
       if (mounted) {
         setState(() {
-          _maps = maps;
+          _allMaps = maps;
         });
+        _applyFilter();
 
         if (kDebugMode) {
           debugPrint('✅ Загружено ${maps.length} маркерных карт через Repository');
         }
       }
     }, errorPrefix: 'Ошибка загрузки данных');
+  }
+
+  // 🆕 НОВОЕ: Простое применение фильтра по водоему
+  void _applyFilter() {
+    if (_selectedWaterBody == null) {
+      _filteredMaps = List.from(_allMaps);
+    } else {
+      _filteredMaps = _allMaps.where((map) => map.name == _selectedWaterBody).toList();
+    }
+
+    // Сортировка по дате (новые сначала)
+    _filteredMaps.sort((a, b) => b.date.compareTo(a.date));
+
+    setState(() {});
+
+    if (kDebugMode) {
+      debugPrint('🔍 Фильтрация по водоему "$_selectedWaterBody": ${_filteredMaps.length} из ${_allMaps.length} карт');
+    }
+  }
+
+  // 🆕 НОВОЕ: Открытие экрана фильтрации
+  Future<void> _openFilterScreen() async {
+    final result = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WaterBodyFilterScreen(
+          allMaps: _allMaps,
+          currentFilter: _selectedWaterBody,
+        ),
+      ),
+    );
+
+    if (result != _selectedWaterBody) {
+      setState(() {
+        _selectedWaterBody = result;
+      });
+      _applyFilter();
+    }
   }
 
   Future<void> _handleCreateMapPress() async {
@@ -374,7 +419,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
               fontSize: 16,
             ),
             decoration: InputDecoration(
-              labelText: localizations.translate('map_name'),
+              labelText: localizations.translate('water_body_name'),
               labelStyle: TextStyle(
                 color: AppConstants.primaryColor,
                 fontWeight: FontWeight.w600,
@@ -724,15 +769,108 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
             minHeight: ResponsiveConstants.minTouchTarget,
           ),
         ),
+        // 🆕 НОВОЕ: Кнопка фильтра с иконкой filter_list
+        actions: [
+          if (_allMaps.isNotEmpty) ...[
+            IconButton(
+              icon: Stack(
+                children: [
+                  Icon(
+                    Icons.filter_list,
+                    color: AppConstants.textColor,
+                    size: isSmallScreen ? 24 : 28,
+                  ),
+                  if (_selectedWaterBody != null)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              onPressed: _openFilterScreen,
+              tooltip: localizations.translate('filter'),
+            ),
+          ],
+        ],
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: localizations.translate('loading'),
-        child: _errorMessage != null
-            ? _buildErrorState()
-            : _maps.isEmpty
-            ? _buildEmptyState()
-            : _buildMapsList(),
+        child: Column(
+          children: [
+            // 🆕 НОВОЕ: Индикатор выбранного водоема
+            if (_selectedWaterBody != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppConstants.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppConstants.primaryColor.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: AppConstants.primaryColor,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${localizations.translate('water_body')}: $_selectedWaterBody',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedWaterBody = null;
+                          });
+                          _applyFilter();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.close,
+                            color: AppConstants.textColor.withOpacity(0.6),
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Основной контент
+            Expanded(
+              child: _errorMessage != null
+                  ? _buildErrorState()
+                  : _allMaps.isEmpty
+                  ? _buildEmptyState()
+                  : _filteredMaps.isEmpty
+                  ? _buildNoResultsState()
+                  : _buildMapsList(),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _handleCreateMapPress,
@@ -869,15 +1007,71 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🆕 НОВОЕ: Состояние "нет результатов для выбранного водоема"
+  Widget _buildNoResultsState() {
+    final localizations = AppLocalizations.of(context);
+    final isSmallScreen = ResponsiveUtils.isSmallScreen(context);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              color: AppConstants.textColor.withOpacity(0.5),
+              size: isSmallScreen ? 48 : 64,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingL),
+            Text(
+              localizations.translate('no_maps_for_water_body'),
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: isSmallScreen ? 18 : 22,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingM),
+            Text(
+              '${localizations.translate('selected_water_body')}: $_selectedWaterBody',
+              style: TextStyle(
+                color: AppConstants.primaryColor,
+                fontSize: isSmallScreen ? 14 : 16,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: ResponsiveConstants.spacingXL),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _selectedWaterBody = null;
+                });
+                _applyFilter();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: AppConstants.textColor,
+              ),
+              child: Text(localizations.translate('show_all_maps')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMapsList() {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppConstants.primaryColor,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _maps.length,
+        itemCount: _filteredMaps.length,
         itemBuilder: (context, index) {
-          final map = _maps[index];
+          final map = _filteredMaps[index];
           return _buildMapCard(map);
         },
       ),

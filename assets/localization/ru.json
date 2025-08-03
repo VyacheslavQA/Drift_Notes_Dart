@@ -1952,6 +1952,26 @@
   "air_temperature": "Температура воздуха",
   "atmospheric_pressure": "Атмосферное давление",
   "weather_condition_type": "Тип погодных условий",
-  "danger_level": "Уровень опасности"
+  "danger_level": "Уровень опасности",
+
+  "select_water_body": "Выбрать водоем",
+  "water_body": "Водоем",
+  "water_body_name": "Название водоема",
+  "show_all": "Показать все",
+  "no_maps_for_water_body": "Нет карт для данного водоема",
+  "selected_water_body": "Выбранный водоем",
+  "show_all_maps": "Показать все карты",
+  "filter": "Фильтр",
+  "sort_by": "Сортировать по",
+  "sort": "Сортировка",
+  "alphabetically": "По алфавиту",
+  "by_last_update": "По дате",
+  "by_maps_count": "По количеству",
+  "search_water_bodies": "Поиск водоемов...",
+  "found": "Найдено",
+  "sorted": "Сортировка",
+  "no_water_bodies_found": "Водоемы не найдены",
+  "try_different_search": "Попробуйте изменить поисковый запрос"
+
 
 }
