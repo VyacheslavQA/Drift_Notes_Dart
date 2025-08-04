@@ -69,11 +69,21 @@ class _PaywallScreenState extends State<PaywallScreen>
     });
   }
 
+  /// 🆕 ОБНОВЛЕНО: Загрузка продуктов с обновлением реальных цен из Google Play
   void _loadProducts() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = Provider.of<SubscriptionProvider>(context, listen: false);
+
+      // Загружаем продукты если их нет
       if (provider.availableProducts.isEmpty) {
-        provider.loadAvailableProducts();
+        await provider.loadAvailableProducts();
+      }
+
+      // 🆕 НОВОЕ: Принудительно обновляем цены из Google Play
+      try {
+        await provider.refreshProductPrices();
+      } catch (e) {
+        // Тихо обрабатываем ошибки - будут использованы фоллбэк цены
       }
     });
   }
@@ -337,8 +347,15 @@ class _PaywallScreenState extends State<PaywallScreen>
     final isSelected = _selectedPlan == planId;
     final product = provider.getProductById(planId);
 
-    // ИСПРАВЛЕНО: используем фоллбэк цены
-    final price = product?.price ?? _getFallbackPrice(planId);
+    // 🆕 УЛУЧШЕНО: Приоритет реальным ценам из Google Play, затем умный фоллбэк
+    String price;
+    if (product?.price != null && product!.price.isNotEmpty) {
+      // Используем реальную цену из Google Play
+      price = product.price;
+    } else {
+      // Умный фоллбэк к региональным ценам
+      price = _getSmartFallbackPrice(planId);
+    }
 
     return GestureDetector(
       onTap: () {
@@ -359,14 +376,14 @@ class _PaywallScreenState extends State<PaywallScreen>
         ),
         child: Stack(
           children: [
-            // ИСПРАВЛЕНО: Улучшенное позиционирование бейджа "Рекомендуем"
+            // Бейдж "Рекомендуем"
             if (isRecommended)
               Positioned(
                 top: 8,
                 right: 8,
                 child: Container(
                   constraints: const BoxConstraints(
-                    maxWidth: 120, // Ограничиваем максимальную ширину
+                    maxWidth: 120,
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -384,11 +401,11 @@ class _PaywallScreenState extends State<PaywallScreen>
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis, // Добавляем обрезку текста
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-            // ИСПРАВЛЕНО: Добавляем отступ сверху для контента, если есть бейдж
+            // Основной контент
             Padding(
               padding: EdgeInsets.only(
                 left: AppConstants.paddingMedium,
@@ -415,7 +432,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                       children: [
                         Row(
                           children: [
-                            Flexible( // ИСПРАВЛЕНО: Добавляем Flexible для текста
+                            Flexible(
                               child: Text(
                                 _getPlanTitle(context, planId),
                                 style: AppConstants.subtitleStyle.copyWith(
@@ -453,21 +470,21 @@ class _PaywallScreenState extends State<PaywallScreen>
                           style: AppConstants.bodyStyle.copyWith(
                             color: AppConstants.secondaryTextColor,
                           ),
-                          overflow: TextOverflow.ellipsis, // ИСПРАВЛЕНО: Добавляем обрезку
-                          maxLines: 2, // ИСПРАВЛЕНО: Ограничиваем количество строк
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                       ],
                     ),
                   ),
-                  // ИСПРАВЛЕНО: Улучшаем layout цены
+                  // Цена
                   Container(
                     constraints: const BoxConstraints(
-                      minWidth: 70, // Минимальная ширина для цены
+                      minWidth: 70,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        FittedBox( // ИСПРАВЛЕНО: Добавляем FittedBox для автоматического масштабирования
+                        FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             price,
@@ -477,7 +494,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                             ),
                           ),
                         ),
-                        FittedBox( // ИСПРАВЛЕНО: Добавляем FittedBox для периода
+                        FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             planId == SubscriptionConstants.monthlyPremiumId
@@ -557,7 +574,50 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  // ДОБАВЛЕНО: Метод для получения фоллбэк цены
+  /// 🆕 УЛУЧШЕНО: Умный фоллбэк цены с учетом региона пользователя
+  String _getSmartFallbackPrice(String planId) {
+    try {
+      // Получаем локаль пользователя
+      final locale = Localizations.localeOf(context);
+
+      // Определяем регион по коду страны или языку
+      if (locale.countryCode == 'RU' || locale.languageCode == 'ru') {
+        // Российские цены
+        if (planId == SubscriptionConstants.monthlyPremiumId) {
+          return '₽299';
+        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
+          return '₽2490';
+        }
+      } else if (locale.countryCode == 'KZ') {
+        // Казахстанские цены
+        if (planId == SubscriptionConstants.monthlyPremiumId) {
+          return '₸1490';
+        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
+          return '₸11990';
+        }
+      } else if (locale.countryCode == 'BY') {
+        // Беларусь - используем российские цены
+        if (planId == SubscriptionConstants.monthlyPremiumId) {
+          return '₽299';
+        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
+          return '₽2490';
+        }
+      }
+
+      // Международные фоллбэк цены (USD)
+      if (planId == SubscriptionConstants.monthlyPremiumId) {
+        return '\$4.99';
+      } else if (planId == SubscriptionConstants.yearlyPremiumId) {
+        return '\$39.99';
+      }
+    } catch (e) {
+      // При ошибке возвращаем базовые USD цены
+    }
+
+    return '\$4.99';
+  }
+
+  /// 🆕 УСТАРЕЛО: Простой фоллбэк (оставлен для совместимости)
   String _getFallbackPrice(String planId) {
     if (planId == SubscriptionConstants.monthlyPremiumId) {
       return '\$4.99';

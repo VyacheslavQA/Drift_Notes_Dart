@@ -477,6 +477,55 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   // ========================================
+  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С РЕАЛЬНЫМИ ЦЕНАМИ
+  // ========================================
+
+  /// 🆕 НОВОЕ: Принудительное обновление цен продуктов из Google Play
+  Future<void> refreshProductPrices() async {
+    try {
+      // Обновляем цены в SubscriptionService
+      await _subscriptionService.refreshProductPrices();
+
+      // Перезагружаем продукты после обновления цен
+      await loadAvailableProducts();
+
+      notifyListeners();
+    } catch (e) {
+      // Тихо обрабатываем ошибки - будут использованы фоллбэк цены
+    }
+  }
+
+  /// 🆕 НОВОЕ: Получение лучшей доступной цены (реальная из Google Play или фоллбэк)
+  Future<String> getBestPrice(String productId) async {
+    try {
+      return await _subscriptionService.getBestAvailablePrice(productId);
+    } catch (e) {
+      return SubscriptionConstants.getDefaultPrice(productId);
+    }
+  }
+
+  /// 🆕 НОВОЕ: Получение всех локализованных цен
+  Future<Map<String, String>> getAllPrices() async {
+    try {
+      return await _subscriptionService.getRegionalizedPrices();
+    } catch (e) {
+      return SubscriptionConstants.defaultPrices;
+    }
+  }
+
+  /// 🆕 НОВОЕ: Получение реальной цены продукта из Google Play
+  Future<String?> getRealPrice(String productId) async {
+    try {
+      return await _subscriptionService.getLocalizedPrice(productId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 🆕 НОВОЕ: Проверка загруженности реальных цен
+  bool get areRealPricesLoaded => _subscriptionService.areProductsLoaded;
+
+  // ========================================
   // ✅ КРИТИЧЕСКИ ВАЖНЫЕ МЕТОДЫ ОБНОВЛЕНИЯ
   // ========================================
 
