@@ -1752,7 +1752,7 @@
   "yearly_plan": "Жылдық жазылым",
   "monthly_plan_desc": "Толық қол жеткізу, ай сайын төлем",
   "yearly_plan_desc": "Ең жақсы баға, жыл сайын төлем",
-  "paywall_footer": "Жазылым сіздің аккаунтыңыздан алынады. Кез келген уақытта Параметрлерде тоқтатуға болады.",
+  "paywall_footer": "Жазылым сіздің аккаунтыңыздан алынады. Google Play Store-да жазылымды басқарыңыз.",
   "purchase_initiated": "Сатып алу сәтті басталды",
   "purchases_restored": "Сатып алулар сәтті қалпына келтірілді",
   "limit_reached": "Лимитке жетті",
@@ -2007,5 +2007,9 @@
   "deleting_photo": "Фотоны жояймыз...",
   "photo_deleted_successfully": "Фото сәтті жойылды",
   "error_deleting_photo": "Фотоны жою қатесі",
-  "general_fishing": "Балық аулау"
+  "general_fishing": "Балық аулау",
+
+  "subscription": "Жазылым",
+  "premium_active_desc": "Сізде барлық функцияларға қол жетімділік бар",
+  "unlock_all_features": "Барлық функцияларды ашу"
 }

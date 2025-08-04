@@ -1799,7 +1799,7 @@
   "yearly_plan": "Yearly Premium",
   "monthly_plan_desc": "Full access, billed monthly",
   "yearly_plan_desc": "Best value, billed annually",
-  "paywall_footer": "Subscription will be charged to your account. Cancel anytime in Settings.",
+  "paywall_footer": "Subscription will be charged to your account. Manage subscription in Google Play Store.",
   "purchase_initiated": "Purchase initiated successfully",
   "purchases_restored": "Purchases restored successfully",
   "limit_reached": "Limit Reached",
@@ -2057,5 +2057,9 @@
   "deleting_photo": "Deleting photo...",
   "photo_deleted_successfully": "Photo deleted successfully",
   "error_deleting_photo": "Error deleting photo",
-  "general_fishing": "Fishing"
+  "general_fishing": "Fishing",
+
+  "subscription": "Subscription",
+  "premium_active_desc": "You have access to all features",
+  "unlock_all_features": "Unlock all features"
 }

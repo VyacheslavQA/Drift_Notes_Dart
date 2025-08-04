@@ -1,8 +1,11 @@
 // Путь: lib/screens/settings/settings_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
+import '../../providers/subscription_provider.dart';
+import '../subscription/paywall_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
@@ -58,6 +61,48 @@ class SettingsScreenState extends State<SettingsScreen> {
                   );
                 },
               ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Подписка
+            _buildSectionHeader(localizations.translate('subscription')),
+            Consumer<SubscriptionProvider>(
+              builder: (context, provider, child) {
+                return Card(
+                  color: AppConstants.cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      provider.isPremium ? Icons.diamond : Icons.diamond_outlined,
+                      color: provider.isPremium ? Colors.amber : Colors.grey,
+                    ),
+                    title: Text(
+                      provider.isPremium
+                          ? localizations.translate('premium_active')
+                          : localizations.translate('upgrade_to_premium'),
+                    ),
+                    subtitle: Text(
+                      provider.isPremium
+                          ? localizations.translate('premium_active_desc')
+                          : localizations.translate('unlock_all_features'),
+                    ),
+                    trailing: provider.isPremium
+                        ? Icon(Icons.check_circle, color: Colors.green, size: 20)
+                        : const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: provider.isPremium ? null : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PaywallScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 20),

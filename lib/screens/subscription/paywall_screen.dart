@@ -723,7 +723,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       case 'yearly_plan_desc':
         return 'Best value, billed annually';
       case 'paywall_footer':
-        return 'Subscription will be charged to your account. Cancel anytime in Settings.';
+        return 'Subscription will be charged to your account. Manage subscription in Google Play Store.';
       case 'purchase_initiated':
         return 'Purchase initiated successfully';
       case 'purchases_restored':

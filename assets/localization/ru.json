@@ -1752,7 +1752,7 @@
   "yearly_plan": "Годовая подписка",
   "monthly_plan_desc": "Полный доступ, оплата ежемесячно",
   "yearly_plan_desc": "Лучшая цена, оплата ежегодно",
-  "paywall_footer": "Подписка будет списана с вашего аккаунта. Отменить можно в любое время в Настройках.",
+  "paywall_footer": "Подписка будет списана с вашего аккаунта. Управляйте подпиской в Google Play Маркет.",
   "purchase_initiated": "Покупка успешно инициирована",
   "purchases_restored": "Покупки успешно восстановлены",
   "limit_reached": "Лимит достигнут",
@@ -2014,7 +2014,11 @@
   "deleting_photo": "Удаляем фото...",
   "photo_deleted_successfully": "Фото успешно удалено",
   "error_deleting_photo": "Ошибка удаления фото",
-  "general_fishing": "Рыбалка"
+  "general_fishing": "Рыбалка",
+
+  "subscription": "Подписка",
+  "premium_active_desc": "У вас есть доступ ко всем функциям",
+  "unlock_all_features": "Разблокировать все функции"
 
 
 }
