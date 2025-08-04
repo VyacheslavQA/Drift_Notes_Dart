@@ -30,6 +30,7 @@ import 'screens/fishing_note/fishing_type_selection_screen.dart';
 import 'screens/fishing_note/fishing_notes_list_screen.dart';
 import 'screens/settings/accepted_agreements_screen.dart';
 import 'screens/timer/timers_screen.dart';
+import 'screens/onboarding/first_launch_language_screen.dart'; // ДОБАВЛЕНО: Импорт экрана выбора языка
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/subscription_provider.dart';
@@ -1132,6 +1133,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
           routes: {
             '/splash': (context) => const SplashScreen(),
+            '/first_launch_language': (context) => const FirstLaunchLanguageScreen(), // ДОБАВЛЕНО: Маршрут экрана выбора языка
             '/auth_selection': (context) => AuthSelectionScreenWithCallback(
               onAuthSuccess: () => executePendingAction(),
             ),

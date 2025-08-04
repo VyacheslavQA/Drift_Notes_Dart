@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/location_service.dart';
@@ -21,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isLoading = false;
   bool _isPressed = false;
   bool _locationPermissionChecked = false;
+  bool _isFirstLaunch = false; // ДОБАВЛЕНО: Флаг первого запуска
 
   // Контроллеры для разных анимаций
   late AnimationController _pressAnimationController;
@@ -39,6 +41,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _setupAnimations();
     _startPulseAnimation();
+    _checkFirstLaunch(); // ДОБАВЛЕНО: Проверяем первый запуск
     _checkLocationPermission();
   }
 
@@ -120,6 +123,25 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
+  // ДОБАВЛЕНО: Проверка первого запуска приложения
+  Future<void> _checkFirstLaunch() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final languageSelectionCompleted = prefs.getBool('language_selection_completed') ?? false;
+
+      setState(() {
+        _isFirstLaunch = !languageSelectionCompleted;
+      });
+
+      debugPrint('🚀 Первый запуск: $_isFirstLaunch');
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки первого запуска: $e');
+      setState(() {
+        _isFirstLaunch = false;
+      });
+    }
+  }
+
   // Проверка разрешений на геолокацию при запуске
   Future<void> _checkLocationPermission() async {
     try {
@@ -156,7 +178,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  // Обработка нажатия кнопки входа
+  // ОБНОВЛЕНО: Обработка нажатия кнопки входа с проверкой первого запуска
   void _handleLogin() {
     if (_isLoading) return;
 
@@ -177,10 +199,17 @@ class _SplashScreenState extends State<SplashScreen>
     // Имитируем небольшую задержку для анимации
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
-        if (_firebaseService.isUserLoggedIn) {
-          Navigator.of(context).pushReplacementNamed('/home');
+        // ОБНОВЛЕНО: Проверяем первый запуск
+        if (_isFirstLaunch) {
+          // Первый запуск - показываем экран выбора языка
+          Navigator.of(context).pushReplacementNamed('/first_launch_language');
         } else {
-          Navigator.of(context).pushReplacementNamed('/auth_selection');
+          // Обычный запуск
+          if (_firebaseService.isUserLoggedIn) {
+            Navigator.of(context).pushReplacementNamed('/home');
+          } else {
+            Navigator.of(context).pushReplacementNamed('/auth_selection');
+          }
         }
       }
     });
