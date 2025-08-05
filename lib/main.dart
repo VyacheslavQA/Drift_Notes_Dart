@@ -15,6 +15,7 @@ import 'package:quick_actions/quick_actions.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -30,7 +31,7 @@ import 'screens/fishing_note/fishing_type_selection_screen.dart';
 import 'screens/fishing_note/fishing_notes_list_screen.dart';
 import 'screens/settings/accepted_agreements_screen.dart';
 import 'screens/timer/timers_screen.dart';
-import 'screens/onboarding/first_launch_language_screen.dart'; // ДОБАВЛЕНО: Импорт экрана выбора языка
+import 'screens/onboarding/first_launch_language_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/subscription_provider.dart';
@@ -586,8 +587,6 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   void initState() {
     super.initState();
 
-    // ✅ ИСПРАВЛЕНО: Убрана фоновая инициализация - все критическое уже инициализировано в main()
-
     WeatherNotificationService.setNavigatorKey(globalNavigatorKey);
 
     _initializeQuickActions();
@@ -599,6 +598,18 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       _initializeScheduledReminderContext();
       _initializeSubscriptionProvider();
     });
+  }
+
+  // ДОБАВЛЕНО: Проверка первого запуска приложения
+  Future<bool> _checkIfFirstLaunch() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final languageSelectionCompleted = prefs.getBool('language_selection_completed') ?? false;
+      return !languageSelectionCompleted;
+    } catch (e) {
+      debugPrint('❌ Ошибка проверки первого запуска: $e');
+      return false;
+    }
   }
 
   // Инициализация SubscriptionProvider
@@ -1121,19 +1132,66 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             ),
           ),
 
-          home: SplashScreenWithPendingAction(
-            onAppReady: () {
-              if (_pendingAction != null) {
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  _handleShortcutAction(_pendingAction!);
-                });
+          // 🔥 ИСПРАВЛЕНО: Динамическое определение первого экрана
+          home: FutureBuilder<bool>(
+            future: _checkIfFirstLaunch(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                // Показываем простой загрузочный экран пока проверяем
+                return Scaffold(
+                  body: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/images/splash_background.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.6),
+                            Colors.black.withOpacity(0.4),
+                          ],
+                        ),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final isFirstLaunch = snapshot.data ?? false;
+
+              if (isFirstLaunch) {
+                // Первый запуск - показываем выбор языка
+                return const FirstLaunchLanguageScreen();
+              } else {
+                // Обычный запуск - показываем splash
+                return SplashScreenWithPendingAction(
+                  onAppReady: () {
+                    if (_pendingAction != null) {
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        _handleShortcutAction(_pendingAction!);
+                      });
+                    }
+                  },
+                );
               }
             },
           ),
 
           routes: {
             '/splash': (context) => const SplashScreen(),
-            '/first_launch_language': (context) => const FirstLaunchLanguageScreen(), // ДОБАВЛЕНО: Маршрут экрана выбора языка
+            '/first_launch_language': (context) => const FirstLaunchLanguageScreen(),
             '/auth_selection': (context) => AuthSelectionScreenWithCallback(
               onAuthSuccess: () => executePendingAction(),
             ),

@@ -2,10 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/subscription_constants.dart';
 import '../../localization/app_localizations.dart';
 import '../../providers/subscription_provider.dart';
+import '../../models/subscription_model.dart';
 import '../subscription/paywall_screen.dart';
+import '../subscription/subscription_management_screen.dart';
 import 'language_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
@@ -65,40 +69,76 @@ class SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 20),
 
-            // Подписка
+            // 🆕 ИСПРАВЛЕННАЯ СЕКЦИЯ ПОДПИСКИ
             _buildSectionHeader(localizations.translate('subscription')),
             Consumer<SubscriptionProvider>(
               builder: (context, provider, child) {
+                final isPremium = provider.isPremium;
+                final subscription = provider.subscription; // 🔧 ИСПРАВЛЕНО: использую subscription вместо currentSubscription
+
                 return Card(
                   color: AppConstants.cardColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: isPremium
+                        ? BorderSide(color: Colors.amber.withOpacity(0.3), width: 1)
+                        : BorderSide.none,
                   ),
                   child: ListTile(
-                    leading: Icon(
-                      provider.isPremium ? Icons.diamond : Icons.diamond_outlined,
-                      color: provider.isPremium ? Colors.amber : Colors.grey,
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isPremium
+                            ? Colors.amber.withOpacity(0.2)
+                            : Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isPremium ? Icons.diamond : Icons.diamond_outlined,
+                        color: isPremium ? Colors.amber : Colors.grey,
+                        size: 20,
+                      ),
                     ),
                     title: Text(
-                      provider.isPremium
+                      isPremium
                           ? localizations.translate('premium_active')
                           : localizations.translate('upgrade_to_premium'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: Text(
-                      provider.isPremium
-                          ? localizations.translate('premium_active_desc')
+                      isPremium
+                          ? _getSubscriptionStatusText(subscription, localizations)
                           : localizations.translate('unlock_all_features'),
+                      style: TextStyle(
+                        color: isPremium ? Colors.green : Colors.white60,
+                        fontSize: 14,
+                      ),
                     ),
-                    trailing: provider.isPremium
-                        ? Icon(Icons.check_circle, color: Colors.green, size: 20)
-                        : const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: provider.isPremium ? null : () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PaywallScreen(),
-                        ),
-                      );
+                    trailing: Icon(
+                      isPremium ? Icons.settings : Icons.arrow_forward_ios,
+                      color: isPremium ? Colors.white70 : Colors.white30,
+                      size: isPremium ? 20 : 16,
+                    ),
+                    onTap: () {
+                      if (isPremium) {
+                        // 🆕 НОВОЕ: Открываем экран управления подпиской
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SubscriptionManagementScreen(),
+                          ),
+                        );
+                      } else {
+                        // Открываем PaywallScreen для покупки
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PaywallScreen(),
+                          ),
+                        );
+                      }
                     },
                   ),
                 );
@@ -237,5 +277,53 @@ class SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  // ========================================
+  // 🆕 ИСПРАВЛЕННЫЕ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+  // ========================================
+
+  /// Получение текста статуса подписки для отображения в настройках
+  String _getSubscriptionStatusText(SubscriptionModel? subscription, AppLocalizations localizations) {
+    if (subscription == null) return localizations.translate('status_unknown') ?? 'Статус неизвестен';
+
+    if (subscription.isActive) {
+      return localizations.translate('active_tap_to_manage') ?? 'Активна • Нажмите для управления';
+    }
+
+    switch (subscription.status) {
+      case SubscriptionStatus.expired:
+        return localizations.translate('expired_renew') ?? 'Истекла • Обновите подписку';
+      case SubscriptionStatus.canceled:
+        final dateText = _formatShortDate(subscription.expirationDate);
+        return localizations.translate('canceled_until') ?? 'Отменена • Действует до $dateText';
+      case SubscriptionStatus.pending:
+        return localizations.translate('pending_payment') ?? 'Ожидает оплаты';
+      case SubscriptionStatus.active:
+        final dateText = _formatShortDate(subscription.expirationDate);
+        return localizations.translate('expires_on') ?? 'Истекает • $dateText';
+      case SubscriptionStatus.none: // 🔧 ДОБАВЛЕНО: обработка SubscriptionStatus.none
+        return localizations.translate('no_subscription') ?? 'Нет подписки';
+    }
+  }
+
+  /// Форматирование краткой даты
+  String _formatShortDate(DateTime? date) {
+    if (date == null) return '';
+
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+
+    if (difference < 0) return 'истекла';
+    if (difference == 0) return 'сегодня';
+    if (difference == 1) return 'завтра';
+    if (difference < 7) return '$difference дн.';
+
+    try {
+      return DateFormat('d MMM', 'ru_RU').format(date);
+    } catch (e) {
+      // Фоллбэк для случая если локализация недоступна
+      return DateFormat('d MMM').format(date);
+    }
   }
 }

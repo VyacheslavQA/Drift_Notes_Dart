@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/language_provider.dart';
+import '../../services/firebase/firebase_service.dart';
+import '../../localization/app_localizations.dart';
 
 class FirstLaunchLanguageScreen extends StatefulWidget {
   const FirstLaunchLanguageScreen({super.key});
@@ -18,6 +20,7 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
     with TickerProviderStateMixin {
   String? _selectedLanguageCode;
   bool _isLoading = false;
+  final _firebaseService = FirebaseService();
 
   // Анимации
   late AnimationController _fadeAnimationController;
@@ -93,6 +96,8 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
     setState(() {
       _selectedLanguageCode = languageCode;
     });
+
+    // УБРАНО: Не применяем язык сразу, только при нажатии "Продолжить"
   }
 
   Future<void> _continueWithSelectedLanguage() async {
@@ -113,15 +118,25 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
       // Сохраняем флаг, что пользователь уже выбрал язык при первом запуске
       await _markLanguageSelectionCompleted();
 
-      // Переходим к обычному flow приложения
+      // ИЗМЕНЕНО: Переходим сразу на экран авторизации или домашний экран
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/splash');
+        if (_firebaseService.isUserLoggedIn) {
+          // Если пользователь уже авторизован, переходим на домашний экран
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          // Если не авторизован, переходим на экран выбора способа авторизации
+          Navigator.of(context).pushReplacementNamed('/auth_selection');
+        }
       }
     } catch (e) {
-      debugPrint('Ошибка при установке языка: $e');
+      debugPrint('❌ Ошибка при установке языка: $e');
       // В случае ошибки всё равно продолжаем
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/splash');
+        if (_firebaseService.isUserLoggedIn) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/auth_selection');
+        }
       }
     }
   }
@@ -130,8 +145,9 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('language_selection_completed', true);
+      debugPrint('✅ Флаг выбора языка сохранен');
     } catch (e) {
-      debugPrint('Ошибка при сохранении флага выбора языка: $e');
+      debugPrint('❌ Ошибка при сохранении флага выбора языка: $e');
     }
   }
 
@@ -265,8 +281,8 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
               ),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Применяем...',
+            Text(
+              _getLoadingText(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -275,8 +291,8 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
             ),
           ],
         )
-            : const Text(
-          'Продолжить',
+            : Text(
+          _getContinueText(),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -285,6 +301,32 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
         ),
       ),
     );
+  }
+
+  // Получаем текст кнопки в зависимости от выбранного языка
+  String _getContinueText() {
+    switch (_selectedLanguageCode) {
+      case 'en':
+        return 'Continue';
+      case 'kk':
+        return 'Жалғастыру';
+      case 'ru':
+      default:
+        return 'Продолжить';
+    }
+  }
+
+  // Получаем текст загрузки в зависимости от выбранного языка
+  String _getLoadingText() {
+    switch (_selectedLanguageCode) {
+      case 'en':
+        return 'Applying...';
+      case 'kk':
+        return 'Қолданылуда...';
+      case 'ru':
+      default:
+        return 'Применяем...';
+    }
   }
 
   @override
@@ -323,27 +365,18 @@ class _FirstLaunchLanguageScreenState extends State<FirstLaunchLanguageScreen>
                 ),
                 child: Column(
                   children: [
-                    // Заголовок
+                    // Заголовок (статичный, не переводится)
                     SlideTransition(
                       position: _slideAnimation,
                       child: Column(
                         children: [
                           Text(
-                            'Выберите язык',
+                            'Выберите язык / Select Language',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: isTablet ? 32 : 28,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Это поможет настроить приложение для удобного использования',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: isTablet ? 18 : 16,
-                              color: Colors.white.withOpacity(0.8),
                             ),
                           ),
                         ],
