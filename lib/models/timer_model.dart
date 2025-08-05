@@ -45,7 +45,7 @@ class FishingTimerModel {
       isRunning: isRunning ?? this.isRunning,
       startTime: startTime ?? this.startTime,
       isCountdown:
-          true, // Всегда в режиме обратного отсчета независимо от параметра isCountdown
+      true, // Всегда в режиме обратного отсчета независимо от параметра isCountdown
       timerColor: timerColor ?? this.timerColor,
       alertSound: alertSound ?? this.alertSound,
     );
@@ -63,7 +63,7 @@ class FishingTimerModel {
       'isCountdown': true, // Всегда true
       // ignore: deprecated_member_use
       'timerColor':
-          timerColor.value, // Используем .value до появления альтернативы
+      timerColor.value, // Используем .value до появления альтернативы
       'alertSound': alertSound,
     };
   }
@@ -77,9 +77,9 @@ class FishingTimerModel {
       remainingTime: Duration(seconds: json['remainingTime'] ?? 0),
       isRunning: json['isRunning'] ?? false,
       startTime:
-          json['startTime'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
-              : null,
+      json['startTime'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['startTime'])
+          : null,
       isCountdown: true, // Всегда true, независимо от значения в JSON
       // ignore: deprecated_member_use
       timerColor: Color(json['timerColor'] ?? Colors.green.value),
