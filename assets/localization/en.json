@@ -2102,7 +2102,7 @@
   "faq": "Frequently Asked Questions",
   "faq_list": "• Subscription is linked to your Google account\n• Access remains until end of period after cancellation\n• You can change plans anytime\n• Refunds are possible within 48 hours",
   "support": "Support",
-  "support_contacts": "For subscription questions contact:\n• Email: support@driftnotes.app\n• Telegram: @driftnotes_support",
+  "support_contacts": "По вопросам подписки обращайтесь по email: support@driftnotes.app",
   "failed_to_load": "Failed to load subscription information",
   "failed_to_open_google_play": "Failed to open Google Play",
   "link_open_error": "Error opening link",
@@ -2118,5 +2118,9 @@
   "purchased": "Purchased",
   "updated": "Updated",
   "test_subscription": "Test Subscription",
-  "get_subscription_help": "Get subscription help"
+  "get_subscription_help": "Get subscription help",
+
+  "write_email": "Write Email",
+  "failed_to_open_email": "Failed to open email app",
+  "email_open_error": "Error opening email"
 }

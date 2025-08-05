@@ -2059,7 +2059,7 @@
   "faq": "Часто задаваемые вопросы",
   "faq_list": "• Подписка привязана к вашему Google аккаунту\n• При отмене доступ сохраняется до конца периода\n• Можно изменить тариф в любое время\n• Возврат средств возможен в течение 48 часов",
   "support": "Поддержка",
-  "support_contacts": "По вопросам подписки обращайтесь:\n• Email: support@driftnotes.app\n• Telegram: @driftnotes_support",
+  "support_contacts": "По вопросам подписки обращайтесь по email: support@driftnotes.app",
   "failed_to_load": "Не удалось загрузить информацию о подписке",
   "failed_to_open_google_play": "Не удалось открыть Google Play",
   "link_open_error": "Ошибка при открытии ссылки",
@@ -2075,5 +2075,9 @@
   "purchased": "Куплено",
   "updated": "Обновлено",
   "test_subscription": "Тестовая подписка",
-  "get_subscription_help": "Получить помощь по подписке"
+  "get_subscription_help": "Получить помощь по подписке",
+
+  "write_email": "Написать письмо",
+  "failed_to_open_email": "Не удалось открыть почтовое приложение",
+  "email_open_error": "Ошибка при открытии почты"
 }

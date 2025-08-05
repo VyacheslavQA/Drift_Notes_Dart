@@ -111,29 +111,86 @@ class _SubscriptionManagementScreenState extends State<SubscriptionManagementScr
     );
   }
 
-  /// 🆕 НОВОЕ: Показ диалога связи с поддержкой
+  /// 🆕 НОВОЕ: Показ диалога связи с поддержкой с активной почтой
   void _showSupportDialog() {
     final localizations = AppLocalizations.of(context);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(localizations.translate('support')),
+        title: Center(
+          child: Text(
+            localizations.translate('support'),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(localizations.translate('support_contacts')),
+            // 🎨 ЦЕНТРИРОВАННЫЙ текст поддержки
+            Center(
+              child: Text(
+                localizations.translate('support_contacts'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // 🎨 ЦЕНТРИРОВАННАЯ кнопка email
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => _openEmailClient(),
+                icon: const Icon(Icons.email, size: 20),
+                label: Text(
+                  localizations.translate('write_email'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppConstants.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(localizations.translate('understood')),
+          // 🎨 ЦЕНТРИРОВАННАЯ кнопка "Понятно"
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                localizations.translate('understood'),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  /// 🆕 НОВОЕ: Открытие почтового клиента
+  Future<void> _openEmailClient() async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      const emailUrl = 'mailto:support@driftnotes.app?subject=Вопрос по подписке Drift Notes&body=Здравствуйте! У меня есть вопрос по подписке:';
+      final uri = Uri.parse(emailUrl);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        Navigator.pop(context); // Закрываем диалог после открытия почты
+      } else {
+        _showErrorSnackBar(localizations.translate('failed_to_open_email'));
+      }
+    } catch (e) {
+      _showErrorSnackBar(localizations.translate('email_open_error'));
+    }
   }
 
   /// Показ ошибки через SnackBar

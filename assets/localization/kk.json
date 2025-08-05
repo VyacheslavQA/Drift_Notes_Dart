@@ -2052,7 +2052,7 @@
   "faq": "Жиі қойылатын сұрақтар",
   "faq_list": "• Жазылым Google аккаунтыңызға байланысты\n• Тоқтатқан кезде қол жеткізу кезең соңына дейін сақталады\n• Тарифті кез келген уақытта өзгертуге болады\n• Қаражатты қайтару 48 сағат ішінде мүмкін",
   "support": "Қолдау қызметі",
-  "support_contacts": "Жазылым бойынша сұрақтар үшін хабарласыңыз:\n• Email: support@driftnotes.app\n• Telegram: @driftnotes_support",
+  "support_contacts": "По вопросам подписки обращайтесь по email: support@driftnotes.app",
   "failed_to_load": "Жазылым туралы ақпаратты жүктеу мүмкін болмады",
   "failed_to_open_google_play": "Google Play ашу мүмкін болмады",
   "link_open_error": "Сілтемені ашу қатесі",
@@ -2068,5 +2068,9 @@
   "purchased": "Сатып алынды",
   "updated": "Жаңартылды",
   "test_subscription": "Тестілік жазылым",
-  "get_subscription_help": "Жазылым бойынша көмек алу"
+  "get_subscription_help": "Жазылым бойынша көмек алу",
+
+  "write_email": "Хат жазу",
+  "failed_to_open_email": "Пошта қолданбасын ашу мүмкін болмады",
+  "email_open_error": "Поштаны ашу қатесі"
 }
