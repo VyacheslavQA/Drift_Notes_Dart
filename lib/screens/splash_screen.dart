@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../constants/app_constants.dart';
 import '../services/firebase/firebase_service.dart';
 import '../services/location_service.dart';
@@ -33,6 +34,12 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _pulseAnimation;
   late Animation<double> _shimmerAnimation;
   late Animation<double> _loadingRotation;
+
+  // Таймеры для отмены в dispose()
+  Timer? _pulseStartTimer;
+  Timer? _shimmerStartTimer;
+  Timer? _shimmerRepeatTimer;
+  Timer? _loginDelayTimer;
 
   @override
   void initState() {
@@ -94,10 +101,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _startPulseAnimation() {
     // Запускаем пульсацию с задержкой
-    Future.delayed(const Duration(seconds: 2), () {
+    _pulseStartTimer = Timer(const Duration(seconds: 2), () {
       if (mounted && !_isLoading) {
         _pulseAnimationController.repeat(reverse: true);
-
         // Запускаем шиммер периодически
         _startShimmerAnimation();
       }
@@ -105,16 +111,18 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startShimmerAnimation() {
-    Future.delayed(const Duration(seconds: 1), () {
+    _shimmerStartTimer = Timer(const Duration(seconds: 1), () {
       if (mounted && !_isLoading) {
         _shimmerAnimationController.forward().then((_) {
-          _shimmerAnimationController.reset();
-          // Повторяем шиммер каждые 4 секунды
-          Future.delayed(const Duration(seconds: 4), () {
-            if (mounted && !_isLoading) {
-              _startShimmerAnimation();
-            }
-          });
+          if (mounted) {
+            _shimmerAnimationController.reset();
+            // Повторяем шиммер каждые 4 секунды
+            _shimmerRepeatTimer = Timer(const Duration(seconds: 4), () {
+              if (mounted && !_isLoading) {
+                _startShimmerAnimation();
+              }
+            });
+          }
         });
       }
     });
@@ -136,19 +144,32 @@ class _SplashScreenState extends State<SplashScreen>
         await _locationService.checkLocationPermission();
       }
 
-      setState(() {
-        _locationPermissionChecked = true;
-      });
+      // ✅ ИСПРАВЛЕНО: Добавлена проверка mounted перед setState
+      if (mounted) {
+        setState(() {
+          _locationPermissionChecked = true;
+        });
+      }
     } catch (e) {
       debugPrint('❌ Ошибка проверки разрешений геолокации: $e');
-      setState(() {
-        _locationPermissionChecked = true;
-      });
+      // ✅ ИСПРАВЛЕНО: Добавлена проверка mounted перед setState
+      if (mounted) {
+        setState(() {
+          _locationPermissionChecked = true;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    // ✅ ИСПРАВЛЕНО: Отменяем все таймеры
+    _pulseStartTimer?.cancel();
+    _shimmerStartTimer?.cancel();
+    _shimmerRepeatTimer?.cancel();
+    _loginDelayTimer?.cancel();
+
+    // Останавливаем и освобождаем анимации
     _pressAnimationController.dispose();
     _pulseAnimationController.dispose();
     _shimmerAnimationController.dispose();
@@ -163,19 +184,26 @@ class _SplashScreenState extends State<SplashScreen>
     // Системная вибрация
     HapticFeedback.mediumImpact();
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     // Останавливаем пульсацию и шиммер
     _pulseAnimationController.stop();
     _shimmerAnimationController.stop();
 
+    // Отменяем таймеры анимаций
+    _pulseStartTimer?.cancel();
+    _shimmerStartTimer?.cancel();
+    _shimmerRepeatTimer?.cancel();
+
     // Запускаем анимацию загрузки
     _loadingAnimationController.repeat();
 
     // Имитируем небольшую задержку для анимации
-    Future.delayed(const Duration(milliseconds: 800), () {
+    _loginDelayTimer = Timer(const Duration(milliseconds: 800), () {
       if (mounted) {
         // УПРОЩЕНО: Проверяем только статус авторизации
         if (_firebaseService.isUserLoggedIn) {
@@ -441,7 +469,7 @@ class _SplashScreenState extends State<SplashScreen>
                   // Кнопка входа
                   GestureDetector(
                     onTapDown: (_) {
-                      if (!_isLoading) {
+                      if (!_isLoading && mounted) {
                         setState(() {
                           _isPressed = true;
                         });
@@ -449,7 +477,7 @@ class _SplashScreenState extends State<SplashScreen>
                       }
                     },
                     onTapUp: (_) {
-                      if (!_isLoading) {
+                      if (!_isLoading && mounted) {
                         setState(() {
                           _isPressed = false;
                         });
@@ -458,7 +486,7 @@ class _SplashScreenState extends State<SplashScreen>
                       }
                     },
                     onTapCancel: () {
-                      if (!_isLoading) {
+                      if (!_isLoading && mounted) {
                         setState(() {
                           _isPressed = false;
                         });
