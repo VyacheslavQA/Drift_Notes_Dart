@@ -33,6 +33,7 @@ import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 import '../../services/calendar_event_service.dart';
 import '../../services/photo/photo_service.dart'; // ДОБАВИТЬ ЭТУ СТРОКУ
+import '../../services/firebase/firebase_analytics_service.dart';
 
 
 class AddFishingNoteScreen extends StatefulWidget {
@@ -743,7 +744,27 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
         );
 
         _hasUnsavedChanges = false;
+
+        // Отслеживание создания заметки (с отдельной обработкой ошибок)
+        try {
+          print('🧪 ТЕСТ: Готовимся вызвать trackFishingNoteCreated');
+          await FirebaseAnalyticsService().trackFishingNoteCreated(
+            fishingType: _selectedFishingType,
+            isMultiDay: _isMultiDay,
+            photosCount: _selectedPhotos.length,
+            biteRecordsCount: _biteRecords.length,
+            hasWeather: _weather != null,
+            hasAIPrediction: _aiPrediction != null,
+            hasLocation: _hasLocation,
+            tripDays: _tripDays,
+          );
+          print('🧪 ТЕСТ: trackFishingNoteCreated завершен');
+        } catch (analyticsError) {
+          print('❌ Ошибка аналитики: $analyticsError');
+        }
         Navigator.pop(context, true);
+
+
       }
     } catch (e) {
       if (mounted) {

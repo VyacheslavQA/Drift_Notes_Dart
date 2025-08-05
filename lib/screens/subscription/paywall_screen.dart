@@ -6,6 +6,7 @@ import '../../constants/app_constants.dart';
 import '../../constants/subscription_constants.dart';
 import '../../providers/subscription_provider.dart';
 import '../../localization/app_localizations.dart';
+import '../../services/firebase/firebase_analytics_service.dart';
 
 class PaywallScreen extends StatefulWidget {
   final String? contentType; // Тип контента, который пытался создать пользователь
@@ -35,6 +36,14 @@ class _PaywallScreenState extends State<PaywallScreen>
     super.initState();
     _initAnimations();
     _loadProducts();
+    // Отслеживание показа Paywall
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FirebaseAnalyticsService().trackPaywallShown(
+        reason: widget.contentType != null ? 'limit_exceeded' : 'feature_promotion',
+        contentType: widget.contentType ?? 'general',
+        blockedFeature: widget.blockedFeature ?? 'Premium функции',
+      );
+    });
   }
 
   void _initAnimations() {

@@ -58,6 +58,11 @@ import 'services/isar_service.dart';
 import 'repositories/fishing_note_repository.dart';
 import 'repositories/budget_notes_repository.dart';
 import 'repositories/marker_map_repository.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'services/remote_config_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/firebase_messaging_service.dart';
+import 'services/firebase/firebase_analytics_service.dart';
 
 // Глобальная переменная для flutter_local_notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -67,6 +72,9 @@ void main() async {
 
   // 🔥 ИСПРАВЛЕНО: Критические сервисы теперь включают IsarService
   await _initializeCriticalServices();
+
+  // Регистрируем background handler для FCM
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Инициализация LanguageProvider ДО создания приложения
   final languageProvider = LanguageProvider();
@@ -116,7 +124,36 @@ Future<void> _initializeCriticalServices() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      await FirebaseAnalyticsService().initialize();
+
       debugPrint('✅ Firebase инициализирован');
+    }
+
+    // 6. Инициализация Crashlytics
+    try {
+      // Настройка автоматической отправки crash-отчетов
+      FlutterError.onError = (errorDetails) {
+        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      };
+
+      // Настройка для Dart ошибок вне Flutter framework
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+
+      debugPrint('✅ Crashlytics инициализирован');
+    } catch (e) {
+      debugPrint('⚠️ Ошибка инициализации Crashlytics: $e');
+    }
+
+    // 7. Инициализация Remote Config
+    try {
+      await RemoteConfigService.instance.initialize();
+      debugPrint('✅ Remote Config инициализирован');
+    } catch (e) {
+      debugPrint('⚠️ Ошибка инициализации Remote Config: $e');
     }
 
     // 6. Инициализация базовых репозиториев (нужны для работы с данными)
@@ -281,6 +318,17 @@ Future<void> _initializeApplicationServices() async {
           debugPrint('⚠️ Ошибка NotificationService: $e');
         }
       },
+
+          () async {
+        try {
+          await Future.delayed(Duration(milliseconds: 25));
+          await FirebaseMessagingService().initialize();
+          debugPrint('✅ FirebaseMessagingService инициализирован');
+        } catch (e) {
+          debugPrint('⚠️ Ошибка FirebaseMessagingService: $e');
+        }
+      },
+
     ];
 
     // Вторичные сервисы
@@ -1275,4 +1323,13 @@ class RegisterScreenWithCallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return RegisterScreen(onAuthSuccess: onAuthSuccess);
   }
+}
+
+/// Background message handler для FCM (должен быть top-level функцией)
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('📱 Background FCM сообщение: ${message.messageId}');
+
+  // Здесь можно добавить дополнительную обработку background сообщений
+  // Например, сохранение в локальную базу данных
 }

@@ -6,6 +6,7 @@ import '../../localization/app_localizations.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import '../../services/auth/google_sign_in_service.dart';
+import '../../services/firebase/firebase_analytics_service.dart';
 
 class AuthSelectionScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -369,6 +370,14 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
       final userCredential = await _googleSignInService.signInWithGoogle(context);
 
       if (userCredential != null && mounted) {
+
+        // Отслеживание успешного входа
+        await FirebaseAnalyticsService().trackLogin('google', success: true);
+        await FirebaseAnalyticsService().setUser(
+          userCredential.user!.uid,
+          email: userCredential.user!.email,
+          authMethod: 'google',
+        );
         final localizations = AppLocalizations.of(context);
 
         // Показываем сообщение об успешном входе
@@ -391,6 +400,9 @@ class _AuthSelectionScreenState extends State<AuthSelectionScreen> {
         }
       }
     } catch (e) {
+
+      // Отслеживание неудачного входа
+      await FirebaseAnalyticsService().trackLogin('google', success: false);
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(

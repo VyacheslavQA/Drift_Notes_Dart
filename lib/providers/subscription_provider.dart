@@ -9,6 +9,7 @@ import '../models/usage_limits_model.dart';
 import '../services/subscription/subscription_service.dart';
 import '../services/firebase/firebase_service.dart';
 import '../utils/network_utils.dart';
+import '../services/firebase/firebase_analytics_service.dart';
 
 
 /// ✅ ИСПРАВЛЕННЫЙ Provider для управления состоянием подписки
@@ -416,6 +417,16 @@ class SubscriptionProvider extends ChangeNotifier {
       _lastError = null;
       notifyListeners();
 
+      // Отслеживание начала покупки
+      final product = getProductById(productId);
+      final planType = productId.contains('yearly') ? 'yearly' : 'monthly';
+
+      await FirebaseAnalyticsService().trackSubscriptionPurchaseStarted(
+        productId: productId,
+        planType: planType,
+        price: product?.price ?? getProductPrice(productId),
+      );
+
       final success = await _subscriptionService.purchaseSubscription(productId);
 
       if (!success) {
@@ -425,6 +436,16 @@ class SubscriptionProvider extends ChangeNotifier {
       _isPurchasing = false;
       _purchasingProductId = null;
       notifyListeners();
+
+      // Отслеживание результата покупки
+      await FirebaseAnalyticsService().trackSubscriptionPurchaseCompleted(
+        productId: productId,
+        planType: planType,
+        success: success,
+        errorReason: success ? null : _lastError,
+        price: product?.price ?? getProductPrice(productId),
+        yearlyDiscount: planType == 'yearly' ? getYearlyDiscount() : null,
+      );
 
       return success;
     } catch (e) {
