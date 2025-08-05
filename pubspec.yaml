@@ -40,7 +40,6 @@ dependencies:
   firebase_messaging: ^14.7.10
   firebase_analytics: ^10.8.0  # ✅ ДОБАВИТЬ ЭТУ СТРОКУ
 
-
   # UI и дизайн
   intl: 0.20.2
   flutter_svg: ^2.0.9
@@ -61,7 +60,6 @@ dependencies:
   # Управление состоянием
   provider: ^6.1.1
 
-
   url_launcher: ^6.2.5
   just_audio: ^0.9.36
   audioplayers: ^5.2.1
@@ -74,7 +72,7 @@ dependencies:
   crypto: ^3.0.3
 
   # ИСПРАВЛЕНО: Разрешения и уведомления
-  permission_handler: ^11.1.0
+  permission_handler: ^11.3.1  # ✅ ОБНОВЛЕНО для экспорта данных
   flutter_local_notifications: ^17.2.2
   timezone: ^0.9.4
 
@@ -89,6 +87,10 @@ dependencies:
   # ДОБАВЛЕНО: Isar для офлайн базы данных (проверенные версии)
   isar: ^3.1.0+1
   isar_flutter_libs: ^3.1.0+1
+
+  # ✅ НОВЫЕ ЗАВИСИМОСТИ ДЛЯ ЭКСПОРТА ДАННЫХ (GDPR)
+  archive: ^3.4.10        # Для создания ZIP архивов
+  share_plus: ^7.2.2      # Для отправки файлов
 
 dev_dependencies:
   flutter_test:

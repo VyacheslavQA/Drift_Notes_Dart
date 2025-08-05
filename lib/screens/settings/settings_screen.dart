@@ -15,6 +15,7 @@ import 'change_password_screen.dart';
 import 'weather_notifications_settings_screen.dart';
 import 'notification_sound_settings_screen.dart';
 import 'weather_settings_screen.dart';
+import '../../services/data_export_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,6 +25,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
+  final DataExportService _exportService = DataExportService();
+  bool _isExporting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -258,6 +261,59 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
+            const SizedBox(height: 20),
+
+            // 🆕 ПЕРЕМЕЩЕННАЯ СЕКЦИЯ: ЭКСПОРТ ДАННЫХ
+            _buildSectionHeader(localizations.translate('export_data') ?? 'Экспорт данных'),
+            Card(
+              color: AppConstants.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.download,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  localizations.translate('export_my_data') ?? 'Экспорт моих данных',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  localizations.translate('download_all_your_data') ?? 'Скачать все ваши данные в ZIP архиве',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 14,
+                  ),
+                ),
+                trailing: _isExporting
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                  ),
+                )
+                    : const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white30,
+                  size: 16,
+                ),
+                onTap: _isExporting ? null : _exportUserData,
+              ),
+            ),
+
             const SizedBox(height: 40),
           ],
         ),
@@ -277,6 +333,154 @@ class SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  // ========================================
+  // 🆕 НОВЫЙ МЕТОД: ЭКСПОРТ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+  // ========================================
+
+  Future<void> _exportUserData() async {
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      final localizations = AppLocalizations.of(context);
+
+      // Показываем диалог с информацией
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppConstants.surfaceColor,
+          title: Row(
+            children: [
+              const Icon(Icons.download, color: Colors.orange),
+              const SizedBox(width: 12),
+              Text(
+                localizations.translate('exporting_data') ?? 'Экспорт данных',
+                style: TextStyle(color: AppConstants.textColor),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                localizations.translate('preparing_your_data') ?? 'Подготавливаем ваши данные...',
+                style: TextStyle(color: AppConstants.textColor),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Выполняем экспорт с локализацией
+      final localizationMap = {
+        'readme_title': localizations.translate('readme_title') ?? 'DRIFT NOTES - ЭКСПОРТ ДАННЫХ',
+        'readme_export_date': localizations.translate('readme_export_date') ?? 'Дата экспорта:',
+        'readme_user_id': localizations.translate('readme_user_id') ?? 'ID пользователя:',
+        'readme_app_version': localizations.translate('readme_app_version') ?? 'Версия приложения:',
+        'readme_export_version': localizations.translate('readme_export_version') ?? 'Версия экспорта:',
+        'readme_archive_contents': localizations.translate('readme_archive_contents') ?? 'СОДЕРЖИМОЕ АРХИВА:',
+        'readme_full_data': localizations.translate('readme_full_data') ?? 'Полные данные в JSON формате',
+        'readme_fishing_notes': localizations.translate('readme_fishing_notes') ?? 'Заметки рыбалки',
+        'readme_marker_maps': localizations.translate('readme_marker_maps') ?? 'Маркерные карты',
+        'readme_budget_notes': localizations.translate('readme_budget_notes') ?? 'Заметки бюджета',
+        'readme_detailed_expenses': localizations.translate('readme_detailed_expenses') ?? 'Детальные расходы по всем поездкам',
+        'readme_description_file': localizations.translate('readme_description_file') ?? 'Этот файл с описанием',
+        'readme_records': localizations.translate('readme_records') ?? 'записей',
+        'readme_rights_gdpr': localizations.translate('readme_rights_gdpr') ?? 'ПРАВА И GDPR:',
+        'readme_contains_all_data': localizations.translate('readme_contains_all_data') ?? 'Этот архив содержит ВСЕ ваши данные из приложения Drift Notes.',
+        'readme_gdpr_compliance': localizations.translate('readme_gdpr_compliance') ?? 'Данные экспортированы в соответствии с требованиями GDPR.',
+        'readme_data_usage': localizations.translate('readme_data_usage') ?? 'Вы можете использовать эти данные для переноса в другие приложения или для долгосрочного хранения.',
+        'readme_technical_info': localizations.translate('readme_technical_info') ?? 'ТЕХНИЧЕСКАЯ ИНФОРМАЦИЯ:',
+        'readme_json_description': localizations.translate('readme_json_description') ?? '• JSON файл содержит структурированные данные со всеми полями',
+        'readme_csv_description': localizations.translate('readme_csv_description') ?? '• CSV файлы содержат основные поля для удобного просмотра',
+        'readme_date_format': localizations.translate('readme_date_format') ?? '• Даты указаны в формате ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)',
+        'readme_coordinates_format': localizations.translate('readme_coordinates_format') ?? '• Координаты указаны в десятичных градусах (WGS84)',
+        'readme_contact': localizations.translate('readme_contact') ?? 'Контакт:',
+        'readme_website': localizations.translate('readme_website') ?? 'Сайт:',
+      };
+
+      final success = await _exportService.exportAllUserData(localizationMap);
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (success) {
+        // Показываем успешное сообщение
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      localizations.translate('data_exported_successfully') ??
+                          'Данные успешно экспортированы и сохранены в папке Загрузки',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else {
+        // Показываем ошибку
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.red),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      localizations.translate('export_failed') ??
+                          'Ошибка при экспорте данных. Попробуйте еще раз.',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+
+    } catch (e) {
+      // Закрываем диалог загрузки если он еще открыт
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка экспорта: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
   }
 
   // ========================================

@@ -1,74 +1,115 @@
 Version: 1.0.0
-Date: 08.06.2025
-Privacy Policy of the Drift Notes App
+Date: August 6, 2025
+Privacy Policy of Drift Notes Application
 
-Drift Notes (hereinafter referred to as the “App”) respects your privacy. This Privacy Policy explains what data is collected, how it is used, where it is stored, and what rights you have as a user.
+The Drift Notes application (hereinafter referred to as the "Application") respects your privacy. This Privacy Policy explains what data is collected, how it is used, where it is stored, and what rights you have as a user.
 
 1. What data we collect
-We collect the following data that you voluntarily provide when using the App:
+We collect the following data that you voluntarily provide when using the Application:
 • Name, email address, phone number (for registration and login)
-• Data obtained via login with Google or phone number
+• Data obtained when logging in through Google or by phone number
 • Geolocation (for marking fishing spots on the map)
 • Photos and text notes related to fishing
-• Types of gear, weather conditions, bottom maps, and other fishing-related data
-• Account settings (language, measurement units, etc.)
-• IP address and device information (model, OS) used solely for diagnostics and abuse prevention
+• Types of tackle, weather conditions, bottom maps and other fishing-related data
+• Marker maps of water body bottoms (depths, relief, bottom type, water body names)
+• Account settings (language, units of measurement, etc.)
+• IP address and device data (model, OS), exclusively for technical diagnostics and abuse prevention
+• Push notification tokens (for sending fishing reminders)
+• Application usage data (for analytics and service improvement)
+• Application crash data (for error fixing)
 
 2. How we use this data
-Collected data is used exclusively for:
-• Operating and personalizing the App
-• Displaying information on the map and in the calendar
-• Bite activity analysis using OpenAI and Anthropic Claude models (analysis is done without access to personal data)
-• Storing your notes and data in your account
-• Improving service quality, fixing bugs, ensuring security, and preventing fraud
+The collected data is used exclusively for:
+• Operation and personalization of the Application (legal basis: contract performance)
+• Displaying information on the map and calendar (legal basis: contract performance)
+• Analyzing bite activity using OpenAI and Anthropic Claude models (analysis is performed without access to personal data) (legal basis: legitimate interest)
+• Storing your notes and data in your account (legal basis: contract performance)
+• Sending push notifications about reminders and important events (legal basis: consent)
+• Improving service quality, fixing crashes, ensuring security and preventing fraudulent activities (legal basis: legitimate interest)
+• Analytics of application usage to improve functionality (legal basis: legitimate interest)
 
-3. Where the data is stored
-All user data is stored in Firebase (Google Cloud). This data is accessible only to you and the App for downloading and displaying information.
-Data is not shared with third parties. We do not sell or transfer your data to external organizations, except as required by law (e.g., court order).
+3. Where data is stored
+All user data is stored in Firebase (Google Cloud), whose servers are located in the USA and other countries. When transferring data to the USA, appropriate protective measures are applied in accordance with European Commission adequacy decisions.
 
-4. Data deletion
-You can delete any of your notes or records within the App at any time. You may also delete your account through the Drift Notes interface. Once deleted, all your data will be permanently erased and cannot be restored.
+Data is also temporarily stored locally on your device to ensure offline functionality. This local data is automatically synchronized with cloud storage when connected to the internet.
 
-5. Children’s access
-The App may be used by users of any age, including individuals under 18. We do not intentionally collect age-related information but are committed to ensuring the privacy and safety of all users.
+Data is not transferred to third parties. We do not sell or transfer your data to external organizations, except in cases provided by law (for example, by court order).
 
-6. Data security
-Data transmission and storage are performed using modern security measures, including HTTPS, authentication, authorization, and encryption. We take reasonable steps to protect your data from leaks, loss, or unauthorized access.
+4. Data sharing between users
+You can voluntarily share marker maps of water body bottoms with other application users. In this case:
+• Only technical data about bottom relief is transferred (depths, bottom type, water body names)
+• Personal information (name, email, contacts) is NOT transferred
+• Sharing occurs only with your explicit consent
+• You control which maps to send
+• Shared maps can be deleted from your account at any time
+Legal basis: voluntary user consent.
 
-7. Third-party services used
-The App uses the following third-party services:
-• Firebase (Google) — for data storage and authentication
+5. Data deletion
+You can delete any of your notes or records in the Application at any time. You can also delete your account through the Drift Notes interface. After account deletion, all your data will be permanently deleted from all systems (Firebase Firestore, Firebase Storage, local data) and cannot be recovered.
+
+6. Access for children
+The Application can be used by users of any age, including persons under 18 years old. For users under 13 years old, parental or legal guardian consent is required. We do not specifically collect age information, but we are committed to ensuring the privacy and security of all users.
+
+7. Data security
+Data transmission and storage is carried out using modern security methods, including HTTPS, authentication, authorization and encryption. We take reasonable measures to protect your data from leakage, loss and unauthorized access.
+
+8. Device permissions
+The Application requests the following permissions:
+• Location — for marking fishing spots on the map
+• Camera — for taking fishing photos
+• Storage — for saving photos and exporting data
+• Notifications — for fishing reminders and important events
+• Internet — for data synchronization and map loading
+You can revoke these permissions in your device settings, which may limit the application's functionality.
+
+9. Third-party services used
+The Application uses the following third-party services:
+• Firebase (Google) — for data storage, authentication, analytics and push notifications
 • Google Maps API — for map display
-• WeatherAPI — for weather data retrieval
-• OpenAI API and Anthropic Claude — for bite activity analysis (without access to personal data)
-• Google Play Services, App Store Services, RuStore Services — for payment processing, analytics, and update delivery
+• WeatherAPI — for loading weather data
+• OpenAI API and Anthropic Claude — for bite analysis (without access to personal data)
+• Google Play Services, App Store Services, RuStore Services — for payment processing, analytics and update delivery
+• Firebase Analytics — for application usage analysis
+• Firebase Crashlytics — for collecting application crash data
 
-8. User rights
-You have the right to:
-• Access the data stored about you
-• Delete specific data or your entire account
-• Stop using the App at any time
-• Withdraw consent for data processing (which will result in account deletion)
+10. User rights
+In accordance with GDPR you have the right to:
+• Receive information about stored data (right of access)
+• Correct inaccurate or incomplete data (right to rectification)
+• Delete individual data or the entire account (right to erasure)
+• Export your data in a structured format (right to data portability)
+• Restrict the processing of your data in certain cases
+• Object to data processing based on legitimate interest
+• Withdraw consent to data processing (which will result in account deletion)
+• Stop using the Application at any time
+• File a complaint with a data protection supervisory authority
 
-9. Policy updates
-We may periodically update this Policy. In the case of significant changes, we will notify you through the App interface or via email.
+To exercise these rights, contact us at support@driftnotesapp.com.
 
-10. Contact information
-If you have any questions related to privacy, contact us at:
+11. Policy updates
+We may periodically update this Policy. In case of significant changes, we will notify you through the Application interface or by email. The new version of the policy takes effect from the moment of its publication in the application.
+
+12. Contact information
+For privacy-related questions, you can contact us at:
 support@driftnotesapp.com
 
-11. Data operator
-The data operator is a private individual:
-Vyacheslav Andreevich Kuzin, independent developer (not registered as an individual entrepreneur).
+13. Personal data controller
+The personal data controller is a private individual:
+Kuzin Vyacheslav Andreevich, individual developer (not registered as an individual entrepreneur).
 Email: support@driftnotesapp.com
 
-12. Data retention period
-Personal data is retained until the user deletes it or deletes their account. After that, all data is permanently deleted and cannot be restored.
+14. Data retention period
+Personal data is stored until the user deletes it themselves or deletes their account. After that, all data is permanently deleted within 30 days.
 
-13. Consent to data processing
-By using the Drift Notes App, you consent to the processing of your personal data in accordance with this Privacy Policy.
+Analytics and crash data is stored in anonymized form for up to 24 months to improve service quality.
 
-14. Copyright and restrictions
-The Drift Notes App, including its interface, functionality, structure, text, and visual elements, is protected by copyright.
-Any copying, decompilation, distribution, modification, or attempts to extract the source code are prohibited without written permission from the owner.
-All intellectual property rights belong to Vyacheslav Andreevich Kuzin as the author and owner of the App.
+15. Consent to data processing
+By using the Drift Notes Application, the user expresses consent to the processing of their personal data in accordance with this Privacy Policy.
+
+16. Applicable law
+This Policy is governed by the laws of the Republic of Kazakhstan. Disputes are resolved in accordance with Kazakhstani law, taking into account GDPR requirements for users from the EU.
+
+17. Copyright and restrictions
+The Drift Notes Application, including interface, functionality, structure, text and visual elements, is protected by copyright.
+Any copying, decompilation, distribution, modification or attempts to extract source code are prohibited without written permission from the owner.
+All intellectual property rights belong to Kuzin Vyacheslav Andreevich as the author of the concept and owner of the Application.
