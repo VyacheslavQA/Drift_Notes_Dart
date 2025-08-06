@@ -267,7 +267,7 @@ class UsageBadge extends StatelessWidget {
     );
   }
 
-  /// ✅ ИСПРАВЛЕНО: Иконки для типов контента
+  /// 🚀 ИСПРАВЛЕНО: Добавлен case для markerMapSharing
   IconData _getContentTypeIcon(ContentType type) {
     switch (type) {
       case ContentType.fishingNotes:
@@ -278,6 +278,8 @@ class UsageBadge extends StatelessWidget {
         return Icons.account_balance_wallet;
       case ContentType.depthChart:
         return Icons.trending_up;
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return Icons.share;
     }
   }
 }

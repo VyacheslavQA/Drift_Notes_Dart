@@ -70,8 +70,9 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return;
       }
 
-      // 2. Для графика глубин - только премиум
-      if (widget.contentType == ContentType.depthChart) {
+      // 2. Для графика глубин и обмена картами - только премиум
+      if (widget.contentType == ContentType.depthChart ||
+          widget.contentType == ContentType.markerMapSharing) { // 🚀 НОВОЕ
         if (mounted) {
           setState(() {
             _canCreate = false;
@@ -108,7 +109,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Преобразование ContentType в ключ Firebase
+  /// 🚀 ИСПРАВЛЕНО: Добавлен case для markerMapSharing
   String _getFirebaseKey(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -119,6 +120,8 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return 'budgetNotesCount';
       case ContentType.depthChart:
         return 'depthChartCount';
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return 'markerMapsCount'; // Использует тот же лимит что и маркерные карты
     }
   }
 
@@ -399,6 +402,7 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
     widget.onCreatePressed();
   }
 
+  /// 🚀 ОБНОВЛЕНО: Добавлен case для markerMapSharing
   String _getButtonText(AppLocalizations localizations, bool canCreate) {
     if (widget.customText != null) return widget.customText!;
 
@@ -415,9 +419,12 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return localizations.translate('add_budget_note') ?? 'Добавить заметку бюджета';
       case ContentType.depthChart:
         return localizations.translate('view_depth_chart') ?? 'График глубин';
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return localizations.translate('share_map') ?? 'Поделиться картой';
     }
   }
 
+  /// 🚀 ОБНОВЛЕНО: Добавлен case для markerMapSharing
   IconData _getButtonIcon(bool canCreate) {
     if (widget.customIcon != null) return widget.customIcon!;
 
@@ -432,6 +439,8 @@ class _PremiumCreateButtonState extends State<PremiumCreateButton> {
         return Icons.account_balance_wallet;
       case ContentType.depthChart:
         return Icons.trending_up;
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return Icons.share;
     }
   }
 

@@ -2112,5 +2112,28 @@
   "readme_date_format": "• Даты указаны в формате ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)",
   "readme_coordinates_format": "• Координаты указаны в десятичных градусах (WGS84)",
   "readme_contact": "Контакт:",
-  "readme_website": "Сайт:"
+  "readme_website": "Сайт:",
+
+  "share_marker_map_text": "Карта маркеров водоема {mapName}. Откройте в приложении Fishing Buddy для просмотра.",
+  "map_exported_successfully": "Карта успешно экспортирована",
+  "export_error": "Ошибка экспорта",
+  "import_marker_map": "Импорт маркерной карты",
+  "importing_map": "Импортируем карту...",
+  "received_marker_map": "Получена маркерная карта",
+  "exported": "Экспортирована",
+  "enter_water_body_name": "Введите название водоема",
+  "map_name_exists": "Карта с таким названием уже существует",
+  "import_map": "Импортировать карту",
+  "map_imported_successfully": "Карта успешно импортирована",
+  "import_error": "Ошибка импорта",
+  "map_information": "Информация о карте",
+  "markers_count": "Количество маркеров",
+  "no_markers": "Нет маркеров",
+  "markers_list": "Список маркеров",
+
+  "share_marker_maps": "Поделиться маркерными картами",
+  "share_marker_maps_desc": "Импорт и экспорт маркерных карт с другими пользователями",
+
+  "loading": "Загрузка...",
+  "loading_price": "Загрузка цены..."
 }

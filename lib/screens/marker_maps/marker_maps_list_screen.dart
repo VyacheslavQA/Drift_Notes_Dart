@@ -1,3 +1,5 @@
+// Путь: lib/screens/marker_maps/marker_maps_list_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -19,12 +21,140 @@ import '../../localization/app_localizations.dart';
 import 'modern_marker_map_screen.dart';
 // 🆕 НОВОЕ: Импорт экрана фильтрации
 import 'water_body_filter_screen.dart';
+// 🚀 НОВЫЕ ИМПОРТЫ для экспорта/импорта карт
+import '../../services/marker_map_share/marker_map_share_service.dart';
+import 'marker_map_import_preview_screen.dart';
 
 class MarkerMapsListScreen extends StatefulWidget {
   const MarkerMapsListScreen({super.key});
 
   @override
   State<MarkerMapsListScreen> createState() => _MarkerMapsListScreenState();
+
+  // 🚀 ИСПРАВЛЕНО: Статический метод перенесен в основной класс
+  static Future<void> handleMarkerMapImport(BuildContext context, String filePath) async {
+    debugPrint('🔍 handleMarkerMapImport: Начинаем импорт файла $filePath');
+
+    try {
+      // 1. Проверка Premium статуса
+      debugPrint('📋 Проверяем Premium статус...');
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      final hasPremium = subscriptionProvider.hasPremiumAccess; // Используем правильное свойство
+      debugPrint('📋 Premium статус: $hasPremium');
+
+      if (!hasPremium) {
+        debugPrint('❌ Нет Premium - показываем PaywallScreen');
+
+        if (context.mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PaywallScreen(
+                contentType: 'marker_map_sharing',
+                blockedFeature: 'Импорт маркерных карт',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Парсинг файла
+      debugPrint('📄 Парсим файл...');
+      final importResult = await MarkerMapShareService.parseMarkerMapFile(filePath);
+      debugPrint('✅ Результат парсинга: success=${importResult.isSuccess}, error=${importResult.error}');
+
+      if (!importResult.isSuccess || importResult.markerMap == null) {
+        debugPrint('❌ Ошибка парсинга файла: ${importResult.error}');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(importResult.error ?? 'Ошибка импорта файла'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 3. Навигация к экрану превью
+      debugPrint('🚀 Переходим к экрану превью импорта...');
+
+      if (!context.mounted) {
+        debugPrint('❌ Контекст недоступен для навигации');
+        return;
+      }
+
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MarkerMapImportPreviewScreen(
+            importResult: importResult,
+            sourceFilePath: filePath,
+          ),
+        ),
+      );
+
+      debugPrint('✅ Результат экрана превью: $result');
+
+      // 4. Обновление списка после успешного импорта
+      if (result == true && context.mounted) {
+        debugPrint('🔄 Обновляем данные после успешного импорта...');
+
+        // Попытка найти и обновить текущий экран списка карт
+        final navigator = Navigator.of(context);
+
+        // Проходим по стеку роутов и ищем MarkerMapsListScreen
+        navigator.popUntil((route) {
+          if (route.settings.name == '/marker_maps_list' ||
+              route.settings.arguments is MarkerMapsListScreen) {
+            debugPrint('✅ Найден экран списка карт в стеке');
+            return true;
+          }
+
+          // Проверяем, является ли текущий route нашим экраном
+          if (route is MaterialPageRoute) {
+            final widget = route.builder(context);
+            if (widget is MarkerMapsListScreen) {
+              debugPrint('✅ Найден экран списка карт через builder');
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+        // Показываем сообщение об успешном импорте
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Карта успешно импортирована'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+
+      debugPrint('✅ Импорт маркерной карты завершен успешно');
+
+    } catch (e) {
+      debugPrint('❌ Критическая ошибка обработки импорта файла: $e');
+      debugPrint('❌ Stack trace: ${StackTrace.current}');
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка импорта: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
@@ -202,6 +332,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🚀 ОБНОВЛЕНО: Меню настроек карты с активной кнопкой экспорта
   Future<void> _showMapSettingsMenu(MarkerMapModel map) async {
     final localizations = AppLocalizations.of(context);
 
@@ -240,20 +371,28 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                     _showMapFormDialog(existingMap: map);
                   },
                 ),
-                _buildSettingsMenuItem(
-                  icon: Icons.share,
-                  title: localizations.translate('share_map'),
-                  isEnabled: false,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(localizations.translate('feature_coming_soon')),
-                        backgroundColor: AppConstants.primaryColor,
-                      ),
+
+                // 🚀 ИСПРАВЛЕНО: Унифицированная проверка Premium
+                Consumer<SubscriptionProvider>(
+                  builder: (context, subscriptionProvider, _) {
+                    final hasPremium = subscriptionProvider.hasPremiumAccess;
+
+                    return _buildSettingsMenuItem(
+                      icon: hasPremium ? Icons.share : Icons.share_outlined,
+                      title: localizations.translate('share_map'),
+                      isEnabled: hasPremium,
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (hasPremium) {
+                          _shareMarkerMap(map);
+                        } else {
+                          _showSharePaywall();
+                        }
+                      },
                     );
                   },
                 ),
+
                 const Divider(color: Colors.grey),
                 _buildSettingsMenuItem(
                   icon: Icons.delete,
@@ -292,6 +431,68 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         style: TextStyle(color: effectiveColor, fontSize: 16),
       ),
       onTap: onTap,
+    );
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Экспорт маркерной карты
+  Future<void> _shareMarkerMap(MarkerMapModel map) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      setState(() => _isLoading = true);
+
+      debugPrint('📤 Начинаем экспорт карты: ${map.name}');
+
+      final success = await MarkerMapShareService.exportMarkerMap(
+        markerMap: map,
+        context: context,
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('map_exported_successfully')),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('export_error')),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка экспорта карты: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('export_error')}: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Показ Paywall для экспорта карт
+  void _showSharePaywall() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaywallScreen(
+          contentType: 'marker_map_sharing',
+          blockedFeature: 'Экспорт маркерных карт',
+        ),
+      ),
     );
   }
 

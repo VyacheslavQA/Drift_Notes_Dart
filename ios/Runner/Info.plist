@@ -74,7 +74,51 @@
     <key>NSUserNotificationUsageDescription</key>
     <string>Приложение отправляет уведомления о завершении таймеров рыбалки и важных событиях.</string>
 
-    <!-- Для Firebase и Google Services -->
+    <!-- 🚀 НОВОЕ: Регистрация обработчика .fmm файлов для iOS -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Fishing Marker Map</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.driftnotes.markermap</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- 🚀 НОВОЕ: Регистрация кастомного типа файла -->
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.driftnotes.markermap</string>
+            <key>UTTypeDescription</key>
+            <string>Fishing Marker Map File</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>fmm</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>application/octet-stream</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+
+    <!-- Для Firebase и Google Services + 🚀 НОВОЕ: URL Scheme для обработки файлов -->
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -84,6 +128,15 @@
             <array>
                 <!-- Этот ID нужно будет заменить на реальный из GoogleService-Info.plist -->
                 <string>com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID</string>
+            </array>
+        </dict>
+        <!-- 🚀 НОВОЕ: URL Scheme для обработки файлов -->
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>drift-notes-files</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>drift-notes</string>
             </array>
         </dict>
     </array>
@@ -113,7 +166,7 @@
     <key>UIUserInterfaceStyle</key>
     <string>Automatic</string>
 
-    <!-- Для открытия ссылок в других приложениях -->
+    <!-- 🚀 ОБНОВЛЕНО: Для открытия ссылок в других приложениях + поддержка файлов -->
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>https</string>
@@ -122,9 +175,12 @@
         <string>tel</string>
         <string>googlemaps</string>
         <string>comgooglemaps</string>
+        <!-- 🚀 НОВОЕ: Поддержка обмена файлами -->
+        <string>file</string>
+        <string>document</string>
     </array>
 
-    <!-- App Shortcuts для iOS -->
+    <!-- 🚀 ОБНОВЛЕНО: App Shortcuts для iOS + новый shortcut для импорта карт -->
     <key>UIApplicationShortcutItems</key>
     <array>
         <dict>
@@ -158,6 +214,17 @@
             <key>UIApplicationShortcutItemIconType</key>
             <string>UIApplicationShortcutIconTypeTime</string>
         </dict>
+        <!-- 🚀 НОВОЕ: Быстрый доступ к маркерным картам -->
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>marker_maps</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Карты маркеров</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Просмотр и создание маркерных карт</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeLocation</string>
+        </dict>
     </array>
 
     <!-- ДОБАВЛЕНО: Настройки для работы в фоне -->
@@ -182,6 +249,16 @@
         <string>monthly_premium</string>
         <string>yearly_premium</string>
     </array>
+
+    <!-- 🚀 НОВОЕ: Поддержка импорта/экспорта файлов -->
+    <key>UISupportsDocumentBrowser</key>
+    <true/>
+
+    <!-- 🚀 НОВОЕ: Поддержка Files app -->
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
 
 </dict>
 </plist>

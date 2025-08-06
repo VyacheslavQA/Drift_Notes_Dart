@@ -2155,5 +2155,28 @@
   "readme_date_format": "• Dates are specified in ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)",
   "readme_coordinates_format": "• Coordinates are specified in decimal degrees (WGS84)",
   "readme_contact": "Contact:",
-  "readme_website": "Website:"
+  "readme_website": "Website:",
+
+  "share_marker_map_text": "Water body marker map {mapName}. Open in Fishing Buddy app to view.",
+  "map_exported_successfully": "Map exported successfully",
+  "export_error": "Export error",
+  "import_marker_map": "Import marker map",
+  "importing_map": "Importing map...",
+  "received_marker_map": "Received marker map",
+  "exported": "Exported",
+  "enter_water_body_name": "Enter water body name",
+  "map_name_exists": "A map with this name already exists",
+  "import_map": "Import map",
+  "map_imported_successfully": "Map imported successfully",
+  "import_error": "Import error",
+  "map_information": "Map information",
+  "markers_count": "Number of markers",
+  "no_markers": "No markers",
+  "markers_list": "Markers list",
+
+  "share_marker_maps": "Share Marker Maps",
+  "share_marker_maps_desc": "Import and export marker maps with other users",
+
+  "loading": "Loading...",
+  "loading_price": "Loading price..."
 }

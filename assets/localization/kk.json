@@ -2105,5 +2105,28 @@
   "readme_date_format": "• Күндер ISO 8601 пішімінде көрсетілген (YYYY-MM-DDTHH:mm:ss.sssZ)",
   "readme_coordinates_format": "• Координаттар ондық градуспен көрсетілген (WGS84)",
   "readme_contact": "Байланыс:",
-  "readme_website": "Веб-сайт:"
+  "readme_website": "Веб-сайт:",
+
+  "share_marker_map_text": "Су айдынының маркер картасы {mapName}. Көру үшін Fishing Buddy қолданбасында ашыңыз.",
+  "map_exported_successfully": "Карта сәтті экспортталды",
+  "export_error": "Экспорт қатесі",
+  "import_marker_map": "Маркер картасын импорттау",
+  "importing_map": "Картаны импорттаудамыз...",
+  "received_marker_map": "Маркер картасы алынды",
+  "exported": "Экспортталған",
+  "enter_water_body_name": "Су айдынының атауын енгізіңіз",
+  "map_name_exists": "Осындай атаумен карта бұрыннан бар",
+  "import_map": "Картаны импорттау",
+  "map_imported_successfully": "Карта сәтті импортталды",
+  "import_error": "Импорт қатесі",
+  "map_information": "Карта туралы ақпарат",
+  "markers_count": "Маркерлер саны",
+  "no_markers": "Маркерлер жоқ",
+  "markers_list": "Маркерлер тізімі",
+
+  "share_marker_maps": "Маркерлік карталарды бөлісу",
+  "share_marker_maps_desc": "Басқа пайдаланушылармен маркерлік карталарды импорттау және экспорттау",
+
+  "loading": "Жүктелуде...",
+  "loading_price": "Баға жүктелуде..."
 }

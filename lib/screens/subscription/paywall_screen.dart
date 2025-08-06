@@ -356,18 +356,23 @@ class _PaywallScreenState extends State<PaywallScreen>
     final isSelected = _selectedPlan == planId;
     final product = provider.getProductById(planId);
 
-    // 🆕 УЛУЧШЕНО: Приоритет реальным ценам из Google Play, затем умный фоллбэк
-    String price;
+    // 🆕 УЛУЧШЕНО: Показываем загрузку вместо фоллбэк цен
+    bool isPriceLoading = false;
+    String price = '';
+
     if (product?.price != null && product!.price.isNotEmpty) {
-      // Используем реальную цену из Google Play
+      // ✅ Реальная цена из Google Play загружена
       price = product.price;
+    } else if (provider.isLoadingProducts) {
+      // 🔄 Продукты еще загружаются
+      isPriceLoading = true;
     } else {
-      // Умный фоллбэк к региональным ценам
-      price = _getSmartFallbackPrice(planId);
+      // ❌ Ошибка загрузки - показываем загрузку пока не попробуем снова
+      isPriceLoading = true;
     }
 
     return GestureDetector(
-      onTap: () {
+      onTap: isPriceLoading ? null : () {
         setState(() {
           _selectedPlan = planId;
         });
@@ -427,7 +432,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                   Radio<String>(
                     value: planId,
                     groupValue: _selectedPlan,
-                    onChanged: (value) {
+                    onChanged: isPriceLoading ? null : (value) {
                       setState(() {
                         _selectedPlan = value!;
                       });
@@ -446,11 +451,14 @@ class _PaywallScreenState extends State<PaywallScreen>
                                 _getPlanTitle(context, planId),
                                 style: AppConstants.subtitleStyle.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  color: isPriceLoading
+                                      ? AppConstants.textColor.withValues(alpha: 0.6)
+                                      : AppConstants.textColor,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (isRecommended && provider.getYearlyDiscount() > 0) ...[
+                            if (isRecommended && !isPriceLoading && provider.getYearlyDiscount() > 0) ...[
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -475,7 +483,9 @@ class _PaywallScreenState extends State<PaywallScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _getPlanSubtitle(context, planId, price),
+                          isPriceLoading
+                              ? _getLocalizedText(context, 'loading_price')
+                              : _getPlanSubtitle(context, planId, price),
                           style: AppConstants.bodyStyle.copyWith(
                             color: AppConstants.secondaryTextColor,
                           ),
@@ -485,13 +495,38 @@ class _PaywallScreenState extends State<PaywallScreen>
                       ],
                     ),
                   ),
-                  // Цена
+                  // 🆕 УЛУЧШЕНО: Цена или индикатор загрузки
                   Container(
                     constraints: const BoxConstraints(
                       minWidth: 70,
+                      minHeight: 50,
                     ),
-                    child: Column(
+                    child: isPriceLoading
+                        ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppConstants.primaryColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getLocalizedText(context, 'loading'),
+                          style: AppConstants.captionStyle.copyWith(
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    )
+                        : Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         FittedBox(
                           fit: BoxFit.scaleDown,
@@ -583,59 +618,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  /// 🆕 УЛУЧШЕНО: Умный фоллбэк цены с учетом региона пользователя
-  String _getSmartFallbackPrice(String planId) {
-    try {
-      // Получаем локаль пользователя
-      final locale = Localizations.localeOf(context);
-
-      // Определяем регион по коду страны или языку
-      if (locale.countryCode == 'RU' || locale.languageCode == 'ru') {
-        // Российские цены
-        if (planId == SubscriptionConstants.monthlyPremiumId) {
-          return '₽299';
-        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
-          return '₽2490';
-        }
-      } else if (locale.countryCode == 'KZ') {
-        // Казахстанские цены
-        if (planId == SubscriptionConstants.monthlyPremiumId) {
-          return '₸1490';
-        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
-          return '₸11990';
-        }
-      } else if (locale.countryCode == 'BY') {
-        // Беларусь - используем российские цены
-        if (planId == SubscriptionConstants.monthlyPremiumId) {
-          return '₽299';
-        } else if (planId == SubscriptionConstants.yearlyPremiumId) {
-          return '₽2490';
-        }
-      }
-
-      // Международные фоллбэк цены (USD)
-      if (planId == SubscriptionConstants.monthlyPremiumId) {
-        return '\$4.99';
-      } else if (planId == SubscriptionConstants.yearlyPremiumId) {
-        return '\$39.99';
-      }
-    } catch (e) {
-      // При ошибке возвращаем базовые USD цены
-    }
-
-    return '\$4.99';
-  }
-
-  /// 🆕 УСТАРЕЛО: Простой фоллбэк (оставлен для совместимости)
-  String _getFallbackPrice(String planId) {
-    if (planId == SubscriptionConstants.monthlyPremiumId) {
-      return '\$4.99';
-    } else if (planId == SubscriptionConstants.yearlyPremiumId) {
-      return '\$39.99';
-    }
-    return '\$4.99';
-  }
-
   Future<void> _purchaseSubscription(SubscriptionProvider provider) async {
     final success = await provider.purchaseSubscription(_selectedPlan);
 
@@ -692,6 +674,7 @@ class _PaywallScreenState extends State<PaywallScreen>
     return _getLocalizedText(context, 'premium_benefits_message');
   }
 
+  // 🚀 ОБНОВЛЕНО: Добавлен пункт об импорте/экспорте маркерных карт
   List<Map<String, dynamic>> _getFeatures(BuildContext context) {
     return [
       {
@@ -713,6 +696,12 @@ class _PaywallScreenState extends State<PaywallScreen>
         'icon': Icons.show_chart,
         'title': _getLocalizedText(context, 'depth_charts'),
         'subtitle': _getLocalizedText(context, 'depth_charts_desc'),
+      },
+      // 🆕 НОВЫЙ ПУНКТ: Импорт/экспорт маркерных карт
+      {
+        'icon': Icons.share,
+        'title': _getLocalizedText(context, 'share_marker_maps'),
+        'subtitle': _getLocalizedText(context, 'share_marker_maps_desc'),
       },
     ];
   }
@@ -741,6 +730,7 @@ class _PaywallScreenState extends State<PaywallScreen>
     }
   }
 
+  // 🚀 ОБНОВЛЕНО: Добавлены фоллбэк тексты для загрузки
   String _getFallbackText(String key) {
     switch (key) {
       case 'choose_plan':
@@ -755,6 +745,10 @@ class _PaywallScreenState extends State<PaywallScreen>
         return '/month';
       case 'per_year':
         return '/year';
+      case 'loading':
+        return 'Loading...';
+      case 'loading_price':
+        return 'Loading price...';
       case 'upgrade_required':
         return 'Upgrade Required';
       case 'premium_subscription':
@@ -783,6 +777,11 @@ class _PaywallScreenState extends State<PaywallScreen>
         return 'Depth Charts';
       case 'depth_charts_desc':
         return 'Access advanced depth charts';
+    // 🆕 НОВЫЕ КЛЮЧИ для импорта/экспорта карт
+      case 'share_marker_maps':
+        return 'Share Marker Maps';
+      case 'share_marker_maps_desc':
+        return 'Import and export marker maps with other users';
       case 'monthly_plan':
         return 'Monthly Premium';
       case 'yearly_plan':

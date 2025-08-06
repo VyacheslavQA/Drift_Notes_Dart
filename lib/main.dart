@@ -19,6 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+// 🚀 НОВЫЕ ИМПОРТЫ для обработки файлов
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'screens/splash_screen.dart';
 import 'constants/app_constants.dart';
 import 'screens/auth/auth_selection_screen.dart';
@@ -32,6 +34,8 @@ import 'screens/fishing_note/fishing_notes_list_screen.dart';
 import 'screens/settings/accepted_agreements_screen.dart';
 import 'screens/timer/timers_screen.dart';
 import 'screens/onboarding/first_launch_language_screen.dart';
+// 🚀 НОВЫЙ ИМПОРТ для маркерных карт
+import 'screens/marker_maps/marker_maps_list_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/subscription_provider.dart';
@@ -66,6 +70,9 @@ import 'services/firebase/firebase_analytics_service.dart';
 
 // Глобальная переменная для flutter_local_notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+// 🚀 НОВОЕ: Глобальный ключ навигатора для обработки импорта файлов
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -601,7 +608,7 @@ void _onNotificationTap(NotificationResponse notificationResponse) {
   }
 }
 
-// Глобальный навигатор для обработки уведомлений
+// Глобальный навигатор для обработки уведомлений (переименован чтобы не было конфликтов)
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
 void _navigateToTimers() {
@@ -631,6 +638,9 @@ class _DriftNotesAppState extends State<DriftNotesApp>
   String? _pendingAction;
   StreamSubscription<Uri>? _linkSubscription;
 
+  // 🚀 НОВОЕ: Подписка на получение файлов
+  StreamSubscription<List<SharedMediaFile>>? _intentDataStreamSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -639,6 +649,8 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
     _initializeQuickActions();
     _initializeDeepLinkHandling();
+    // 🚀 НОВОЕ: Инициализация обработчика файлов
+    _initializeFileHandler();
     _checkDocumentUpdatesAfterAuth();
     _setupNotificationHandlers();
 
@@ -678,9 +690,195 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     }
   }
 
+  // 🚀 НОВЫЙ МЕТОД: Инициализация обработчика входящих файлов
+  void _initializeFileHandler() {
+    try {
+      debugPrint('📁 Инициализируем обработчик файлов...');
+
+      // 🔧 ИСПРАВЛЕНО: Правильный вызов методов пакета receive_sharing_intent
+      // Обработка файлов при запуске приложения
+      ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
+        if (files.isNotEmpty) {
+          debugPrint('📥 Получены файлы при запуске: ${files.length}');
+          _handleReceivedFiles(files);
+        }
+      }).catchError((error) {
+        debugPrint('⚠️ Ошибка получения начальных файлов: $error');
+      });
+
+      // 🔧 ИСПРАВЛЕНО: Правильный вызов методов пакета receive_sharing_intent
+      // Обработка файлов во время работы приложения
+      _intentDataStreamSubscription = ReceiveSharingIntent.instance.getMediaStream()
+          .listen((List<SharedMediaFile> files) {
+        debugPrint('📥 Получены файлы во время работы: ${files.length}');
+        _handleReceivedFiles(files);
+      }, onError: (error) {
+        debugPrint('⚠️ Ошибка потока файлов: $error');
+      });
+
+      debugPrint('✅ Обработчик файлов инициализирован');
+    } catch (e) {
+      debugPrint('❌ Ошибка инициализации обработчика файлов: $e');
+    }
+  }
+
+  // 🚀 ИСПРАВЛЕННЫЙ МЕТОД: Обработка полученных файлов (теперь async)
+  void _handleReceivedFiles(List<SharedMediaFile> files) async {
+    if (files.isEmpty) return;
+
+    debugPrint('📥 Обрабатываем полученные файлы: ${files.length}');
+
+    for (final file in files) {
+      debugPrint('📄 Файл: ${file.path}, тип: ${file.type}');
+
+      // Проверяем, что это .fmm файл
+      if (file.path.toLowerCase().endsWith('.fmm')) {
+        debugPrint('✅ Обнаружен .fmm файл: ${file.path}');
+
+        // 🔥 ИСПРАВЛЕНО: Теперь await так как метод async
+        await _handleMarkerMapImport(file.path);
+        break; // Обрабатываем только первый .fmm файл
+      } else {
+        debugPrint('ℹ️ Файл не является .fmm: ${file.path}');
+      }
+    }
+  }
+
+  // 🔥 ИСПРАВЛЕННЫЙ МЕТОД: Обработка импорта с принудительным показом результата
+  Future<void> _handleMarkerMapImport(String filePath) async {
+    try {
+      debugPrint('🔄 Начинаем обработку импорта файла: $filePath');
+
+      // Ждем когда контекст будет доступен
+      BuildContext? context = navigatorKey.currentContext;
+
+      if (context == null) {
+        debugPrint('⏳ Контекст недоступен, ждем инициализации...');
+
+        // Попытки получить контекст с интервалом
+        for (int attempt = 0; attempt < 10; attempt++) {
+          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+          context = navigatorKey.currentContext;
+
+          if (context != null) {
+            debugPrint('✅ Контекст получен после ${attempt + 1} попыток');
+            break;
+          }
+
+          debugPrint('⏳ Попытка ${attempt + 1}/10 получить контекст...');
+        }
+      }
+
+      if (context == null) {
+        debugPrint('❌ Не удалось получить контекст для импорта файла');
+        return;
+      }
+
+      // 🔥 НОВОЕ: Дополнительная задержка для полной инициализации HomeScreen
+      debugPrint('⏳ Ждем полную инициализацию HomeScreen...');
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Проверяем что контекст все еще доступен
+      context = navigatorKey.currentContext;
+      if (context == null) {
+        debugPrint('❌ Контекст потерян после задержки');
+
+        // 🔥 КРИТИЧНО: Показываем уведомление даже без контекста
+        _showSystemNotification('Получена маркерная карта', 'Откройте приложение для импорта');
+        return;
+      }
+
+      // Проверяем что файл еще существует
+      final file = File(filePath);
+      if (!await file.exists()) {
+        debugPrint('❌ Файл не существует: $filePath');
+        _showImportError(context, 'Файл карты не найден');
+        return;
+      }
+
+      debugPrint('🚀 Вызываем MarkerMapsListScreen.handleMarkerMapImport');
+
+      // 🔥 НОВОЕ: Сначала навигируем в HomeScreen, потом показываем импорт
+      navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
+
+      // Небольшая задержка для завершения навигации
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Получаем новый контекст после навигации
+      final newContext = navigatorKey.currentContext;
+      if (newContext == null) {
+        debugPrint('❌ Контекст потерян после навигации');
+        return;
+      }
+
+      // 🔥 ИСПРАВЛЕНО: Вызов импорта с новым контекстом
+      await MarkerMapsListScreen.handleMarkerMapImport(newContext, filePath);
+
+      debugPrint('✅ Импорт маркерной карты завершен');
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка обработки импорта файла: $e');
+      debugPrint('Stack trace: $stackTrace');
+
+      // Показываем пользователю ошибку
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        _showImportError(context, e.toString());
+      } else {
+        // Если контекста нет - показываем системное уведомление
+        _showSystemNotification('Ошибка импорта', 'Не удалось импортировать маркерную карту');
+      }
+    }
+  }
+
+// 🔥 НОВЫЙ МЕТОД: Системное уведомление когда контекста нет
+  void _showSystemNotification(String title, String body) {
+    try {
+      flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'import_channel',
+            'Импорт файлов',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Ошибка показа системного уведомления: $e');
+    }
+  }
+
+  // 🔥 НОВЫЙ МЕТОД: Показ ошибки импорта пользователю
+  void _showImportError(BuildContext context, String error) {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка импорта карты: $error'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Закрыть',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Ошибка показа SnackBar: $e');
+    }
+  }
+
   @override
   void dispose() {
     _linkSubscription?.cancel();
+    // 🚀 НОВОЕ: Отписка от получения файлов
+    _intentDataStreamSubscription?.cancel();
 
     try {
       NotificationService().dispose();
@@ -859,6 +1057,11 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         ),
         const ShortcutItem(type: 'view_notes', localizedTitle: 'Мои заметки'),
         const ShortcutItem(type: 'timers', localizedTitle: 'Таймеры'),
+        // 🚀 НОВОЕ: Добавляем shortcut для маркерных карт
+        const ShortcutItem(
+            type: 'marker_maps',
+            localizedTitle: 'Карты маркеров'
+        ),
       ]).catchError((error) {
         debugPrint('⚠️ Ошибка установки Quick Actions: $error');
       });
@@ -910,6 +1113,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         case 'timers':
           _handleShortcutAction('timers');
           break;
+      // 🚀 НОВОЕ: Обработка deep link для маркерных карт
+        case 'marker_maps':
+          _handleShortcutAction('marker_maps');
+          break;
       }
     }
   }
@@ -942,6 +1149,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         break;
       case 'timers':
         _navigateToTimersFromShortcut();
+        break;
+    // 🚀 НОВОЕ: Навигация к маркерным картам
+      case 'marker_maps':
+        _navigateToMarkerMaps();
         break;
     }
 
@@ -993,6 +1204,24 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         Navigator.of(globalNavigatorKey.currentContext!).push(
           MaterialPageRoute(
             builder: (context) => const TimersScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Навигация к маркерным картам
+  void _navigateToMarkerMaps() {
+    globalNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/home',
+          (route) => false,
+    );
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (globalNavigatorKey.currentContext != null) {
+        Navigator.of(globalNavigatorKey.currentContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const MarkerMapsListScreen(),
           ),
         );
       }
@@ -1058,7 +1287,8 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
         return MaterialApp(
-          navigatorKey: globalNavigatorKey,
+          // 🚀 ВАЖНО: Используем правильный navigatorKey
+          navigatorKey: navigatorKey,
           title: 'Drift Notes',
           debugShowCheckedModeBanner: false,
 

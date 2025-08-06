@@ -76,7 +76,7 @@ class UsageLimitsModel {
     );
   }
 
-  /// ✅ ИСПРАВЛЕНО: Увеличение счетчика с правильным ContentType
+  /// 🚀 ИСПРАВЛЕНО: Увеличение счетчика с поддержкой markerMapSharing
   UsageLimitsModel incrementCounter(ContentType contentType) {
     final now = DateTime.now();
 
@@ -99,10 +99,16 @@ class UsageLimitsModel {
       case ContentType.depthChart:
       // График глубин не имеет счетчика, он полностью заблокирован
         return copyWith(updatedAt: now);
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+      // Обмен картами использует тот же счетчик что и маркерные карты
+        return copyWith(
+          markerMapsCount: markerMapsCount + 1,
+          updatedAt: now,
+        );
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Уменьшение счетчика с правильным ContentType
+  /// 🚀 ИСПРАВЛЕНО: Уменьшение счетчика с поддержкой markerMapSharing
   UsageLimitsModel decrementCounter(ContentType contentType) {
     final now = DateTime.now();
 
@@ -125,10 +131,16 @@ class UsageLimitsModel {
       case ContentType.depthChart:
       // График глубин не имеет счетчика
         return copyWith(updatedAt: now);
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+      // Обмен картами использует тот же счетчик что и маркерные карты
+        return copyWith(
+          markerMapsCount: (markerMapsCount - 1).clamp(0, double.infinity).toInt(),
+          updatedAt: now,
+        );
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Получение счетчика с правильным ContentType
+  /// 🚀 ИСПРАВЛЕНО: Получение счетчика с поддержкой markerMapSharing
   int getCountForType(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -139,6 +151,8 @@ class UsageLimitsModel {
         return budgetNotesCount;  // ✅ ИСПРАВЛЕНО!
       case ContentType.depthChart:
         return 0; // График глубин не имеет счетчика
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return markerMapsCount; // Использует тот же счетчик что и маркерные карты
     }
   }
 
@@ -152,8 +166,9 @@ class UsageLimitsModel {
 
   /// Проверка можно ли создать новый элемент данного типа
   bool canCreateNew(ContentType contentType) {
-    // Для графика глубин всегда false (полностью заблокирован)
-    if (contentType == ContentType.depthChart) {
+    // Для графика глубин и обмена картами всегда false (полностью заблокированы)
+    if (contentType == ContentType.depthChart ||
+        contentType == ContentType.markerMapSharing) { // 🚀 НОВОЕ
       return false;
     }
 

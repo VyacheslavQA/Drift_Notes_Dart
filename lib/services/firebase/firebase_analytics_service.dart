@@ -632,6 +632,9 @@ class FirebaseAnalyticsService {
         return 'budget_notes';
       case ContentType.depthChart:
         return 'depth_chart';
+      case ContentType.markerMapSharing: // 🚀 ДОБАВИТЬ ЭТУ СТРОКУ
+        return 'marker_map_sharing';      // 🚀 И ЭТУ СТРОКУ
+
     }
   }
 

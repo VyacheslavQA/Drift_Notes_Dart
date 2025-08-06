@@ -403,6 +403,8 @@ class OfflineStorageService {
         return _localBudgetNotesCountKey;
       case ContentType.depthChart:
         return _localDepthChartCountKey;
+      case ContentType.markerMapSharing: // 🚀 ДОБАВИТЬ ЭТУ СТРОКУ
+        return _localMapsCountKey;        // 🚀 И ЭТУ СТРОКУ (используем тот же ключ что и для markerMaps)
     }
   }
 

@@ -22,12 +22,13 @@ enum SubscriptionStatus {
   pending,       // Ожидающая активации
 }
 
-/// 🔥 ИСПРАВЛЕНО: expenses → budgetNotes
+/// 🔥 ОБНОВЛЕНО: Добавлен markerMapSharing для экспорта/импорта карт
 enum ContentType {
   fishingNotes,
   markerMaps,
   budgetNotes,   // ✅ ИСПРАВЛЕНО! Было expenses
   depthChart,    // Полностью заблокирован без подписки
+  markerMapSharing, // 🚀 НОВОЕ: Экспорт/импорт маркерных карт
 }
 
 /// 🔥 УПРОЩЕНО: Только 3 основные валюты вместо 5
@@ -176,7 +177,7 @@ class SubscriptionConstants {
   }
 
   // ========================================
-  // 🔥 УПРОЩЕННЫЕ МЕТОДЫ ЛИМИТОВ (без grace period)
+  // 🔥 ОБНОВЛЕННЫЕ МЕТОДЫ ЛИМИТОВ с поддержкой markerMapSharing
   // ========================================
 
   /// Простая проверка превышения лимита
@@ -184,7 +185,7 @@ class SubscriptionConstants {
     return currentUsage >= limit;
   }
 
-  /// Получение лимита для типа контента
+  /// 🚀 ОБНОВЛЕНО: Получение лимита для типа контента
   static int getContentLimit(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -195,10 +196,12 @@ class SubscriptionConstants {
         return freeBudgetNotesLimit;
       case ContentType.depthChart:
         return 0; // Только для премиум
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return 0; // Только для премиум
     }
   }
 
-  /// Получение поля Firebase для типа контента
+  /// 🚀 ОБНОВЛЕНО: Получение поля Firebase для типа контента
   static String getFirebaseCountField(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -209,10 +212,12 @@ class SubscriptionConstants {
         return budgetNotesCountField;
       case ContentType.depthChart:
         return 'depthChartCount';
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return 'markerMapSharingCount'; // Не используется, но для единообразия
     }
   }
 
-  /// Получение пути к subcollection для типа контента
+  /// 🚀 ОБНОВЛЕНО: Получение пути к subcollection для типа контента
   static String getContentSubcollectionPath(String userId, ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -223,12 +228,15 @@ class SubscriptionConstants {
         return getBudgetNotesPath(userId);
       case ContentType.depthChart:
         return '$usersCollection/$userId/depth_charts'; // Премиум функция
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return getMarkerMapsPath(userId); // Использует те же маркерные карты
     }
   }
 
-  /// Проверка является ли контент премиум функцией
+  /// 🚀 ОБНОВЛЕНО: Проверка является ли контент премиум функцией
   static bool isContentPremium(ContentType contentType) {
-    return contentType == ContentType.depthChart;
+    return contentType == ContentType.depthChart ||
+        contentType == ContentType.markerMapSharing; // 🚀 НОВОЕ
   }
 
   /// Можно ли создать контент (простая проверка)
@@ -236,7 +244,7 @@ class SubscriptionConstants {
     return currentUsage < limit;
   }
 
-  /// Получение названия типа контента для UI
+  /// 🚀 ОБНОВЛЕНО: Получение названия типа контента для UI
   static String getContentTypeName(ContentType contentType) {
     switch (contentType) {
       case ContentType.fishingNotes:
@@ -247,6 +255,40 @@ class SubscriptionConstants {
         return 'заметок бюджета';
       case ContentType.depthChart:
         return 'графиков глубины';
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return 'обмен картами';
+    }
+  }
+
+  /// 🚀 НОВЫЙ: Получение описания для типа контента
+  static String getContentDescription(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return 'Создавайте подробные записи о каждой рыбалке';
+      case ContentType.markerMaps:
+        return 'Составляйте карты дна водоемов с маркерами';
+      case ContentType.budgetNotes:
+        return 'Ведите учет расходов на рыболовное снаряжение';
+      case ContentType.depthChart:
+        return 'Анализируйте глубину водоемов с помощью графиков';
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return 'Делитесь картами с другими рыбаками и получайте карты от сообщества';
+    }
+  }
+
+  /// 🚀 НОВЫЙ: Получение иконки для типа контента
+  static IconData getContentIcon(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.fishingNotes:
+        return Icons.note_alt;
+      case ContentType.markerMaps:
+        return Icons.map;
+      case ContentType.budgetNotes:
+        return Icons.account_balance_wallet;
+      case ContentType.depthChart:
+        return Icons.bar_chart;
+      case ContentType.markerMapSharing: // 🚀 НОВОЕ
+        return Icons.share;
     }
   }
 

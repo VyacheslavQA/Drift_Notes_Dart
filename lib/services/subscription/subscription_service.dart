@@ -660,6 +660,8 @@ class SubscriptionService {
         return 'заметок бюджета';
       case ContentType.depthChart:
         return 'графиков глубин';
+      case ContentType.markerMapSharing: // 🚀 ДОБАВИТЬ ЭТУ СТРОКУ
+        return 'обмена картами';           // 🚀 И ЭТУ СТРОКУ
     }
   }
 
