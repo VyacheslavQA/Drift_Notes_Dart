@@ -41,6 +41,7 @@ class _QuickImportScreenState extends State<QuickImportScreen>
   bool _hasError = false;
   String? _errorMessage;
   double _progress = 0.0;
+  bool _importStarted = false;
 
   // Сервисы
   final _firebaseService = FirebaseService();
@@ -50,7 +51,17 @@ class _QuickImportScreenState extends State<QuickImportScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
-    _startImportProcess();
+    // НЕ вызываем _startImportProcess здесь!
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Безопасно вызываем импорт здесь
+    if (!_importStarted) {
+      _importStarted = true;
+      _startImportProcess();
+    }
   }
 
   @override
@@ -166,8 +177,9 @@ class _QuickImportScreenState extends State<QuickImportScreen>
       throw Exception('Файл карты не найден');
     }
 
-    if (!widget.filePath.toLowerCase().endsWith('.fmm')) {
-      throw Exception('Неверный формат файла. Ожидается .fmm файл');
+    // 🚀 ИСПРАВЛЕНО: Проверяем .driftnotes вместо .fmm
+    if (!widget.filePath.toLowerCase().endsWith('.driftnotes')) {
+      throw Exception('Неверный формат файла. Ожидается .driftnotes файл');
     }
 
     final fileSize = await file.length();
@@ -320,6 +332,7 @@ class _QuickImportScreenState extends State<QuickImportScreen>
         builder: (context) => AuthSelectionScreen(
           onAuthSuccess: () {
             // После успешной авторизации перезапускаем импорт
+            _importStarted = false;
             _startImportProcess();
           },
         ),
@@ -562,6 +575,7 @@ class _QuickImportScreenState extends State<QuickImportScreen>
                         _hasError = false;
                         _errorMessage = null;
                         _progress = 0;
+                        _importStarted = false;
                       });
                       _startImportProcess();
                     },
