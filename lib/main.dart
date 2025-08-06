@@ -1,5 +1,6 @@
 // Путь: lib/main.dart
 // ✅ ИСПРАВЛЕНО ДЛЯ ПРОДАКШЕНА: Правильная инициализация с IsarService в критических сервисах
+// 🚀 ОБНОВЛЕНО: Оптимизация для быстрого импорта .driftnotes файлов
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,8 @@ import 'screens/timer/timers_screen.dart';
 import 'screens/onboarding/first_launch_language_screen.dart';
 // 🚀 НОВЫЙ ИМПОРТ для маркерных карт
 import 'screens/marker_maps/marker_maps_list_screen.dart';
+// 🚀 НОВЫЙ ИМПОРТ для быстрого импорта
+import 'screens/marker_maps/quick_import_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/subscription_provider.dart';
@@ -74,8 +77,14 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 // 🚀 НОВОЕ: Глобальный ключ навигатора для обработки импорта файлов
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// 🚀 ОБНОВЛЕНО: Глобальная переменная для файла импорта
+String? _pendingImportFile;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🚀 ОБНОВЛЕНО: Проверяем файлы импорта ДО запуска UI
+  await _checkForImportFiles();
 
   // 🔥 ИСПРАВЛЕНО: Критические сервисы теперь включают IsarService
   await _initializeCriticalServices();
@@ -100,8 +109,42 @@ void main() async {
     ),
   );
 
-  // 🔥 НОВОЕ: Остальные сервисы инициализируем в фоне ПОСЛЕ запуска UI
-  _initializeSecondaryServicesInBackground();
+  // 🔥 НОВОЕ: Остальные сервисы инициализируем в фоне ПОСЛЕ запуска UI (только если НЕ импорт)
+  if (_pendingImportFile == null) {
+    _initializeSecondaryServicesInBackground();
+  } else {
+    debugPrint('🚀 Пропускаем фоновую инициализацию - идет быстрый импорт');
+  }
+}
+
+// 🚀 ОБНОВЛЕННЫЙ МЕТОД: Проверка файлов импорта при запуске
+Future<void> _checkForImportFiles() async {
+  try {
+    debugPrint('🔍 Проверяем файлы импорта при запуске...');
+
+    // Проверяем файлы через receive_sharing_intent
+    final files = await ReceiveSharingIntent.instance.getInitialMedia();
+
+    if (files.isNotEmpty) {
+      debugPrint('📥 Найдены файлы при запуске: ${files.length}');
+
+      // Ищем первый .driftnotes файл
+      for (final file in files) {
+        if (file.path.toLowerCase().endsWith('.driftnotes')) {
+          _pendingImportFile = file.path;
+          debugPrint('✅ Найден файл для импорта: $_pendingImportFile');
+          break;
+        }
+      }
+    }
+
+    if (_pendingImportFile == null) {
+      debugPrint('📝 Файлов для импорта не найдено - обычный запуск');
+    }
+  } catch (e) {
+    debugPrint('❌ Ошибка проверки файлов импорта: $e');
+    _pendingImportFile = null;
+  }
 }
 
 // 🔥 ИСПРАВЛЕНО: Критические сервисы теперь включают IsarService и базовые зависимости
@@ -649,8 +692,8 @@ class _DriftNotesAppState extends State<DriftNotesApp>
 
     _initializeQuickActions();
     _initializeDeepLinkHandling();
-    // 🚀 НОВОЕ: Инициализация обработчика файлов
-    _initializeFileHandler();
+    // 🚀 УПРОЩЕНО: Инициализация обработчика файлов только для runtime файлов
+    _initializeRuntimeFileHandler();
     _checkDocumentUpdatesAfterAuth();
     _setupNotificationHandlers();
 
@@ -690,187 +733,41 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     }
   }
 
-  // 🚀 НОВЫЙ МЕТОД: Инициализация обработчика входящих файлов
-  void _initializeFileHandler() {
+  // 🚀 УПРОЩЕННЫЙ МЕТОД: Обработчик только runtime файлов (не startup)
+  void _initializeRuntimeFileHandler() {
     try {
-      debugPrint('📁 Инициализируем обработчик файлов...');
+      debugPrint('📁 Инициализируем runtime обработчик файлов...');
 
-      // 🔧 ИСПРАВЛЕНО: Правильный вызов методов пакета receive_sharing_intent
-      // Обработка файлов при запуске приложения
-      ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
-        if (files.isNotEmpty) {
-          debugPrint('📥 Получены файлы при запуске: ${files.length}');
-          _handleReceivedFiles(files);
-        }
-      }).catchError((error) {
-        debugPrint('⚠️ Ошибка получения начальных файлов: $error');
-      });
-
-      // 🔧 ИСПРАВЛЕНО: Правильный вызов методов пакета receive_sharing_intent
       // Обработка файлов во время работы приложения
       _intentDataStreamSubscription = ReceiveSharingIntent.instance.getMediaStream()
           .listen((List<SharedMediaFile> files) {
         debugPrint('📥 Получены файлы во время работы: ${files.length}');
-        _handleReceivedFiles(files);
+        _handleRuntimeFiles(files);
       }, onError: (error) {
-        debugPrint('⚠️ Ошибка потока файлов: $error');
+        debugPrint('⚠️ Ошибка потока runtime файлов: $error');
       });
 
-      debugPrint('✅ Обработчик файлов инициализирован');
+      debugPrint('✅ Runtime обработчик файлов инициализирован');
     } catch (e) {
-      debugPrint('❌ Ошибка инициализации обработчика файлов: $e');
+      debugPrint('❌ Ошибка инициализации runtime обработчика файлов: $e');
     }
   }
 
-  // 🚀 ИСПРАВЛЕННЫЙ МЕТОД: Обработка полученных файлов (теперь async)
-  void _handleReceivedFiles(List<SharedMediaFile> files) async {
+  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Обработка runtime файлов (упрощенная)
+  void _handleRuntimeFiles(List<SharedMediaFile> files) async {
     if (files.isEmpty) return;
 
-    debugPrint('📥 Обрабатываем полученные файлы: ${files.length}');
-
     for (final file in files) {
-      debugPrint('📄 Файл: ${file.path}, тип: ${file.type}');
+      if (file.path.toLowerCase().endsWith('.driftnotes')) {
+        debugPrint('✅ Runtime .driftnotes файл: ${file.path}');
 
-      // Проверяем, что это .fmm файл
-      if (file.path.toLowerCase().endsWith('.fmm')) {
-        debugPrint('✅ Обнаружен .fmm файл: ${file.path}');
-
-        // 🔥 ИСПРАВЛЕНО: Теперь await так как метод async
-        await _handleMarkerMapImport(file.path);
-        break; // Обрабатываем только первый .fmm файл
-      } else {
-        debugPrint('ℹ️ Файл не является .fmm: ${file.path}');
-      }
-    }
-  }
-
-  // 🔥 ИСПРАВЛЕННЫЙ МЕТОД: Обработка импорта с принудительным показом результата
-  Future<void> _handleMarkerMapImport(String filePath) async {
-    try {
-      debugPrint('🔄 Начинаем обработку импорта файла: $filePath');
-
-      // Ждем когда контекст будет доступен
-      BuildContext? context = navigatorKey.currentContext;
-
-      if (context == null) {
-        debugPrint('⏳ Контекст недоступен, ждем инициализации...');
-
-        // Попытки получить контекст с интервалом
-        for (int attempt = 0; attempt < 10; attempt++) {
-          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
-          context = navigatorKey.currentContext;
-
-          if (context != null) {
-            debugPrint('✅ Контекст получен после ${attempt + 1} попыток');
-            break;
-          }
-
-          debugPrint('⏳ Попытка ${attempt + 1}/10 получить контекст...');
+        // Простой переход к импорту через существующий метод
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          await MarkerMapsListScreen.handleMarkerMapImport(context, file.path);
         }
+        break;
       }
-
-      if (context == null) {
-        debugPrint('❌ Не удалось получить контекст для импорта файла');
-        return;
-      }
-
-      // 🔥 НОВОЕ: Дополнительная задержка для полной инициализации HomeScreen
-      debugPrint('⏳ Ждем полную инициализацию HomeScreen...');
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Проверяем что контекст все еще доступен
-      context = navigatorKey.currentContext;
-      if (context == null) {
-        debugPrint('❌ Контекст потерян после задержки');
-
-        // 🔥 КРИТИЧНО: Показываем уведомление даже без контекста
-        _showSystemNotification('Получена маркерная карта', 'Откройте приложение для импорта');
-        return;
-      }
-
-      // Проверяем что файл еще существует
-      final file = File(filePath);
-      if (!await file.exists()) {
-        debugPrint('❌ Файл не существует: $filePath');
-        _showImportError(context, 'Файл карты не найден');
-        return;
-      }
-
-      debugPrint('🚀 Вызываем MarkerMapsListScreen.handleMarkerMapImport');
-
-      // 🔥 НОВОЕ: Сначала навигируем в HomeScreen, потом показываем импорт
-      navigatorKey.currentState?.pushNamedAndRemoveUntil('/home', (route) => false);
-
-      // Небольшая задержка для завершения навигации
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Получаем новый контекст после навигации
-      final newContext = navigatorKey.currentContext;
-      if (newContext == null) {
-        debugPrint('❌ Контекст потерян после навигации');
-        return;
-      }
-
-      // 🔥 ИСПРАВЛЕНО: Вызов импорта с новым контекстом
-      await MarkerMapsListScreen.handleMarkerMapImport(newContext, filePath);
-
-      debugPrint('✅ Импорт маркерной карты завершен');
-
-    } catch (e, stackTrace) {
-      debugPrint('❌ Ошибка обработки импорта файла: $e');
-      debugPrint('Stack trace: $stackTrace');
-
-      // Показываем пользователю ошибку
-      final context = navigatorKey.currentContext;
-      if (context != null) {
-        _showImportError(context, e.toString());
-      } else {
-        // Если контекста нет - показываем системное уведомление
-        _showSystemNotification('Ошибка импорта', 'Не удалось импортировать маркерную карту');
-      }
-    }
-  }
-
-// 🔥 НОВЫЙ МЕТОД: Системное уведомление когда контекста нет
-  void _showSystemNotification(String title, String body) {
-    try {
-      flutterLocalNotificationsPlugin.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        title,
-        body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'import_channel',
-            'Импорт файлов',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('❌ Ошибка показа системного уведомления: $e');
-    }
-  }
-
-  // 🔥 НОВЫЙ МЕТОД: Показ ошибки импорта пользователю
-  void _showImportError(BuildContext context, String error) {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка импорта карты: $error'),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Закрыть',
-            textColor: Colors.white,
-            onPressed: () {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            },
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('❌ Ошибка показа SnackBar: $e');
     }
   }
 
@@ -1410,59 +1307,41 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             ),
           ),
 
-          // 🔥 ИСПРАВЛЕНО: Динамическое определение первого экрана
-          home: FutureBuilder<bool>(
-            future: _checkIfFirstLaunch(),
+          // 🚀 ИСПРАВЛЕНО: Логика выбора стартового экрана с поддержкой быстрого импорта
+          home: FutureBuilder<Map<String, dynamic>>(
+            future: _determineStartScreen(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                // Показываем простой загрузочный экран пока проверяем
-                return Scaffold(
-                  body: Container(
-                    width: double.infinity,
-                    height: double.infinity,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/splash_background.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.6),
-                            Colors.black.withOpacity(0.4),
-                          ],
-                        ),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                // Показываем простой загрузочный экран
+                return _buildLoadingScreen();
               }
 
-              final isFirstLaunch = snapshot.data ?? false;
+              final data = snapshot.data ?? {};
+              final startType = data['type'] as String? ?? 'normal';
+              final isFirstLaunch = data['isFirstLaunch'] as bool? ?? false;
+              final importFile = data['importFile'] as String?;
 
-              if (isFirstLaunch) {
-                // Первый запуск - показываем выбор языка
-                return const FirstLaunchLanguageScreen();
-              } else {
-                // Обычный запуск - показываем splash
-                return SplashScreenWithPendingAction(
-                  onAppReady: () {
-                    if (_pendingAction != null) {
-                      Future.delayed(const Duration(milliseconds: 500), () {
-                        _handleShortcutAction(_pendingAction!);
-                      });
-                    }
-                  },
-                );
+              // Определяем стартовый экран
+              switch (startType) {
+                case 'quick_import':
+                  debugPrint('🚀 Быстрый импорт: $importFile');
+                  return QuickImportScreen(filePath: importFile!);
+
+                case 'first_launch':
+                  debugPrint('🎉 Первый запуск приложения');
+                  return const FirstLaunchLanguageScreen();
+
+                default:
+                  debugPrint('📱 Обычный запуск приложения');
+                  return SplashScreenWithPendingAction(
+                    onAppReady: () {
+                      if (_pendingAction != null) {
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          _handleShortcutAction(_pendingAction!);
+                        });
+                      }
+                    },
+                  );
               }
             },
           ),
@@ -1487,6 +1366,75 @@ class _DriftNotesAppState extends State<DriftNotesApp>
           },
         );
       },
+    );
+  }
+
+  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Определение типа запуска
+  Future<Map<String, dynamic>> _determineStartScreen() async {
+    try {
+      // 1. Проверяем наличие файла для импорта
+      if (_pendingImportFile != null) {
+        final file = File(_pendingImportFile!);
+        if (await file.exists()) {
+          return {
+            'type': 'quick_import',
+            'importFile': _pendingImportFile,
+          };
+        } else {
+          debugPrint('⚠️ Файл импорта не существует: $_pendingImportFile');
+          _pendingImportFile = null;
+        }
+      }
+
+      // 2. Проверяем первый запуск
+      final isFirstLaunch = await _checkIfFirstLaunch();
+      if (isFirstLaunch) {
+        return {
+          'type': 'first_launch',
+          'isFirstLaunch': true,
+        };
+      }
+
+      // 3. Обычный запуск
+      return {
+        'type': 'normal',
+      };
+    } catch (e) {
+      debugPrint('❌ Ошибка определения стартового экрана: $e');
+      return {'type': 'normal'};
+    }
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Загрузочный экран
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/splash_background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.6),
+                Colors.black.withOpacity(0.4),
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

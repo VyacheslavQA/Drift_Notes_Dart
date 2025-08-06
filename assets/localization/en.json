@@ -2178,5 +2178,22 @@
   "share_marker_maps_desc": "Import and export marker maps with other users",
 
   "loading": "Loading...",
-  "loading_price": "Loading price..."
+  "loading_price": "Loading price...",
+
+  "import_in_progress": "Importing map",
+  "checking_file": "Checking map file...",
+  "initializing_services": "Initializing services...",
+  "checking_authorization": "Checking authorization...",
+  "checking_subscription": "Checking subscription...",
+  "processing_map": "Processing map...",
+  "ready": "Ready!",
+  "preparing_import": "Preparing marker map for import.\nThis will take just a few seconds.",
+  "import_error_title": "Import Error",
+  "unknown_error": "An unknown error occurred",
+  "retry": "Try again",
+  "close": "Close",
+  "authorization_required": "Authorization Required",
+  "authorization_required_message": "You need to sign in to import marker maps.",
+  "cancel": "Cancel",
+  "login": "Sign In"
 }

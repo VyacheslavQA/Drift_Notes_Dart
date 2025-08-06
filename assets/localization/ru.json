@@ -2135,5 +2135,22 @@
   "share_marker_maps_desc": "Импорт и экспорт маркерных карт с другими пользователями",
 
   "loading": "Загрузка...",
-  "loading_price": "Загрузка цены..."
+  "loading_price": "Загрузка цены...",
+
+  "import_in_progress": "Импортируем карту",
+  "checking_file": "Проверяем файл карты...",
+  "initializing_services": "Инициализируем сервисы...",
+  "checking_authorization": "Проверяем авторизацию...",
+  "checking_subscription": "Проверяем подписку...",
+  "processing_map": "Обрабатываем карту...",
+  "ready": "Готово!",
+  "preparing_import": "Подготавливаем маркерную карту для импорта.\nЭто займет всего несколько секунд.",
+  "import_error_title": "Ошибка импорта",
+  "unknown_error": "Произошла неизвестная ошибка",
+  "retry": "Повторить попытку",
+  "close": "Закрыть",
+  "authorization_required": "Требуется авторизация",
+  "authorization_required_message": "Для импорта маркерных карт необходимо войти в аккаунт.",
+  "cancel": "Отмена",
+  "login": "Войти"
 }

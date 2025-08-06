@@ -2128,5 +2128,22 @@
   "share_marker_maps_desc": "Басқа пайдаланушылармен маркерлік карталарды импорттау және экспорттау",
 
   "loading": "Жүктелуде...",
-  "loading_price": "Баға жүктелуде..."
+  "loading_price": "Баға жүктелуде...",
+
+  "import_in_progress": "Картаны импорттаймыз",
+  "checking_file": "Карта файлын тексереміз...",
+  "initializing_services": "Қызметтерді инициализациялаймыз...",
+  "checking_authorization": "Авторизацияны тексереміз...",
+  "checking_subscription": "Жазылымды тексереміз...",
+  "processing_map": "Картаны өңдейміз...",
+  "ready": "Дайын!",
+  "preparing_import": "Маркерлік картаны импортқа дайындаймыз.\nБұл бірнеше секунд уақыт алады.",
+  "import_error_title": "Импорт қатесі",
+  "unknown_error": "Белгісіз қате орын алды",
+  "retry": "Қайталап көру",
+  "close": "Жабу",
+  "authorization_required": "Авторизация қажет",
+  "authorization_required_message": "Маркерлік карталарды импорттау үшін аккаунтқа кіру қажет.",
+  "cancel": "Бас тарту",
+  "login": "Кіру"
 }

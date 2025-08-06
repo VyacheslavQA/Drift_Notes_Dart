@@ -31,7 +31,7 @@ class MarkerMapsListScreen extends StatefulWidget {
   @override
   State<MarkerMapsListScreen> createState() => _MarkerMapsListScreenState();
 
-  // 🚀 ИСПРАВЛЕНО: Статический метод перенесен в основной класс
+  // 🚀 УПРОЩЕНО: Статический метод теперь проще и надежнее
   static Future<void> handleMarkerMapImport(BuildContext context, String filePath) async {
     debugPrint('🔍 handleMarkerMapImport: Начинаем импорт файла $filePath');
 
@@ -39,7 +39,7 @@ class MarkerMapsListScreen extends StatefulWidget {
       // 1. Проверка Premium статуса
       debugPrint('📋 Проверяем Premium статус...');
       final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
-      final hasPremium = subscriptionProvider.hasPremiumAccess; // Используем правильное свойство
+      final hasPremium = subscriptionProvider.hasPremiumAccess;
       debugPrint('📋 Premium статус: $hasPremium');
 
       if (!hasPremium) {
@@ -79,7 +79,7 @@ class MarkerMapsListScreen extends StatefulWidget {
         return;
       }
 
-      // 3. Навигация к экрану превью
+      // 3. Переход к экрану превью
       debugPrint('🚀 Переходим к экрану превью импорта...');
 
       if (!context.mounted) {
@@ -87,7 +87,10 @@ class MarkerMapsListScreen extends StatefulWidget {
         return;
       }
 
-      final result = await Navigator.push<bool>(
+      // 🚀 УПРОЩЕНО: Убрали сложную логику навигации
+      // Теперь просто показываем превью экран
+      // Вся навигация после импорта происходит внутри превью экрана
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => MarkerMapImportPreviewScreen(
@@ -97,48 +100,7 @@ class MarkerMapsListScreen extends StatefulWidget {
         ),
       );
 
-      debugPrint('✅ Результат экрана превью: $result');
-
-      // 4. Обновление списка после успешного импорта
-      if (result == true && context.mounted) {
-        debugPrint('🔄 Обновляем данные после успешного импорта...');
-
-        // Попытка найти и обновить текущий экран списка карт
-        final navigator = Navigator.of(context);
-
-        // Проходим по стеку роутов и ищем MarkerMapsListScreen
-        navigator.popUntil((route) {
-          if (route.settings.name == '/marker_maps_list' ||
-              route.settings.arguments is MarkerMapsListScreen) {
-            debugPrint('✅ Найден экран списка карт в стеке');
-            return true;
-          }
-
-          // Проверяем, является ли текущий route нашим экраном
-          if (route is MaterialPageRoute) {
-            final widget = route.builder(context);
-            if (widget is MarkerMapsListScreen) {
-              debugPrint('✅ Найден экран списка карт через builder');
-              return true;
-            }
-          }
-
-          return false;
-        });
-
-        // Показываем сообщение об успешном импорте
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Карта успешно импортирована'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-
-      debugPrint('✅ Импорт маркерной карты завершен успешно');
+      debugPrint('✅ Процесс импорта завершен (навигация управляется превью экраном)');
 
     } catch (e) {
       debugPrint('❌ Критическая ошибка обработки импорта файла: $e');
@@ -176,6 +138,20 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     if (kDebugMode) {
       debugPrint('🗺️ MarkerMapsListScreen: Инициализация экрана списка карт с фильтрацией по водоемам');
     }
+  }
+
+  // 🚀 ДОБАВЛЕНО: Автообновление данных при возврате на экран
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Проверяем, вернулись ли мы на этот экран после импорта
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadData();
+        debugPrint('🔄 Автообновление данных после возврата на экран');
+      }
+    });
   }
 
   // Оптимизация: Универсальный метод для async операций с loading

@@ -12,6 +12,7 @@ import '../../localization/app_localizations.dart';
 import '../../widgets/loading_overlay.dart';
 import '../subscription/paywall_screen.dart';
 import '../../constants/subscription_constants.dart';
+import 'marker_maps_list_screen.dart';
 
 class MarkerMapImportPreviewScreen extends StatefulWidget {
   final ImportResult importResult;
@@ -152,7 +153,7 @@ class _MarkerMapImportPreviewScreenState extends State<MarkerMapImportPreviewScr
     }
   }
 
-  /// Импорт карты
+  /// 🚀 ИСПРАВЛЕНО: Импорт карты с правильной навигацией
   Future<void> _importMap() async {
     final localizations = AppLocalizations.of(context);
 
@@ -206,15 +207,32 @@ class _MarkerMapImportPreviewScreenState extends State<MarkerMapImportPreviewScr
           debugPrint('⚠️ Не удалось обновить данные подписки: $e');
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('map_imported_successfully')),
-            backgroundColor: Colors.green,
+        debugPrint('✅ Карта успешно импортирована, переходим к списку карт');
+
+        // 🚀 ИСПРАВЛЕНО: Принудительный переход к списку карт
+        // Заменили Navigator.pop на pushAndRemoveUntil
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MarkerMapsListScreen(),
           ),
+              (route) => false, // Очищаем весь стек навигации
         );
 
-        // Возвращаемся назад с результатом успеха
-        Navigator.pop(context, true);
+        // Показываем сообщение об успешном импорте
+        // Используем delayed, чтобы экран успел загрузиться
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(localizations.translate('map_imported_successfully')),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        });
+
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -13,13 +13,13 @@ import '../../localization/app_localizations.dart';
 import '../../constants/app_constants.dart';
 
 class MarkerMapShareService {
-  static const String _fileExtension = '.fmm'; // Fishing Marker Map
-  static const String _mimeType = 'application/octet-stream';
+  static const String _fileExtension = '.driftnotes'; // DriftNotes format
+  static const String _mimeType = 'application/driftnotes';
   static const int _currentVersion = 1;
 
   // Метаданные файла
   static const String _appName = 'Fishing Buddy';
-  static const String _fileFormatName = 'Fishing Marker Map';
+  static const String _fileFormatName = 'DriftNotes Marker Map';
 
   /// 🚀 ЭКСПОРТ: Создание и отправка файла маркерной карты
   static Future<bool> exportMarkerMap({
