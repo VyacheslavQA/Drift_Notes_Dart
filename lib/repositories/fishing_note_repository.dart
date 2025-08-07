@@ -37,6 +37,11 @@ class FishingNoteRepository {
   static DateTime? _cacheTimestamp;
   static const Duration _cacheValidity = Duration(minutes: 2);
 
+  // ✅ ДОБАВЛЕНО: Флаги для предотвращения параллельной синхронизации
+  static bool _syncInProgress = false;
+  static DateTime? _lastSyncTime;
+  static const Duration _syncCooldown = Duration(seconds: 10);
+
   /// Инициализация репозитория
   Future<void> initialize() async {
     try {
@@ -57,26 +62,21 @@ class FishingNoteRepository {
     }
   }
 
-  /// Синхронизация офлайн данных при запуске
+  /// ✅ ИСПРАВЛЕНО: Синхронизация офлайн данных при запуске
   Future<void> syncOfflineDataOnStartup() async {
     try {
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        // Запускаем полную синхронизацию в фоне
-        _syncService.fullSync().then((result) {
-          if (result) {
-            clearCache(); // Обновляем кэш после синхронизации
-          }
-        }).catchError((e) {
-          // Игнорируем ошибки фоновой синхронизации
-        });
+        // ✅ ИЗМЕНЕНИЕ: Запускаем ТОЛЬКО умную фоновую синхронизацию
+        // БЕЗ прямого вызова fullSync() чтобы избежать дублирования
+        _performBackgroundSync('startup');
       }
     } catch (e) {
       // Игнорируем ошибки синхронизации при запуске
     }
   }
 
-  /// Получение всех заметок пользователя
+  /// ✅ ИСПРАВЛЕНО: Получение всех заметок пользователя
   Future<List<FishingNoteModel>> getUserFishingNotes() async {
     try {
       final userId = _firebaseService.currentUserId;
@@ -109,21 +109,52 @@ class FishingNoteRepository {
       _cachedNotes = notes;
       _cacheTimestamp = DateTime.now();
 
-      // Запускаем синхронизацию в фоне, если есть интернет
+      // ✅ ИЗМЕНЕНИЕ: Запускаем умную синхронизацию с проверкой cooldown
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
-        _syncService.syncFishingNotesFromFirebase().then((_) {
-          // После синхронизации обновляем кэш
-          clearCache();
-        }).catchError((e) {
-          // Игнорируем ошибки фоновой синхронизации
-        });
+        _performBackgroundSync('getUserNotes');
       }
 
       return notes;
     } catch (e) {
       return [];
     }
+  }
+
+  /// ✅ НОВЫЙ МЕТОД: Умная фоновая синхронизация с защитой от дублирования
+  void _performBackgroundSync(String source) {
+    // Проверяем не идет ли уже синхронизация
+    if (_syncInProgress) {
+      debugPrint('⏸️ Repository: Синхронизация уже выполняется, пропускаем ($source)');
+      return;
+    }
+
+    // Проверяем cooldown
+    if (_lastSyncTime != null) {
+      final timeSinceLastSync = DateTime.now().difference(_lastSyncTime!);
+      if (timeSinceLastSync < _syncCooldown) {
+        debugPrint('⏸️ Repository: Cooldown активен, пропускаем синхронизацию ($source)');
+        return;
+      }
+    }
+
+    debugPrint('🔄 Repository: Запускаем фоновую синхронизацию ($source)');
+
+    _syncInProgress = true;
+    _lastSyncTime = DateTime.now();
+
+    _syncService.fullSync().then((result) {
+      _syncInProgress = false;
+      if (result) {
+        clearCache(); // Обновляем кэш после синхронизации
+        debugPrint('✅ Repository: Фоновая синхронизация завершена ($source)');
+      } else {
+        debugPrint('⚠️ Repository: Фоновая синхронизация завершилась с ошибками ($source)');
+      }
+    }).catchError((e) {
+      _syncInProgress = false;
+      debugPrint('❌ Repository: Ошибка фоновой синхронизации ($source): $e');
+    });
   }
 
   /// ✅ ИСПРАВЛЕННОЕ СОЗДАНИЕ новой заметки (убрано дублирование фото)

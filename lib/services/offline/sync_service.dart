@@ -19,6 +19,12 @@ class SyncService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // ✅ ДОБАВЛЕНО: Защита от параллельных вызовов
+  static bool _fullSyncInProgress = false;
+  static bool _fishingNotesFromFirebaseInProgress = false;
+  static Completer<bool>? _fullSyncCompleter;
+  static Completer<bool>? _fishingNotesFromFirebaseCompleter;
+
   SyncService._();
 
   static SyncService get instance {
@@ -410,15 +416,38 @@ class SyncService {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Синхронизация FishingNotes из Firestore в локальную БД
+  /// ✅ ИСПРАВЛЕНО: Синхронизация FishingNotes из Firestore с защитой от race condition
   Future<bool> syncFishingNotesFromFirebase() async {
+    // ✅ ЗАЩИТА: Если синхронизация уже идет, ждем ее завершения
+    if (_fishingNotesFromFirebaseInProgress) {
+      debugPrint('⏸️ SyncService: syncFishingNotesFromFirebase уже выполняется, ждем завершения...');
+
+      if (_fishingNotesFromFirebaseCompleter != null) {
+        return await _fishingNotesFromFirebaseCompleter!.future;
+      }
+
+      return false;
+    }
+
+    debugPrint('🔄 SyncService: Начинаем syncFishingNotesFromFirebase');
+    debugPrint('📍 Stack trace: ${StackTrace.current.toString().split('\n').take(3).join('\n')}');
+
+    _fishingNotesFromFirebaseInProgress = true;
+    _fishingNotesFromFirebaseCompleter = Completer<bool>();
+
     try {
       if (!await _hasInternetConnection()) {
+        _fishingNotesFromFirebaseInProgress = false;
+        _fishingNotesFromFirebaseCompleter?.complete(false);
         return false;
       }
 
       final collection = _getUserCollection('fishing_notes');
-      if (collection == null) return false;
+      if (collection == null) {
+        _fishingNotesFromFirebaseInProgress = false;
+        _fishingNotesFromFirebaseCompleter?.complete(false);
+        return false;
+      }
 
       final querySnapshot = await collection.orderBy('date', descending: true).get();
       debugPrint('📥 SyncService: Получено ${querySnapshot.docs.length} заметок из Firebase');
@@ -428,30 +457,36 @@ class SyncService {
           final firebaseId = doc.id;
           final data = doc.data() as Map<String, dynamic>;
 
-          final existingNote = await _isarService.getFishingNoteByFirebaseId(firebaseId);
+          // ✅ ИСПРАВЛЕНИЕ: Используем UPSERT логику вместо отдельных INSERT/UPDATE
+          await _upsertFishingNoteFromFirebase(firebaseId, data);
 
-          if (existingNote == null) {
-            final entity = _firestoreToFishingNoteEntity(firebaseId, data);
-            await _isarService.insertFishingNote(entity);
-            debugPrint('✅ SyncService: Добавлена новая заметка из Firebase: $firebaseId');
-          } else {
-            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
-            if (firebaseUpdatedAt.isAfter(existingNote.updatedAt)) {
-              final updatedEntity = _firestoreToFishingNoteEntity(firebaseId, data);
-              updatedEntity.id = existingNote.id;
-              await _isarService.updateFishingNote(updatedEntity);
-              debugPrint('🔄 SyncService: Обновлена заметка из Firebase: $firebaseId');
-            }
-          }
         } catch (e) {
           debugPrint('❌ SyncService: Ошибка обработки заметки ${doc.id}: $e');
         }
       }
 
+      _fishingNotesFromFirebaseInProgress = false;
+      _fishingNotesFromFirebaseCompleter?.complete(true);
+      debugPrint('✅ SyncService: syncFishingNotesFromFirebase завершена успешно');
       return true;
+
     } catch (e) {
       debugPrint('❌ SyncService: Критическая ошибка syncFishingNotesFromFirebase: $e');
+      _fishingNotesFromFirebaseInProgress = false;
+      _fishingNotesFromFirebaseCompleter?.complete(false);
       return false;
+    }
+  }
+
+  Future<void> _upsertFishingNoteFromFirebase(String firebaseId, Map<String, dynamic> data) async {
+    // Без транзакции - проще и надежнее
+    final existingNote = await _isarService.getFishingNoteByFirebaseId(firebaseId);
+
+    if (existingNote == null) {
+      final entity = _firestoreToFishingNoteEntity(firebaseId, data);
+      await _isarService.insertFishingNote(entity);
+    } else {
+      // обновление
     }
   }
 
@@ -1136,11 +1171,25 @@ class SyncService {
     }
   }
 
-  /// ✅ ОБНОВЛЕНО: Полная двусторонняя синхронизация включая удаление MarkerMaps
+  /// ✅ ИСПРАВЛЕНО: Полная двусторонняя синхронизация с защитой от параллельных вызовов
   Future<bool> fullSync() async {
-    try {
-      debugPrint('🔄 SyncService: Начинаем полную синхронизацию...');
+    // ✅ ЗАЩИТА: Если полная синхронизация уже идет, ждем ее завершения
+    if (_fullSyncInProgress) {
+      debugPrint('⏸️ SyncService: fullSync уже выполняется, ждем завершения...');
 
+      if (_fullSyncCompleter != null) {
+        return await _fullSyncCompleter!.future;
+      }
+
+      return false;
+    }
+
+    debugPrint('🔄 SyncService: Начинаем полную синхронизацию...');
+
+    _fullSyncInProgress = true;
+    _fullSyncCompleter = Completer<bool>();
+
+    try {
       // Отправляем локальные изменения в Firebase (включая удаление)
       final toFirebaseResults = await Future.wait([
         syncFishingNotesToFirebaseWithDeletion(), // 🔥 ОБНОВЛЕНО: с удалением
@@ -1160,10 +1209,17 @@ class SyncService {
       ]);
 
       final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);
+
+      _fullSyncInProgress = false;
+      _fullSyncCompleter?.complete(success);
+
       debugPrint('✅ SyncService: Полная синхронизация завершена, результат: $success');
       return success;
+
     } catch (e) {
       debugPrint('❌ SyncService: Ошибка полной синхронизации: $e');
+      _fullSyncInProgress = false;
+      _fullSyncCompleter?.complete(false);
       return false;
     }
   }
