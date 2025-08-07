@@ -2149,5 +2149,11 @@
 
   "status_information": "Мәртебе туралы ақпарат",
   "your_version": "Сіздің нұсқаңыз",
-  "document_accepted_desc": "Сіз осы құжаттың ағымдағы нұсқасын қабылдадыңыз."
+  "document_accepted_desc": "Сіз осы құжаттың ағымдағы нұсқасын қабылдадыңыз.",
+
+  "view_on_website": "Сайтта көру",
+  "current_privacy_policy_version": "Қупиялылық саясатының ағымдағы нұсқасы",
+  "could_not_open_link": "Сілтемені ашу мүмкін болмады",
+  "error_opening_link": "Сілтемені ашу кезінде қате",
+  "current_terms_version": "Пайдаланушы келісімінің ағымдағы нұсқасы"
 }

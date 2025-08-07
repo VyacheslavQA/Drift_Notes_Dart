@@ -1,7 +1,8 @@
-// Путь: lib/screens/help/privacy_policy_screen.dart
+// Файл: lib/screens/help/privacy_policy_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 
@@ -16,6 +17,9 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   String _policyText = '';
   bool _isLoading = true;
   bool _hasLoadedOnce = false; // Флаг для предотвращения повторной загрузки
+
+  // URL политики конфиденциальности на сайте
+  static const String _privacyPolicyUrl = 'https://driftnotesapp.com/privacy-policy.html';
 
   @override
   void didChangeDependencies() {
@@ -86,6 +90,39 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
     }
   }
 
+  Future<void> _openPrivacyPolicyWebsite() async {
+    try {
+      final Uri url = Uri.parse(_privacyPolicyUrl);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('could_not_open_link')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error opening URL: $e');
+      if (mounted) {
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('error_opening_link')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -108,8 +145,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body:
-      _isLoading
+      body: _isLoading
           ? Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(
@@ -124,24 +160,91 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           top: 16,
           bottom: 16 + MediaQuery.of(context).padding.bottom,
         ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              width: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Ссылка на сайт
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openPrivacyPolicyWebsite,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.textColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppConstants.textColor.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.open_in_new,
+                          color: AppConstants.textColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('view_on_website'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                localizations.translate('current_privacy_policy_version'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: AppConstants.textColor.withValues(alpha: 0.5),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: Text(
-            _policyText,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: 16,
-              height: 1.6,
+
+            // Основной текст политики
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppConstants.textColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                _policyText,
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                  height: 1.6,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

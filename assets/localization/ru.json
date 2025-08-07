@@ -2155,5 +2155,11 @@
   "login": "Войти",
   "status_information": "Информация о статусе",
   "your_version": "Ваша версия",
-  "document_accepted_desc": "Вы приняли текущую версию этого документа."
+  "document_accepted_desc": "Вы приняли текущую версию этого документа.",
+
+  "view_on_website": "Посмотреть на сайте",
+  "current_privacy_policy_version": "Актуальная версия политики конфиденциальности",
+  "could_not_open_link": "Не удалось открыть ссылку",
+  "error_opening_link": "Ошибка при открытии ссылки",
+  "current_terms_version": "Актуальная версия пользовательского соглашения"
 }

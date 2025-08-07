@@ -380,6 +380,8 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
+      // 🚀 ИСПРАВЛЕНО: Добавляем extendBody: false для предотвращения перекрытия
+      extendBody: false,
       appBar: AppBar(
         title: Text(
           localizations.translate('my_notes'),
@@ -458,8 +460,16 @@ class _FishingNotesListScreenState extends State<FishingNotesListScreen>
               : FadeTransition(
             opacity: _fadeAnimation,
             child: ListView.builder(
-              padding: EdgeInsets.all(
-                isSmallScreen ? 12 : 16,
+              // 🚀 ИСПРАВЛЕНО: Комплексный отступ снизу для ListView
+              padding: EdgeInsets.only(
+                left: isSmallScreen ? 12 : 16,
+                right: isSmallScreen ? 12 : 16,
+                top: isSmallScreen ? 12 : 16,
+                // Отступ снизу = системная панель навигации + высота FAB + дополнительный отступ
+                bottom: MediaQuery.of(context).viewPadding.bottom + // Системная панель
+                    56 + // Высота FloatingActionButton
+                    16 + // Дополнительный отступ от FAB
+                    16,  // Базовый отступ
               ),
               itemCount: _notes.length,
               itemBuilder: (context, index) {

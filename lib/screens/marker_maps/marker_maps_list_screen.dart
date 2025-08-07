@@ -906,6 +906,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
+      // 🚀 ИСПРАВЛЕНО: Добавляем extendBody: false для предотвращения перекрытия
+      extendBody: false,
       appBar: AppBar(
         title: Row(
           children: [
@@ -1240,12 +1242,23 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
+  // 🚀 ИСПРАВЛЕНО: Добавлен правильный отступ снизу для списка карт
   Widget _buildMapsList() {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppConstants.primaryColor,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        // 🚀 ИСПРАВЛЕНО: Комплексный отступ снизу
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          // Отступ снизу = системная панель навигации + высота FAB + дополнительный отступ
+          bottom: MediaQuery.of(context).viewPadding.bottom + // Системная панель
+              56 + // Высота FloatingActionButton
+              16 + // Дополнительный отступ
+              16,  // Базовый отступ
+        ),
         itemCount: _filteredMaps.length,
         itemBuilder: (context, index) {
           final map = _filteredMaps[index];

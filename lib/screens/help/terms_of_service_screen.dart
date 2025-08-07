@@ -1,7 +1,8 @@
-// Путь: lib/screens/help/terms_of_service_screen.dart
+// Файл: lib/screens/help/terms_of_service_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_constants.dart';
 import '../../localization/app_localizations.dart';
 
@@ -16,6 +17,9 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
   String _termsText = '';
   bool _isLoading = true;
   bool _hasLoadedOnce = false; // Флаг для предотвращения повторной загрузки
+
+  // URL пользовательского соглашения на сайте
+  static const String _termsOfServiceUrl = 'https://driftnotesapp.com/terms-of-service.html';
 
   @override
   void didChangeDependencies() {
@@ -87,6 +91,39 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
     }
   }
 
+  Future<void> _openTermsOfServiceWebsite() async {
+    try {
+      final Uri url = Uri.parse(_termsOfServiceUrl);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.translate('could_not_open_link')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error opening URL: $e');
+      if (mounted) {
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('error_opening_link')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -109,8 +146,7 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body:
-      _isLoading
+      body: _isLoading
           ? Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(
@@ -125,42 +161,109 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
           top: 20,
           bottom: 20 + MediaQuery.of(context).padding.bottom,
         ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppConstants.textColor.withValues(alpha: 0.1),
-              width: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Ссылка на сайт
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openTermsOfServiceWebsite,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppConstants.textColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppConstants.textColor.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.open_in_new,
+                          color: AppConstants.textColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('view_on_website'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                localizations.translate('current_terms_version'),
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: AppConstants.textColor.withValues(alpha: 0.5),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок
-              Text(
-                localizations.translate('terms_of_service'),
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+
+            // Основной контент
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppConstants.textColor.withValues(alpha: 0.1),
+                  width: 1,
                 ),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Заголовок
+                  Text(
+                    localizations.translate('terms_of_service'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
 
-              const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-              // Текст пользовательского соглашения
-              Text(
-                _termsText,
-                style: TextStyle(
-                  color: AppConstants.textColor.withValues(alpha: 0.9),
-                  fontSize: 16,
-                  height: 1.6,
-                ),
+                  // Текст пользовательского соглашения
+                  Text(
+                    _termsText,
+                    style: TextStyle(
+                      color: AppConstants.textColor.withValues(alpha: 0.9),
+                      fontSize: 16,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
