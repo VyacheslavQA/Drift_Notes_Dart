@@ -1,82 +1,114 @@
 Version: 1.0.0
-Date: 08.06.2025
-Drift Notes Terms of Use
+Date: 06.08.2025
 
-Support Email: support@driftnotesapp.com
-Telegram channel and chat: Drift Notes App
+**Support Email:** support@driftnotesapp.com
+**Telegram channel and chat:** @driftnotesapp
 
-1. General Provisions
-This agreement governs the use of the Drift Notes mobile application (hereinafter referred to as the “App”), designed for fishing logs, catch analysis, location saving, and statistics.
-By installing, using, or registering in the App, you (the “User”) agree to the terms of this Agreement and the Privacy Policy. If you do not agree, do not use the App.
+## 1. General Provisions
 
-2. Age Restrictions
-The App is intended for users aged 13 and older.
+This agreement governs the use of the Drift Notes mobile application (hereinafter referred to as the "Application"), designed for keeping fishing notes, analyzing fishing activity, saving locations and statistics.
 
-3. Registration and Authentication
-Users can sign in to the App via:
-• Google account
-• Phone number (with code confirmation)
+By installing, using or registering in the Application, you (hereinafter referred to as the "User") agree to the terms of this Agreement and Privacy Policy. If you disagree, do not use the Application.
 
-The App will access the following information:
-• User name
-• Email address (Google sign-in)
-• Phone number (phone login)
-• IP address, device type, and OS version (for diagnostics and abuse prevention)
+## 2. Age Restrictions
 
-This data is used solely for authentication, personalization, and user support.
+The Application is intended for persons aged 13 and older.
 
-4. Processed Data
-Users can voluntarily provide and save the following data in the App:
-• Name, email, profile photo
-• Geotags, fishing spots, routes
-• Fishing experience level, types of fishing
-• Amount and weight of fish
-• Photos and notes
-• Bottom marker map information
+## 3. Registration and Authentication
 
-Data is stored in Firebase (Google Cloud) and is not shared with third parties unless required by law.
+Users can log into the Application in the following ways:
 
-5. Data Deletion
+- Through Google account
+- Through Apple ID
+- By email (with account creation)
+
+The Application gains access to:
+
+- Username
+- Email address
+- IP address, device type and OS version (for diagnostics and abuse prevention)
+
+This data is used only for authorization, personalization and communication with the User.
+
+## 4. Processed Data
+
+Users can voluntarily specify and save in the Application:
+
+- Name, email, profile photo
+- Geo-tags, fishing spots, routes
+- Angler level, fishing types
+- Fish quantity and weight
+- Photos and notes
+- Information on marker bottom maps
+
+Data is stored in Firebase (Google Cloud) and is not transferred to third parties, except in cases provided by law.
+
+## 5. Data Deletion
+
 Users can delete:
-• Individual notes, photos, and maps
-• Their entire account and associated data (in the profile settings)
 
-Once deleted, data cannot be recovered.
+- Individual notes, photos and maps
+- Their account and all associated data (in personal cabinet)
 
-6. Paid Features
-The App may include paid features. Payments are processed via Google Play, App Store, and RuStore. Refund policies are governed by the terms of the respective store.
+After deletion, data recovery is impossible.
 
-7. Permissions Used
-To function properly, the App may request access to:
-• GPS (for geotags and weather forecasts)
-• Camera (for photos)
-• Device storage
+## 6. Paid Features
 
-8. Offline Functionality
-In offline mode, users can create new notes. Upon reconnection, data is synchronized. Viewing existing notes offline is not available.
+The Application may contain paid features. Payment is made through Google Play, App Store and RuStore. Refund conditions are governed by the rules of the respective store.
 
-9. User Content and Analytics
-Users may upload photos, text, and other content. The App uses this data to generate personal analytics and recommendations. Users are solely responsible for their uploaded content.
+## 7. Used Permissions
 
-10. Restrictions
-The following is prohibited:
-• Hacking, decompilation, disassembly, reverse engineering, or modifying the App
-• Violation of the laws of the Republic of Kazakhstan
-• Mass registrations or automation of actions
-• Attempting to access source code or internal algorithms
+For proper operation, the Application may request access to:
 
-All intellectual property rights, including interface, functionality, and structure, belong to Vyacheslav Andreevich Kuzin.
+- GPS (for geo-tags and forecasts)
+- Camera (for photos)
+- Device storage (for saving photos and exporting data)
+- Push notifications (for fishing reminders)
 
-11. Limitation of Liability
-Drift Notes does not guarantee the accuracy of predictions or analytics and is not liable for any damages resulting from the use of the App. The App is for informational and recommendation purposes only.
+## 8. Offline Operation
 
-12. Third-Party Services
-The App uses third-party services, including Firebase, Google Maps API, WeatherAPI, OpenAI, Anthropic Claude, and mobile app stores (Google Play, App Store, RuStore). By using the App, you agree to the terms of these services.
+In offline mode, users can:
 
-13. Jurisdiction
-This Agreement is governed by the laws of the Republic of Kazakhstan. Any disputes will be resolved in the courts of the developer's jurisdiction.
+- View previously downloaded notes
+- Create new notes
+- View and edit marker bottom maps
 
-14. Contact Information
+When internet connection is restored, new data is synchronized with cloud storage.
+
+## 9. User Content and Analytics
+
+Users can upload photos and text. The Application uses entered data to generate personal analytics and recommendations using artificial intelligence models. Users bear responsibility for the content of materials.
+
+## 10. Restrictions
+
+The following are prohibited:
+
+- Hacking, decompilation, disassembly, reverse engineering or modification of the Application
+- Violation of Kazakhstan legislation
+- Mass registration or automation of actions
+- Attempts to gain access to source code or Application algorithms
+
+All intellectual property rights, including interface, functionality and structure, belong to Kuzin Vyacheslav Andreevich.
+
+## 11. Limitation of Liability
+
+Drift Notes does not guarantee the accuracy of forecasts and analytics and is not liable for possible damage arising from the use of the Application. The Application is advisory in nature and does not replace professional consultations.
+
+## 12. Third-Party Services
+
+The Application uses third-party services such as Firebase, Google Maps API, WeatherAPI, OpenAI and application stores (Google Play, App Store, RuStore). Using the Application means agreeing to the terms of these services.
+
+## 13. Agreement Changes
+
+We may periodically update this Agreement. In case of significant changes, we will notify you through the Application interface or by email. The new version of the agreement takes effect from the moment of its publication in the application.
+
+## 14. Jurisdiction
+
+This agreement is governed by the laws of the Republic of Kazakhstan. In case of disputes, they are subject to consideration in court at the developer's location.
+
+## 15. Contacts
+
 For support and complaints:
-• Email: support@driftnotesapp.com
-• Telegram: Drift Notes App
+
+- **Email:** support@driftnotesapp.com
+- **Telegram:** @driftnotesapp

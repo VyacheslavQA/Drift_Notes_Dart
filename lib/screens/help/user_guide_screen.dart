@@ -47,16 +47,8 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
         print('✅ Successfully loaded $fileName');
       } catch (e) {
         print('❌ Failed to load $fileName: $e');
-        // Если файл для текущего языка не найден, загружаем русскую версию
-        try {
-          guideText = await rootBundle.loadString(
-            'assets/user_guide/user_guide_ru.txt',
-          );
-          print('✅ Successfully loaded fallback Russian version');
-        } catch (e2) {
-          print('❌ Failed to load Russian version: $e2');
-          throw Exception('Cannot load any user guide file');
-        }
+        // Если файл для текущего языка не найден, пробуем загрузить по приоритету
+        guideText = await _loadFallbackGuide(languageCode);
       }
 
       if (mounted) {
@@ -69,10 +61,62 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
       print('💥 Critical error in _loadUserGuide: $e');
       if (mounted) {
         setState(() {
-          _guideText = 'Ошибка загрузки руководства пользователя\n\nОшибка: $e';
+          _guideText = _getErrorMessage();
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<String> _loadFallbackGuide(String languageCode) async {
+    // Определяем порядок fallback в зависимости от языка
+    List<String> fallbackOrder;
+
+    switch (languageCode) {
+      case 'kk': // Казахский
+        fallbackOrder = ['ru', 'en']; // Для казахского сначала русский, потом английский
+        break;
+      case 'ru': // Русский
+        fallbackOrder = ['en', 'kk']; // Для русского сначала английский, потом казахский
+        break;
+      case 'en': // Английский
+        fallbackOrder = ['ru', 'kk']; // Для английского сначала русский, потом казахский
+        break;
+      default:
+        fallbackOrder = ['ru', 'en', 'kk']; // По умолчанию
+        break;
+    }
+
+    // Пробуем загрузить файлы в порядке приоритета
+    for (String fallbackLang in fallbackOrder) {
+      try {
+        final fallbackFileName = 'assets/user_guide/user_guide_$fallbackLang.txt';
+        print('🔄 Trying fallback file: $fallbackFileName');
+
+        final guideText = await rootBundle.loadString(fallbackFileName);
+        print('✅ Successfully loaded fallback $fallbackFileName');
+        return guideText;
+      } catch (e) {
+        print('❌ Failed to load fallback $fallbackLang: $e');
+        continue;
+      }
+    }
+
+    // Если все файлы недоступны
+    throw Exception('Cannot load any user guide file');
+  }
+
+  String _getErrorMessage() {
+    final localizations = AppLocalizations.of(context);
+    final languageCode = localizations.locale.languageCode;
+
+    switch (languageCode) {
+      case 'kk':
+        return 'Пайдаланушы нұсқаулығын жүктеу кезінде қате орын алды\n\nКейінірек қайта көріңіз немесе техникалық қолдауға хабарласыңыз: support@driftnotes.com';
+      case 'en':
+        return 'Error loading user guide\n\nPlease try again later or contact technical support: support@driftnotes.com';
+      default: // ru
+        return 'Ошибка загрузки руководства пользователя\n\nПопробуйте позже или обратитесь в техническую поддержку: support@driftnotes.com';
     }
   }
 

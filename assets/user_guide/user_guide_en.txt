@@ -1,48 +1,1076 @@
-USER GUIDE
+DRIFT NOTES USER MANUAL
 
-Welcome to Drift Notes!
+Welcome to Drift Notes - your personal digital fishing assistant!
 
-GETTING STARTED
+🎣 WHAT IS DRIFT NOTES
 
-Drift Notes is your personal fishing journal. The app will help you:
-- Keep fishing records
-- Save catch photos
-- Track statistics
-- Plan future trips
+Drift Notes is a comprehensive application for anglers that helps:
+•	Keep detailed records of each fishing trip
+•	Track weather conditions and their impact on fishing
+•	Save catch photos with automatic compression
+•	Plan future fishing trips based on statistics
+•	Track fishing expenses by categories
+•	Create marker maps of water bodies with depth charts
+•	Work both online and offline
 
-CREATING NOTES
+________________________________________
 
-1. On the main screen, tap the central button with the fish logo
-2. Select fishing type
-3. Fill in the information:
-   - Fishing location
-   - Date and time
-   - Tackle used
-   - Add photos
-4. Save the note
+🚀 GETTING STARTED
 
-USING THE MAP
+👤 User Profile
 
-- View all your fishing spots on the map
-- Select new places for future trips
-- Save coordinates of interesting places
+Setting up your profile is the first and important step for effective use of Drift Notes.
 
-WEATHER FEATURES
+⚠️ Important: Selecting Preferred Fishing Types
 
-- Track current weather
-- View weather forecast
-- Weather data is automatically saved in notes
+Be sure to set up your preferred fishing types in your profile! This is critically important for correct AI bite analysis. The system uses this data for:
+•	Personalized weather forecasts
+•	Accurate fishing time recommendations
 
-USING TIMERS
+Basic Profile Settings
 
-- Set up reminders for changing bait
-- Set timers for feeding
-- Create any other reminders
+1.	Personal Information
+o	Username - display name (can be changed)
+o	Email - email address (not editable, taken from account)
 
-SYNCHRONIZATION
+2.	Geographic Data
+o	Country - selection from list of available countries
+o	City - automatic loading of cities for selected country
 
-All your data is automatically synchronized between devices when internet connection is available.
+3.	Fishing Experience
+o	Level selection from beginner to expert
 
-SUPPORT
+4.	Preferred Fishing Types ⭐
+o	Spinning - fishing with artificial lures
+o	Feeder - bottom fishing with feeder
+o	Float fishing - classic float fishing
+o	Fly fishing - fishing with artificial flies
+o	Trolling - fishing from moving boat
+o	Ice fishing - ice fishing
+o	Carp fishing - specialized carp fishing
 
-If you have questions, contact us at: support@driftnotes.com
+Automatic Data Loading
+
+1.	Intelligent Geography System
+o	Automatic loading of country list
+o	Dynamic loading of cities when selecting country
+o	Saving selection for quick access
+
+2.	Account Synchronization
+o	Automatic filling of data from Google account
+o	Name update in Firebase when changed
+o	Saving all settings in cloud
+
+Account Security
+
+Account Deletion
+•	Complete deletion of all data
+•	Impossible to recover
+•	Multi-step confirmation
+
+Settings Impact on Functionality
+
+AI Analysis
+•	Preferred fishing types determine analysis algorithms
+•	Geographic data used for weather forecasts
+
+Practical Recommendations
+
+1.	Select all fishing types of interest
+o	Don't limit yourself to one method
+o	System will consider all preferences in analysis
+o	Can add new types as you learn
+
+2.	Saving Changes
+o	Save button in upper right corner
+o	Automatic synchronization with cloud
+o	Confirmation of successful saving
+
+Creating a New Fishing Note
+
+1.	Starting Note Creation
+o	On main screen, tap central button with fish logo
+o	New note creation screen will open
+
+2.	Selecting Fishing Type
+o	Tap "Fishing Type" field
+o	Select appropriate type from list:
+	Spinning
+	Carp fishing
+	Feeder
+	Float fishing
+	Fly fishing
+	Trolling
+	Ice fishing
+
+________________________________________
+
+📍 WORKING WITH LOCATION
+
+Specifying Fishing Location
+
+1.	Location Name
+o	Enter name of water body or fishing location
+o	This is a required field
+
+2.	Point on Map
+o	Tap "Select point on map"
+o	Use interactive Google Maps for precise location indication
+o	Alternative methods:
+	"Use current location" - for automatic GPS determination
+	"Use saved location" - selection from previously visited places
+
+3.	Coordinates
+o	After selecting point, exact GPS coordinates are displayed
+o	Coordinates automatically saved with note
+
+________________________________________
+
+📅 PLANNING AND DATES
+
+Setting Fishing Dates
+
+1.	Single-day Fishing
+o	Current date set by default
+o	Can change start and end dates
+
+2.	Multi-day Fishing
+o	Select different start and end dates
+o	App automatically determines number of days
+o	Additional functions available for multi-day trips
+
+3.	Duration
+o	Automatic calculation of number of days
+o	Display in "X days" format
+
+________________________________________
+
+🌤️ WEATHER AND AI ANALYSIS
+
+Loading Weather Data
+
+1.	Getting Weather
+o	First select point on map
+o	Tap "Load weather and AI analysis"
+o	Data loads automatically for selected location
+
+2.	Weather information includes:
+o	Air temperature and feels like temperature
+o	Air humidity
+o	Atmospheric pressure (with barometer calibration option)
+o	Wind speed and direction
+o	Cloud cover
+o	Sunrise and sunset times
+
+AI Bite Forecast
+
+1.	Automatic Analysis
+o	AI analyzes weather conditions, fishing type and location
+o	Generates fish activity forecast on 100-point scale
+
+2.	Analysis Results:
+o	Overall efficiency score (0-100)
+o	Fish activity level (excellent/good/moderate/poor)
+o	Forecast confidence percentage
+o	Personal recommendations
+o	Fishing tactics advice
+
+3.	Score Interpretation:
+o	80-100: Excellent conditions (green color)
+o	60-79: Good conditions (light green)
+o	40-59: Moderate conditions (yellow)
+o	20-39: Poor conditions (orange)
+o	0-19: Very poor conditions (red)
+
+________________________________________
+
+🎣 TACKLE AND EQUIPMENT
+
+Tackle Description
+
+1.	Detailed Description
+o	Describe used rods, reels, lines
+o	Specify lures and baits
+o	Add rigging features
+
+2.	Filling Tips:
+o	Be as detailed as possible
+o	Specify tackle brands and models
+o	Describe successful combinations
+
+________________________________________
+
+📝 NOTES AND OBSERVATIONS
+
+Keeping Records
+
+1.	General Notes
+o	Describe fishing conditions
+o	Record fish behavior observations
+o	Note water body features
+
+2.	Useful Records:
+o	Start and end times of fishing
+o	Weather changes during the day
+o	Fish reaction to lure changes
+o	Bottom and current features
+
+________________________________________
+
+📸 WORKING WITH PHOTOS
+
+Adding Photos
+
+1.	Adding Methods:
+o	Gallery - selecting existing photos
+o	Camera - taking new photos directly in app
+
+2.	Automatic Compression
+o	All photos automatically compressed to save space
+o	Shows information about original and compressed sizes
+o	Quality remains high with significant file size reduction
+
+3.	Photo Management:
+o	View in horizontal strip
+o	Delete unnecessary photos
+o	Automatic saving to permanent folder
+
+________________________________________
+
+🐟 BITE RECORDS
+
+Detailed Catch Tracking
+
+1.	Adding Bite Record
+o	Tap "Add bite record"
+o	Fill in detailed information
+
+2.	Bite Information:
+o	Exact bite time (required)
+o	Fish species (if caught)
+o	Fish weight and length (if caught)
+o	Additional notes
+o	Catch photos
+
+3.	Statistics Counting Principle:
+o	Realized bite: when fish name and weight are specified - counted as successful catch
+o	Unrealized bite: when only time is specified without fish name and weight - counted as break-off, escape or missed bite
+o	This allows precise analysis of fishing efficiency and bite realization percentage
+
+4.	For Multi-day Trips:
+o	Select specific bite day
+o	Link to specific note
+o	Group by days
+
+Activity Visualization
+
+1.	Bite Chart
+o	Automatic timeline construction
+o	Display all bites for the day
+o	Color differentiation:
+	Green dots - caught fish
+	Red dots - bites without catch
+
+2.	Weight Category Analysis
+o	Circle size corresponds to fish weight
+o	Easy to identify most productive hours
+o	Activity peak identification
+
+________________________________________
+
+💾 SAVING AND SYNCHRONIZATION
+
+Operating Modes
+
+1.	Online Mode
+o	Automatic cloud synchronization
+o	Instant saving of all data
+
+2.	Offline Mode
+o	Full functionality without internet
+o	Local saving of all data
+o	Automatic synchronization when network appears
+
+3.	Saving Indicators:
+o	☁️ Cloud - data synchronized online
+o	⚡ Lightning - data saved offline
+
+________________________________________
+
+📊 STATISTICS AND ANALYTICS
+
+Drift Notes automatically analyzes your fishing notes and provides detailed statistics for improving results.
+
+Key Metrics
+
+The system tracks the following key metrics:
+
+1.	🏆 Biggest Fish
+o	Record weight for selected period
+o	Fish species and catch date
+o	Fishing location
+
+2.	🐟 Total Fish Caught
+o	Total number of caught fish
+o	Automatic counting from bite records
+
+3.	❌ Unrealized Bites
+o	Number of bites without catch
+o	How counted: when bite record has only time but no fish name and weight (empty record)
+o	Such records mean break-off, fish escape or other unrealized bite cases
+o	Helps analyze efficiency
+
+4.	📈 Bite Realization
+o	Percentage of successful bites
+o	How calculated: bites with specified fish name and weight considered realized, empty records - unrealized
+o	Fishing efficiency indicator
+o	Color indication:
+	70%+ : Green (excellent)
+	40-69%: Orange (good)
+	Less than 40%: Red (needs improvement)
+
+5.	⚖️ Total Catch Weight
+o	Total weight of all caught fish
+o	Accuracy to tenths of kilogram
+o	Cumulative statistics
+
+6.	📝 Total Fishing Trips
+o	Number of created fishing notes
+o	Includes both single-day and multi-day trips
+
+7.	⏱️ Longest Fishing Trip
+o	Maximum trip duration
+o	Considers multi-day fishing
+o	Measured in days
+
+8.	📅 Total Days Fishing
+o	Total number of days spent fishing
+o	Considers all days of multi-day trips
+
+9.	🚗 Last Trip
+o	Information about last fishing trip
+o	Location name and date
+o	Quick access to recent activity
+
+10.	⭐ Best Month
+o	Month with highest number of caught fish
+o	Helps determine seasonal patterns
+o	Planning future fishing trips
+
+Period Filtering
+
+Ability to analyze statistics for different time periods:
+
+1.	Week - last 7 days
+2.	Month - last 30 days
+3.	Year - last 365 days
+4.	All time - all available statistics
+5.	Custom period - specific date selection
+
+Working with Filters
+
+1.	Quick Switching
+o	Horizontal period scroller
+o	Visual highlighting of active filter
+o	Filter application indicator
+
+2.	Custom Range
+o	Date selection calendar
+o	Flexible period setup
+o	Selected range saving
+
+3.	Filter Reset
+o	Quick return to viewing all data
+o	"Show all data" button
+
+Empty Data Handling
+
+1.	No Data for Period
+o	Informative message about empty period
+o	Suggestion to change time interval
+o	Quick access to period selector
+
+2.	No Data at All
+o	Invitation to create first notes
+o	Statistics working principles explanation
+o	Motivation for record keeping
+
+Data Sources
+
+Statistics automatically built based on:
+•	Fishing notes - main data source
+•	Bite records - detailed catch information
+•	Trip information - dates, locations, duration
+•	Weight data - precise measurements of caught fish
+
+Data Updates
+
+1.	Automatic Updates
+o	When creating new notes
+o	When editing existing records
+o	When changing bite records
+
+2.	Manual Updates
+o	Pull screen down (Pull to Refresh)
+o	"Try again" button on errors
+
+Useful Tips
+
+1.	For Accurate Statistics
+o	Keep detailed records of each fishing trip
+o	Specify exact weights of caught fish
+o	Record all bites including unrealized ones
+
+2.	Efficiency Analysis
+o	Compare indicators across different periods
+o	Pay attention to bite realization percentage
+o	Analyze best months for planning
+
+3.	Results Improvement
+o	Study statistics to identify patterns
+o	Use data about best locations and times
+o	Adjust tactics based on analytics
+
+________________________________________
+
+💰 FISHING EXPENSE TRACKING
+
+Drift Notes includes a complete fishing trip budget tracking system with category breakdown.
+
+Creating Expense Record
+
+1.	Start Creation
+o	Go to "Fishing Budget" section
+o	Tap "Add expense"
+
+2.	Trip Information
+o	Trip date - select fishing date
+o	Currency - supported: Tenge (₸), Dollar ($), Euro (€), Ruble (₽)
+o	Fishing location - water body or location name
+o	Trip notes - general comments
+
+Expense Categories
+
+App automatically groups expenses into 6 main categories:
+
+1.	🎣 Tackle
+o	Rods, reels, lines
+o	Hooks, weights, floats
+o	New equipment
+
+2.	🪱 Bait and Groundbait
+o	Live bait (worms, maggots)
+o	Artificial lures
+o	Groundbait mixes
+
+3.	🚗 Transport
+o	Gasoline or diesel
+o	Public transport fare
+o	Taxi, car rental
+
+4.	🏠 Accommodation
+o	Hotels and guesthouses
+o	Fishing lodges
+o	Campsites
+
+5.	🍽️ Food
+o	Restaurants and cafes
+o	Cooking ingredients
+o	Beverages
+
+6.	📋 Licenses and Permits
+o	Water body permits
+o	Fishing licenses
+o	Fishing permissions
+
+Working with Categories
+
+1.	Category Expansion
+o	Tap any category for detailed filling
+o	Categories with specified amounts highlighted in color
+
+2.	Data Filling
+o	Amount - enter spent sum (supports cents)
+o	Description - what exactly was bought
+o	Notes - additional details and comments
+
+3.	Automatic Calculation
+o	Total sum updates in real time
+o	Displayed in selected currency
+o	Shows number of filled categories
+
+Editing Expenses
+
+1.	Changing Existing Records
+o	Open any saved trip
+o	Change any fields or categories
+o	Save changes
+
+2.	Focus on Specific Category
+o	When editing, can immediately open needed category
+o	Useful for quickly adding forgotten expenses
+
+Multi-currency Support
+
+1.	Supported Currencies
+o	KZT (₸) - Kazakhstani Tenge
+o	USD ($) - US Dollar
+o	EUR (€) - Euro
+o	RUB (₽) - Russian Ruble
+
+2.	Currency Selection
+o	Set for entire trip
+o	Affects display and calculations
+o	Can be changed when editing
+
+Limits and Subscription System
+
+1.	Free Version
+o	Limited number of expense records
+o	Basic tracking functions
+
+2.	Premium Subscription
+o	Unlimited number of records
+
+3.	Limit Control
+o	Automatic check when creating
+o	Upgrade suggestions
+
+Synchronization and Saving
+
+1.	Offline Work
+o	Full functionality without internet for fishing notes, budget and marker maps
+o	Automatic local saving
+
+Expense Analytics
+
+1.	Spending Tracking
+o	Total sum per trip
+o	Category breakdown
+o	History of all expenses
+
+2.	Budget Planning
+o	Average expense analysis
+o	Main spending categories identification
+o	Fishing budget optimization
+
+________________________________________
+
+🗺️ MARKER MAP
+
+Drift Notes includes a powerful system for creating interactive marker maps for detailed water body study.
+
+What is a Marker Map
+
+A marker map is a ray system for precise marker positioning on water body, allowing to mark:
+•	Depths at different points
+•	Bottom types (silt, stones, shell, etc.)
+•	Promising fishing spots
+•	Fish feeding points
+•	Obstacles and snags
+
+Creating and Using Markers
+
+1.	Marker Map Interface
+o	Modern design with concentric circles
+o	5 rays for precise positioning
+o	Distance grid up to 200 meters
+o	Animated transitions and effects
+
+2.	Adding Markers
+o	Tap "+" button in bottom right corner
+o	Select ray (1-5) for direction
+o	Specify distance in meters
+o	Enter depth
+o	Add notes
+o	Select bottom type from 9 categories
+
+Bottom Types and Designations
+
+Each bottom type has its own color and icon:
+
+1.	🟤 Silt - soft silty bottom
+2.	🟫 Deep silt - thick silt layer
+3.	⚪ Shell - shell bottom
+4.	🟡 Hard even - hard even bottom
+5.	⚫ Stones - rocky bottom
+6.	🟢 Grass/algae - overgrown areas
+7.	🔴 Snag - obstacles and logs
+8.	🟠 Hump - bottom elevations
+9.	🔵 Feeding point - groundbait spots
+
+Marker Management
+
+1.	Viewing Details
+o	Tap any marker
+o	See full information: ray, distance, depth, notes
+o	Quick deletion option
+
+2.	Editing
+o	Marker deletion with confirmation
+o	Automatic saving of all changes
+o	Synchronization between devices
+
+Depth Charts (Premium)
+
+Premium users get access to:
+•	Detailed depth charts for each ray
+•	Depth profiles for water body structure analysis
+•	Depth change visualization along selected direction
+
+Share Marker Map (Premium)
+
+Sharing marker maps with friends - exclusive Premium feature:
+
+1.	Sharing Requirements
+o	Both users must have Premium subscription
+o	Active internet connection
+o	Authorization in app
+
+2.	How to Share Marker Map
+o	Go to screen with list of all marker maps
+o	Select needed marker map
+o	Tap "gear" icon (settings)
+o	Select "Share"
+o	Send file through any convenient method:
+	WhatsApp
+	Telegram
+	Email
+	Other messengers and social networks
+
+3.	Receiving Marker Map from Friend
+o	Open received marker map file
+o	App automatically suggests import
+o	Confirm adding map to your collection
+
+Reference Information
+
+Detailed reference available in app:
+•	Usage instructions - step-by-step guide
+•	Color scheme - all bottom types explanation
+•	Useful tips - effective use recommendations
+•	Marking examples - best practices
+
+Technical Features
+
+1.	Performance
+o	Optimized rendering for smooth operation
+o	Smart data caching
+o	Weak device support
+
+2.	Synchronization
+o	Automatic cloud saving
+o	Offline mode operation
+o	Recovery on failures
+
+3.	Interface
+o	Modern glassmorphism design
+o	Intuitive controls
+o	Adaptive layout for all screens
+
+________________________________________
+
+🌤️ WEATHER AND AI FORECASTS
+
+Drift Notes provides detailed weather information with professional AI analysis for fishing.
+
+Weather Screen
+
+1.	Automatic Location Detection
+o	App automatically determines your location
+o	Requests geolocation access permission on install
+o	Uses default coordinates if refused
+
+2.	Data Updates
+o	Update button in upper right corner
+o	Automatic loading when opening screen
+o	Animated update indicator
+
+Weather Forecast
+
+1.	Forecast Period
+o	7-day forecast ahead
+o	Day selector for quick switching
+o	Specific day selection for detailed view
+
+2.	Weather Summary Card
+o	Current temperature and feels like
+o	Weather conditions description
+o	Key indicators for selected day
+
+3.	Detailed Forecast
+o	Hourly weather breakdown
+o	Temperature by hours
+o	Precipitation probability
+o	Wind speed and direction
+
+Weather Metrics
+
+Detailed information includes:
+
+1.	Temperature Indicators
+o	Current temperature
+o	Feels like temperature
+o	Daily minimum and maximum
+
+2.	Atmospheric Conditions
+o	Atmospheric pressure
+o	Air humidity
+o	Cloud cover percentage
+
+3.	Wind Conditions
+o	Wind speed
+o	Wind direction
+o	Wind gusts
+
+4.	Additional Information
+o	Sunrise and sunset times
+o	UV index
+o	Visibility
+
+Unit Settings
+
+Weather display settings made in "Settings" section:
+
+1.	Temperature
+o	Celsius (°C)
+o	Fahrenheit (°F)
+
+2.	Wind Speed
+o	Meters per second (m/s)
+o	Kilometers per hour (km/h)
+o	Miles per hour (mph)
+
+3.	Pressure
+o	Hectopascals (hPa)
+o	Millimeters of mercury (mmHg)
+o	Inches of mercury (inHg)
+
+4.	Barometer Calibration
+o	Precise pressure reading adjustment
+o	Local feature consideration
+o	Altitude compensation
+
+AI Analysis for Fishing
+
+1.	"AI Bite Forecast" Button
+o	Located at bottom of weather screen
+o	Transition to detailed conditions analysis
+o	Uses all available weather data
+
+2.	Multi-type Analysis
+o	Analysis for different fishing types simultaneously
+o	Comparison of fishing method efficiency selected in profile
+o	Optimal choice recommendations
+
+3.	Analysis Factors
+o	Water and air temperature
+o	Atmospheric pressure and its changes
+o	Wind direction and strength
+o	Cloud cover and lighting
+o	Time of day
+o	Seasonal features
+
+Error Handling
+
+1.	No Internet Connection
+o	Error message display
+o	Retry button
+o	Last data saving
+
+2.	Geolocation Problems
+o	Using default coordinates
+o	Location permission requests
+o	Access necessity explanation
+
+3.	Service Failures
+o	Informative error messages
+o	Automatic retry attempts
+o	Alternative data sources
+
+________________________________________
+
+🧠 AI BITE ANALYSIS
+
+Artificial intelligence analyzes weather conditions and provides personal fishing recommendations.
+
+How AI Analysis Works
+
+1.	Data Collection
+o	Current weather conditions
+o	Forecast for upcoming days
+o	Geographic location
+o	Season and time of day
+
+2.	Factor Analysis
+o	Atmospheric pressure changes
+o	Temperature fluctuations
+o	Wind impact on fish activity
+o	Optimal cloud cover for different fishing types
+
+3.	Recommendation Generation
+o	100-point scale assessment
+o	Fish activity level
+o	Forecast confidence percentage
+o	Specific tactics advice
+
+Analysis Types
+
+1.	For Specific Fishing Type
+
+Important: Before using AI analysis, you need to select preferred fishing types in profile settings. This allows the system to provide more accurate and personalized recommendations.
+
+Available types:
+o	Spinning
+o	Feeder
+o	Float fishing
+o	Fly fishing
+o	Trolling
+o	Ice fishing
+o	Carp fishing
+
+2.	Multi-type Analysis
+o	Comparison of efficiency for methods selected in profile
+o	Optimal fishing type selection
+o	Ranking by prospects
+
+Analysis Results
+
+1.	Overall Score (0-100)
+o	80-100: Excellent conditions
+o	60-79: Good conditions
+o	40-59: Moderate conditions
+o	20-39: Poor conditions
+o	0-19: Very poor conditions
+
+2.	Activity Level
+o	Excellent activity
+o	Good activity
+o	Moderate activity
+o	Poor activity
+o	Very poor activity
+
+3.	Personal Recommendations
+o	Best fishing time
+o	Recommended lures
+o	Tactical advice
+o	Unfavorable factor warnings
+
+________________________________________
+
+📅 FISHING CALENDAR
+
+Drift Notes includes an interactive calendar for planning fishing trips and tracking fishing events.
+
+Key Features
+
+1.	Visual Planning
+o	View all fishing trips in calendar view
+o	Color differentiation of events
+o	Quick navigation through months and years
+
+2.	Event Types
+o	Past fishing trips (green markers) - completed trips
+o	Planned fishing trips (orange markers) - future plans
+o	Tournaments (blue markers) - fishing competitions
+
+Calendar Navigation
+
+1.	Month Switching
+o	Left/right arrows to change month
+o	Tap month header for quick jump to any month/year
+
+2.	Compact Display
+o	Abbreviated month names (3 characters) and years (2 digits)
+o	Adaptive sizes for different screens
+o	Russian and English language support
+
+Viewing Events
+
+1.	Fishing Details
+o	Tap any note to view details
+o	Information about location, fishing type, number of bites
+o	Status: past or planned
+
+2.	Multi-day Trips
+o	Automatic display on all trip days
+o	Correct date range formatting
+o	All days counted in statistics
+
+Tournament Integration
+
+1.	Tournament Events
+o	Adding tournaments to calendar
+o	Blue markers for quick recognition
+o	Detailed competition information
+
+2.	Tournament Management
+o	View tournament details
+o	Remove from calendar
+o	Status: upcoming or completed
+
+Legend and Indicators
+
+Calendar includes compact legend:
+•	Green circle - Past fishing trips
+•	Orange circle - Planned fishing trips
+•	Blue circle - Tournaments
+
+Data Synchronization
+
+1.	Automatic Updates
+o	Calendar updates when creating new notes
+o	Real-time change synchronization
+o	State saving on restart
+
+2.	Error Handling
+o	Informative loading problem messages
+o	Automatic retry attempts
+o	Graceful degradation without network
+
+Practical Recommendations
+
+1.	Effective Planning
+o	Use calendar for long-term planning
+o	Mark seasonal water body features
+o	Plan trips in advance considering weather
+
+2.	Activity Analysis
+o	Visually assess fishing frequency
+o	Identify most productive periods
+o	Plan vacations and weekends
+
+Integration with Other Functions
+
+•	Statistics connection - calendar data used in analytics
+•	Weather forecasts - planning considering weather conditions
+•	AI recommendations - optimal dates based on analysis
+•	Reminder system - notifications about planned fishing trips
+
+________________________________________
+
+⏱️ FISHING TIMERS
+
+Drift Notes includes a timer system specially designed for controlling rod and tackle recast time.
+
+Timer Purpose
+
+Timers created for tracking recast time:
+•	Rods - control time lure stays in water
+•	Tackle - reminder to change bait or lure
+•	Groundbait - feeding intervals
+•	Tackle check - regular equipment inspections
+
+Key Functions
+
+1.	Multiple Timers Simultaneously
+o	4 independent timers by default
+o	Each with individual settings
+o	Different colors for quick recognition
+
+2.	Countdown
+o	Set time until recast
+o	Visual progress bar
+o	Sound notifications on completion
+
+3.	Large Time Display
+o	Time displayed in large digits (60pt)
+o	Color indication by timer types
+o	Format hh:mm:ss or mm:ss
+
+Preset Intervals
+
+Quick selection of popular times:
+•	30 minutes - for feeder fishing
+•	1 hour - standard recast interval
+•	1.5 hours - for bottom tackle
+•	2 hours - long periods without recast
+•	3 hours - maximum intervals
+•	Custom time - manual hour and minute setting
+
+Timer Management
+
+1.	Starting Timer
+o	Tap "Start" on needed timer
+o	Select time from preset options
+o	Or set custom time through selector
+
+2.	Stop and Reset
+o	Stop - pause running timer
+o	Reset - return timer to zero
+o	Settings - timer personalization
+
+Personal Settings
+
+Each timer can be customized:
+•	Name - assign own name (e.g., "Feeder", "Spinning")
+•	Color - select individual color for quick recognition
+•	Notification sound - set completion melody
+•	Vibration - tactile signals
+
+Background Operation
+
+•	Timers continue running when app is minimized
+•	Push notifications about time completion
+
+________________________________________
+
+🔧 ADDITIONAL FUNCTIONS
+
+Settings and Personalization
+
+1.	Units of Measurement
+o	Temperature scale settings
+o	Wind and pressure unit selection
+o	Barometer calibration
+
+2.	Geolocation
+o	Automatic location detection
+o	Favorite places saving
+o	Visited water body history
+
+3.	Photos and Media
+o	Automatic image compression
+o	Storage optimization
+
+Analytics and Reports
+
+1.	Activity Tracking
+o	Statistics by fishing types
+o	Location efficiency analysis
+o	Weather condition correlation
+
+________________________________________
+
+🆘 SUPPORT
+
+Getting Help
+
+Technical Support: support@driftnotes.com
+
+________________________________________
+
+🎯 TIPS FOR EFFECTIVE USE
+
+Best Practices
+
+1.	Keep Regular Records
+o	Fill notes during fishing or immediately after fishing
+o	Don't forget small details
+
+2.	Use AI Analysis
+o	Compare forecasts with real results
+o	Consider recommendations when planning
+o	Analyze weather and bite correlation
+
+3.	Maximize Details
+o	Describe tackle and lures in detail
+o	Record bite times
+o	Note condition changes
+
+4.	Plan Ahead
+o	Use weather forecasts
+o	Analyze past fishing statistics
+o	Choose optimal locations and times
+
+Drift Notes is not just a record-keeping app, it's your personal assistant that will help you become a more successful angler!
