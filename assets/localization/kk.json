@@ -2145,5 +2145,9 @@
   "authorization_required": "Авторизация қажет",
   "authorization_required_message": "Маркерлік карталарды импорттау үшін аккаунтқа кіру қажет.",
   "cancel": "Бас тарту",
-  "login": "Кіру"
+  "login": "Кіру",
+
+  "status_information": "Мәртебе туралы ақпарат",
+  "your_version": "Сіздің нұсқаңыз",
+  "document_accepted_desc": "Сіз осы құжаттың ағымдағы нұсқасын қабылдадыңыз."
 }

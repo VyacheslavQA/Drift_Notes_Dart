@@ -299,14 +299,15 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body:
-      _isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          color: AppConstants.primaryColor,
-        ),
-      )
-          : _buildContent(localizations),
+      body: SafeArea(
+        child: _isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            color: AppConstants.primaryColor,
+          ),
+        )
+            : _buildContent(localizations),
+      ),
     );
   }
 
@@ -342,56 +343,66 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
       );
     }
 
-    return ListView(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.of(context).padding.bottom,
-      ),
+    final mediaQuery = MediaQuery.of(context);
+    final bottomPadding = mediaQuery.padding.bottom;
+
+    return Column(
       children: [
-        // Уведомление об обновлениях с локализацией
-        if (_hasUpdates) ...[
-          _buildUpdateNotificationCard(localizations),
-          const SizedBox(height: 16),
-        ],
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              // Умный отступ снизу для надежности
+              bottom: 16 + (bottomPadding > 0 ? 8 : 16),
+            ),
+            children: [
+              // Уведомление об обновлениях с локализацией
+              if (_hasUpdates) ...[
+                _buildUpdateNotificationCard(localizations),
+                const SizedBox(height: 16),
+              ],
 
-        // Общий статус
-        _buildStatusCard(localizations),
-        const SizedBox(height: 16),
+              // Общий статус
+              _buildStatusCard(localizations),
+              const SizedBox(height: 16),
 
-        // ИСПРАВЛЕНО: Политика конфиденциальности с селективным статусом
-        _buildDocumentCard(
-          title:
-          localizations.translate('privacy_policy') ??
-              'Политика конфиденциальности',
-          accepted: _consentStatus!.privacyPolicyAccepted,
-          needsUpdate: _consentResult!.needPrivacyPolicy,
-          currentVersion: _privacyPolicyVersion,
-          savedVersion: _consentResult!.savedPrivacyVersion,
-          onTap: () => _showPrivacyPolicy(),
-          onViewHistory: () => _showPrivacyPolicyHistory(),
-          localizations: localizations,
+              // ИСПРАВЛЕНО: Политика конфиденциальности с селективным статусом
+              _buildDocumentCard(
+                title:
+                localizations.translate('privacy_policy') ??
+                    'Политика конфиденциальности',
+                accepted: _consentStatus!.privacyPolicyAccepted,
+                needsUpdate: _consentResult!.needPrivacyPolicy,
+                currentVersion: _privacyPolicyVersion,
+                savedVersion: _consentResult!.savedPrivacyVersion,
+                onTap: () => _showPrivacyPolicy(),
+                onViewHistory: () => _showPrivacyPolicyHistory(),
+                localizations: localizations,
+              ),
+              const SizedBox(height: 12),
+
+              // ИСПРАВЛЕНО: Пользовательское соглашение с селективным статусом
+              _buildDocumentCard(
+                title:
+                localizations.translate('terms_of_service') ??
+                    'Пользовательское соглашение',
+                accepted: _consentStatus!.termsOfServiceAccepted,
+                needsUpdate: _consentResult!.needTermsOfService,
+                currentVersion: _termsOfServiceVersion,
+                savedVersion: _consentResult!.savedTermsVersion,
+                onTap: () => _showTermsOfService(),
+                onViewHistory: () => _showTermsOfServiceHistory(),
+                localizations: localizations,
+              ),
+              const SizedBox(height: 16),
+
+              // Информация о версии
+              _buildVersionInfo(localizations),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-
-        // ИСПРАВЛЕНО: Пользовательское соглашение с селективным статусом
-        _buildDocumentCard(
-          title:
-          localizations.translate('terms_of_service') ??
-              'Пользовательское соглашение',
-          accepted: _consentStatus!.termsOfServiceAccepted,
-          needsUpdate: _consentResult!.needTermsOfService,
-          currentVersion: _termsOfServiceVersion,
-          savedVersion: _consentResult!.savedTermsVersion,
-          onTap: () => _showTermsOfService(),
-          onViewHistory: () => _showTermsOfServiceHistory(),
-          localizations: localizations,
-        ),
-        const SizedBox(height: 16),
-
-        // Информация о версии
-        _buildVersionInfo(localizations),
       ],
     );
   }

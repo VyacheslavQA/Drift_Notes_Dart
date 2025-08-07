@@ -79,6 +79,11 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
+    final mediaQuery = MediaQuery.of(context);
+
+    // Получаем размеры системных панелей
+    final bottomPadding = mediaQuery.padding.bottom;
+    final topPadding = mediaQuery.padding.top;
 
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
@@ -98,17 +103,27 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppConstants.textColor,
-                  ),
+      body: SafeArea(
+        // Используем SafeArea для базовой защиты
+        child: _isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppConstants.textColor,
+            ),
+          ),
+        )
+            : Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  // Добавляем дополнительный отступ снизу для надежности
+                  bottom: 16 + (bottomPadding > 0 ? 8 : 16),
                 ),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -129,6 +144,10 @@ class _UserGuideScreenState extends State<UserGuideScreen> {
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

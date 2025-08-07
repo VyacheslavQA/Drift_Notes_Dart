@@ -616,101 +616,110 @@ class _HelpContactScreenState extends State<HelpContactScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Заголовок
-            Row(
-              children: [
-                Icon(
-                  Icons.history,
-                  color: AppConstants.primaryColor,
-                  size: isSmallScreen ? 20 : 24,
-                ),
-                SizedBox(width: ResponsiveConstants.spacingM),
-                Expanded(
-                  child: Text(
-                    localizations.translate('version_history') ??
-                        'История версий',
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: EdgeInsets.only(
+            left: isSmallScreen ? 16 : 20,
+            right: isSmallScreen ? 16 : 20,
+            top: isSmallScreen ? 16 : 20,
+            // Умеренный отступ снизу
+            bottom: (isSmallScreen ? 16 : 20) + 8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок
+              Row(
+                children: [
+                  Icon(
+                    Icons.history,
+                    color: AppConstants.primaryColor,
+                    size: isSmallScreen ? 20 : 24,
                   ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: ResponsiveConstants.spacingS),
-
-            Text(
-              localizations.translate('select_document_for_history') ??
-                  'Выберите документ для просмотра истории версий',
-              style: TextStyle(
-                color: AppConstants.textColor.withValues(alpha: 0.7),
-                fontSize: isSmallScreen ? 12 : 14,
+                  SizedBox(width: ResponsiveConstants.spacingM),
+                  Expanded(
+                    child: Text(
+                      localizations.translate('version_history') ??
+                          'История версий',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: isSmallScreen ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
 
-            SizedBox(height: ResponsiveConstants.spacingL),
+              SizedBox(height: ResponsiveConstants.spacingS),
 
-            // Политика конфиденциальности
-            _buildDocumentHistoryOption(
-              context,
-              localizations,
-              title: localizations.translate('privacy_policy') ??
-                  'Политика конфиденциальности',
-              description: localizations
-                  .translate('privacy_policy_history_description') ??
-                  'Просмотр истории изменений политики конфиденциальности',
-              icon: Icons.security,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DocumentVersionHistoryScreen(
-                      documentType: 'privacy_policy',
+              Text(
+                localizations.translate('select_document_for_history') ??
+                    'Выберите документ для просмотра истории версий',
+                style: TextStyle(
+                  color: AppConstants.textColor.withValues(alpha: 0.7),
+                  fontSize: isSmallScreen ? 12 : 14,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: ResponsiveConstants.spacingL),
+
+              // Политика конфиденциальности
+              _buildDocumentHistoryOption(
+                context,
+                localizations,
+                title: localizations.translate('privacy_policy') ??
+                    'Политика конфиденциальности',
+                description: localizations
+                    .translate('privacy_policy_history_description') ??
+                    'Просмотр истории изменений политики конфиденциальности',
+                icon: Icons.security,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DocumentVersionHistoryScreen(
+                        documentType: 'privacy_policy',
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
-            SizedBox(height: ResponsiveConstants.spacingM),
+              SizedBox(height: ResponsiveConstants.spacingM),
 
-            // Пользовательское соглашение
-            _buildDocumentHistoryOption(
-              context,
-              localizations,
-              title: localizations.translate('terms_of_service') ??
-                  'Пользовательское соглашение',
-              description:
-              localizations.translate('terms_history_description') ??
-                  'Просмотр истории изменений пользовательского соглашения',
-              icon: Icons.description,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DocumentVersionHistoryScreen(
-                      documentType: 'terms_of_service',
+              // Пользовательское соглашение
+              _buildDocumentHistoryOption(
+                context,
+                localizations,
+                title: localizations.translate('terms_of_service') ??
+                    'Пользовательское соглашение',
+                description:
+                localizations.translate('terms_history_description') ??
+                    'Просмотр истории изменений пользовательского соглашения',
+                icon: Icons.description,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DocumentVersionHistoryScreen(
+                        documentType: 'terms_of_service',
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
-            SizedBox(height: ResponsiveConstants.spacingL),
-          ],
+              // Небольшой дополнительный отступ в конце
+              SizedBox(height: ResponsiveConstants.spacingM),
+            ],
+          ),
         ),
       ),
     );

@@ -2195,5 +2195,9 @@
   "authorization_required": "Authorization Required",
   "authorization_required_message": "You need to sign in to import marker maps.",
   "cancel": "Cancel",
-  "login": "Sign In"
+  "login": "Sign In",
+
+  "status_information": "Status Information",
+  "your_version": "Your version",
+  "document_accepted_desc": "You have accepted the current version of this document."
 }
