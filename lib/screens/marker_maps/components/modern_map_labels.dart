@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../localization/app_localizations.dart';
+import '../helpers/ray_landmarks_helper.dart';
+import '../../../constants/app_constants.dart';
 
 /// Современные подписи карты
 /// Заменяет TextPainter на Positioned Text виджеты
@@ -12,6 +14,8 @@ class ModernMapLabels extends StatelessWidget {
   final double leftAngle;
   final double rightAngle;
   final Size screenSize;
+  final Map<String, dynamic>? rayLandmarks;  // ➕ НОВОЕ
+  final Function(int rayIndex)? onRayTap;     // ➕ НОВОЕ
 
   const ModernMapLabels({
     super.key,
@@ -20,6 +24,8 @@ class ModernMapLabels extends StatelessWidget {
     required this.leftAngle,
     required this.rightAngle,
     required this.screenSize,
+    this.rayLandmarks,      // ➕ НОВОЕ
+    this.onRayTap,          // ➕ НОВОЕ
   });
 
   @override
@@ -121,17 +127,17 @@ class ModernMapLabels extends StatelessWidget {
     }).toList();
   }
 
-  /// Подписи лучей
+  /// Подписи лучей ИЛИ ориентиры
   List<Widget> _buildRayLabels(AppLocalizations localizations, double centerX, double originY) {
     return List.generate(rayCount, (i) {
       final angle = _calculateRayAngle(i);
 
-      // Базовые параметры
+      // Базовые параметры позиционирования (КАК БЫЛО)
       double labelY = 50.0;
       final rayAtLabelY = (originY - labelY);
       double labelX = centerX + rayAtLabelY / math.tan(angle);
 
-      // Индивидуальные корректировки для каждого луча
+      // Индивидуальные корректировки для каждого луча (КАК БЫЛО)
       switch (i) {
         case 0:
           labelY += 20.0;
@@ -153,10 +159,65 @@ class ModernMapLabels extends StatelessWidget {
           break;
       }
 
-      return Positioned(
-        left: labelX - 30, // Центрируем текст
-        top: labelY - 10,
-        child: SizedBox(
+      // 🔥 НОВАЯ ЛОГИКА: Проверяем есть ли ориентир
+      final hasLandmark = rayLandmarks != null &&
+          RayLandmarksHelper.hasLandmark(rayLandmarks!, i);
+
+      Widget content;
+      if (hasLandmark) {
+        // Показываем ИКОНКУ + НОМЕР
+        final landmark = RayLandmarksHelper.getLandmark(rayLandmarks!, i)!;
+        final iconType = landmark['iconType'] as String;
+
+        content = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Иконка ориентира
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppConstants.primaryColor,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                RayLandmarksHelper.getLandmarkIcon(iconType),
+                color: AppConstants.primaryColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Номер луча
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${i + 1}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      } else {
+        // Показываем ТЕКСТ "Луч X" (КАК БЫЛО)
+        content = SizedBox(
           width: 60,
           child: Text(
             '${localizations.translate('ray')} ${i + 1}',
@@ -172,6 +233,19 @@ class ModernMapLabels extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        );
+      }
+
+      // 🔥 ОБЕРТКА В GestureDetector для кликабельности
+      return Positioned(
+        left: labelX - 30, // Центрируем
+        top: labelY - 10,
+        child: GestureDetector(
+          onTap: onRayTap != null ? () => onRayTap!(i) : null,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: content,
           ),
         ),
       );

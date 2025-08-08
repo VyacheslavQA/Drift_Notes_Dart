@@ -131,6 +131,10 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
   // 🆕 НОВОЕ: Простая фильтрация по водоему
   String? _selectedWaterBody;
 
+  // 🚀 НОВЫЕ ПЕРЕМЕННЫЕ для контроля обновлений
+  bool _hasDataLoaded = false;
+  double _lastKeyboardHeight = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -140,16 +144,45 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // 🚀 ДОБАВЛЕНО: Автообновление данных при возврате на экран
+  // 🚀 КАРДИНАЛЬНО ИСПРАВЛЕНО: Умное обновление данных только когда нужно
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Проверяем, вернулись ли мы на этот экран после импорта
+    // 🔥 АГРЕССИВНАЯ ЗАЩИТА ОТ ИЗБЫТОЧНЫХ ОБНОВЛЕНИЙ
+    final currentKeyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    // 🚫 НЕ ОБНОВЛЯЕМ ДАННЫЕ если:
+    // 1. Клавиатура открыта/закрыта (изменилась высота)
+    // 2. Данные уже загружены ранее
+    // 3. Это первый запуск (данные загружаются в initState)
+    if (currentKeyboardHeight != _lastKeyboardHeight || !_hasDataLoaded) {
+      _lastKeyboardHeight = currentKeyboardHeight;
+
+      // Если клавиатура видима - НЕ обновляем данные
+      if (currentKeyboardHeight > 0) {
+        if (kDebugMode) {
+          debugPrint('🚫 Клавиатура открыта ($currentKeyboardHeight) - обновление данных отменено');
+        }
+        return;
+      }
+
+      // Если данные еще не загружались - не дублируем initState
+      if (!_hasDataLoaded) {
+        if (kDebugMode) {
+          debugPrint('🚫 Первый запуск - данные загружаются в initState');
+        }
+        return;
+      }
+    }
+
+    // ✅ ОБНОВЛЯЕМ только при реальном возврате на экран (когда клавиатура скрыта)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && currentKeyboardHeight == 0 && _hasDataLoaded) {
         _loadData();
-        debugPrint('🔄 Автообновление данных после возврата на экран');
+        if (kDebugMode) {
+          debugPrint('🔄 Автообновление данных после возврата на экран (клавиатура скрыта)');
+        }
       }
     });
   }
@@ -207,7 +240,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
   Future<void> _loadData() async {
     await _performAsyncOperation(() async {
-      if (kDebugMode) {
+      // 🚀 МИНИМАЛЬНОЕ логирование только при реальной загрузке
+      if (kDebugMode && !_hasDataLoaded) {
         debugPrint('📥 Загружаем маркерные карты через Repository...');
       }
 
@@ -216,9 +250,11 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       if (mounted) {
         setState(() {
           _allMaps = maps;
+          _hasDataLoaded = true; // 🚀 ПОМЕЧАЕМ что данные загружены
         });
         _applyFilter();
 
+        // 🚀 ЛОГИРУЕМ только при первой загрузке или значительных изменениях
         if (kDebugMode) {
           debugPrint('✅ Загружено ${maps.length} маркерных карт через Repository');
         }
@@ -239,7 +275,8 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
     setState(() {});
 
-    if (kDebugMode) {
+    // 🚀 ОПТИМИЗИРОВАННОЕ логирование фильтрации
+    if (kDebugMode && _selectedWaterBody != null) {
       debugPrint('🔍 Фильтрация по водоему "$_selectedWaterBody": ${_filteredMaps.length} из ${_allMaps.length} карт');
     }
   }
