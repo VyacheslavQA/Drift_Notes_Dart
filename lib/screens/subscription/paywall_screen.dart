@@ -2,11 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/subscription_constants.dart';
 import '../../providers/subscription_provider.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/firebase/firebase_analytics_service.dart';
+import '../admin/admin_subscription_screen.dart';
+import '../../services/admin_service.dart';
 
 class PaywallScreen extends StatefulWidget {
   final String? contentType; // Тип контента, который пытался создать пользователь
@@ -168,11 +171,15 @@ class _PaywallScreenState extends State<PaywallScreen>
             ),
           ),
           const Spacer(),
-          Text(
-            _getHeaderTitle(context),
-            style: AppConstants.titleStyle.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+          // ✅ ДОБАВЛЕНО: Админский доступ через долгое нажатие
+          GestureDetector(
+            onLongPress: _checkAdminAccess,
+            child: Text(
+              _getHeaderTitle(context),
+              style: AppConstants.titleStyle.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const Spacer(),
@@ -648,6 +655,20 @@ class _PaywallScreenState extends State<PaywallScreen>
         SnackBar(
           content: Text(_getLocalizedText(context, 'purchases_restored')),
           backgroundColor: AppConstants.primaryColor,
+        ),
+      );
+    }
+  }
+
+  /// ✅ ДОБАВЛЕНО: Проверка админского доступа
+  void _checkAdminAccess() {
+    final adminService = AdminService();
+    final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+
+    if (adminService.isAdmin(currentUserEmail)) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const AdminSubscriptionScreen(),
         ),
       );
     }

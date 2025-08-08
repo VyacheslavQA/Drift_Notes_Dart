@@ -382,8 +382,8 @@ class FirebaseAnalyticsService {
           'reason': reason,
           'content_type': contentType,
           'blocked_feature': blockedFeature,
-          'current_usage': currentUsage,
-          'max_limit': maxLimit,
+          'current_usage': currentUsage ?? 0,  // ✅ ИСПРАВЛЕНО: защита от null
+          'max_limit': maxLimit ?? 0,          // ✅ ИСПРАВЛЕНО: защита от null
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );
