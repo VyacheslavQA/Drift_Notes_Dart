@@ -664,7 +664,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     );
   }
 
-  // Показ деталей маркера с кнопкой удаления
+  // 🎯 ОБНОВЛЕННЫЙ МЕТОД - Показ деталей маркера с кнопкой редактирования
   void _showMarkerDetails(Map<String, dynamic> marker) {
     if (_isDisposed) return;
 
@@ -692,13 +692,26 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 ),
               ),
               const SizedBox(height: 10),
+              // 🎯 ЛУЧ - отдельная строка
               Text(
-                '${localizations.translate('ray')} ${(marker['rayIndex'] + 1).toInt()}, ${marker['distance'].toInt()} ${localizations.translate('distance_m')}',
+                '${localizations.translate('ray')}: ${(marker['rayIndex'] + 1).toInt()}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
                 ),
               ),
+              const SizedBox(height: 8),
+
+// 🎯 ДИСТАНЦИЯ - отдельная строка
+              Text(
+                '${localizations.translate('distance')}: ${marker['distance'].toInt()} ${localizations.translate('meters')}',
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 16,
+                ),
+              ),
+
+// 🎯 ГЛУБИНА - отдельная строка (если есть)
               if (marker['depth'] != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -709,10 +722,60 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                   ),
                 ),
               ],
+
+// 🎯 ТИП ДНА - отдельная строка с цветной визуализацией
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    '${localizations.translate('bottom_type')}: ',
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                  // Цветной кружок с иконкой (как настоящий маркер)
+                  Container(
+                    width: 20,
+                    height: 20,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: _bottomTypeColors[marker['bottomType']] ?? _bottomTypeColors['default'],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _bottomTypeIcons[marker['bottomType']] ?? _bottomTypeIcons['default'],
+                      color: Colors.black87,
+                      size: 12,
+                    ),
+                  ),
+                  // Название типа дна
+                  Text(
+                    _getBottomTypeName(marker['bottomType']),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+
+// 🎯 ЗАМЕТКИ - отдельная строка (если есть)
               if (marker['notes'] != null && marker['notes'].isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  marker['notes'],
+                  '${localizations.translate('notes')}: ${marker['notes']}',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -720,22 +783,42 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 ),
               ],
               const SizedBox(height: 24),
+
+              // 🔥 ОБНОВЛЕННАЯ СЕКЦИЯ КНОПОК - добавлена кнопка "Редактировать"
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Кнопка удаления
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context); // Закрываем текущий диалог
-                      _deleteMarker(marker['id']); // Удаляем маркер
-                    },
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    label: Text(
-                      localizations.translate('delete'),
-                      style: const TextStyle(color: Colors.red),
-                    ),
+                  // Кнопки действий слева
+                  Row(
+                    children: [
+                      // 🎯 НОВАЯ КНОПКА РЕДАКТИРОВАНИЯ
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context); // Закрываем текущий диалог
+                          _showEditMarkerDialog(marker); // 🔥 Открываем диалог редактирования
+                        },
+                        icon: Icon(Icons.edit, color: AppConstants.primaryColor),
+                        label: Text(
+                          localizations.translate('edit'),
+                          style: TextStyle(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Кнопка удаления
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context); // Закрываем текущий диалог
+                          _deleteMarker(marker['id']); // Удаляем маркер
+                        },
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: Text(
+                          localizations.translate('delete'),
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Кнопка закрытия
+                  // Кнопка закрытия справа
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(localizations.translate('close')),
@@ -1125,6 +1208,403 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                             },
                             child: Text(
                               localizations.translate('add'),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 🎯 НОВЫЙ МЕТОД - Диалог редактирования маркера
+  Future<void> _showEditMarkerDialog(Map<String, dynamic> existingMarker) async {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    // 🔥 ПРЕДЗАПОЛНЯЕМ ПОЛЯ ДАННЫМИ СУЩЕСТВУЮЩЕГО МАРКЕРА
+    _depthController.text = existingMarker['depth']?.toString() ?? '';
+    _notesController.text = existingMarker['notes'] ?? '';
+    _distanceController.text = existingMarker['distance'].toString();
+
+    int selectedRayIndex = existingMarker['rayIndex'].toInt();
+    String selectedBottomType = existingMarker['bottomType'] ?? 'ил';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: AppConstants.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 🎯 ЗАГОЛОВОК - "Редактировать маркер"
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit, // 🎯 Иконка редактирования
+                            color: AppConstants.primaryColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              localizations.translate('edit_marker'), // 🎯 "Редактировать маркер"
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Содержимое - ТОЧНО ТАКОЕ ЖЕ как в _showAddMarkerDialog
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 1️⃣ ВЫБОР ЛУЧА
+                            Text(
+                              '1. ${localizations.translate('ray_selection')}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppConstants.primaryColor.withOpacity(0.3),
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: selectedRayIndex,
+                                  isExpanded: true,
+                                  dropdownColor: AppConstants.surfaceColor,
+                                  style: TextStyle(color: AppConstants.textColor),
+                                  items: List.generate(_raysCount, (index) {
+                                    return DropdownMenuItem<int>(
+                                      value: index,
+                                      child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                    );
+                                  }),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setDialogState(() {
+                                        selectedRayIndex = value;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // 2️⃣ РАССТОЯНИЕ
+                            Text(
+                              '2. ${localizations.translate('distance_m')}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _distanceController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                hintText: localizations.translate('distance_hint'),
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 20),
+
+                            // 3️⃣ ГЛУБИНА
+                            Text(
+                              '3. ${localizations.translate('depth_m')}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _depthController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                hintText: localizations.translate('depth_hint'),
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // 4️⃣ ЗАМЕТКИ
+                            Text(
+                              '4. ${localizations.translate('notes')}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _notesController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                hintText: localizations.translate('notes_hint'),
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              maxLines: 3,
+                              minLines: 1,
+                            ),
+                            const SizedBox(height: 20),
+
+                            // 5️⃣ ВЫБОР ТИПА ДНА
+                            Text(
+                              '5. ${localizations.translate('marker_type')}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _bottomTypes.map((type) {
+                                final isSelected = selectedBottomType == type;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selectedBottomType = type;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? _bottomTypeColors[type] ?? Colors.grey
+                                          : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? _bottomTypeColors[type] ?? Colors.grey
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _bottomTypeIcons[type],
+                                          color: isSelected ? Colors.black : AppConstants.textColor,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _getBottomTypeName(type),
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.black : AppConstants.textColor,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // 🎯 КНОПКИ - "Отмена" и "Сохранить изменения"
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: AppConstants.textColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              localizations.translate('cancel'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppConstants.primaryColor,
+                              foregroundColor: AppConstants.textColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              // 🔥 ВАЛИДАЦИЯ - такая же как в _showAddMarkerDialog
+                              if (_distanceController.text.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(localizations.translate('enter_distance')),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              double? distance = double.tryParse(_distanceController.text);
+                              if (distance == null || distance <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(localizations.translate('enter_valid_distance')),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (distance > _maxDistance) {
+                                distance = _maxDistance;
+                              }
+
+                              // 🔥 ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО МАРКЕРА (а не создание нового!)
+                              final updatedMarker = {
+                                'id': existingMarker['id'], // 🎯 СОХРАНЯЕМ ОРИГИНАЛЬНЫЙ ID!
+                                'rayIndex': selectedRayIndex.toDouble(),
+                                'distance': distance,
+                                'name': localizations.translate('marker'),
+                                'depth': _depthController.text.isEmpty
+                                    ? null
+                                    : double.tryParse(_depthController.text),
+                                'notes': _notesController.text.trim(),
+                                'bottomType': selectedBottomType,
+                                'angle': _calculateRayAngle(selectedRayIndex),
+                                'ratio': distance / _maxDistance,
+                              };
+
+                              // 🔥 НАХОДИМ И ЗАМЕНЯЕМ СУЩЕСТВУЮЩИЙ МАРКЕР
+                              final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+                              final markerIndex = updatedMarkers.indexWhere((m) => m['id'] == existingMarker['id']);
+
+                              if (markerIndex != -1) {
+                                updatedMarkers[markerIndex] = updatedMarker; // 🎯 ЗАМЕНЯЕМ, а не добавляем!
+                              } else {
+                                debugPrint('⚠️ Маркер с ID ${existingMarker['id']} не найден для обновления');
+                                return;
+                              }
+
+                              if (!_isDisposed) {
+                                _safeSetState(() {
+                                  _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                                });
+                              }
+
+                              Navigator.pop(context);
+
+                              await _autoSaveChanges(localizations.translate('marker_updated')); // 🎯 "Маркер обновлен"
+                            },
+                            child: Text(
+                              localizations.translate('save_changes'), // 🎯 "Сохранить изменения"
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),

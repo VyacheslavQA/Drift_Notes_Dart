@@ -2205,5 +2205,6 @@
   "current_privacy_policy_version": "Current privacy policy version",
   "could_not_open_link": "Could not open link",
   "error_opening_link": "Error opening link",
-  "current_terms_version": "Current terms of service version"
+  "current_terms_version": "Current terms of service version",
+  "distance": "Distance"
 }
