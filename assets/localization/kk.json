@@ -2156,5 +2156,32 @@
   "could_not_open_link": "Сілтемені ашу мүмкін болмады",
   "error_opening_link": "Сілтемені ашу кезінде қате",
   "current_terms_version": "Пайдаланушы келісімінің ағымдағы нұсқасы",
-  "distance": "Қашықтық"
+  "distance": "Қашықтық",
+
+  "add_landmark": "Бағдар белгісін қосу",
+  "edit_landmark": "Бағдар белгісін өңдеу",
+  "delete_landmark": "Бағдар белгісін жою",
+  "landmark": "Бағдар белгісі",
+  "select_landmark_type": "Бағдар белгісінің түрін таңдаңыз",
+  "comment_optional": "Түсініктеме (міндетті емес)",
+  "landmark_comment_hint": "Мысалы: \"Жағалаудағы биік ағаш\"",
+  "landmark_added": "Бағдар белгісі қосылды",
+  "landmark_updated": "Бағдар белгісі жаңартылды",
+  "landmark_deleted": "Бағдар белгісі жойылды",
+  "delete_landmark_confirmation": "Сіз шынымен бағдар белгісін жойғыңыз келе ме",
+
+  "landmark_tree": "Ағаш",
+  "landmark_reed": "Қамыс",
+  "landmark_forest": "Инелі орман",
+  "landmark_dry_trees": "Құрғақ ағаштар",
+  "landmark_rock": "Жартас",
+  "landmark_mountain": "Тау",
+  "landmark_power_line": "Электр желісі",
+  "landmark_factory": "Зауыт",
+  "landmark_house": "Үй",
+  "landmark_radio_tower": "Радио мұнарасы",
+  "landmark_lamp_post": "Шам бағанасы",
+  "landmark_gazebo": "Альтанка",
+  "landmark_internet_tower": "Интернет мұнарасы",
+  "landmark_exact_location": "Басқа"
 }

@@ -2206,5 +2206,32 @@
   "could_not_open_link": "Could not open link",
   "error_opening_link": "Error opening link",
   "current_terms_version": "Current terms of service version",
-  "distance": "Distance"
+  "distance": "Distance",
+
+  "add_landmark": "Add Landmark",
+  "edit_landmark": "Edit Landmark",
+  "delete_landmark": "Delete Landmark",
+  "landmark": "Landmark",
+  "select_landmark_type": "Select landmark type",
+  "comment_optional": "Comment (optional)",
+  "landmark_comment_hint": "Example: \"Tall tree by the shore\"",
+  "landmark_added": "Landmark added",
+  "landmark_updated": "Landmark updated",
+  "landmark_deleted": "Landmark deleted",
+  "delete_landmark_confirmation": "Are you sure you want to delete landmark for",
+
+  "landmark_tree": "Tree",
+  "landmark_reed": "Reed",
+  "landmark_forest": "Coniferous forest",
+  "landmark_dry_trees": "Dry trees",
+  "landmark_rock": "Rock",
+  "landmark_mountain": "Mountain",
+  "landmark_power_line": "Power line",
+  "landmark_factory": "Factory",
+  "landmark_house": "House",
+  "landmark_radio_tower": "Radio tower",
+  "landmark_lamp_post": "Lamp post",
+  "landmark_gazebo": "Gazebo",
+  "landmark_internet_tower": "Internet tower",
+  "landmark_exact_location": "Other"
 }

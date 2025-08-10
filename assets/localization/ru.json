@@ -2162,5 +2162,32 @@
   "could_not_open_link": "Не удалось открыть ссылку",
   "error_opening_link": "Ошибка при открытии ссылки",
   "current_terms_version": "Актуальная версия пользовательского соглашения",
-  "distance": "Дистанция"
+  "distance": "Дистанция",
+
+  "add_landmark": "Добавить ориентир",
+  "edit_landmark": "Изменить ориентир",
+  "delete_landmark": "Удалить ориентир",
+  "landmark": "Ориентир",
+  "select_landmark_type": "Выберите тип ориентира",
+  "comment_optional": "Комментарий (необязательно)",
+  "landmark_comment_hint": "Например: \"Высокое дерево у берега\"",
+  "landmark_added": "Ориентир добавлен",
+  "landmark_updated": "Ориентир изменен",
+  "landmark_deleted": "Ориентир удален",
+  "delete_landmark_confirmation": "Вы уверены, что хотите удалить ориентир для",
+
+  "landmark_tree": "Дерево",
+  "landmark_reed": "Камыш",
+  "landmark_forest": "Хвойный лес",
+  "landmark_dry_trees": "Сухие деревья",
+  "landmark_rock": "Скала",
+  "landmark_mountain": "Гора",
+  "landmark_power_line": "ЛЭП",
+  "landmark_factory": "Завод",
+  "landmark_house": "Дом",
+  "landmark_radio_tower": "Радиовышка",
+  "landmark_lamp_post": "Фонарь",
+  "landmark_gazebo": "Беседка",
+  "landmark_internet_tower": "Интернет вышка",
+  "landmark_exact_location": "Другое"
 }

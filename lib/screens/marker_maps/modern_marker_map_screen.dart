@@ -53,6 +53,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   late AnimationController _fadeController;
   late AnimationController _staggerController;
   late Animation<double> _fadeAnimation;
+  // 🔍 НОВЫЙ: Контроллер для зума
+  late TransformationController _transformationController;
 
   // Сохранение последнего выбранного луча
   int _lastSelectedRayIndex = 0;
@@ -223,6 +225,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
     // 🎬 Запуск анимации загрузки
     _fadeController.forward();
+    // 🔍 Инициализация контроллера зума
+    _transformationController = TransformationController();
     _staggerController.forward();
 
     debugPrint('🗺️ ModernMarkerMapScreen: Открываем современную карту маркеров ID: ${_markerMap.id}');
@@ -243,6 +247,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     // 🎬 Освобождаем контроллеры анимаций
     _fadeController.dispose();
     _staggerController.dispose();
+    // 🔍 Освобождаем контроллер зума
+    _transformationController.dispose();
 
     // Очищаем кэш Repository
     try {
@@ -1790,11 +1796,24 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   /// Получение локализованного названия ориентира
   String _getLandmarkName(String type) {
     final localizations = AppLocalizations.of(context);
-    final landmark = _landmarkTypes[type];
-    if (landmark == null) return type;
 
-    // Возвращаем название на русском языке (можно добавить логику локализации)
-    return landmark['nameRu'] ?? type;
+    switch (type) {
+      case 'tree': return localizations.translate('landmark_tree');
+      case 'reed': return localizations.translate('landmark_reed');
+      case 'forest': return localizations.translate('landmark_forest');
+      case 'dry_trees': return localizations.translate('landmark_dry_trees');
+      case 'rock': return localizations.translate('landmark_rock');
+      case 'mountain': return localizations.translate('landmark_mountain');
+      case 'power_line': return localizations.translate('landmark_power_line');
+      case 'factory': return localizations.translate('landmark_factory');
+      case 'house': return localizations.translate('landmark_house');
+      case 'radio_tower': return localizations.translate('landmark_radio_tower');
+      case 'lamp_post': return localizations.translate('landmark_lamp_post');
+      case 'gazebo': return localizations.translate('landmark_gazebo');
+      case 'internet_tower': return localizations.translate('landmark_internet_tower');
+      case 'exact_location': return localizations.translate('landmark_exact_location');
+      default: return type;
+    }
   }
 
   /// Обработчик клика на подпись луча (добавление ориентира)
@@ -1860,7 +1879,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Добавить ориентир для Луча ${rayIndex + 1}',
+                              '${localizations.translate('add_landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 18,
@@ -1881,7 +1900,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           children: [
                             // Выбор типа ориентира
                             Text(
-                              '1. Выберите тип ориентира',
+                              '1. ${localizations.translate('select_landmark_type')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -1930,7 +1949,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          data['nameRu'] as String,
+                                          _getLandmarkName(type),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             color: isSelected ? Colors.white : AppConstants.textColor,
@@ -1951,7 +1970,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                             // Комментарий
                             Text(
-                              '2. Комментарий (необязательно)',
+                              '2. ${localizations.translate('comment_optional')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -1963,7 +1982,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               controller: _landmarkCommentController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                hintText: 'Например: "Высокое дерево у берега"',
+                                hintText: localizations.translate('landmark_comment_hint'),  // ✅ ПРАВИЛЬНО
                                 hintStyle: TextStyle(
                                   color: AppConstants.textColor.withOpacity(0.5),
                                 ),
@@ -2038,10 +2057,10 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               }
 
                               Navigator.pop(context);
-                              await _autoSaveChanges('Ориентир добавлен');
+                              await _autoSaveChanges(localizations.translate('landmark_added'));
                             },
                             child: Text(
-                              'Добавить',
+                              localizations.translate('add'),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -2097,7 +2116,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Ориентир Луча ${rayIndex + 1}',
+                          '${localizations.translate('landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 20,
@@ -2122,7 +2141,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
               if (landmark['comment'] != null && landmark['comment'].isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'Комментарий:',
+                  '${localizations.translate('comment')}:',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -2154,7 +2173,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                         },
                         icon: Icon(Icons.edit, color: AppConstants.primaryColor),
                         label: Text(
-                          'Изменить',
+                          localizations.translate('edit'),
                           style: TextStyle(color: AppConstants.primaryColor),
                         ),
                       ),
@@ -2165,9 +2184,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           _deleteLandmark(rayIndex);
                         },
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        label: const Text(
-                          'Удалить',
-                          style: TextStyle(color: Colors.red),
+                        label: Text(
+                          localizations.translate('delete'),  // ✅ ПРАВИЛЬНО
+                          style: const TextStyle(color: Colors.red),  // const только для стиля
                         ),
                       ),
                     ],
@@ -2231,7 +2250,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Изменить ориентир Луча ${rayIndex + 1}',
+                              '${localizations.translate('edit_landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 18,
@@ -2252,7 +2271,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           children: [
                             // Выбор типа ориентира
                             Text(
-                              '1. Выберите тип ориентира',
+                              '1. ${localizations.translate('select_landmark_type')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2301,7 +2320,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          data['nameRu'] as String,
+                                          _getLandmarkName(type),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             color: isSelected ? Colors.white : AppConstants.textColor,
@@ -2322,7 +2341,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                             // Комментарий
                             Text(
-                              '2. Комментарий (необязательно)',
+                              '2. ${localizations.translate('comment_optional')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2334,7 +2353,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               controller: _landmarkCommentController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                hintText: 'Например: "Высокое дерево у берега"',
+                                hintText: localizations.translate('landmark_comment_hint'),
                                 hintStyle: TextStyle(
                                   color: AppConstants.textColor.withOpacity(0.5),
                                 ),
@@ -2409,10 +2428,10 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               }
 
                               Navigator.pop(context);
-                              await _autoSaveChanges('Ориентир изменен');
+                              await _autoSaveChanges(localizations.translate('landmark_updated'));
                             },
                             child: Text(
-                              'Сохранить',
+                              localizations.translate('save'),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -2444,14 +2463,14 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
-            'Удалить ориентир',
+            localizations.translate('delete_landmark'),
             style: TextStyle(
               color: AppConstants.textColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
-            'Вы уверены, что хотите удалить ориентир для Луча ${rayIndex + 1}?',
+            '${localizations.translate('delete_landmark_confirmation')} ${localizations.translate('ray')} ${rayIndex + 1}?',
             style: TextStyle(
               color: AppConstants.textColor,
             ),
@@ -2490,7 +2509,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
           });
         }
 
-        await _autoSaveChanges('Ориентир удален');
+        await _autoSaveChanges(localizations.translate('landmark_deleted'));
       } catch (e) {
         debugPrint('❌ Ошибка удаления ориентира: $e');
         if (!_isDisposed && mounted) {
@@ -2527,10 +2546,17 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                   // 🎨 1. СОВРЕМЕННЫЙ ФОН
                   const ModernMapBackground(),
 
-                  // 🎨 2. ОСНОВНАЯ КАРТА
+                  // 🎨 2. ОСНОВНАЯ КАРТА С ЗУМОМ
                   Positioned.fill(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
+                      child: InteractiveViewer(
+                        transformationController: _transformationController,
+                        boundaryMargin: const EdgeInsets.all(0),
+                        minScale: 1.0,
+                        maxScale: 3.0,
+                        panEnabled: true,
+                        scaleEnabled: true,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
                         // 🔥 ФИКСИРОВАННЫЕ РАЗМЕРЫ - игнорируем клавиатуру
                         final screenSize = Size(
                           MediaQuery.of(context).size.width,
@@ -2583,6 +2609,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                         );
                       },
                     ),
+                  ),
                   ),
 
                   // 🎨 7. ИНДИКАТОР АВТОСОХРАНЕНИЯ
