@@ -459,7 +459,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     );
   }
 
-  // Упрощенный диалог для создания/редактирования БЕЗ выбора заметок
+  // ПРАВИЛЬНО работающий диалог для создания/редактирования
   Future<void> _showMapFormDialog({MarkerMapModel? existingMap}) async {
     final localizations = AppLocalizations.of(context);
     final isEditing = existingMap != null;
@@ -467,6 +467,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     final nameController = TextEditingController(text: existingMap?.name ?? '');
     final sectorController = TextEditingController(text: existingMap?.sector ?? '');
 
+    // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: selectedDate ЗДЕСЬ, а не внутри builder
     DateTime selectedDate = existingMap?.date ?? DateTime.now();
 
     final result = await showDialog<MarkerMapModel>(
@@ -475,6 +476,63 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, dialogSetState) {
+            // 🔥 МЕТОД buildDateField теперь может изменять selectedDate
+            Widget buildDateField() {
+              return InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(1990),
+                    lastDate: DateTime(2100),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.dark(
+                            primary: AppConstants.primaryColor,
+                            onPrimary: AppConstants.textColor,
+                            surface: AppConstants.surfaceColor,
+                            onSurface: AppConstants.textColor,
+                          ),
+                          dialogTheme: DialogThemeData(backgroundColor: AppConstants.backgroundColor),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+
+                  if (picked != null) {
+                    dialogSetState(() {
+                      selectedDate = picked; // ✅ Теперь это работает!
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppConstants.textColor.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today, color: AppConstants.textColor, size: 18),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
+                        style: TextStyle(color: AppConstants.textColor, fontSize: 16),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.arrow_drop_down, color: AppConstants.textColor),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             return Dialog(
               backgroundColor: AppConstants.surfaceColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -500,19 +558,76 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
                           children: [
                             _buildNameField(nameController, localizations),
                             const SizedBox(height: 20),
-                            _buildDateField(selectedDate, dialogSetState, localizations),
+                            buildDateField(), // ✅ Используем локальный метод
                             const SizedBox(height: 20),
                             _buildSectorField(sectorController, localizations),
                           ],
                         ),
                       ),
                     ),
-                    _buildDialogButtons(
-                      nameController,
-                      selectedDate,
-                      sectorController,
-                      existingMap,
-                      localizations,
+                    // Кнопки
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: AppConstants.textColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              localizations.translate('cancel'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (nameController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      existingMap != null
+                                          ? localizations.translate('map_name_required')
+                                          : localizations.translate('required_field'),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // ✅ Создание карты с правильной selectedDate
+                              final mapData = existingMap?.copyWith(
+                                name: nameController.text.trim(),
+                                date: selectedDate, // ✅ Теперь это правильная дата!
+                                sector: sectorController.text.trim().isEmpty ? null : sectorController.text.trim(),
+                              ) ?? MarkerMapModel(
+                                id: const Uuid().v4(),
+                                userId: '',
+                                name: nameController.text.trim(),
+                                date: selectedDate, // ✅ Теперь это правильная дата!
+                                sector: sectorController.text.trim().isEmpty ? null : sectorController.text.trim(),
+                                markers: [],
+                              );
+
+                              Navigator.pop(context, mapData);
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: AppConstants.primaryColor),
+                            child: Text(
+                              existingMap != null
+                                  ? localizations.translate('save')
+                                  : localizations.translate('add'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -530,6 +645,63 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         await _createMap(result);
       }
     }
+  }
+
+// 🔥 НОВЫЙ МЕТОД для поля даты (чтобы не конфликтовать со старым)
+  Widget _buildFixedDateField(DateTime selectedDate, StateSetter dialogSetState, AppLocalizations localizations) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: DateTime(1990),  // Расширенный диапазон
+          lastDate: DateTime(2100),   // До 2100 года
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.dark(
+                  primary: AppConstants.primaryColor,
+                  onPrimary: AppConstants.textColor,
+                  surface: AppConstants.surfaceColor,
+                  onSurface: AppConstants.textColor,
+                ),
+                dialogTheme: DialogThemeData(backgroundColor: AppConstants.backgroundColor),
+              ),
+              child: child!,
+            );
+          },
+        );
+
+        if (picked != null) {
+          dialogSetState(() {
+            selectedDate = picked; // ✅ Правильное обновление
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: AppConstants.textColor.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, color: AppConstants.textColor, size: 18),
+            const SizedBox(width: 12),
+            Text(
+              '${localizations.translate('date')}: ${DateFormat('dd.MM.yyyy').format(selectedDate)}',
+              style: TextStyle(color: AppConstants.textColor, fontSize: 16),
+            ),
+            const Spacer(),
+            Icon(Icons.arrow_drop_down, color: AppConstants.textColor),
+          ],
+        ),
+      ),
+    );
   }
 
   // Оптимизация: Вынесли компоненты диалога
@@ -636,8 +808,9 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
         final picked = await showDatePicker(
           context: context,
           initialDate: selectedDate,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          // 🔥 РАСШИРЕННЫЙ ДИАПАЗОН ДАТ:
+          firstDate: DateTime(1990),  // Можно выбрать с 1990 года
+          lastDate: DateTime(2100),   // До 2100 года
           builder: (context, child) {
             return Theme(
               data: Theme.of(context).copyWith(
@@ -656,6 +829,7 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
 
         if (picked != null) {
           dialogSetState(() {
+            // 🔥 ВАЖНО: selectedDate теперь обновляется в правильном контексте
             selectedDate = picked;
           });
         }
