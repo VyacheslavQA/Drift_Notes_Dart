@@ -22,6 +22,8 @@ import '../../widgets/fishing_photo_grid.dart';
 import '../../models/ai_bite_prediction_model.dart';
 import '../../services/ai_bite_prediction_service.dart';
 import '../../services/weather_settings_service.dart';
+import '../../repositories/bait_program_repository.dart';
+import '../../models/bait_program_model.dart';
 
 
 class FishingNoteDetailScreen extends StatefulWidget {
@@ -38,6 +40,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   final _firebaseService = FirebaseService();
   final _weatherSettings = WeatherSettingsService();
   final _fishingNoteRepository = FishingNoteRepository();
+  final _baitProgramRepository = BaitProgramRepository();
 
   FishingNoteModel? _note;
   bool _isLoading = true;
@@ -46,6 +49,10 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
   // ИИ-анализ
   AIBitePrediction? _aiPrediction;
+
+  // Прикормочные программы
+  List<BaitProgramModel> _baitPrograms = [];
+  bool _isLoadingPrograms = false;
 
   // 🔥 ОПТИМИЗАЦИЯ: Debounce для предотвращения частых обновлений
   Timer? _debounceTimer;
@@ -115,6 +122,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
 
         // Загружаем ИИ-анализ асинхронно
         _loadAIFromNote();
+        // Загружаем прикормочные программы асинхронно
+        _loadBaitPrograms();
       }
     } catch (e) {
       debugPrint('❌ Ошибка загрузки заметки: $e');
@@ -171,6 +180,34 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       _debouncedSetState(() {});
     } catch (e) {
       debugPrint('❌ Ошибка загрузки ИИ-анализа: $e');
+    }
+  }
+
+  // Загрузка прикормочных программ
+  Future<void> _loadBaitPrograms() async {
+    if (_note?.baitProgramIds.isEmpty ?? true) return;
+
+    setState(() {
+      _isLoadingPrograms = true;
+    });
+
+    try {
+      final programs = await _baitProgramRepository.getBaitProgramsByIds(_note!.baitProgramIds);
+
+      if (mounted) {
+        setState(() {
+          _baitPrograms = programs;
+          _isLoadingPrograms = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка загрузки прикормочных программ: $e');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingPrograms = false;
+        });
+      }
     }
   }
 
@@ -958,6 +995,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             const SizedBox(height: 20),
           ],
 
+
           // Снасти
           if (_note!.tackle.isNotEmpty) ...[
             _buildSectionHeader(localizations.translate('tackle')),
@@ -971,6 +1009,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             _buildContentCard(_note!.notes),
             const SizedBox(height: 20),
           ],
+
+          // Прикормочные программы
+          if (_baitPrograms.isNotEmpty) ...[
+            _buildBaitProgramsSection(),
+            const SizedBox(height: 20),
+          ],
+
 
           const SizedBox(height: 20),
 
@@ -1771,4 +1816,108 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       ),
     );
   }
+
+  // Построение секции прикормочных программ
+  Widget _buildBaitProgramsSection() {
+    final localizations = AppLocalizations.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(localizations.translate('bait_programs')),
+
+        if (_isLoadingPrograms)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF12332E),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+              ),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _baitPrograms.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final program = _baitPrograms[index];
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF12332E),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppConstants.primaryColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.set_meal_outlined,
+                        color: AppConstants.primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  program.title,
+                                  style: TextStyle(
+                                    color: AppConstants.textColor,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              if (program.isFavorite)
+                                Icon(
+                                  Icons.star,
+                                  color: AppConstants.primaryColor,
+                                  size: 16,
+                                ),
+                            ],
+                          ),
+                          if (program.description.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              program.description,
+                              style: TextStyle(
+                                color: AppConstants.textColor.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
 }
+

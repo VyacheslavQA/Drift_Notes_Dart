@@ -39,6 +39,7 @@ import 'screens/onboarding/first_launch_language_screen.dart';
 import 'screens/marker_maps/marker_maps_list_screen.dart';
 // 🚀 НОВЫЙ ИМПОРТ для быстрого импорта
 import 'screens/marker_maps/quick_import_screen.dart';
+import 'screens/bait_programs/bait_programs_list_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/subscription_provider.dart';
@@ -1363,6 +1364,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             '/help_contact': (context) => const HelpContactScreen(),
             '/settings/accepted_agreements': (context) => const AcceptedAgreementsScreen(),
             '/timers': (context) => const TimersScreen(),
+            '/bait-programs': (context) => const BaitProgramsListScreen(),
           },
         );
       },

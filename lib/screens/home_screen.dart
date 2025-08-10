@@ -31,6 +31,7 @@ import 'settings/settings_screen.dart';
 import 'weather/weather_screen.dart';
 import 'tournaments/tournaments_screen.dart';
 import 'shops/shops_screen.dart';
+import 'bait_programs/bait_programs_list_screen.dart';
 import 'budget/fishing_budget_screen.dart';
 
 
@@ -824,12 +825,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Po
           },
         ),
         _buildQuickActionItem(
-          icon: Icons.local_mall_outlined,
-          label: localizations.translate('shops'),
+          icon: Icons.set_meal_outlined,
+          label: localizations.translate('bait_programs'),
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ShopsScreen()),
+              MaterialPageRoute(builder: (context) => const BaitProgramsListScreen()),
             );
           },
         ),
@@ -1810,6 +1811,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Po
                 ).then((_) {
                   _refreshProviderData();
                 });
+              },
+            ),
+
+            _buildDrawerItem(
+              icon: Icons.local_mall,
+              title: localizations.translate('shops'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ShopsScreen()),
+                );
               },
             ),
 

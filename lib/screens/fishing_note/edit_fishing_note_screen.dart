@@ -25,6 +25,7 @@ import '../../services/ai_bite_prediction_service.dart';
 import 'package:provider/provider.dart';
 import '../../providers/subscription_provider.dart';
 import '../../services/photo/photo_service.dart'; // ДОБАВИТЬ ЭТУ СТРОКУ
+import '../../widgets/bait_program_selector.dart';
 
 class EditFishingNoteScreen extends StatefulWidget {
   final FishingNoteModel note;
@@ -75,6 +76,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
   AIBitePrediction? _aiPrediction;
   bool _isLoadingAI = false;
   final _aiService = AIBitePredictionService();
+  List<String> _selectedBaitProgramIds = [];
 
   // Для анимаций
   late AnimationController _animationController;
@@ -108,6 +110,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
     _biteRecords = List.from(widget.note.biteRecords);
     _selectedFishingType = widget.note.fishingType;
+    _selectedBaitProgramIds = List.from(widget.note.baitProgramIds);
 
     // ✅ ИНИЦИАЛИЗАЦИЯ ДНЕЙ РЫБАЛКИ
     _initializeFishingDays();
@@ -786,6 +789,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
         weather: _weather,
         biteRecords: _biteRecords,
         aiPrediction: aiPredictionMap,
+        baitProgramIds: _selectedBaitProgramIds,
       );
 
       // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем Repository для сохранения
@@ -1379,6 +1383,11 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                 _buildPhotoButtons(localizations),
                 if (_existingPhotoUrls.isNotEmpty) _buildExistingPhotos(localizations),
                 if (_newPhotos.isNotEmpty) _buildNewPhotos(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
+
+                // Прикормочные программы
+                _buildSectionHeader(localizations.translate('bait_programs')),
+                _buildBaitProgramsSection(localizations),
                 SizedBox(height: ResponsiveConstants.spacingL),
 
                 // Записи о поклевках
@@ -2690,7 +2699,21 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       ],
     );
   }
+  Widget _buildBaitProgramsSection(AppLocalizations localizations) {
+    return BaitProgramSelector(
+      selectedProgramIds: _selectedBaitProgramIds,
+      onProgramsChanged: (List<String> programIds) {
+        setState(() {
+          _selectedBaitProgramIds = programIds;
+        });
+      },
+      maxSelection: 5,
+    );
+  }
 }
+
+
+
 
 // Внутренний класс для рисования графика поклевок (ИСПРАВЛЕН)
 class _BiteRecordsTimelinePainter extends CustomPainter {

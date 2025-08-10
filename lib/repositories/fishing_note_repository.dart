@@ -600,6 +600,7 @@ class FishingNoteRepository {
     entity.latitude = model.latitude;
     entity.longitude = model.longitude;
     entity.photoUrls = model.photoUrls;
+    entity.baitProgramIds = model.baitProgramIds;
 
     // description как дополнительное поле (если notes пустые)
     if (model.notes.isNotEmpty) {
@@ -786,6 +787,7 @@ class FishingNoteRepository {
       reminderEnabled: false,
       reminderType: ReminderType.none,
       reminderTime: null,
+      baitProgramIds: entity.baitProgramIds,
     );
   }
 

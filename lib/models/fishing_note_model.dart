@@ -24,6 +24,7 @@ class FishingNoteModel {
   final Map<String, dynamic>? coverCropSettings;
   final String title;
   final Map<String, dynamic>? aiPrediction;
+  final List<String> baitProgramIds; // ID прикрепленных программ (max 5)
 
   // ПОЛЯ ДЛЯ НАПОМИНАНИЙ (ОБНОВЛЕНЫ)
   final bool reminderEnabled;
@@ -52,6 +53,7 @@ class FishingNoteModel {
     this.coverCropSettings,
     this.title = '',
     this.aiPrediction,
+    this.baitProgramIds = const [],
     // ПАРАМЕТРЫ НАПОМИНАНИЙ
     this.reminderEnabled = false,
     this.reminderType = ReminderType.none,
@@ -107,6 +109,7 @@ class FishingNoteModel {
       coverCropSettings: json['coverCropSettings'],
       title: json['title'] ?? '',
       aiPrediction: json['aiPrediction'],
+      baitProgramIds: List<String>.from(json['baitProgramIds'] ?? []),
       // ЧТЕНИЕ ПОЛЕЙ НАПОМИНАНИЙ
       reminderEnabled: json['reminderEnabled'] ?? false,
       reminderType: _parseReminderType(json['reminderType'] as String?),
@@ -139,6 +142,7 @@ class FishingNoteModel {
       'coverCropSettings': coverCropSettings,
       'title': title,
       'aiPrediction': aiPrediction,
+      'baitProgramIds': baitProgramIds,
       // СОХРАНЕНИЕ ПОЛЕЙ НАПОМИНАНИЙ
       'reminderEnabled': reminderEnabled,
       'reminderType': reminderType.toString(),
@@ -168,6 +172,7 @@ class FishingNoteModel {
     Map<String, dynamic>? coverCropSettings,
     String? title,
     Map<String, dynamic>? aiPrediction,
+    List<String>? baitProgramIds,
     // ПАРАМЕТРЫ НАПОМИНАНИЙ В copyWith
     bool? reminderEnabled,
     ReminderType? reminderType,
@@ -195,6 +200,7 @@ class FishingNoteModel {
       coverCropSettings: coverCropSettings ?? this.coverCropSettings,
       title: title ?? this.title,
       aiPrediction: aiPrediction ?? this.aiPrediction,
+      baitProgramIds: baitProgramIds ?? this.baitProgramIds,
       // ПОЛЯ НАПОМИНАНИЙ В copyWith
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderType: reminderType ?? this.reminderType,

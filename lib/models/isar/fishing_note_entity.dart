@@ -53,6 +53,7 @@ class FishingNoteEntity {
 
   DateTime createdAt = DateTime.now();
   DateTime updatedAt = DateTime.now();
+  List<String> baitProgramIds = []; // Список ID программ
 }
 
 // ✅ ДОПОЛНЕНО: WeatherDataEntity с недостающими полями

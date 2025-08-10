@@ -34,6 +34,7 @@ import '../../providers/subscription_provider.dart';
 import '../../services/calendar_event_service.dart';
 import '../../services/photo/photo_service.dart'; // ДОБАВИТЬ ЭТУ СТРОКУ
 import '../../services/firebase/firebase_analytics_service.dart';
+import '../../widgets/bait_program_selector.dart';
 
 
 class AddFishingNoteScreen extends StatefulWidget {
@@ -83,6 +84,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   bool _isLoadingAI = false;
 
   final List<BiteRecord> _biteRecords = [];
+  List<String> _selectedBaitProgramIds = [];
   String _selectedFishingType = '';
 
   // ✅ НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ СЕЛЕКТОРА ДНЯ
@@ -639,6 +641,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
     }
   }
 
+
   Future<bool> _checkLimitsBeforeCreating() async {
     try {
       // Создаем сервис только когда нужно
@@ -710,7 +713,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
 
       // ✅ ИСПРАВЛЕНИЕ: Repository сам решает онлайн/офлайн сохранение
       final noteId = await _repository!.addFishingNote(model, _selectedPhotos);
-
+      ;
       if (mounted) {
         try {
           final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
@@ -875,6 +878,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       reminderEnabled: false,
       reminderType: ReminderType.none,
       reminderTime: null,
+      baitProgramIds: _selectedBaitProgramIds,
     );
   }
 
@@ -1211,6 +1215,11 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                   _buildSectionHeader(localizations.translate('photos')),
                   _buildPhotoButtons(localizations),
                   if (_selectedPhotos.isNotEmpty) _buildPhotosSection(localizations),
+                  SizedBox(height: ResponsiveConstants.spacingL),
+
+                  // Прикормочные программы
+                  _buildSectionHeader(localizations.translate('bait_programs')),
+                  _buildBaitProgramsSection(localizations),
                   SizedBox(height: ResponsiveConstants.spacingL),
 
                   // Записи о поклевках
@@ -2546,8 +2555,23 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       ],
     );
   }
-}
 
+  Widget _buildBaitProgramsSection(AppLocalizations localizations) {
+    return BaitProgramSelector(
+      selectedProgramIds: _selectedBaitProgramIds,
+      onProgramsChanged: (List<String> programIds) {
+        // ✅ ДОБАВИТЬ ЭТИ СТРОКИ ДЛЯ ОТЛАДКИ
+
+        setState(() {
+          _selectedBaitProgramIds = programIds;
+        });
+
+        _markAsChanged();
+      },
+      maxSelection: 5,
+    );
+  }
+}
 class _BiteRecordsTimelinePainter extends CustomPainter {
   final List<BiteRecord> biteRecords;
   final int divisions;

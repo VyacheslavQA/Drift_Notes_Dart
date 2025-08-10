@@ -9,6 +9,7 @@ import '../models/isar/budget_note_entity.dart';
 import '../models/isar/marker_map_entity.dart';
 import '../models/isar/policy_acceptance_entity.dart';
 import '../models/isar/user_usage_limits_entity.dart';
+import '../models/isar/bait_program_entity.dart';
 
 
 class IsarService {
@@ -38,6 +39,7 @@ class IsarService {
         MarkerMapEntitySchema,
         PolicyAcceptanceEntitySchema,
         UserUsageLimitsEntitySchema,
+        BaitProgramEntitySchema,
       ],
       directory: dir.path,
     );
@@ -1117,6 +1119,202 @@ class IsarService {
   }
 
   // ========================================
+// 🆕 НОВЫЕ МЕТОДЫ ДЛЯ BAIT PROGRAMS
+// ========================================
+
+  /// Вставка новой прикормочной программы
+  Future<int> insertBaitProgram(BaitProgramEntity program) async {
+    final result = await isar.writeTxn(() async {
+      return await isar.baitProgramEntitys.put(program);
+    });
+
+    debugPrint('📝 IsarService: Вставлена BaitProgram с ID=$result, firebaseId=${program.firebaseId}, markedForDeletion=${program.markedForDeletion}');
+    return result;
+  }
+
+  /// Получение всех АКТИВНЫХ прикормочных программ (исключая помеченные для удаления)
+  Future<List<BaitProgramEntity>> getAllBaitPrograms() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      debugPrint('⚠️ IsarService: getCurrentUserId() вернул null для BaitPrograms');
+      return [];
+    }
+
+    final programs = await isar.baitProgramEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
+        .sortByCreatedAtDesc()
+        .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${programs.length} активных BaitPrograms для пользователя $userId');
+    return programs;
+  }
+
+  /// Получение программы по ID
+  Future<BaitProgramEntity?> getBaitProgramById(int id) async {
+    final program = await isar.baitProgramEntitys.get(id);
+    debugPrint('🔍 IsarService: getBaitProgramById($id) = ${program != null ? "найдена" : "не найдена"}');
+    return program;
+  }
+
+  /// Получение программы по Firebase ID
+  Future<BaitProgramEntity?> getBaitProgramByFirebaseId(String firebaseId) async {
+    final program = await isar.baitProgramEntitys
+        .filter()
+        .firebaseIdEqualTo(firebaseId)
+        .findFirst();
+
+    debugPrint('🔍 IsarService: getBaitProgramByFirebaseId($firebaseId) = ${program != null ? "найдена" : "не найдена"}');
+    if (program != null) {
+      debugPrint('📝 IsarService: Программа markedForDeletion=${program.markedForDeletion}, isSynced=${program.isSynced}');
+    }
+    return program;
+  }
+
+  /// Обновление существующей программы
+  Future<int> updateBaitProgram(BaitProgramEntity program) async {
+    program.updatedAt = DateTime.now();
+    final result = await isar.writeTxn(() async {
+      return await isar.baitProgramEntitys.put(program);
+    });
+
+    debugPrint('🔄 IsarService: Обновлена BaitProgram ID=${program.id}, firebaseId=${program.firebaseId}, markedForDeletion=${program.markedForDeletion}, isSynced=${program.isSynced}');
+    return result;
+  }
+
+  /// Удаление программы по ID (физическое удаление)
+  Future<bool> deleteBaitProgram(int id) async {
+    final result = await isar.writeTxn(() async {
+      return await isar.baitProgramEntitys.delete(id);
+    });
+
+    debugPrint('🗑️ IsarService: Физически удалена BaitProgram ID=$id, результат=$result');
+    return result;
+  }
+
+  /// Удаление программы по Firebase ID (физическое удаление)
+  Future<bool> deleteBaitProgramByFirebaseId(String firebaseId) async {
+    final program = await getBaitProgramByFirebaseId(firebaseId);
+    if (program != null) {
+      final result = await deleteBaitProgram(program.id);
+      debugPrint('🗑️ IsarService: Физически удалена BaitProgram firebaseId=$firebaseId, результат=$result');
+      return result;
+    }
+    debugPrint('⚠️ IsarService: Программа firebaseId=$firebaseId не найдена для физического удаления');
+    return false;
+  }
+
+  /// Поиск программ по названию и описанию
+  Future<List<BaitProgramEntity>> searchBaitPrograms(String query) async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final programs = await isar.baitProgramEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .group((q) => q
+        .titleContains(query, caseSensitive: false)
+        .or()
+        .descriptionContains(query, caseSensitive: false))
+        .sortByCreatedAtDesc()
+        .findAll();
+
+    debugPrint('🔍 IsarService: Поиск "$query" нашел ${programs.length} программ');
+    return programs;
+  }
+
+  /// Получение всех несинхронизированных программ
+  Future<List<BaitProgramEntity>> getUnsyncedBaitPrograms() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final unsyncedPrograms = await isar.baitProgramEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .isSyncedEqualTo(false)
+        .findAll();
+
+    debugPrint('🔍 IsarService: getUnsyncedBaitPrograms найдено ${unsyncedPrograms.length} несинхронизированных программ');
+    return unsyncedPrograms;
+  }
+
+  /// Помечает программу как синхронизированную
+  Future<void> markBaitProgramAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
+    await isar.writeTxn(() async {
+      final program = await isar.baitProgramEntitys.get(id);
+      if (program != null) {
+        program.isSynced = true;
+        program.firebaseId = firebaseId;
+        program.updatedAt = DateTime.now();
+        await isar.baitProgramEntitys.put(program);
+        debugPrint('✅ IsarService: Программа ID=$id помечена как синхронизированная с firebaseId=$firebaseId');
+
+        if (program.markedForDeletion == true) {
+          shouldDelete = true;
+        }
+      }
+    });
+
+    if (shouldDelete) {
+      await deleteBaitProgram(id);
+      debugPrint('🧹 IsarService: Автоматически удалена синхронизированная помеченная программа ID=$id');
+    }
+  }
+
+  /// Получение количества прикормочных программ пользователя
+  Future<int> getBaitProgramsCountByUser(String userId) async {
+    final count = await isar.baitProgramEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .count();
+
+    debugPrint('📊 IsarService: Активных BaitPrograms пользователя $userId: $count');
+    return count;
+  }
+
+  /// Получение количества несинхронизированных программ
+  Future<int> getUnsyncedBaitProgramsCount([String? userId]) async {
+    if (userId != null) {
+      return await isar.baitProgramEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .and()
+          .isSyncedEqualTo(false)
+          .count();
+    }
+
+    return await isar.baitProgramEntitys
+        .filter()
+        .isSyncedEqualTo(false)
+        .count();
+  }
+
+  /// Очистка всех данных программ
+  Future<void> clearAllBaitPrograms() async {
+    await isar.writeTxn(() async {
+      await isar.baitProgramEntitys.clear();
+    });
+    debugPrint('🧹 IsarService: Очищены все BaitPrograms');
+  }
+
+  // ========================================
   // ОБНОВЛЕННЫЕ ОБЩИЕ МЕТОДЫ
   // ========================================
 
@@ -1128,6 +1326,7 @@ class IsarService {
       await isar.markerMapEntitys.clear();
       await isar.policyAcceptanceEntitys.clear();
       await isar.userUsageLimitsEntitys.clear();
+      await isar.baitProgramEntitys.clear();
     });
   }
 
@@ -1148,6 +1347,10 @@ class IsarService {
       'markerMaps': {
         'total': await getMarkerMapsCount(userId),
         'unsynced': await getUnsyncedMarkerMapsCount(userId),
+      },
+      'baitPrograms': {
+        'total': await getBaitProgramsCountByUser(userId),
+        'unsynced': await getUnsyncedBaitProgramsCount(userId),
       },
       'policyAcceptance': {
         'total': await getPolicyAcceptancesCount(),
@@ -1180,6 +1383,11 @@ class IsarService {
           .deleteAll();
 
       await isar.userUsageLimitsEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .deleteAll();
+
+      await isar.baitProgramEntitys
           .filter()
           .userIdEqualTo(userId)
           .deleteAll();

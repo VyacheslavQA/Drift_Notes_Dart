@@ -728,6 +728,84 @@ class FirebaseService {
   }
 
   // ========================================
+// ПРИКОРМОЧНЫЕ ПРОГРАММЫ
+// ========================================
+
+  /// Добавление прикормочной программы
+  Future<DocumentReference> addBaitProgram(Map<String, dynamic> programData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('bait_programs')
+          .add({
+        ...programData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Обновление прикормочной программы
+  Future<void> updateBaitProgram(String programId, Map<String, dynamic> programData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('bait_programs')
+          .doc(programId)
+          .update({
+        ...programData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение прикормочных программ пользователя
+  Future<QuerySnapshot> getUserBaitPrograms() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('bait_programs')
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Удаление прикормочной программы
+  Future<void> deleteBaitProgram(String programId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('bait_programs')
+          .doc(programId)
+          .delete();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // ========================================
   // СОГЛАСИЯ ПОЛЬЗОВАТЕЛЯ
   // ========================================
 

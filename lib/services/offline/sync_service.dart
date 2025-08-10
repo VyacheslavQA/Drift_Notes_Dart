@@ -12,6 +12,7 @@ import '../../models/isar/marker_map_entity.dart';
 import '../../models/isar/policy_acceptance_entity.dart';
 import '../../models/isar/user_usage_limits_entity.dart';
 import '../isar_service.dart';
+import '../../models/isar/bait_program_entity.dart';
 
 class SyncService {
   static SyncService? _instance;
@@ -86,6 +87,9 @@ class SyncService {
       'longitude': entity.longitude,
       'photoUrls': entity.photoUrls,
       'isOffline': false, // Пометка что заметка синхронизирована
+
+    // ✅ ДОБАВИТЬ ЭТУ СТРОКУ:
+    'baitProgramIds': entity.baitProgramIds,
 
       // ✅ ДОБАВЛЕНО: Многодневные рыбалки
       'isMultiDay': entity.isMultiDay,
@@ -206,6 +210,11 @@ class SyncService {
     // ✅ ДОБАВЛЕНО: Фото заметки
     if (data['photoUrls'] != null) {
       entity.photoUrls = List<String>.from(data['photoUrls']);
+    }
+
+    // ✅ ДОБАВИТЬ ЭТИ СТРОКИ:
+    if (data['baitProgramIds'] != null) {
+      entity.baitProgramIds = List<String>.from(data['baitProgramIds']);
     }
 
     // ✅ ДОБАВЛЕНО: Многодневные рыбалки
@@ -1044,6 +1053,156 @@ class SyncService {
   }
 
   // ========================================
+// 🆕 НОВЫЕ МЕТОДЫ ДЛЯ BAIT PROGRAMS
+// ========================================
+
+  /// Конвертация BaitProgramEntity в Map для Firestore
+  Map<String, dynamic> _baitProgramEntityToFirestore(BaitProgramEntity entity) {
+    return {
+      'title': entity.title,
+      'description': entity.description,
+      'isFavorite': entity.isFavorite,
+      'createdAt': Timestamp.fromDate(entity.createdAt),
+      'updatedAt': Timestamp.fromDate(entity.updatedAt),
+    };
+  }
+
+  /// Конвертация данных из Firestore в BaitProgramEntity
+  BaitProgramEntity _firestoreToBaitProgramEntity(String firebaseId, Map<String, dynamic> data) {
+    final entity = BaitProgramEntity()
+      ..firebaseId = firebaseId
+      ..title = data['title'] ?? ''
+      ..description = data['description'] ?? ''
+      ..isFavorite = data['isFavorite'] ?? false
+      ..createdAt = _parseTimestamp(data['createdAt'])
+      ..updatedAt = _parseTimestamp(data['updatedAt'])
+      ..isSynced = true;
+    entity.userId = _auth.currentUser?.uid ?? '';
+    return entity;
+  }
+
+  /// Синхронизация BaitPrograms в Firebase
+  Future<bool> syncBaitProgramsToFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('bait_programs');
+      if (collection == null) return false;
+
+      final unsyncedPrograms = await _isarService.getUnsyncedBaitPrograms();
+      final programsToSync = unsyncedPrograms.where((program) => program.markedForDeletion != true).toList();
+
+      debugPrint('📤 SyncService: Синхронизируем ${programsToSync.length} BaitPrograms в Firebase');
+
+      for (final program in programsToSync) {
+        try {
+          final data = _baitProgramEntityToFirestore(program);
+
+          if (program.firebaseId != null) {
+            final docRef = collection.doc(program.firebaseId);
+            final docSnapshot = await docRef.get();
+
+            if (docSnapshot.exists) {
+              await docRef.update(data);
+              debugPrint('🔄 SyncService: Обновлена BaitProgram ${program.firebaseId}');
+            } else {
+              await docRef.set(data);
+              debugPrint('✅ SyncService: Создана BaitProgram ${program.firebaseId}');
+            }
+            await _isarService.markBaitProgramAsSynced(program.id, program.firebaseId!);
+          } else {
+            final docRef = await collection.add(data);
+            await _isarService.markBaitProgramAsSynced(program.id, docRef.id);
+            debugPrint('✅ SyncService: Создана новая BaitProgram ${docRef.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка синхронизации BaitProgram ${program.firebaseId}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncBaitProgramsToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Синхронизация BaitPrograms из Firebase
+  Future<bool> syncBaitProgramsFromFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('bait_programs');
+      if (collection == null) return false;
+
+      final querySnapshot = await collection.orderBy('createdAt', descending: true).get();
+      debugPrint('📥 SyncService: Получено ${querySnapshot.docs.length} BaitPrograms из Firebase');
+
+      for (final doc in querySnapshot.docs) {
+        try {
+          final firebaseId = doc.id;
+          final data = doc.data() as Map<String, dynamic>;
+
+          final existingProgram = await _isarService.getBaitProgramByFirebaseId(firebaseId);
+
+          if (existingProgram == null) {
+            final entity = _firestoreToBaitProgramEntity(firebaseId, data);
+            await _isarService.insertBaitProgram(entity);
+          } else {
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
+            if (firebaseUpdatedAt.isAfter(existingProgram.updatedAt)) {
+              final updatedEntity = _firestoreToBaitProgramEntity(firebaseId, data);
+              updatedEntity.id = existingProgram.id;
+              await _isarService.updateBaitProgram(updatedEntity);
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка обработки BaitProgram ${doc.id}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncBaitProgramsFromFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Удаление BaitProgram по Firebase ID
+  Future<bool> deleteBaitProgramByFirebaseId(String firebaseId) async {
+    try {
+      debugPrint('🗑️ SyncService: Начинаем удаление BaitProgram $firebaseId');
+
+      if (await _hasInternetConnection()) {
+        final collection = _getUserCollection('bait_programs');
+        if (collection != null) {
+          try {
+            await collection.doc(firebaseId).delete();
+            debugPrint('✅ SyncService: BaitProgram удалена из Firebase: $firebaseId');
+          } catch (e) {
+            debugPrint('❌ SyncService: Ошибка удаления BaitProgram из Firebase $firebaseId: $e');
+          }
+        }
+      }
+
+      final entity = await _isarService.getBaitProgramByFirebaseId(firebaseId);
+      if (entity != null) {
+        await _isarService.deleteBaitProgram(entity.id);
+        debugPrint('✅ SyncService: BaitProgram удалена из Isar: $firebaseId');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка deleteBaitProgramByFirebaseId $firebaseId: $e');
+      return false;
+    }
+  }
+
+  // ========================================
   // ✅ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
   // ========================================
 
@@ -1160,6 +1319,7 @@ class SyncService {
         syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
+        syncBaitProgramsToFirebase(),
       ]);
 
       final success = results.every((result) => result);
@@ -1197,6 +1357,7 @@ class SyncService {
         syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
+        syncBaitProgramsToFirebase(),
       ]);
 
       // Получаем обновления из Firebase
@@ -1206,6 +1367,7 @@ class SyncService {
         syncMarkerMapsFromFirebase(),
         syncPolicyAcceptanceFromFirebase(),
         syncUserUsageLimitsFromFirebase(),
+        syncBaitProgramsFromFirebase(),
       ]);
 
       final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);
@@ -1287,6 +1449,9 @@ class SyncService {
         };
       }
 
+      final baitProgramsTotal = await _isarService.getBaitProgramsCountByUser(userId);
+      final baitProgramsUnsynced = await _isarService.getUnsyncedBaitProgramsCount(userId);
+
       final fishingNotesTotal = await _isarService.getNotesCount();
       final fishingNotesUnsynced = await _isarService.getUnsyncedNotesCount();
 
@@ -1328,6 +1493,11 @@ class SyncService {
           'unsynced': userUsageLimitsUnsynced,
           'synced': userUsageLimitsTotal - userUsageLimitsUnsynced,
         },
+        'baitPrograms': {
+          'total': baitProgramsTotal,
+          'unsynced': baitProgramsUnsynced,
+          'synced': baitProgramsTotal - baitProgramsUnsynced,
+        },
       };
 
       return status;
@@ -1338,6 +1508,7 @@ class SyncService {
         'markerMaps': {'total': 0, 'unsynced': 0, 'synced': 0},
         'policyAcceptance': {'total': 0, 'unsynced': 0, 'synced': 0},
         'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0},
+        'baitPrograms': {'total': 0, 'unsynced': 0, 'synced': 0},
         'error': e.toString(),
       };
     }

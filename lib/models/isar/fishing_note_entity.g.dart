@@ -23,109 +23,114 @@ const FishingNoteEntitySchema = CollectionSchema(
       type: IsarType.object,
       target: r'AiPredictionEntity',
     ),
-    r'biteRecords': PropertySchema(
+    r'baitProgramIds': PropertySchema(
       id: 1,
+      name: r'baitProgramIds',
+      type: IsarType.stringList,
+    ),
+    r'biteRecords': PropertySchema(
+      id: 2,
       name: r'biteRecords',
       type: IsarType.objectList,
       target: r'BiteRecordEntity',
     ),
     r'createdAt': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'date': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'date',
       type: IsarType.dateTime,
     ),
     r'description': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'description',
       type: IsarType.string,
     ),
     r'endDate': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'endDate',
       type: IsarType.dateTime,
     ),
     r'firebaseId': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'firebaseId',
       type: IsarType.string,
     ),
     r'fishingType': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'fishingType',
       type: IsarType.string,
     ),
     r'isMultiDay': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'isMultiDay',
       type: IsarType.bool,
     ),
     r'isSynced': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'latitude': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'latitude',
       type: IsarType.double,
     ),
     r'location': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'location',
       type: IsarType.string,
     ),
     r'longitude': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'longitude',
       type: IsarType.double,
     ),
     r'mapMarkersJson': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'mapMarkersJson',
       type: IsarType.string,
     ),
     r'markedForDeletion': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'markedForDeletion',
       type: IsarType.bool,
     ),
     r'notes': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'notes',
       type: IsarType.string,
     ),
     r'photoUrls': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'photoUrls',
       type: IsarType.stringList,
     ),
     r'tackle': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'tackle',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'userId',
       type: IsarType.string,
     ),
     r'weatherData': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'weatherData',
       type: IsarType.object,
       target: r'WeatherDataEntity',
@@ -201,6 +206,13 @@ int _fishingNoteEntityEstimateSize(
       bytesCount += 3 +
           AiPredictionEntitySchema.estimateSize(
               value, allOffsets[AiPredictionEntity]!, allOffsets);
+    }
+  }
+  bytesCount += 3 + object.baitProgramIds.length * 3;
+  {
+    for (var i = 0; i < object.baitProgramIds.length; i++) {
+      final value = object.baitProgramIds[i];
+      bytesCount += value.length * 3;
     }
   }
   bytesCount += 3 + object.biteRecords.length * 3;
@@ -286,33 +298,34 @@ void _fishingNoteEntitySerialize(
     AiPredictionEntitySchema.serialize,
     object.aiPrediction,
   );
+  writer.writeStringList(offsets[1], object.baitProgramIds);
   writer.writeObjectList<BiteRecordEntity>(
-    offsets[1],
+    offsets[2],
     allOffsets,
     BiteRecordEntitySchema.serialize,
     object.biteRecords,
   );
-  writer.writeDateTime(offsets[2], object.createdAt);
-  writer.writeDateTime(offsets[3], object.date);
-  writer.writeString(offsets[4], object.description);
-  writer.writeDateTime(offsets[5], object.endDate);
-  writer.writeString(offsets[6], object.firebaseId);
-  writer.writeString(offsets[7], object.fishingType);
-  writer.writeBool(offsets[8], object.isMultiDay);
-  writer.writeBool(offsets[9], object.isSynced);
-  writer.writeDouble(offsets[10], object.latitude);
-  writer.writeString(offsets[11], object.location);
-  writer.writeDouble(offsets[12], object.longitude);
-  writer.writeString(offsets[13], object.mapMarkersJson);
-  writer.writeBool(offsets[14], object.markedForDeletion);
-  writer.writeString(offsets[15], object.notes);
-  writer.writeStringList(offsets[16], object.photoUrls);
-  writer.writeString(offsets[17], object.tackle);
-  writer.writeString(offsets[18], object.title);
-  writer.writeDateTime(offsets[19], object.updatedAt);
-  writer.writeString(offsets[20], object.userId);
+  writer.writeDateTime(offsets[3], object.createdAt);
+  writer.writeDateTime(offsets[4], object.date);
+  writer.writeString(offsets[5], object.description);
+  writer.writeDateTime(offsets[6], object.endDate);
+  writer.writeString(offsets[7], object.firebaseId);
+  writer.writeString(offsets[8], object.fishingType);
+  writer.writeBool(offsets[9], object.isMultiDay);
+  writer.writeBool(offsets[10], object.isSynced);
+  writer.writeDouble(offsets[11], object.latitude);
+  writer.writeString(offsets[12], object.location);
+  writer.writeDouble(offsets[13], object.longitude);
+  writer.writeString(offsets[14], object.mapMarkersJson);
+  writer.writeBool(offsets[15], object.markedForDeletion);
+  writer.writeString(offsets[16], object.notes);
+  writer.writeStringList(offsets[17], object.photoUrls);
+  writer.writeString(offsets[18], object.tackle);
+  writer.writeString(offsets[19], object.title);
+  writer.writeDateTime(offsets[20], object.updatedAt);
+  writer.writeString(offsets[21], object.userId);
   writer.writeObject<WeatherDataEntity>(
-    offsets[21],
+    offsets[22],
     allOffsets,
     WeatherDataEntitySchema.serialize,
     object.weatherData,
@@ -331,35 +344,36 @@ FishingNoteEntity _fishingNoteEntityDeserialize(
     AiPredictionEntitySchema.deserialize,
     allOffsets,
   );
+  object.baitProgramIds = reader.readStringList(offsets[1]) ?? [];
   object.biteRecords = reader.readObjectList<BiteRecordEntity>(
-        offsets[1],
+        offsets[2],
         BiteRecordEntitySchema.deserialize,
         allOffsets,
         BiteRecordEntity(),
       ) ??
       [];
-  object.createdAt = reader.readDateTime(offsets[2]);
-  object.date = reader.readDateTime(offsets[3]);
-  object.description = reader.readStringOrNull(offsets[4]);
-  object.endDate = reader.readDateTimeOrNull(offsets[5]);
-  object.firebaseId = reader.readStringOrNull(offsets[6]);
-  object.fishingType = reader.readStringOrNull(offsets[7]);
+  object.createdAt = reader.readDateTime(offsets[3]);
+  object.date = reader.readDateTime(offsets[4]);
+  object.description = reader.readStringOrNull(offsets[5]);
+  object.endDate = reader.readDateTimeOrNull(offsets[6]);
+  object.firebaseId = reader.readStringOrNull(offsets[7]);
+  object.fishingType = reader.readStringOrNull(offsets[8]);
   object.id = id;
-  object.isMultiDay = reader.readBool(offsets[8]);
-  object.isSynced = reader.readBool(offsets[9]);
-  object.latitude = reader.readDoubleOrNull(offsets[10]);
-  object.location = reader.readStringOrNull(offsets[11]);
-  object.longitude = reader.readDoubleOrNull(offsets[12]);
-  object.mapMarkersJson = reader.readStringOrNull(offsets[13]);
-  object.markedForDeletion = reader.readBool(offsets[14]);
-  object.notes = reader.readStringOrNull(offsets[15]);
-  object.photoUrls = reader.readStringList(offsets[16]) ?? [];
-  object.tackle = reader.readStringOrNull(offsets[17]);
-  object.title = reader.readString(offsets[18]);
-  object.updatedAt = reader.readDateTime(offsets[19]);
-  object.userId = reader.readString(offsets[20]);
+  object.isMultiDay = reader.readBool(offsets[9]);
+  object.isSynced = reader.readBool(offsets[10]);
+  object.latitude = reader.readDoubleOrNull(offsets[11]);
+  object.location = reader.readStringOrNull(offsets[12]);
+  object.longitude = reader.readDoubleOrNull(offsets[13]);
+  object.mapMarkersJson = reader.readStringOrNull(offsets[14]);
+  object.markedForDeletion = reader.readBool(offsets[15]);
+  object.notes = reader.readStringOrNull(offsets[16]);
+  object.photoUrls = reader.readStringList(offsets[17]) ?? [];
+  object.tackle = reader.readStringOrNull(offsets[18]);
+  object.title = reader.readString(offsets[19]);
+  object.updatedAt = reader.readDateTime(offsets[20]);
+  object.userId = reader.readString(offsets[21]);
   object.weatherData = reader.readObjectOrNull<WeatherDataEntity>(
-    offsets[21],
+    offsets[22],
     WeatherDataEntitySchema.deserialize,
     allOffsets,
   );
@@ -380,6 +394,8 @@ P _fishingNoteEntityDeserializeProp<P>(
         allOffsets,
       )) as P;
     case 1:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 2:
       return (reader.readObjectList<BiteRecordEntity>(
             offset,
             BiteRecordEntitySchema.deserialize,
@@ -387,45 +403,45 @@ P _fishingNoteEntityDeserializeProp<P>(
             BiteRecordEntity(),
           ) ??
           []) as P;
-    case 2:
-      return (reader.readDateTime(offset)) as P;
     case 3:
       return (reader.readDateTime(offset)) as P;
     case 4:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 6:
       return (reader.readStringOrNull(offset)) as P;
+    case 6:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 9:
       return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readDoubleOrNull(offset)) as P;
-    case 11:
-      return (reader.readStringOrNull(offset)) as P;
-    case 12:
-      return (reader.readDoubleOrNull(offset)) as P;
-    case 13:
-      return (reader.readStringOrNull(offset)) as P;
-    case 14:
       return (reader.readBool(offset)) as P;
+    case 11:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 14:
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 16:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 17:
       return (reader.readStringOrNull(offset)) as P;
+    case 17:
+      return (reader.readStringList(offset) ?? []) as P;
     case 18:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 19:
-      return (reader.readDateTime(offset)) as P;
-    case 20:
       return (reader.readString(offset)) as P;
+    case 20:
+      return (reader.readDateTime(offset)) as P;
     case 21:
+      return (reader.readString(offset)) as P;
+    case 22:
       return (reader.readObjectOrNull<WeatherDataEntity>(
         offset,
         WeatherDataEntitySchema.deserialize,
@@ -770,6 +786,232 @@ extension FishingNoteEntityQueryFilter
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'aiPrediction',
       ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'baitProgramIds',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'baitProgramIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'baitProgramIds',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'baitProgramIds',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'baitProgramIds',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QAfterFilterCondition>
+      baitProgramIdsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'baitProgramIds',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -3505,6 +3747,13 @@ extension FishingNoteEntityQuerySortThenBy
 extension FishingNoteEntityQueryWhereDistinct
     on QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct> {
   QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct>
+      distinctByBaitProgramIds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'baitProgramIds');
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, FishingNoteEntity, QDistinct>
       distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -3651,6 +3900,13 @@ extension FishingNoteEntityQueryProperty
       aiPredictionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'aiPrediction');
+    });
+  }
+
+  QueryBuilder<FishingNoteEntity, List<String>, QQueryOperations>
+      baitProgramIdsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'baitProgramIds');
     });
   }
 
