@@ -415,8 +415,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 ),
 
                 // Содержимое
-                Flexible(
+                Expanded(
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -848,377 +849,385 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: AppConstants.cardColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Заголовок
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.1),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.add_location,
-                            color: AppConstants.primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              localizations.translate('add_marker'),
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+        return MediaQuery.removePadding(
+          context: context,
+          removeBottom: true,
+          child: Builder(
+            builder: (context) {
+              return StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return Dialog(
+                    backgroundColor: AppConstants.cardColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Заголовок
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppConstants.primaryColor.withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.add_location,
+                                  color: AppConstants.primaryColor,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    localizations.translate('add_marker'),
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
-                    // Содержимое
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 1️⃣ ВЫБОР ЛУЧА
-                            Text(
-                              '1. ${localizations.translate('ray_selection')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: AppConstants.primaryColor.withOpacity(0.3),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: selectedRayIndex,
-                                  isExpanded: true,
-                                  dropdownColor: AppConstants.surfaceColor,
-                                  style: TextStyle(color: AppConstants.textColor),
-                                  items: List.generate(_raysCount, (index) {
-                                    return DropdownMenuItem<int>(
-                                      value: index,
-                                      child: Text('${localizations.translate('ray')} ${index + 1}'),
-                                    );
-                                  }),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setDialogState(() {
-                                        selectedRayIndex = value;
-                                      });
-                                      _lastSelectedRayIndex = value;
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 2️⃣ РАССТОЯНИЕ
-                            Text(
-                              '2. ${localizations.translate('distance_m')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _distanceController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('distance_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                          // Содержимое
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 1️⃣ ВЫБОР ЛУЧА
+                                  Text(
+                                    '1. ${localizations.translate('ray_selection')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 3️⃣ ГЛУБИНА
-                            Text(
-                              '3. ${localizations.translate('depth_m')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _depthController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('depth_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 4️⃣ ЗАМЕТКИ
-                            Text(
-                              '4. ${localizations.translate('notes')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _notesController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('notes_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              maxLines: 3,
-                              minLines: 1,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 5️⃣ ВЫБОР ТИПА ДНА
-                            Text(
-                              '5. ${localizations.translate('marker_type')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _bottomTypes.map((type) {
-                                final isSelected = selectedBottomType == type;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setDialogState(() {
-                                      selectedBottomType = type;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? _bottomTypeColors[type] ?? Colors.grey
-                                          : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                        color: isSelected
-                                            ? _bottomTypeColors[type] ?? Colors.grey
-                                            : Colors.transparent,
-                                        width: 2,
+                                        color: AppConstants.primaryColor.withOpacity(0.3),
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<int>(
+                                        value: selectedRayIndex,
+                                        isExpanded: true,
+                                        dropdownColor: AppConstants.surfaceColor,
+                                        style: TextStyle(color: AppConstants.textColor),
+                                        items: List.generate(_raysCount, (index) {
+                                          return DropdownMenuItem<int>(
+                                            value: index,
+                                            child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                          );
+                                        }),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setDialogState(() {
+                                              selectedRayIndex = value;
+                                            });
+                                            _lastSelectedRayIndex = value;
+                                          }
+                                        },
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          _bottomTypeIcons[type],
-                                          color: isSelected ? Colors.black : AppConstants.textColor,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _getBottomTypeName(type),
-                                          style: TextStyle(
-                                            color: isSelected ? Colors.black : AppConstants.textColor,
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 2️⃣ РАССТОЯНИЕ
+                                  Text(
+                                    '2. ${localizations.translate('distance_m')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _distanceController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('distance_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                  const SizedBox(height: 20),
 
-                    // Кнопки
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: AppConstants.textColor.withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(
-                              localizations.translate('cancel'),
-                              style: TextStyle(color: AppConstants.textColor),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppConstants.primaryColor,
-                              foregroundColor: AppConstants.textColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                  // 3️⃣ ГЛУБИНА
+                                  Text(
+                                    '3. ${localizations.translate('depth_m')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _depthController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('depth_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 4️⃣ ЗАМЕТКИ
+                                  Text(
+                                    '4. ${localizations.translate('notes')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _notesController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('notes_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    maxLines: 3,
+                                    minLines: 1,
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 5️⃣ ВЫБОР ТИПА ДНА
+                                  Text(
+                                    '5. ${localizations.translate('marker_type')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _bottomTypes.map((type) {
+                                      final isSelected = selectedBottomType == type;
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setDialogState(() {
+                                            selectedBottomType = type;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? _bottomTypeColors[type] ?? Colors.grey
+                                                : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? _bottomTypeColors[type] ?? Colors.grey
+                                                  : Colors.transparent,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                _bottomTypeIcons[type],
+                                                color: isSelected ? Colors.black : AppConstants.textColor,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _getBottomTypeName(type),
+                                                style: TextStyle(
+                                                  color: isSelected ? Colors.black : AppConstants.textColor,
+                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
                               ),
                             ),
-                            onPressed: () async {
-                              // Валидация
-                              if (_distanceController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(localizations.translate('enter_distance')),
-                                    backgroundColor: Colors.red,
+                          ),
+
+                          // Кнопки
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                  color: AppConstants.textColor.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    localizations.translate('cancel'),
+                                    style: TextStyle(color: AppConstants.textColor),
                                   ),
-                                );
-                                return;
-                              }
-
-                              double? distance = double.tryParse(_distanceController.text);
-                              if (distance == null || distance <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(localizations.translate('enter_valid_distance')),
-                                    backgroundColor: Colors.red,
+                                ),
+                                const SizedBox(width: 16),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppConstants.primaryColor,
+                                    foregroundColor: AppConstants.textColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
-                                );
-                                return;
-                              }
+                                  onPressed: () async {
+                                    // Валидация
+                                    if (_distanceController.text.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(localizations.translate('enter_distance')),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                              if (distance > _maxDistance) {
-                                distance = _maxDistance;
-                              }
+                                    double? distance = double.tryParse(_distanceController.text);
+                                    if (distance == null || distance <= 0) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(localizations.translate('enter_valid_distance')),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                              // Создание маркера
-                              final newMarker = {
-                                'id': const Uuid().v4(),
-                                'rayIndex': selectedRayIndex.toDouble(),
-                                'distance': distance,
-                                'name': localizations.translate('marker'),
-                                'depth': _depthController.text.isEmpty
-                                    ? null
-                                    : double.tryParse(_depthController.text),
-                                'notes': _notesController.text.trim(),
-                                'bottomType': selectedBottomType,
-                                'angle': _calculateRayAngle(selectedRayIndex),
-                                'ratio': distance / _maxDistance,
-                              };
+                                    if (distance > _maxDistance) {
+                                      distance = _maxDistance;
+                                    }
 
-                              _lastSelectedRayIndex = selectedRayIndex;
-                              _currentBottomType = selectedBottomType;
+                                    // Создание маркера
+                                    final newMarker = {
+                                      'id': const Uuid().v4(),
+                                      'rayIndex': selectedRayIndex.toDouble(),
+                                      'distance': distance,
+                                      'name': localizations.translate('marker'),
+                                      'depth': _depthController.text.isEmpty
+                                          ? null
+                                          : double.tryParse(_depthController.text),
+                                      'notes': _notesController.text.trim(),
+                                      'bottomType': selectedBottomType,
+                                      'angle': _calculateRayAngle(selectedRayIndex),
+                                      'ratio': distance / _maxDistance,
+                                    };
 
-                              final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
-                              updatedMarkers.add(newMarker);
+                                    _lastSelectedRayIndex = selectedRayIndex;
+                                    _currentBottomType = selectedBottomType;
 
-                              if (!_isDisposed) {
-                                _safeSetState(() {
-                                  _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-                                });
-                              }
+                                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+                                    updatedMarkers.add(newMarker);
 
-                              Navigator.pop(context);
+                                    if (!_isDisposed) {
+                                      _safeSetState(() {
+                                        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                                      });
+                                    }
 
-                              await _autoSaveChanges(localizations.translate('marker_added'));
-                            },
-                            child: Text(
-                              localizations.translate('add'),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                    Navigator.pop(context);
+
+                                    await _autoSaveChanges(localizations.translate('marker_added'));
+                                  },
+                                  child: Text(
+                                    localizations.translate('add'),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  );
+                },
+              );
+            },
+          ),
         );
       },
     );
@@ -1241,381 +1250,389 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: AppConstants.cardColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 🎯 ЗАГОЛОВОК - "Редактировать маркер"
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppConstants.primaryColor.withOpacity(0.1),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.edit, // 🎯 Иконка редактирования
-                            color: AppConstants.primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              localizations.translate('edit_marker'), // 🎯 "Редактировать маркер"
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+        return MediaQuery.removePadding(
+          context: context,
+          removeBottom: true,
+          child: Builder(
+            builder: (context) {
+              return StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return Dialog(
+                    backgroundColor: AppConstants.cardColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 🎯 ЗАГОЛОВОК - "Редактировать маркер"
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppConstants.primaryColor.withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit, // 🎯 Иконка редактирования
+                                  color: AppConstants.primaryColor,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    localizations.translate('edit_marker'), // 🎯 "Редактировать маркер"
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
-                    // Содержимое - ТОЧНО ТАКОЕ ЖЕ как в _showAddMarkerDialog
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 1️⃣ ВЫБОР ЛУЧА
-                            Text(
-                              '1. ${localizations.translate('ray_selection')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: AppConstants.primaryColor.withOpacity(0.3),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: selectedRayIndex,
-                                  isExpanded: true,
-                                  dropdownColor: AppConstants.surfaceColor,
-                                  style: TextStyle(color: AppConstants.textColor),
-                                  items: List.generate(_raysCount, (index) {
-                                    return DropdownMenuItem<int>(
-                                      value: index,
-                                      child: Text('${localizations.translate('ray')} ${index + 1}'),
-                                    );
-                                  }),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setDialogState(() {
-                                        selectedRayIndex = value;
-                                      });
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 2️⃣ РАССТОЯНИЕ
-                            Text(
-                              '2. ${localizations.translate('distance_m')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _distanceController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('distance_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                          // Содержимое - ТОЧНО ТАКОЕ ЖЕ как в _showAddMarkerDialog
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 1️⃣ ВЫБОР ЛУЧА
+                                  Text(
+                                    '1. ${localizations.translate('ray_selection')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 3️⃣ ГЛУБИНА
-                            Text(
-                              '3. ${localizations.translate('depth_m')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _depthController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('depth_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 4️⃣ ЗАМЕТКИ
-                            Text(
-                              '4. ${localizations.translate('notes')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _notesController,
-                              style: TextStyle(color: AppConstants.textColor),
-                              decoration: InputDecoration(
-                                hintText: localizations.translate('notes_hint'),
-                                hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: AppConstants.primaryColor,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
-                              maxLines: 3,
-                              minLines: 1,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 5️⃣ ВЫБОР ТИПА ДНА
-                            Text(
-                              '5. ${localizations.translate('marker_type')}',
-                              style: TextStyle(
-                                color: AppConstants.textColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _bottomTypes.map((type) {
-                                final isSelected = selectedBottomType == type;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setDialogState(() {
-                                      selectedBottomType = type;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? _bottomTypeColors[type] ?? Colors.grey
-                                          : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                        color: isSelected
-                                            ? _bottomTypeColors[type] ?? Colors.grey
-                                            : Colors.transparent,
-                                        width: 2,
+                                        color: AppConstants.primaryColor.withOpacity(0.3),
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<int>(
+                                        value: selectedRayIndex,
+                                        isExpanded: true,
+                                        dropdownColor: AppConstants.surfaceColor,
+                                        style: TextStyle(color: AppConstants.textColor),
+                                        items: List.generate(_raysCount, (index) {
+                                          return DropdownMenuItem<int>(
+                                            value: index,
+                                            child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                          );
+                                        }),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setDialogState(() {
+                                              selectedRayIndex = value;
+                                            });
+                                          }
+                                        },
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          _bottomTypeIcons[type],
-                                          color: isSelected ? Colors.black : AppConstants.textColor,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _getBottomTypeName(type),
-                                          style: TextStyle(
-                                            color: isSelected ? Colors.black : AppConstants.textColor,
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 2️⃣ РАССТОЯНИЕ
+                                  Text(
+                                    '2. ${localizations.translate('distance_m')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _distanceController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('distance_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                  const SizedBox(height: 20),
 
-                    // 🎯 КНОПКИ - "Отмена" и "Сохранить изменения"
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: AppConstants.textColor.withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(
-                              localizations.translate('cancel'),
-                              style: TextStyle(color: AppConstants.textColor),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppConstants.primaryColor,
-                              foregroundColor: AppConstants.textColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                  // 3️⃣ ГЛУБИНА
+                                  Text(
+                                    '3. ${localizations.translate('depth_m')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _depthController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('depth_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 4️⃣ ЗАМЕТКИ
+                                  Text(
+                                    '4. ${localizations.translate('notes')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _notesController,
+                                    style: TextStyle(color: AppConstants.textColor),
+                                    decoration: InputDecoration(
+                                      hintText: localizations.translate('notes_hint'),
+                                      hintStyle: TextStyle(
+                                        color: AppConstants.textColor.withOpacity(0.5),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppConstants.primaryColor,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    ),
+                                    maxLines: 3,
+                                    minLines: 1,
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // 5️⃣ ВЫБОР ТИПА ДНА
+                                  Text(
+                                    '5. ${localizations.translate('marker_type')}',
+                                    style: TextStyle(
+                                      color: AppConstants.textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _bottomTypes.map((type) {
+                                      final isSelected = selectedBottomType == type;
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setDialogState(() {
+                                            selectedBottomType = type;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? _bottomTypeColors[type] ?? Colors.grey
+                                                : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? _bottomTypeColors[type] ?? Colors.grey
+                                                  : Colors.transparent,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                _bottomTypeIcons[type],
+                                                color: isSelected ? Colors.black : AppConstants.textColor,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _getBottomTypeName(type),
+                                                style: TextStyle(
+                                                  color: isSelected ? Colors.black : AppConstants.textColor,
+                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
                               ),
                             ),
-                            onPressed: () async {
-                              // 🔥 ВАЛИДАЦИЯ - такая же как в _showAddMarkerDialog
-                              if (_distanceController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(localizations.translate('enter_distance')),
-                                    backgroundColor: Colors.red,
+                          ),
+
+                          // 🎯 КНОПКИ - "Отмена" и "Сохранить изменения"
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                  color: AppConstants.textColor.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    localizations.translate('cancel'),
+                                    style: TextStyle(color: AppConstants.textColor),
                                   ),
-                                );
-                                return;
-                              }
-
-                              double? distance = double.tryParse(_distanceController.text);
-                              if (distance == null || distance <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(localizations.translate('enter_valid_distance')),
-                                    backgroundColor: Colors.red,
+                                ),
+                                const SizedBox(width: 16),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppConstants.primaryColor,
+                                    foregroundColor: AppConstants.textColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
-                                );
-                                return;
-                              }
+                                  onPressed: () async {
+                                    // 🔥 ВАЛИДАЦИЯ - такая же как в _showAddMarkerDialog
+                                    if (_distanceController.text.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(localizations.translate('enter_distance')),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                              if (distance > _maxDistance) {
-                                distance = _maxDistance;
-                              }
+                                    double? distance = double.tryParse(_distanceController.text);
+                                    if (distance == null || distance <= 0) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(localizations.translate('enter_valid_distance')),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                              // 🔥 ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО МАРКЕРА (а не создание нового!)
-                              final updatedMarker = {
-                                'id': existingMarker['id'], // 🎯 СОХРАНЯЕМ ОРИГИНАЛЬНЫЙ ID!
-                                'rayIndex': selectedRayIndex.toDouble(),
-                                'distance': distance,
-                                'name': localizations.translate('marker'),
-                                'depth': _depthController.text.isEmpty
-                                    ? null
-                                    : double.tryParse(_depthController.text),
-                                'notes': _notesController.text.trim(),
-                                'bottomType': selectedBottomType,
-                                'angle': _calculateRayAngle(selectedRayIndex),
-                                'ratio': distance / _maxDistance,
-                              };
+                                    if (distance > _maxDistance) {
+                                      distance = _maxDistance;
+                                    }
 
-                              // 🔥 НАХОДИМ И ЗАМЕНЯЕМ СУЩЕСТВУЮЩИЙ МАРКЕР
-                              final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
-                              final markerIndex = updatedMarkers.indexWhere((m) => m['id'] == existingMarker['id']);
+                                    // 🔥 ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО МАРКЕРА (а не создание нового!)
+                                    final updatedMarker = {
+                                      'id': existingMarker['id'], // 🎯 СОХРАНЯЕМ ОРИГИНАЛЬНЫЙ ID!
+                                      'rayIndex': selectedRayIndex.toDouble(),
+                                      'distance': distance,
+                                      'name': localizations.translate('marker'),
+                                      'depth': _depthController.text.isEmpty
+                                          ? null
+                                          : double.tryParse(_depthController.text),
+                                      'notes': _notesController.text.trim(),
+                                      'bottomType': selectedBottomType,
+                                      'angle': _calculateRayAngle(selectedRayIndex),
+                                      'ratio': distance / _maxDistance,
+                                    };
 
-                              if (markerIndex != -1) {
-                                updatedMarkers[markerIndex] = updatedMarker; // 🎯 ЗАМЕНЯЕМ, а не добавляем!
-                              } else {
-                                debugPrint('⚠️ Маркер с ID ${existingMarker['id']} не найден для обновления');
-                                return;
-                              }
+                                    // 🔥 НАХОДИМ И ЗАМЕНЯЕМ СУЩЕСТВУЮЩИЙ МАРКЕР
+                                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+                                    final markerIndex = updatedMarkers.indexWhere((m) => m['id'] == existingMarker['id']);
 
-                              if (!_isDisposed) {
-                                _safeSetState(() {
-                                  _markerMap = _markerMap.copyWith(markers: updatedMarkers);
-                                });
-                              }
+                                    if (markerIndex != -1) {
+                                      updatedMarkers[markerIndex] = updatedMarker; // 🎯 ЗАМЕНЯЕМ, а не добавляем!
+                                    } else {
+                                      debugPrint('⚠️ Маркер с ID ${existingMarker['id']} не найден для обновления');
+                                      return;
+                                    }
 
-                              Navigator.pop(context);
+                                    if (!_isDisposed) {
+                                      _safeSetState(() {
+                                        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                                      });
+                                    }
 
-                              await _autoSaveChanges(localizations.translate('marker_updated')); // 🎯 "Маркер обновлен"
-                            },
-                            child: Text(
-                              localizations.translate('save_changes'), // 🎯 "Сохранить изменения"
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                    Navigator.pop(context);
+
+                                    await _autoSaveChanges(localizations.translate('marker_updated')); // 🎯 "Маркер обновлен"
+                                  },
+                                  child: Text(
+                                    localizations.translate('save_changes'), // 🎯 "Сохранить изменения"
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  );
+                },
+              );
+            },
+          ),
         );
       },
     );
@@ -1685,6 +1702,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B1F1D),
+      resizeToAvoidBottomInset: false, // Карта не сжимается от клавиатуры
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: AppLocalizations.of(context).translate('please_wait'),
@@ -1702,10 +1720,11 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                   Positioned.fill(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // 🔥 ИСПРАВЛЕНО: Учитываем нижнюю навигацию
-                        final bottomPadding = MediaQuery.of(context).padding.bottom;
-                        final availableHeight = constraints.maxHeight - bottomPadding;
-                        final screenSize = Size(constraints.maxWidth, availableHeight);
+                        // 🔥 ФИКСИРОВАННЫЕ РАЗМЕРЫ - игнорируем клавиатуру
+                        final screenSize = Size(
+                          MediaQuery.of(context).size.width,
+                          MediaQuery.of(context).size.height,
+                        );
 
                         return Stack(
                           children: [

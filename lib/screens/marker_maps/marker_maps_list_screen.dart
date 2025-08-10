@@ -140,19 +140,6 @@ class _MarkerMapsListScreenState extends State<MarkerMapsListScreen> {
     }
   }
 
-  // 🚀 ДОБАВЛЕНО: Автообновление данных при возврате на экран
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Проверяем, вернулись ли мы на этот экран после импорта
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadData();
-        debugPrint('🔄 Автообновление данных после возврата на экран');
-      }
-    });
-  }
 
   // Оптимизация: Универсальный метод для async операций с loading
   Future<void> _performAsyncOperation(
