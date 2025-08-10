@@ -42,63 +42,78 @@ const MarkerMapEntitySchema = CollectionSchema(
       name: r'hasMarkers',
       type: IsarType.bool,
     ),
-    r'isSynced': PropertySchema(
+    r'hasRayLandmarks': PropertySchema(
       id: 5,
+      name: r'hasRayLandmarks',
+      type: IsarType.bool,
+    ),
+    r'isSynced': PropertySchema(
+      id: 6,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'markedForDeletion': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'markedForDeletion',
       type: IsarType.bool,
     ),
     r'markersCount': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'markersCount',
       type: IsarType.long,
     ),
     r'markersJson': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'markersJson',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'name',
       type: IsarType.string,
     ),
     r'noteId': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'noteId',
       type: IsarType.string,
     ),
     r'noteIds': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'noteIds',
       type: IsarType.stringList,
     ),
     r'noteName': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'noteName',
       type: IsarType.string,
     ),
     r'noteNames': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'noteNames',
       type: IsarType.stringList,
     ),
+    r'rayLandmarksCount': PropertySchema(
+      id: 15,
+      name: r'rayLandmarksCount',
+      type: IsarType.long,
+    ),
+    r'rayLandmarksJson': PropertySchema(
+      id: 16,
+      name: r'rayLandmarksJson',
+      type: IsarType.string,
+    ),
     r'sector': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'sector',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 15,
+      id: 18,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 16,
+      id: 19,
       name: r'userId',
       type: IsarType.string,
     )
@@ -198,6 +213,7 @@ int _markerMapEntityEstimateSize(
       bytesCount += value.length * 3;
     }
   }
+  bytesCount += 3 + object.rayLandmarksJson.length * 3;
   {
     final value = object.sector;
     if (value != null) {
@@ -219,18 +235,21 @@ void _markerMapEntitySerialize(
   writer.writeDateTime(offsets[2], object.date);
   writer.writeString(offsets[3], object.firebaseId);
   writer.writeBool(offsets[4], object.hasMarkers);
-  writer.writeBool(offsets[5], object.isSynced);
-  writer.writeBool(offsets[6], object.markedForDeletion);
-  writer.writeLong(offsets[7], object.markersCount);
-  writer.writeString(offsets[8], object.markersJson);
-  writer.writeString(offsets[9], object.name);
-  writer.writeString(offsets[10], object.noteId);
-  writer.writeStringList(offsets[11], object.noteIds);
-  writer.writeString(offsets[12], object.noteName);
-  writer.writeStringList(offsets[13], object.noteNames);
-  writer.writeString(offsets[14], object.sector);
-  writer.writeDateTime(offsets[15], object.updatedAt);
-  writer.writeString(offsets[16], object.userId);
+  writer.writeBool(offsets[5], object.hasRayLandmarks);
+  writer.writeBool(offsets[6], object.isSynced);
+  writer.writeBool(offsets[7], object.markedForDeletion);
+  writer.writeLong(offsets[8], object.markersCount);
+  writer.writeString(offsets[9], object.markersJson);
+  writer.writeString(offsets[10], object.name);
+  writer.writeString(offsets[11], object.noteId);
+  writer.writeStringList(offsets[12], object.noteIds);
+  writer.writeString(offsets[13], object.noteName);
+  writer.writeStringList(offsets[14], object.noteNames);
+  writer.writeLong(offsets[15], object.rayLandmarksCount);
+  writer.writeString(offsets[16], object.rayLandmarksJson);
+  writer.writeString(offsets[17], object.sector);
+  writer.writeDateTime(offsets[18], object.updatedAt);
+  writer.writeString(offsets[19], object.userId);
 }
 
 MarkerMapEntity _markerMapEntityDeserialize(
@@ -244,15 +263,16 @@ MarkerMapEntity _markerMapEntityDeserialize(
   object.date = reader.readDateTime(offsets[2]);
   object.firebaseId = reader.readStringOrNull(offsets[3]);
   object.id = id;
-  object.isSynced = reader.readBool(offsets[5]);
-  object.markedForDeletion = reader.readBool(offsets[6]);
-  object.markersJson = reader.readString(offsets[8]);
-  object.name = reader.readString(offsets[9]);
-  object.noteIds = reader.readStringList(offsets[11]) ?? [];
-  object.noteNames = reader.readStringList(offsets[13]) ?? [];
-  object.sector = reader.readStringOrNull(offsets[14]);
-  object.updatedAt = reader.readDateTime(offsets[15]);
-  object.userId = reader.readString(offsets[16]);
+  object.isSynced = reader.readBool(offsets[6]);
+  object.markedForDeletion = reader.readBool(offsets[7]);
+  object.markersJson = reader.readString(offsets[9]);
+  object.name = reader.readString(offsets[10]);
+  object.noteIds = reader.readStringList(offsets[12]) ?? [];
+  object.noteNames = reader.readStringList(offsets[14]) ?? [];
+  object.rayLandmarksJson = reader.readString(offsets[16]);
+  object.sector = reader.readStringOrNull(offsets[17]);
+  object.updatedAt = reader.readDateTime(offsets[18]);
+  object.userId = reader.readString(offsets[19]);
   return object;
 }
 
@@ -278,24 +298,30 @@ P _markerMapEntityDeserializeProp<P>(
     case 6:
       return (reader.readBool(offset)) as P;
     case 7:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 9:
       return (reader.readString(offset)) as P;
     case 10:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 11:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
-      return (reader.readStringOrNull(offset)) as P;
-    case 13:
       return (reader.readStringList(offset) ?? []) as P;
-    case 14:
+    case 13:
       return (reader.readStringOrNull(offset)) as P;
+    case 14:
+      return (reader.readStringList(offset) ?? []) as P;
     case 15:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 16:
+      return (reader.readString(offset)) as P;
+    case 17:
+      return (reader.readStringOrNull(offset)) as P;
+    case 18:
+      return (reader.readDateTime(offset)) as P;
+    case 19:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1027,6 +1053,16 @@ extension MarkerMapEntityQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'hasMarkers',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      hasRayLandmarksEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hasRayLandmarks',
         value: value,
       ));
     });
@@ -2195,6 +2231,198 @@ extension MarkerMapEntityQueryFilter
   }
 
   QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksCountEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rayLandmarksCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksCountGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'rayLandmarksCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksCountLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'rayLandmarksCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksCountBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'rayLandmarksCount',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'rayLandmarksJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'rayLandmarksJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'rayLandmarksJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rayLandmarksJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
+      rayLandmarksJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'rayLandmarksJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterFilterCondition>
       sectorIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2619,6 +2847,20 @@ extension MarkerMapEntityQuerySortBy
   }
 
   QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByHasRayLandmarks() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasRayLandmarks', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByHasRayLandmarksDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasRayLandmarks', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
       sortByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.asc);
@@ -2711,6 +2953,34 @@ extension MarkerMapEntityQuerySortBy
       sortByNoteNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'noteName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByRayLandmarksCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByRayLandmarksCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByRayLandmarksJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      sortByRayLandmarksJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksJson', Sort.desc);
     });
   }
 
@@ -2826,6 +3096,20 @@ extension MarkerMapEntityQuerySortThenBy
     });
   }
 
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByHasRayLandmarks() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasRayLandmarks', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByHasRayLandmarksDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasRayLandmarks', Sort.desc);
+    });
+  }
+
   QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -2934,6 +3218,34 @@ extension MarkerMapEntityQuerySortThenBy
     });
   }
 
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByRayLandmarksCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByRayLandmarksCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByRayLandmarksJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy>
+      thenByRayLandmarksJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'rayLandmarksJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<MarkerMapEntity, MarkerMapEntity, QAfterSortBy> thenBySector() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sector', Sort.asc);
@@ -3013,6 +3325,13 @@ extension MarkerMapEntityQueryWhereDistinct
   }
 
   QueryBuilder<MarkerMapEntity, MarkerMapEntity, QDistinct>
+      distinctByHasRayLandmarks() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hasRayLandmarks');
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QDistinct>
       distinctByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isSynced');
@@ -3072,6 +3391,21 @@ extension MarkerMapEntityQueryWhereDistinct
       distinctByNoteNames() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'noteNames');
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QDistinct>
+      distinctByRayLandmarksCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'rayLandmarksCount');
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, MarkerMapEntity, QDistinct>
+      distinctByRayLandmarksJson({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'rayLandmarksJson',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -3138,6 +3472,13 @@ extension MarkerMapEntityQueryProperty
     });
   }
 
+  QueryBuilder<MarkerMapEntity, bool, QQueryOperations>
+      hasRayLandmarksProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hasRayLandmarks');
+    });
+  }
+
   QueryBuilder<MarkerMapEntity, bool, QQueryOperations> isSyncedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isSynced');
@@ -3193,6 +3534,20 @@ extension MarkerMapEntityQueryProperty
       noteNamesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'noteNames');
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, int, QQueryOperations>
+      rayLandmarksCountProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'rayLandmarksCount');
+    });
+  }
+
+  QueryBuilder<MarkerMapEntity, String, QQueryOperations>
+      rayLandmarksJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'rayLandmarksJson');
     });
   }
 

@@ -3,15 +3,18 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../localization/app_localizations.dart';
+import '../../../constants/app_constants.dart';
 
-/// Современные подписи карты
-/// Заменяет TextPainter на Positioned Text виджеты
+/// Современные подписи карты с поддержкой ориентиров
 class ModernMapLabels extends StatelessWidget {
   final double maxDistance;
   final int rayCount;
   final double leftAngle;
   final double rightAngle;
   final Size screenSize;
+  final Map<String, dynamic> rayLandmarks; // 🔥 НОВЫЙ параметр - ориентиры лучей
+  final Function(int rayIndex)? onRayLabelTap; // 🔥 НОВЫЙ параметр - колбэк клика на подпись луча
+  final Function(int rayIndex)? onLandmarkTap; // 🔥 НОВЫЙ параметр - колбэк клика на ориентир
 
   const ModernMapLabels({
     super.key,
@@ -20,7 +23,28 @@ class ModernMapLabels extends StatelessWidget {
     required this.leftAngle,
     required this.rightAngle,
     required this.screenSize,
+    this.rayLandmarks = const {}, // 🔥 НОВЫЙ параметр с дефолтным значением
+    this.onRayLabelTap, // 🔥 НОВЫЙ параметр
+    this.onLandmarkTap, // 🔥 НОВЫЙ параметр
   });
+
+  /// 🎯 СЛОВАРЬ ИКОНОК ОРИЕНТИРОВ
+  static const Map<String, IconData> _landmarkIcons = {
+    'tree': Icons.park,              // Дерево
+    'reed': Icons.grass,             // Камыш
+    'forest': Icons.forest,          // Хвойный лес
+    'dry_trees': Icons.eco,          // Сухие деревья
+    'rock': Icons.terrain,           // Скала
+    'mountain': Icons.landscape,     // Гора
+    'power_line': Icons.electric_bolt, // ЛЭП
+    'factory': Icons.factory,        // Завод
+    'house': Icons.home,             // Дом
+    'radio_tower': Icons.cell_tower, // Радиовышка
+    'lamp_post': Icons.lightbulb,    // Фонарь
+    'gazebo': Icons.cottage,         // Беседка
+    'internet_tower': Icons.wifi,    // Интернет вышка
+    'exact_location': Icons.gps_fixed, // Точная локация
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -32,20 +56,20 @@ class ModernMapLabels extends StatelessWidget {
     return RepaintBoundary(
       child: Stack(
         children: [
-          // Подписи расстояний (10-50м)
+          // 📐 Подписи расстояний (10-50м)
           ..._buildDistanceLabels(centerX, originY, pixelsPerMeter),
 
-          // Подписи больших расстояний (60-200м)
+          // 📐 Подписи больших расстояний (60-200м)
           ..._buildLargeDistanceLabels(centerX, originY, pixelsPerMeter),
 
-          // Подписи лучей
-          ..._buildRayLabels(localizations, centerX, originY),
+          // 🎯 ОБНОВЛЕННЫЕ подписи лучей с поддержкой ориентиров
+          ..._buildRayLabelsWithLandmarks(localizations, centerX, originY),
         ],
       ),
     );
   }
 
-  /// Подписи расстояний 10-50м (вертикальные) - ОПУСКАЕМ НИЖЕ
+  /// Подписи расстояний 10-50м (оригинальная логика)
   List<Widget> _buildDistanceLabels(double centerX, double originY, double pixelsPerMeter) {
     return List.generate(5, (index) {
       final distance = (index + 1) * 10; // 10, 20, 30, 40, 50
@@ -75,7 +99,7 @@ class ModernMapLabels extends StatelessWidget {
     });
   }
 
-  /// Подписи больших расстояний (60-200м) с фиксированными позициями
+  /// Подписи больших расстояний (оригинальная логика)
   List<Widget> _buildLargeDistanceLabels(double centerX, double originY, double pixelsPerMeter) {
     final distancePositions = [
       {'distance': 60, 'offset': 95.0},
@@ -121,17 +145,17 @@ class ModernMapLabels extends StatelessWidget {
     }).toList();
   }
 
-  /// Подписи лучей
-  List<Widget> _buildRayLabels(AppLocalizations localizations, double centerX, double originY) {
+  /// 🔥 НОВЫЙ МЕТОД - Подписи лучей с поддержкой ориентиров
+  List<Widget> _buildRayLabelsWithLandmarks(AppLocalizations localizations, double centerX, double originY) {
     return List.generate(rayCount, (i) {
       final angle = _calculateRayAngle(i);
 
-      // Базовые параметры
+      // Базовые параметры позиционирования (та же логика что раньше)
       double labelY = 50.0;
       final rayAtLabelY = (originY - labelY);
       double labelX = centerX + rayAtLabelY / math.tan(angle);
 
-      // Индивидуальные корректировки для каждого луча
+      // Индивидуальные корректировки для каждого луча (оригинальная логика)
       switch (i) {
         case 0:
           labelY += 20.0;
@@ -153,32 +177,129 @@ class ModernMapLabels extends StatelessWidget {
           break;
       }
 
+      // 🔥 ПРОВЕРЯЕМ есть ли ориентир для этого луча
+      final landmarkKey = i.toString(); // Ключ в rayLandmarks (0, 1, 2, 3, 4)
+      final hasLandmark = rayLandmarks.containsKey(landmarkKey);
+      final landmark = hasLandmark ? rayLandmarks[landmarkKey] : null;
+
       return Positioned(
         left: labelX - 30, // Центрируем текст
         top: labelY - 10,
         child: SizedBox(
           width: 60,
-          child: Text(
-            '${localizations.translate('ray')} ${i + 1}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 12,
-              shadows: [
-                Shadow(
-                  offset: const Offset(1, 1),
-                  blurRadius: 3,
-                  color: Colors.black.withOpacity(0.8),
+          height: 40, // 🔥 Увеличиваем высоту для лучшего таргетинга
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 🎯 1. ОРИГИНАЛЬНАЯ ПОДПИСЬ (всегда видна, но под кликабельным слоем)
+              Text(
+                '${localizations.translate('ray')} ${i + 1}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12,
+                  shadows: [
+                    Shadow(
+                      offset: const Offset(1, 1),
+                      blurRadius: 3,
+                      color: Colors.black.withOpacity(0.8),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 🎯 2. КЛИКАБЕЛЬНЫЙ СЛОЙ
+              if (!hasLandmark) ...[
+                // 🔥 КЛИКАБЕЛЬНАЯ ПОДПИСЬ ЛУЧА (если нет ориентира)
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        debugPrint('🎯 Клик на луч ${i + 1}');
+                        onRayLabelTap?.call(i);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          // Временно добавляем подсветку для дебага (можно убрать)
+                          // border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${localizations.translate('ray')} ${i + 1}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600, // 🔥 Чуть жирнее для кликабельности
+                              shadows: [
+                                Shadow(
+                                  offset: const Offset(1, 1),
+                                  blurRadius: 3,
+                                  color: Colors.black.withOpacity(0.8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // 🏗️ ИКОНКА ОРИЕНТИРА (если ориентир установлен)
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        debugPrint('🏗️ Клик на ориентир луча ${i + 1}: ${landmark['type']}');
+                        onLandmarkTap?.call(i);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                            BoxShadow(
+                              color: AppConstants.primaryColor.withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 0),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            _landmarkIcons[landmark['type']] ?? Icons.place,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       );
     });
   }
 
-  /// Вычисление угла луча (та же логика что в оригинале)
+  /// Вычисление угла луча (оригинальная логика)
   double _calculateRayAngle(int rayIndex) {
     final totalAngle = leftAngle - rightAngle;
     final angleStep = totalAngle / (rayCount - 1);

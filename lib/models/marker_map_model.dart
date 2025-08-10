@@ -9,6 +9,7 @@ class MarkerMapModel {
   final DateTime date;
   final String? sector;
   final List<Map<String, dynamic>> markers;
+  final Map<String, dynamic> rayLandmarks; // 🔥 НОВОЕ ПОЛЕ для ориентиров
 
   MarkerMapModel({
     required this.id,
@@ -17,6 +18,7 @@ class MarkerMapModel {
     required this.date,
     this.sector,
     this.markers = const [],
+    this.rayLandmarks = const {}, // 🔥 НОВОЕ ПОЛЕ с дефолтным значением
   });
 
   factory MarkerMapModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -35,6 +37,11 @@ class MarkerMapModel {
       json['markers'] != null
           ? List<Map<String, dynamic>>.from(json['markers'])
           : [],
+      // 🔥 НОВАЯ ЛОГИКА для парсинга ориентиров
+      rayLandmarks:
+      json['rayLandmarks'] != null
+          ? Map<String, dynamic>.from(json['rayLandmarks'])
+          : {},
     );
   }
 
@@ -45,6 +52,7 @@ class MarkerMapModel {
       'date': date.millisecondsSinceEpoch,
       'sector': sector,
       'markers': markers,
+      'rayLandmarks': rayLandmarks, // 🔥 НОВОЕ ПОЛЕ в JSON
     };
   }
 
@@ -55,6 +63,7 @@ class MarkerMapModel {
     DateTime? date,
     String? sector,
     List<Map<String, dynamic>>? markers,
+    Map<String, dynamic>? rayLandmarks, // 🔥 НОВЫЙ ПАРАМЕТР в copyWith
   }) {
     return MarkerMapModel(
       id: id ?? this.id,
@@ -63,6 +72,7 @@ class MarkerMapModel {
       date: date ?? this.date,
       sector: sector ?? this.sector,
       markers: markers ?? this.markers,
+      rayLandmarks: rayLandmarks ?? this.rayLandmarks, // 🔥 НОВАЯ ЛОГИКА копирования
     );
   }
 }

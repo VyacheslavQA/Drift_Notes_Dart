@@ -170,11 +170,13 @@ class MarkerMapRepository {
     }
   }
 
-  // ✅ ОБНОВЛЕНИЕ: Обновить маркерную карту (БЕЗ полей связей)
+  // ✅ ОБНОВЛЕНИЕ: Обновить маркерную карту (С ПОДДЕРЖКОЙ ОРИЕНТИРОВ)
   Future<void> updateMarkerMap(MarkerMapModel map) async {
     try {
       // ✅ УБРАНО: debugPrint('📍 Обновление маркерной карты: ${map.id}');
       // ✅ УБРАНО: debugPrint('📍 Количество маркеров: ${map.markers.length}');
+      // 🔥 НОВОЕ: Логирование ориентиров
+      debugPrint('🏗️ Количество ориентиров: ${map.rayLandmarks.length}');
 
       if (map.id.isEmpty) {
         throw Exception('ID карты не может быть пустым');
@@ -194,11 +196,12 @@ class MarkerMapRepository {
         // Если не найдена по Firebase ID, создаем новую
         existingEntity = _modelToEntity(map.copyWith(userId: userId));
       } else {
-        // 🔥 ИСПРАВЛЕНО: Обновляем существующую entity БЕЗ полей связей
+        // 🔥 ОБНОВЛЯЕМ: Существующую entity С ПОДДЕРЖКОЙ ОРИЕНТИРОВ
         existingEntity.name = map.name;
         existingEntity.date = map.date;
         existingEntity.sector = map.sector;
         existingEntity.markers = map.markers;
+        existingEntity.rayLandmarks = map.rayLandmarks; // 🔥 НОВОЕ ПОЛЕ
         existingEntity.markAsModified(); // Помечаем как измененную
       }
 
@@ -428,7 +431,7 @@ class MarkerMapRepository {
     // ✅ УБРАНО: debugPrint с уведомлением об очистке кэша маркерных карт
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Преобразование Entity в Model БЕЗ полей связей
+  /// 🔥 ОБНОВЛЕНО: Преобразование Entity в Model С ПОДДЕРЖКОЙ ОРИЕНТИРОВ
   MarkerMapModel _entityToModel(MarkerMapEntity entity) {
     return MarkerMapModel(
       id: entity.firebaseId ?? '',
@@ -437,10 +440,11 @@ class MarkerMapRepository {
       date: entity.date,
       sector: entity.sector,
       markers: entity.markers,
+      rayLandmarks: entity.rayLandmarks, // 🔥 НОВОЕ ПОЛЕ
     );
   }
 
-  /// 🔥 ИСПРАВЛЕНО: Преобразование Model в Entity БЕЗ полей связей
+  /// 🔥 ОБНОВЛЕНО: Преобразование Model в Entity С ПОДДЕРЖКОЙ ОРИЕНТИРОВ
   MarkerMapEntity _modelToEntity(MarkerMapModel model) {
     return MarkerMapEntity()
       ..firebaseId = model.id.isNotEmpty ? model.id : null
@@ -449,6 +453,7 @@ class MarkerMapRepository {
       ..date = model.date
       ..sector = model.sector
       ..markers = model.markers
+      ..rayLandmarks = model.rayLandmarks // 🔥 НОВОЕ ПОЛЕ
       ..isSynced = false
       ..markedForDeletion = false
       ..createdAt = DateTime.now()

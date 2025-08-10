@@ -28,6 +28,8 @@ class MarkerMapEntity {
 
   String markersJson = '[]'; // JSON строка с маркерами
 
+  String rayLandmarksJson = '{}'; // 🔥 НОВОЕ ПОЛЕ: JSON строка с ориентирами лучей
+
   bool isSynced = false; // Флаг синхронизации с Firebase
 
   // ✅ ИСПРАВЛЕНО: Добавлен индекс для эффективных запросов офлайн удаления
@@ -72,6 +74,33 @@ class MarkerMapEntity {
   }
 
   // ========================================
+  // 🏗️ НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ОРИЕНТИРАМИ ЛУЧЕЙ
+  // ========================================
+
+  // Вспомогательные методы для работы с ориентирами (не сохраняются в БД)
+  @ignore
+  Map<String, dynamic> get rayLandmarks {
+    try {
+      if (rayLandmarksJson.isEmpty) return {};
+      final dynamic decoded = _decodeJson(rayLandmarksJson);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  set rayLandmarks(Map<String, dynamic> value) {
+    try {
+      rayLandmarksJson = _encodeJson(value);
+    } catch (e) {
+      rayLandmarksJson = '{}';
+    }
+  }
+
+  // ========================================
   // ✅ МЕТОДЫ ДЛЯ SYNC_SERVICE (КРИТИЧНО!)
   // ========================================
 
@@ -85,6 +114,7 @@ class MarkerMapEntity {
       'noteIds': noteIds,
       'noteNames': noteNames,
       'markers': markers, // Преобразуем JSON обратно в List для Firestore
+      'rayLandmarks': rayLandmarks, // 🔥 НОВОЕ ПОЛЕ для ориентиров
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isSynced': true, // В Firestore всегда синхронизировано
@@ -114,6 +144,10 @@ class MarkerMapEntity {
     // Парсим маркеры из Firestore
     final markersData = data['markers'] as List<dynamic>? ?? [];
     entity.markers = markersData.map((marker) => Map<String, dynamic>.from(marker)).toList();
+
+    // 🔥 НОВОЕ: Парсим ориентиры из Firestore
+    final rayLandmarksData = data['rayLandmarks'] as Map<String, dynamic>? ?? {};
+    entity.rayLandmarks = Map<String, dynamic>.from(rayLandmarksData);
 
     return entity;
   }
@@ -252,8 +286,60 @@ class MarkerMapEntity {
     markAsModified();
   }
 
+  // ========================================
+  // 🏗️ ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ОРИЕНТИРОВ
+  // ========================================
+
+  /// Добавить ориентир для луча
+  void addRayLandmark(int rayIndex, Map<String, dynamic> landmark) {
+    final currentLandmarks = rayLandmarks;
+    currentLandmarks[rayIndex.toString()] = landmark;
+    rayLandmarks = currentLandmarks;
+    markAsModified();
+  }
+
+  /// Удалить ориентир луча
+  void removeRayLandmark(int rayIndex) {
+    final currentLandmarks = rayLandmarks;
+    currentLandmarks.remove(rayIndex.toString());
+    rayLandmarks = currentLandmarks;
+    markAsModified();
+  }
+
+  /// Обновить ориентир луча
+  void updateRayLandmark(int rayIndex, Map<String, dynamic> updatedLandmark) {
+    final currentLandmarks = rayLandmarks;
+    currentLandmarks[rayIndex.toString()] = updatedLandmark;
+    rayLandmarks = currentLandmarks;
+    markAsModified();
+  }
+
+  /// Получить ориентир для луча
+  Map<String, dynamic>? getRayLandmark(int rayIndex) {
+    final landmarks = rayLandmarks;
+    final landmark = landmarks[rayIndex.toString()];
+    return landmark != null ? Map<String, dynamic>.from(landmark) : null;
+  }
+
+  /// Проверить есть ли ориентир для луча
+  bool hasRayLandmark(int rayIndex) {
+    return rayLandmarks.containsKey(rayIndex.toString());
+  }
+
+  /// Получить количество ориентиров
+  int get rayLandmarksCount => rayLandmarks.length;
+
+  /// Проверить есть ли ориентиры
+  bool get hasRayLandmarks => rayLandmarks.isNotEmpty;
+
+  /// Очистить все ориентиры
+  void clearRayLandmarks() {
+    rayLandmarks = {};
+    markAsModified();
+  }
+
   @override
   String toString() {
-    return 'MarkerMapEntity(id: $id, firebaseId: $firebaseId, name: $name, userId: $userId, markersCount: $markersCount, notesCount: ${noteIds.length})';
+    return 'MarkerMapEntity(id: $id, firebaseId: $firebaseId, name: $name, userId: $userId, markersCount: $markersCount, landmarksCount: $rayLandmarksCount, notesCount: ${noteIds.length})';
   }
 }

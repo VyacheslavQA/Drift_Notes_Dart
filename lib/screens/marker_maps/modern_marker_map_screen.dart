@@ -79,6 +79,96 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
   String _currentBottomType = 'ил';
 
+  // 🏗️ НОВЫЙ ФУНКЦИОНАЛ - Типы ориентиров для лучей
+  final _landmarkCommentController = TextEditingController();
+
+  final Map<String, Map<String, dynamic>> _landmarkTypes = {
+    'tree': {
+      'icon': Icons.park,
+      'nameEn': 'Tree',
+      'nameRu': 'Дерево',
+      'nameKz': 'Ағаш',
+    },
+    'reed': {
+      'icon': Icons.grass,
+      'nameEn': 'Reed',
+      'nameRu': 'Камыш',
+      'nameKz': 'Қамыс',
+    },
+    'forest': {
+      'icon': Icons.forest,
+      'nameEn': 'Coniferous forest',
+      'nameRu': 'Хвойный лес',
+      'nameKz': 'Инелі орман',
+    },
+    'dry_trees': {
+      'icon': Icons.eco,
+      'nameEn': 'Dry trees',
+      'nameRu': 'Сухие деревья',
+      'nameKz': 'Құрғақ ағаштар',
+    },
+    'rock': {
+      'icon': Icons.terrain,
+      'nameEn': 'Rock',
+      'nameRu': 'Скала',
+      'nameKz': 'Жартас',
+    },
+    'mountain': {
+      'icon': Icons.landscape,
+      'nameEn': 'Mountain',
+      'nameRu': 'Гора',
+      'nameKz': 'Тау',
+    },
+    'power_line': {
+      'icon': Icons.electric_bolt,
+      'nameEn': 'Power line',
+      'nameRu': 'ЛЭП',
+      'nameKz': 'Электр желісі',
+    },
+    'factory': {
+      'icon': Icons.factory,
+      'nameEn': 'Factory',
+      'nameRu': 'Завод',
+      'nameKz': 'Зауыт',
+    },
+    'house': {
+      'icon': Icons.home,
+      'nameEn': 'House',
+      'nameRu': 'Дом',
+      'nameKz': 'Үй',
+    },
+    'radio_tower': {
+      'icon': Icons.cell_tower,
+      'nameEn': 'Radio tower',
+      'nameRu': 'Радиовышка',
+      'nameKz': 'Радио мұнарасы',
+    },
+    'lamp_post': {
+      'icon': Icons.lightbulb,
+      'nameEn': 'Lamp post',
+      'nameRu': 'Фонарь',
+      'nameKz': 'Шам бағанасы',
+    },
+    'gazebo': {
+      'icon': Icons.cottage,
+      'nameEn': 'Gazebo',
+      'nameRu': 'Беседка',
+      'nameKz': 'Альтанка',
+    },
+    'internet_tower': {
+      'icon': Icons.wifi,
+      'nameEn': 'Internet tower',
+      'nameRu': 'Интернет вышка',
+      'nameKz': 'Интернет мұнарасы',
+    },
+    'exact_location': {
+      'icon': Icons.gps_fixed,
+      'nameEn': 'Exact location',
+      'nameRu': 'Точная локация',
+      'nameKz': 'Дәл орын',
+    },
+  };
+
   // Цвета и иконки (те же что в оригинале)
   final Map<String, Color> _bottomTypeColors = {
     'ил': Color(0xFFD4A574),
@@ -148,6 +238,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     _depthController.dispose();
     _notesController.dispose();
     _distanceController.dispose();
+    _landmarkCommentController.dispose(); // 🔥 НОВЫЙ контроллер
 
     // 🎬 Освобождаем контроллеры анимаций
     _fadeController.dispose();
@@ -1694,6 +1785,726 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     }
   }
 
+  // 🏗️ НОВЫЕ МЕТОДЫ ДЛЯ ОРИЕНТИРОВ
+
+  /// Получение локализованного названия ориентира
+  String _getLandmarkName(String type) {
+    final localizations = AppLocalizations.of(context);
+    final landmark = _landmarkTypes[type];
+    if (landmark == null) return type;
+
+    // Возвращаем название на русском языке (можно добавить логику локализации)
+    return landmark['nameRu'] ?? type;
+  }
+
+  /// Обработчик клика на подпись луча (добавление ориентира)
+  void _onRayLabelTap(int rayIndex) {
+    debugPrint('🎯 Клик на луч ${rayIndex + 1} - открываем диалог добавления ориентира');
+    _showAddLandmarkDialog(rayIndex);
+  }
+
+  /// Обработчик клика на иконку ориентира (просмотр/редактирование)
+  void _onLandmarkTap(int rayIndex) {
+    final landmarkKey = rayIndex.toString();
+    final landmark = _markerMap.rayLandmarks[landmarkKey];
+
+    if (landmark != null) {
+      debugPrint('🏗️ Клик на ориентир луча ${rayIndex + 1}: ${landmark['type']}');
+      _showLandmarkDetails(rayIndex, landmark);
+    }
+  }
+
+  /// Диалог добавления ориентира
+  Future<void> _showAddLandmarkDialog(int rayIndex) async {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+    _landmarkCommentController.text = '';
+    String selectedLandmarkType = 'tree';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: AppConstants.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Заголовок
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.add_location_alt,
+                            color: AppConstants.primaryColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Добавить ориентир для Луча ${rayIndex + 1}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Содержимое
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Выбор типа ориентира
+                            Text(
+                              '1. Выберите тип ориентира',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Сетка ориентиров
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _landmarkTypes.entries.map((entry) {
+                                final type = entry.key;
+                                final data = entry.value;
+                                final isSelected = selectedLandmarkType == type;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selectedLandmarkType = type;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppConstants.primaryColor.withOpacity(0.8)
+                                          : AppConstants.primaryColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppConstants.primaryColor
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          data['icon'] as IconData,
+                                          color: isSelected ? Colors.white : AppConstants.textColor,
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          data['nameRu'] as String,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.white : AppConstants.textColor,
+                                            fontSize: 10,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Комментарий
+                            Text(
+                              '2. Комментарий (необязательно)',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _landmarkCommentController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                hintText: 'Например: "Высокое дерево у берега"',
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              maxLines: 3,
+                              minLines: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Кнопки
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: AppConstants.textColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              localizations.translate('cancel'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppConstants.primaryColor,
+                              foregroundColor: AppConstants.textColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              // Создание ориентира
+                              final newLandmark = {
+                                'type': selectedLandmarkType,
+                                'icon': selectedLandmarkType, // Ключ иконки
+                                'comment': _landmarkCommentController.text.trim(),
+                              };
+
+                              // Обновление rayLandmarks
+                              final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
+                              updatedLandmarks[rayIndex.toString()] = newLandmark;
+
+                              if (!_isDisposed) {
+                                _safeSetState(() {
+                                  _markerMap = _markerMap.copyWith(rayLandmarks: updatedLandmarks);
+                                });
+                              }
+
+                              Navigator.pop(context);
+                              await _autoSaveChanges('Ориентир добавлен');
+                            },
+                            child: Text(
+                              'Добавить',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Показ деталей ориентира
+  void _showLandmarkDetails(int rayIndex, Map<String, dynamic> landmark) {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppConstants.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _landmarkTypes[landmark['type']]?['icon'] ?? Icons.place,
+                      color: AppConstants.primaryColor,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ориентир Луча ${rayIndex + 1}',
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getLandmarkName(landmark['type']),
+                          style: TextStyle(
+                            color: AppConstants.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              if (landmark['comment'] != null && landmark['comment'].isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Комментарий:',
+                  style: TextStyle(
+                    color: AppConstants.textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  landmark['comment'],
+                  style: TextStyle(
+                    color: AppConstants.textColor.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              // Кнопки действий
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showEditLandmarkDialog(rayIndex, landmark);
+                        },
+                        icon: Icon(Icons.edit, color: AppConstants.primaryColor),
+                        label: Text(
+                          'Изменить',
+                          style: TextStyle(color: AppConstants.primaryColor),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _deleteLandmark(rayIndex);
+                        },
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: const Text(
+                          'Удалить',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(localizations.translate('close')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Диалог редактирования ориентира
+  Future<void> _showEditLandmarkDialog(int rayIndex, Map<String, dynamic> existingLandmark) async {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+    _landmarkCommentController.text = existingLandmark['comment'] ?? '';
+    String selectedLandmarkType = existingLandmark['type'] ?? 'tree';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: AppConstants.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Заголовок
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            color: AppConstants.primaryColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Изменить ориентир Луча ${rayIndex + 1}',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Содержимое - такое же как в _showAddLandmarkDialog
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Выбор типа ориентира
+                            Text(
+                              '1. Выберите тип ориентира',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Сетка ориентиров
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _landmarkTypes.entries.map((entry) {
+                                final type = entry.key;
+                                final data = entry.value;
+                                final isSelected = selectedLandmarkType == type;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selectedLandmarkType = type;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppConstants.primaryColor.withOpacity(0.8)
+                                          : AppConstants.primaryColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppConstants.primaryColor
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          data['icon'] as IconData,
+                                          color: isSelected ? Colors.white : AppConstants.textColor,
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          data['nameRu'] as String,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.white : AppConstants.textColor,
+                                            fontSize: 10,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Комментарий
+                            Text(
+                              '2. Комментарий (необязательно)',
+                              style: TextStyle(
+                                color: AppConstants.textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _landmarkCommentController,
+                              style: TextStyle(color: AppConstants.textColor),
+                              decoration: InputDecoration(
+                                hintText: 'Например: "Высокое дерево у берега"',
+                                hintStyle: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: AppConstants.primaryColor,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              maxLines: 3,
+                              minLines: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Кнопки
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: AppConstants.textColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              localizations.translate('cancel'),
+                              style: TextStyle(color: AppConstants.textColor),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppConstants.primaryColor,
+                              foregroundColor: AppConstants.textColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              // Обновление ориентира
+                              final updatedLandmark = {
+                                'type': selectedLandmarkType,
+                                'icon': selectedLandmarkType,
+                                'comment': _landmarkCommentController.text.trim(),
+                              };
+
+                              // Обновление rayLandmarks
+                              final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
+                              updatedLandmarks[rayIndex.toString()] = updatedLandmark;
+
+                              if (!_isDisposed) {
+                                _safeSetState(() {
+                                  _markerMap = _markerMap.copyWith(rayLandmarks: updatedLandmarks);
+                                });
+                              }
+
+                              Navigator.pop(context);
+                              await _autoSaveChanges('Ориентир изменен');
+                            },
+                            child: Text(
+                              'Сохранить',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Удаление ориентира
+  Future<void> _deleteLandmark(int rayIndex) async {
+    if (_isDisposed) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppConstants.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Удалить ориентир',
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Вы уверены, что хотите удалить ориентир для Луча ${rayIndex + 1}?',
+            style: TextStyle(
+              color: AppConstants.textColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                localizations.translate('cancel'),
+                style: TextStyle(color: AppConstants.textColor),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text(
+                localizations.translate('delete'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
+        updatedLandmarks.remove(rayIndex.toString());
+
+        if (!_isDisposed) {
+          _safeSetState(() {
+            _markerMap = _markerMap.copyWith(rayLandmarks: updatedLandmarks);
+          });
+        }
+
+        await _autoSaveChanges('Ориентир удален');
+      } catch (e) {
+        debugPrint('❌ Ошибка удаления ориентира: $e');
+        if (!_isDisposed && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isDisposed) {
@@ -1751,6 +2562,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               leftAngle: _leftAngle,
                               rightAngle: _rightAngle,
                               screenSize: screenSize,
+                              rayLandmarks: _markerMap.rayLandmarks, // 🔥 НОВЫЙ параметр
+                              onRayLabelTap: _onRayLabelTap, // 🔥 НОВЫЙ параметр
+                              onLandmarkTap: _onLandmarkTap, // 🔥 НОВЫЙ параметр
                             ),
 
                             // 🎨 6. МАРКЕРЫ С АНИМАЦИЯМИ
