@@ -2223,5 +2223,8 @@
   "apply_programs": "Применить",
   "view_program": "Просмотреть программу",
   "create_new_program": "Создать новую программу",
-  "bridge": "Мост/Помост"
+  "bridge": "Мост/Помост",
+  "ray_visibility_settings": "Настройки видимости лучей",
+  "shown": "показан",
+  "hidden": "скрыт"
 }

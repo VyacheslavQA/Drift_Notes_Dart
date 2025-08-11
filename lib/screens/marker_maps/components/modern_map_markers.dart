@@ -16,6 +16,7 @@ class ModernMapMarkers extends StatelessWidget {
   final double leftAngle;
   final double rightAngle;
   final Size screenSize;
+  final List<bool> rayVisibility; // 🔥 НОВЫЙ ПАРАМЕТР для видимости лучей
 
   const ModernMapMarkers({
     super.key,
@@ -28,6 +29,7 @@ class ModernMapMarkers extends StatelessWidget {
     required this.leftAngle,
     required this.rightAngle,
     required this.screenSize,
+    required this.rayVisibility, // 🔥 НОВЫЙ ОБЯЗАТЕЛЬНЫЙ ПАРАМЕТР
   });
 
   @override
@@ -41,15 +43,30 @@ class ModernMapMarkers extends StatelessWidget {
         children: [
           // Генерируем маркеры с анимациями
           for (final marker in markers)
-            _buildAnimatedMarker(
-              marker: marker,
-              centerX: centerX,
-              originY: originY,
-              pixelsPerMeter: pixelsPerMeter,
-            ),
+          // 🔥 НОВАЯ ПРОВЕРКА ВИДИМОСТИ - показываем маркер только если луч видим
+            if (_shouldShowMarker(marker))
+              _buildAnimatedMarker(
+                marker: marker,
+                centerX: centerX,
+                originY: originY,
+                pixelsPerMeter: pixelsPerMeter,
+              ),
         ],
       ),
     );
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД - Проверка нужно ли показывать маркер
+  bool _shouldShowMarker(Map<String, dynamic> marker) {
+    final rayIndex = (marker['rayIndex'] as double? ?? 0).toInt();
+
+    // Проверяем корректность индекса луча
+    if (rayIndex < 0 || rayIndex >= rayVisibility.length) {
+      return true; // По умолчанию показываем если индекс некорректный
+    }
+
+    // Показываем маркер только если луч видим
+    return rayVisibility[rayIndex];
   }
 
   /// Построение анимированного маркера

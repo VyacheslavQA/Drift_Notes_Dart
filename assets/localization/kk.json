@@ -2217,5 +2217,8 @@
   "apply_programs": "Қолдану",
   "view_program": "Бағдарламаны көру",
   "create_new_program": "Жаңа бағдарлама жасау",
-  "bridge": "Көпір/Тақтай"
+  "bridge": "Көпір/Тақтай",
+  "ray_visibility_settings": "Сәуле көрінуін реттеу",
+  "shown": "көрсетілген",
+  "hidden": "жасырылған"
 }

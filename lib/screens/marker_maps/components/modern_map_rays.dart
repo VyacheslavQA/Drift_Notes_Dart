@@ -11,6 +11,7 @@ class ModernMapRays extends StatelessWidget {
   final double leftAngle;
   final double rightAngle;
   final Size screenSize;
+  final List<bool> rayVisibility; // 🔥 НОВЫЙ ПАРАМЕТР для видимости лучей
 
   const ModernMapRays({
     super.key,
@@ -19,6 +20,7 @@ class ModernMapRays extends StatelessWidget {
     required this.leftAngle,
     required this.rightAngle,
     required this.screenSize,
+    required this.rayVisibility, // 🔥 НОВЫЙ ОБЯЗАТЕЛЬНЫЙ ПАРАМЕТР
   });
 
   @override
@@ -33,15 +35,25 @@ class ModernMapRays extends StatelessWidget {
         children: [
           // Генерируем лучи
           for (int i = 0; i < rayCount; i++)
-            _buildRayLine(
-              centerX: centerX,
-              originY: originY,
-              rayLength: rayLength,
-              rayIndex: i,
-            ),
+          // 🔥 НОВАЯ ПРОВЕРКА ВИДИМОСТИ
+            if (_shouldShowRay(i))
+              _buildRayLine(
+                centerX: centerX,
+                originY: originY,
+                rayLength: rayLength,
+                rayIndex: i,
+              ),
         ],
       ),
     );
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД - Проверка нужно ли показывать луч
+  bool _shouldShowRay(int rayIndex) {
+    if (rayIndex < 0 || rayIndex >= rayVisibility.length) {
+      return true; // По умолчанию показываем если индекс некорректный
+    }
+    return rayVisibility[rayIndex];
   }
 
   /// Построение одного луча от центра до края

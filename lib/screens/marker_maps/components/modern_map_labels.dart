@@ -15,6 +15,7 @@ class ModernMapLabels extends StatelessWidget {
   final Map<String, dynamic> rayLandmarks; // 🔥 НОВЫЙ параметр - ориентиры лучей
   final Function(int rayIndex)? onRayLabelTap; // 🔥 НОВЫЙ параметр - колбэк клика на подпись луча
   final Function(int rayIndex)? onLandmarkTap; // 🔥 НОВЫЙ параметр - колбэк клика на ориентир
+  final List<bool> rayVisibility; // 🔥 НОВЫЙ ПАРАМЕТР для видимости лучей
 
   const ModernMapLabels({
     super.key,
@@ -26,6 +27,7 @@ class ModernMapLabels extends StatelessWidget {
     this.rayLandmarks = const {}, // 🔥 НОВЫЙ параметр с дефолтным значением
     this.onRayLabelTap, // 🔥 НОВЫЙ параметр
     this.onLandmarkTap, // 🔥 НОВЫЙ параметр
+    required this.rayVisibility, // 🔥 НОВЫЙ ОБЯЗАТЕЛЬНЫЙ ПАРАМЕТР
   });
 
   /// 🎯 СЛОВАРЬ ИКОНОК ОРИЕНТИРОВ
@@ -68,6 +70,14 @@ class ModernMapLabels extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// 🔥 НОВЫЙ МЕТОД - Проверка нужно ли показывать луч
+  bool _shouldShowRay(int rayIndex) {
+    if (rayIndex < 0 || rayIndex >= rayVisibility.length) {
+      return true; // По умолчанию показываем если индекс некорректный
+    }
+    return rayVisibility[rayIndex];
   }
 
   /// Подписи расстояний 10-50м (оригинальная логика)
@@ -178,6 +188,9 @@ class ModernMapLabels extends StatelessWidget {
           break;
       }
 
+      // 🔥 ПРОВЕРКА ВИДИМОСТИ - если луч скрыт, не показываем его подпись и ориентир
+      final isRayVisible = _shouldShowRay(i);
+
       // 🔥 ПРОВЕРЯЕМ есть ли ориентир для этого луча
       final landmarkKey = i.toString(); // Ключ в rayLandmarks (0, 1, 2, 3, 4)
       final hasLandmark = rayLandmarks.containsKey(landmarkKey);
@@ -192,106 +205,106 @@ class ModernMapLabels extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // 🎯 1. ОРИГИНАЛЬНАЯ ПОДПИСЬ (всегда видна, но под кликабельным слоем)
-              Text(
-                '${localizations.translate('ray')} ${i + 1}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 12,
-                  shadows: [
-                    Shadow(
-                      offset: const Offset(1, 1),
-                      blurRadius: 3,
-                      color: Colors.black.withOpacity(0.8),
-                    ),
-                  ],
+              // 🎯 1. ПОКАЗЫВАЕМ ПОДПИСЬ ТОЛЬКО ЕСЛИ ЛУЧ ВИДИМ
+              if (isRayVisible) ...[
+                Text(
+                  '${localizations.translate('ray')} ${i + 1}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    shadows: [
+                      Shadow(
+                        offset: const Offset(1, 1),
+                        blurRadius: 3,
+                        color: Colors.black.withOpacity(0.8),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // 🎯 2. КЛИКАБЕЛЬНЫЙ СЛОЙ
-              if (!hasLandmark) ...[
-                // 🔥 КЛИКАБЕЛЬНАЯ ПОДПИСЬ ЛУЧА (если нет ориентира)
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () {
-                        debugPrint('🎯 Клик на луч ${i + 1}');
-                        onRayLabelTap?.call(i);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          // Временно добавляем подсветку для дебага (можно убрать)
-                          // border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${localizations.translate('ray')} ${i + 1}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600, // 🔥 Чуть жирнее для кликабельности
-                              shadows: [
-                                Shadow(
-                                  offset: const Offset(1, 1),
-                                  blurRadius: 3,
-                                  color: Colors.black.withOpacity(0.8),
-                                ),
-                              ],
+                // 🎯 2. КЛИКАБЕЛЬНЫЙ СЛОЙ ТОЛЬКО ДЛЯ ВИДИМЫХ ЛУЧЕЙ
+                if (!hasLandmark) ...[
+                  // 🔥 КЛИКАБЕЛЬНАЯ ПОДПИСЬ ЛУЧА (если нет ориентира)
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          debugPrint('🎯 Клик на луч ${i + 1}');
+                          onRayLabelTap?.call(i);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${localizations.translate('ray')} ${i + 1}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600, // 🔥 Чуть жирнее для кликабельности
+                                shadows: [
+                                  Shadow(
+                                    offset: const Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black.withOpacity(0.8),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ] else ...[
-                // 🏗️ ИКОНКА ОРИЕНТИРА (если ориентир установлен)
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () {
-                        debugPrint('🏗️ Клик на ориентир луча ${i + 1}: ${landmark['type']}');
-                        onLandmarkTap?.call(i);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 2,
+                ] else ...[
+                  // 🏗️ ИКОНКА ОРИЕНТИРА (если ориентир установлен)
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          debugPrint('🏗️ Клик на ориентир луча ${i + 1}: ${landmark['type']}');
+                          onLandmarkTap?.call(i);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                              BoxShadow(
+                                color: AppConstants.primaryColor.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 0),
+                              ),
+                            ],
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                          child: Center(
+                            child: Icon(
+                              _landmarkIcons[landmark['type']] ?? Icons.place,
+                              color: Colors.white,
+                              size: 20,
                             ),
-                            BoxShadow(
-                              color: AppConstants.primaryColor.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 0),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            _landmarkIcons[landmark['type']] ?? Icons.place,
-                            color: Colors.white,
-                            size: 20,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ],
           ),

@@ -66,6 +66,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   final double _leftAngle = 105.0;
   final double _rightAngle = 75.0;
 
+
+
   // Типы дна для маркеров (те же что в оригинале)
   final List<String> _bottomTypes = [
     'ил',
@@ -554,6 +556,65 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                         const SizedBox(height: 24),
 
+                        // 👁️ НАСТРОЙКИ ВИДИМОСТИ ЛУЧЕЙ
+                        Text(
+                          localizations.translate('ray_visibility_settings'),
+                          style: TextStyle(
+                            color: AppConstants.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+// Переключатели лучей
+                        // Переключатели лучей с StatefulBuilder
+                        StatefulBuilder(
+                          builder: (context, setDialogState) {
+                            return Column(
+                              children: List.generate(_raysCount, (rayIndex) {
+                                final isVisible = _markerMap.rayVisibility[rayIndex];
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: Switch(
+                                          value: isVisible,
+                                          onChanged: (value) async {
+                                            // 🔥 ПЕРЕКЛЮЧАЕМ И ОБНОВЛЯЕМ ДИАЛОГ
+                                            await _toggleRayVisibility(rayIndex);
+                                            setDialogState(() {}); // Обновляем состояние диалога
+                                          },
+                                          activeColor: AppConstants.primaryColor,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          '${localizations.translate('ray')} ${rayIndex + 1}',
+                                          style: TextStyle(
+                                            color: AppConstants.textColor,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      // Индикатор количества маркеров/ориентиров на луче
+                                      _buildRayContentIndicator(rayIndex),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+
                         // 🎨 ТИПЫ ДНА
                         Text(
                           localizations.translate('bottom_types_guide'),
@@ -947,7 +1008,16 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     _notesController.text = '';
     _distanceController.text = '';
 
+    // 🔥 ПРОВЕРЯЕМ что выбранный луч видим, если нет - берем первый видимый
     int selectedRayIndex = _lastSelectedRayIndex;
+    if (!_markerMap.rayVisibility[selectedRayIndex]) {
+      // Находим первый видимый луч
+      selectedRayIndex = _markerMap.rayVisibility.indexWhere((visible) => visible);
+      if (selectedRayIndex == -1) {
+        // Если все лучи скрыты (невозможно, но на всякий случай)
+        selectedRayIndex = 0;
+      }
+    }
     String selectedBottomType = _currentBottomType;
 
     showDialog(
@@ -1038,13 +1108,15 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                         dropdownColor: AppConstants.surfaceColor,
                                         style: TextStyle(color: AppConstants.textColor),
                                         items: List.generate(_raysCount, (index) {
+                                          // 🔥 ПОКАЗЫВАЕМ ТОЛЬКО ВИДИМЫЕ ЛУЧИ
+                                          if (!_markerMap.rayVisibility[index]) return null;
                                           return DropdownMenuItem<int>(
                                             value: index,
                                             child: Text('${localizations.translate('ray')} ${index + 1}'),
                                           );
-                                        }),
+                                        }).where((item) => item != null).cast<DropdownMenuItem<int>>().toList(),
                                         onChanged: (value) {
-                                          if (value != null) {
+                                          if (value != null && _markerMap.rayVisibility[value]) {
                                             setDialogState(() {
                                               selectedRayIndex = value;
                                             });
@@ -1439,11 +1511,13 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                         dropdownColor: AppConstants.surfaceColor,
                                         style: TextStyle(color: AppConstants.textColor),
                                         items: List.generate(_raysCount, (index) {
+                                          // 🔥 ПОКАЗЫВАЕМ ТОЛЬКО ВИДИМЫЕ ЛУЧИ
+                                          if (!_markerMap.rayVisibility[index]) return null;
                                           return DropdownMenuItem<int>(
                                             value: index,
                                             child: Text('${localizations.translate('ray')} ${index + 1}'),
                                           );
-                                        }),
+                                        }).where((item) => item != null).cast<DropdownMenuItem<int>>().toList(),
                                         onChanged: (value) {
                                           if (value != null) {
                                             setDialogState(() {
@@ -2530,6 +2604,28 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
         }
       }
     }
+  } // ← ДОБАВЬ ЭТУ ЗАКРЫВАЮЩУЮ СКОБКУ!
+
+  /// Переключение видимости луча
+  Future<void> _toggleRayVisibility(int rayIndex) async {
+    if (_isDisposed || rayIndex < 0 || rayIndex >= _raysCount) return;
+
+    final newVisibility = List<bool>.from(_markerMap.rayVisibility);
+    newVisibility[rayIndex] = !newVisibility[rayIndex];
+
+    if (!_isDisposed) {
+      _safeSetState(() {
+        _markerMap = _markerMap.copyWith(rayVisibility: newVisibility);
+      });
+    }
+
+    final localizations = AppLocalizations.of(context);
+    final rayName = '${localizations.translate('ray')} ${rayIndex + 1}';
+    final action = newVisibility[rayIndex]
+        ? '${rayName} ${localizations.translate('shown')}'
+        : '${rayName} ${localizations.translate('hidden')}';
+
+    await _autoSaveChanges(action);
   }
 
   @override
@@ -2587,6 +2683,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               leftAngle: _leftAngle,
                               rightAngle: _rightAngle,
                               screenSize: screenSize,
+                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
                             ),
 
                             // 🎨 5. ПОДПИСИ РАССТОЯНИЙ И ЛУЧЕЙ
@@ -2599,6 +2696,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               rayLandmarks: _markerMap.rayLandmarks, // 🔥 НОВЫЙ параметр
                               onRayLabelTap: _onRayLabelTap, // 🔥 НОВЫЙ параметр
                               onLandmarkTap: _onLandmarkTap, // 🔥 НОВЫЙ параметр
+                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
                             ),
 
                             // 🎨 6. МАРКЕРЫ С АНИМАЦИЯМИ
@@ -2612,6 +2710,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               leftAngle: _leftAngle,
                               rightAngle: _rightAngle,
                               screenSize: screenSize,
+                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
                             ),
                           ],
                         );
@@ -2919,4 +3018,53 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       ),
     );
   }
-}
+  /// Построение индикатора содержимого луча
+  Widget _buildRayContentIndicator(int rayIndex) {
+    final markersOnRay = _markerMap.markers.where((marker) =>
+    (marker['rayIndex'] as double? ?? 0).toInt() == rayIndex
+    ).length;
+
+    final hasLandmark = _markerMap.rayLandmarks.containsKey(rayIndex.toString());
+
+    if (markersOnRay == 0 && !hasLandmark) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (markersOnRay > 0) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$markersOnRay ${markersOnRay == 1 ? 'маркер' : 'маркеров'}',
+              style: TextStyle(
+                color: AppConstants.textColor,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+        if (hasLandmark) ...[
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.place,
+              size: 12,
+              color: AppConstants.textColor,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+} // ← ПОСЛЕДНЯЯ СКОБКА КЛАССА

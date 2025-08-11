@@ -10,6 +10,7 @@ class MarkerMapModel {
   final String? sector;
   final List<Map<String, dynamic>> markers;
   final Map<String, dynamic> rayLandmarks; // 🔥 НОВОЕ ПОЛЕ для ориентиров
+  final List<bool> rayVisibility; // 🔥 НОВОЕ ПОЛЕ для видимости лучей
 
   MarkerMapModel({
     required this.id,
@@ -19,6 +20,7 @@ class MarkerMapModel {
     this.sector,
     this.markers = const [],
     this.rayLandmarks = const {}, // 🔥 НОВОЕ ПОЛЕ с дефолтным значением
+    this.rayVisibility = const [true, true, true, true, true], // 🔥 НОВОЕ ПОЛЕ - все лучи видимы по умолчанию
   });
 
   factory MarkerMapModel.fromJson(Map<String, dynamic> json, {String? id}) {
@@ -42,6 +44,11 @@ class MarkerMapModel {
       json['rayLandmarks'] != null
           ? Map<String, dynamic>.from(json['rayLandmarks'])
           : {},
+      // 🔥 НОВАЯ ЛОГИКА для парсинга видимости лучей
+      rayVisibility:
+      json['rayVisibility'] != null
+          ? List<bool>.from(json['rayVisibility'])
+          : [true, true, true, true, true], // по умолчанию все видимы
     );
   }
 
@@ -53,6 +60,7 @@ class MarkerMapModel {
       'sector': sector,
       'markers': markers,
       'rayLandmarks': rayLandmarks, // 🔥 НОВОЕ ПОЛЕ в JSON
+      'rayVisibility': rayVisibility, // 🔥 НОВОЕ ПОЛЕ в JSON
     };
   }
 
@@ -64,6 +72,7 @@ class MarkerMapModel {
     String? sector,
     List<Map<String, dynamic>>? markers,
     Map<String, dynamic>? rayLandmarks, // 🔥 НОВЫЙ ПАРАМЕТР в copyWith
+    List<bool>? rayVisibility, // 🔥 НОВЫЙ ПАРАМЕТР в copyWith
   }) {
     return MarkerMapModel(
       id: id ?? this.id,
@@ -73,6 +82,7 @@ class MarkerMapModel {
       sector: sector ?? this.sector,
       markers: markers ?? this.markers,
       rayLandmarks: rayLandmarks ?? this.rayLandmarks, // 🔥 НОВАЯ ЛОГИКА копирования
+      rayVisibility: rayVisibility ?? this.rayVisibility, // 🔥 НОВАЯ ЛОГИКА копирования
     );
   }
 }
