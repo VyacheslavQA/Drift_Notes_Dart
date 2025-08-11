@@ -2220,5 +2220,23 @@
   "bridge": "Көпір/Тақтай",
   "ray_visibility_settings": "Сәуле көрінуін реттеу",
   "shown": "көрсетілген",
-  "hidden": "жасырылған"
+  "hidden": "жасырылған",
+
+  "fishing_diary": "Балықшылық күнделігі",
+  "diary_entry": "Күнделік жазбасы",
+  "new_diary_entry": "Жаңа жазба",
+  "edit_diary_entry": "Жазбаны өзгерту",
+  "diary_entry_title": "Жазба атауы",
+  "diary_entry_description": "Жазба сипаттамасы",
+  "no_diary_entries": "Жазбалар әлі жоқ",
+  "no_entries_found": "Жазбалар табылмады",
+  "create_new_entry": "Жаңа жазба жасау",
+  "search_diary_entries": "Жазбаларды іздеу",
+  "entry_saved_successfully": "Жазба сәтті сақталды",
+  "entry_deleted_successfully": "Жазба жойылды",
+  "delete_entry": "Жазбаны жою",
+  "delete_entry_confirmation": "Бұл жазбаны жойғыңыз келетініне сенімдісіз бе?",
+  "copy_diary_entry": "Жазбаны көшіру",
+  "entry_details": "Жазба мәліметтері",
+  "no_description_provided": "Сипаттама көрсетілмеген"
 }

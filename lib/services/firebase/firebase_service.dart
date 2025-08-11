@@ -806,6 +806,84 @@ class FirebaseService {
   }
 
   // ========================================
+  // ДНЕВНИК РЫБАЛКИ
+  // ========================================
+
+  /// Добавление записи дневника рыбалки
+  Future<DocumentReference> addFishingDiaryEntry(Map<String, dynamic> entryData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .add({
+        ...entryData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Обновление записи дневника рыбалки
+  Future<void> updateFishingDiaryEntry(String entryId, Map<String, dynamic> entryData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .doc(entryId)
+          .update({
+        ...entryData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение записей дневника рыбалки пользователя
+  Future<QuerySnapshot> getUserFishingDiaryEntries() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Удаление записи дневника рыбалки
+  Future<void> deleteFishingDiaryEntry(String entryId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .doc(entryId)
+          .delete();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // ========================================
   // СОГЛАСИЯ ПОЛЬЗОВАТЕЛЯ
   // ========================================
 

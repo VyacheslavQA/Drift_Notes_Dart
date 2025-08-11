@@ -10,6 +10,7 @@ import '../models/isar/marker_map_entity.dart';
 import '../models/isar/policy_acceptance_entity.dart';
 import '../models/isar/user_usage_limits_entity.dart';
 import '../models/isar/bait_program_entity.dart';
+import '../models/isar/fishing_diary_entity.dart';
 
 
 class IsarService {
@@ -40,6 +41,7 @@ class IsarService {
         PolicyAcceptanceEntitySchema,
         UserUsageLimitsEntitySchema,
         BaitProgramEntitySchema,
+        FishingDiaryEntitySchema,
       ],
       directory: dir.path,
     );
@@ -1315,6 +1317,202 @@ class IsarService {
   }
 
   // ========================================
+  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ FISHING DIARY
+  // ========================================
+
+  /// Вставка новой записи дневника рыбалки
+  Future<int> insertFishingDiaryEntry(FishingDiaryEntity entry) async {
+    final result = await isar.writeTxn(() async {
+      return await isar.fishingDiaryEntitys.put(entry);
+    });
+
+    debugPrint('📝 IsarService: Вставлена FishingDiaryEntry с ID=$result, firebaseId=${entry.firebaseId}, markedForDeletion=${entry.markedForDeletion}');
+    return result;
+  }
+
+  /// Получение всех АКТИВНЫХ записей дневника (исключая помеченные для удаления)
+  Future<List<FishingDiaryEntity>> getAllFishingDiaryEntries() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      debugPrint('⚠️ IsarService: getCurrentUserId() вернул null для FishingDiaryEntries');
+      return [];
+    }
+
+    final entries = await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not() // НЕ равно true
+        .markedForDeletionEqualTo(true)
+        .sortByCreatedAtDesc()
+        .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${entries.length} активных FishingDiaryEntries для пользователя $userId');
+    return entries;
+  }
+
+  /// Получение записи по ID
+  Future<FishingDiaryEntity?> getFishingDiaryEntryById(int id) async {
+    final entry = await isar.fishingDiaryEntitys.get(id);
+    debugPrint('🔍 IsarService: getFishingDiaryEntryById($id) = ${entry != null ? "найдена" : "не найдена"}');
+    return entry;
+  }
+
+  /// Получение записи по Firebase ID
+  Future<FishingDiaryEntity?> getFishingDiaryEntryByFirebaseId(String firebaseId) async {
+    final entry = await isar.fishingDiaryEntitys
+        .filter()
+        .firebaseIdEqualTo(firebaseId)
+        .findFirst();
+
+    debugPrint('🔍 IsarService: getFishingDiaryEntryByFirebaseId($firebaseId) = ${entry != null ? "найдена" : "не найдена"}');
+    if (entry != null) {
+      debugPrint('📝 IsarService: Запись markedForDeletion=${entry.markedForDeletion}, isSynced=${entry.isSynced}');
+    }
+    return entry;
+  }
+
+  /// Обновление существующей записи
+  Future<int> updateFishingDiaryEntry(FishingDiaryEntity entry) async {
+    entry.updatedAt = DateTime.now();
+    final result = await isar.writeTxn(() async {
+      return await isar.fishingDiaryEntitys.put(entry);
+    });
+
+    debugPrint('🔄 IsarService: Обновлена FishingDiaryEntry ID=${entry.id}, firebaseId=${entry.firebaseId}, markedForDeletion=${entry.markedForDeletion}, isSynced=${entry.isSynced}');
+    return result;
+  }
+
+  /// Удаление записи по ID (физическое удаление)
+  Future<bool> deleteFishingDiaryEntry(int id) async {
+    final result = await isar.writeTxn(() async {
+      return await isar.fishingDiaryEntitys.delete(id);
+    });
+
+    debugPrint('🗑️ IsarService: Физически удалена FishingDiaryEntry ID=$id, результат=$result');
+    return result;
+  }
+
+  /// Удаление записи по Firebase ID (физическое удаление)
+  Future<bool> deleteFishingDiaryEntryByFirebaseId(String firebaseId) async {
+    final entry = await getFishingDiaryEntryByFirebaseId(firebaseId);
+    if (entry != null) {
+      final result = await deleteFishingDiaryEntry(entry.id);
+      debugPrint('🗑️ IsarService: Физически удалена FishingDiaryEntry firebaseId=$firebaseId, результат=$result');
+      return result;
+    }
+    debugPrint('⚠️ IsarService: Запись firebaseId=$firebaseId не найдена для физического удаления');
+    return false;
+  }
+
+  /// Поиск записей по названию и описанию
+  Future<List<FishingDiaryEntity>> searchFishingDiaryEntries(String query) async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final entries = await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .group((q) => q
+        .titleContains(query, caseSensitive: false)
+        .or()
+        .descriptionContains(query, caseSensitive: false))
+        .sortByCreatedAtDesc()
+        .findAll();
+
+    debugPrint('🔍 IsarService: Поиск "$query" нашел ${entries.length} записей дневника');
+    return entries;
+  }
+
+  /// Получение всех несинхронизированных записей
+  Future<List<FishingDiaryEntity>> getUnsyncedFishingDiaryEntries() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final unsyncedEntries = await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .isSyncedEqualTo(false)
+        .findAll();
+
+    debugPrint('🔍 IsarService: getUnsyncedFishingDiaryEntries найдено ${unsyncedEntries.length} несинхронизированных записей');
+    return unsyncedEntries;
+  }
+
+  /// Помечает запись как синхронизированную
+  Future<void> markFishingDiaryEntryAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
+    await isar.writeTxn(() async {
+      final entry = await isar.fishingDiaryEntitys.get(id);
+      if (entry != null) {
+        entry.isSynced = true;
+        entry.firebaseId = firebaseId;
+        entry.updatedAt = DateTime.now();
+        await isar.fishingDiaryEntitys.put(entry);
+        debugPrint('✅ IsarService: Запись дневника ID=$id помечена как синхронизированная с firebaseId=$firebaseId');
+
+        if (entry.markedForDeletion == true) {
+          shouldDelete = true;
+        }
+      }
+    });
+
+    if (shouldDelete) {
+      await deleteFishingDiaryEntry(id);
+      debugPrint('🧹 IsarService: Автоматически удалена синхронизированная помеченная запись дневника ID=$id');
+    }
+  }
+
+  /// Получение количества записей дневника пользователя
+  Future<int> getFishingDiaryEntriesCountByUser(String userId) async {
+    final count = await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .count();
+
+    debugPrint('📊 IsarService: Активных FishingDiaryEntries пользователя $userId: $count');
+    return count;
+  }
+
+  /// Получение количества несинхронизированных записей
+  Future<int> getUnsyncedFishingDiaryEntriesCount([String? userId]) async {
+    if (userId != null) {
+      return await isar.fishingDiaryEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .and()
+          .isSyncedEqualTo(false)
+          .count();
+    }
+
+    return await isar.fishingDiaryEntitys
+        .filter()
+        .isSyncedEqualTo(false)
+        .count();
+  }
+
+  /// Очистка всех данных записей дневника
+  Future<void> clearAllFishingDiaryEntries() async {
+    await isar.writeTxn(() async {
+      await isar.fishingDiaryEntitys.clear();
+    });
+    debugPrint('🧹 IsarService: Очищены все FishingDiaryEntries');
+  }
+
+  // ========================================
   // ОБНОВЛЕННЫЕ ОБЩИЕ МЕТОДЫ
   // ========================================
 
@@ -1327,6 +1525,7 @@ class IsarService {
       await isar.policyAcceptanceEntitys.clear();
       await isar.userUsageLimitsEntitys.clear();
       await isar.baitProgramEntitys.clear();
+      await isar.fishingDiaryEntitys.clear();
     });
   }
 
@@ -1351,6 +1550,10 @@ class IsarService {
       'baitPrograms': {
         'total': await getBaitProgramsCountByUser(userId),
         'unsynced': await getUnsyncedBaitProgramsCount(userId),
+      },
+      'fishingDiary': {
+        'total': await getFishingDiaryEntriesCountByUser(userId),
+        'unsynced': await getUnsyncedFishingDiaryEntriesCount(userId),
       },
       'policyAcceptance': {
         'total': await getPolicyAcceptancesCount(),
@@ -1388,6 +1591,11 @@ class IsarService {
           .deleteAll();
 
       await isar.baitProgramEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .deleteAll();
+
+      await isar.fishingDiaryEntitys
           .filter()
           .userIdEqualTo(userId)
           .deleteAll();

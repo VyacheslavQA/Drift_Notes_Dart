@@ -2270,5 +2270,23 @@
   "bridge": "Bridge/Pier",
   "ray_visibility_settings": "Ray Visibility Settings",
   "shown": "shown",
-  "hidden": "hidden"
+  "hidden": "hidden",
+
+  "fishing_diary": "Fishing Diary",
+  "diary_entry": "Diary Entry",
+  "new_diary_entry": "New Entry",
+  "edit_diary_entry": "Edit Entry",
+  "diary_entry_title": "Entry Title",
+  "diary_entry_description": "Entry Description",
+  "no_diary_entries": "No entries yet",
+  "no_entries_found": "No entries found",
+  "create_new_entry": "Create New Entry",
+  "search_diary_entries": "Search Entries",
+  "entry_saved_successfully": "Entry saved successfully",
+  "entry_deleted_successfully": "Entry deleted",
+  "delete_entry": "Delete Entry",
+  "delete_entry_confirmation": "Are you sure you want to delete this entry?",
+  "copy_diary_entry": "Copy Entry",
+  "entry_details": "Entry Details",
+  "no_description_provided": "No description provided"
 }

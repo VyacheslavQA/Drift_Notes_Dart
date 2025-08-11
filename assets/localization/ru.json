@@ -2226,5 +2226,23 @@
   "bridge": "Мост/Помост",
   "ray_visibility_settings": "Настройки видимости лучей",
   "shown": "показан",
-  "hidden": "скрыт"
+  "hidden": "скрыт",
+
+  "fishing_diary": "Дневник рыбалки",
+  "diary_entry": "Запись дневника",
+  "new_diary_entry": "Новая запись",
+  "edit_diary_entry": "Редактировать запись",
+  "diary_entry_title": "Название записи",
+  "diary_entry_description": "Описание записи",
+  "no_diary_entries": "Записей пока нет",
+  "no_entries_found": "Записи не найдены",
+  "create_new_entry": "Создать новую запись",
+  "search_diary_entries": "Поиск записей",
+  "entry_saved_successfully": "Запись успешно сохранена",
+  "entry_deleted_successfully": "Запись удалена",
+  "delete_entry": "Удалить запись",
+  "delete_entry_confirmation": "Вы уверены что хотите удалить запись?",
+  "copy_diary_entry": "Копировать запись",
+  "entry_details": "Детали записи",
+  "no_description_provided": "Описание не указано"
 }

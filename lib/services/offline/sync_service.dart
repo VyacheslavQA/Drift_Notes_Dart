@@ -13,6 +13,7 @@ import '../../models/isar/policy_acceptance_entity.dart';
 import '../../models/isar/user_usage_limits_entity.dart';
 import '../isar_service.dart';
 import '../../models/isar/bait_program_entity.dart';
+import '../../models/isar/fishing_diary_entity.dart';
 
 class SyncService {
   static SyncService? _instance;
@@ -1203,6 +1204,156 @@ class SyncService {
   }
 
   // ========================================
+  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ FISHING DIARY
+  // ========================================
+
+  /// Конвертация FishingDiaryEntity в Map для Firestore
+  Map<String, dynamic> _fishingDiaryEntityToFirestore(FishingDiaryEntity entity) {
+    return {
+      'title': entity.title,
+      'description': entity.description,
+      'isFavorite': entity.isFavorite,
+      'createdAt': Timestamp.fromDate(entity.createdAt),
+      'updatedAt': Timestamp.fromDate(entity.updatedAt),
+    };
+  }
+
+  /// Конвертация данных из Firestore в FishingDiaryEntity
+  FishingDiaryEntity _firestoreToFishingDiaryEntity(String firebaseId, Map<String, dynamic> data) {
+    final entity = FishingDiaryEntity()
+      ..firebaseId = firebaseId
+      ..title = data['title'] ?? ''
+      ..description = data['description'] ?? ''
+      ..isFavorite = data['isFavorite'] ?? false
+      ..createdAt = _parseTimestamp(data['createdAt'])
+      ..updatedAt = _parseTimestamp(data['updatedAt'])
+      ..isSynced = true;
+    entity.userId = _auth.currentUser?.uid ?? '';
+    return entity;
+  }
+
+  /// Синхронизация FishingDiary в Firebase
+  Future<bool> syncFishingDiaryToFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary');
+      if (collection == null) return false;
+
+      final unsyncedEntries = await _isarService.getUnsyncedFishingDiaryEntries();
+      final entriesToSync = unsyncedEntries.where((entry) => entry.markedForDeletion != true).toList();
+
+      debugPrint('📤 SyncService: Синхронизируем ${entriesToSync.length} FishingDiary в Firebase');
+
+      for (final entry in entriesToSync) {
+        try {
+          final data = _fishingDiaryEntityToFirestore(entry);
+
+          if (entry.firebaseId != null) {
+            final docRef = collection.doc(entry.firebaseId);
+            final docSnapshot = await docRef.get();
+
+            if (docSnapshot.exists) {
+              await docRef.update(data);
+              debugPrint('🔄 SyncService: Обновлена FishingDiary ${entry.firebaseId}');
+            } else {
+              await docRef.set(data);
+              debugPrint('✅ SyncService: Создана FishingDiary ${entry.firebaseId}');
+            }
+            await _isarService.markFishingDiaryEntryAsSynced(entry.id, entry.firebaseId!);
+          } else {
+            final docRef = await collection.add(data);
+            await _isarService.markFishingDiaryEntryAsSynced(entry.id, docRef.id);
+            debugPrint('✅ SyncService: Создана новая FishingDiary ${docRef.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка синхронизации FishingDiary ${entry.firebaseId}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingDiaryToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Синхронизация FishingDiary из Firebase
+  Future<bool> syncFishingDiaryFromFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary');
+      if (collection == null) return false;
+
+      final querySnapshot = await collection.orderBy('createdAt', descending: true).get();
+      debugPrint('📥 SyncService: Получено ${querySnapshot.docs.length} FishingDiary из Firebase');
+
+      for (final doc in querySnapshot.docs) {
+        try {
+          final firebaseId = doc.id;
+          final data = doc.data() as Map<String, dynamic>;
+
+          final existingEntry = await _isarService.getFishingDiaryEntryByFirebaseId(firebaseId);
+
+          if (existingEntry == null) {
+            final entity = _firestoreToFishingDiaryEntity(firebaseId, data);
+            await _isarService.insertFishingDiaryEntry(entity);
+          } else {
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
+            if (firebaseUpdatedAt.isAfter(existingEntry.updatedAt)) {
+              final updatedEntity = _firestoreToFishingDiaryEntity(firebaseId, data);
+              updatedEntity.id = existingEntry.id;
+              await _isarService.updateFishingDiaryEntry(updatedEntity);
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка обработки FishingDiary ${doc.id}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingDiaryFromFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Удаление FishingDiary по Firebase ID
+  Future<bool> deleteFishingDiaryEntryByFirebaseId(String firebaseId) async {
+    try {
+      debugPrint('🗑️ SyncService: Начинаем удаление FishingDiary $firebaseId');
+
+      if (await _hasInternetConnection()) {
+        final collection = _getUserCollection('fishing_diary');
+        if (collection != null) {
+          try {
+            await collection.doc(firebaseId).delete();
+            debugPrint('✅ SyncService: FishingDiary удалена из Firebase: $firebaseId');
+          } catch (e) {
+            debugPrint('❌ SyncService: Ошибка удаления FishingDiary из Firebase $firebaseId: $e');
+          }
+        }
+      }
+
+      final entity = await _isarService.getFishingDiaryEntryByFirebaseId(firebaseId);
+      if (entity != null) {
+        await _isarService.deleteFishingDiaryEntry(entity.id);
+        debugPrint('✅ SyncService: FishingDiary удалена из Isar: $firebaseId');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка deleteFishingDiaryEntryByFirebaseId $firebaseId: $e');
+      return false;
+    }
+  }
+
+  // ========================================
   // ✅ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
   // ========================================
 
@@ -1320,6 +1471,7 @@ class SyncService {
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
         syncBaitProgramsToFirebase(),
+        syncFishingDiaryToFirebase(),
       ]);
 
       final success = results.every((result) => result);
@@ -1358,6 +1510,7 @@ class SyncService {
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
         syncBaitProgramsToFirebase(),
+        syncFishingDiaryToFirebase(),
       ]);
 
       // Получаем обновления из Firebase
@@ -1368,6 +1521,7 @@ class SyncService {
         syncPolicyAcceptanceFromFirebase(),
         syncUserUsageLimitsFromFirebase(),
         syncBaitProgramsFromFirebase(),
+        syncFishingDiaryFromFirebase(),
       ]);
 
       final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);
@@ -1452,6 +1606,9 @@ class SyncService {
       final baitProgramsTotal = await _isarService.getBaitProgramsCountByUser(userId);
       final baitProgramsUnsynced = await _isarService.getUnsyncedBaitProgramsCount(userId);
 
+      final fishingDiaryTotal = await _isarService.getFishingDiaryEntriesCountByUser(userId);
+      final fishingDiaryUnsynced = await _isarService.getUnsyncedFishingDiaryEntriesCount(userId);
+
       final fishingNotesTotal = await _isarService.getNotesCount();
       final fishingNotesUnsynced = await _isarService.getUnsyncedNotesCount();
 
@@ -1498,6 +1655,11 @@ class SyncService {
           'unsynced': baitProgramsUnsynced,
           'synced': baitProgramsTotal - baitProgramsUnsynced,
         },
+        'fishingDiary': {
+          'total': fishingDiaryTotal,
+          'unsynced': fishingDiaryUnsynced,
+          'synced': fishingDiaryTotal - fishingDiaryUnsynced,
+        },
       };
 
       return status;
@@ -1509,6 +1671,7 @@ class SyncService {
         'policyAcceptance': {'total': 0, 'unsynced': 0, 'synced': 0},
         'userUsageLimits': {'total': 0, 'unsynced': 0, 'synced': 0},
         'baitPrograms': {'total': 0, 'unsynced': 0, 'synced': 0},
+        'fishingDiary': {'total': 0, 'unsynced': 0, 'synced': 0},
         'error': e.toString(),
       };
     }
