@@ -43,6 +43,7 @@ class ModernMapLabels extends StatelessWidget {
     'lamp_post': Icons.lightbulb,    // Фонарь
     'gazebo': Icons.cottage,         // Беседка
     'internet_tower': Icons.wifi,    // Интернет вышка
+    'bridge': Icons.straighten,         // 🌉 НОВАЯ СТРОКА - Мост/помост
     'exact_location': Icons.gps_fixed, // Точная локация
   };
 

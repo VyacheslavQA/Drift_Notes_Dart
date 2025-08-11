@@ -163,6 +163,13 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       'nameRu': 'Интернет вышка',
       'nameKz': 'Интернет мұнарасы',
     },
+    // 🌉 НОВАЯ ЗАПИСЬ - добавить между internet_tower и exact_location
+    'bridge': {
+      'icon': Icons.straighten,  // Используем Icons.straighten вместо Icons.bridge
+      'nameEn': 'Bridge/Pier',
+      'nameRu': 'Мост/Помост',
+      'nameKz': 'Көпір/Тақтай',
+    },
     'exact_location': {
       'icon': Icons.gps_fixed,
       'nameEn': 'Exact location',
@@ -1811,6 +1818,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       case 'lamp_post': return localizations.translate('landmark_lamp_post');
       case 'gazebo': return localizations.translate('landmark_gazebo');
       case 'internet_tower': return localizations.translate('landmark_internet_tower');
+      case 'bridge': return localizations.translate('bridge');
       case 'exact_location': return localizations.translate('landmark_exact_location');
       default: return type;
     }
