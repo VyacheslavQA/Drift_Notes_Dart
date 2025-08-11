@@ -97,7 +97,9 @@ class _BaitProgramsListScreenState extends State<BaitProgramsListScreen> {
   Future<void> _copyProgram(BaitProgramModel program) async {
     try {
       await _repository.copyBaitProgram(program.id);
-      _loadPrograms();
+
+      // Принудительно обновляем список программ
+      await _loadPrograms();
 
       if (mounted) {
         final localizations = AppLocalizations.of(context);
@@ -191,7 +193,12 @@ class _BaitProgramsListScreenState extends State<BaitProgramsListScreen> {
       ),
       builder: (context) {
         return Container(
-          padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
+          padding: EdgeInsets.only(
+            left: ResponsiveUtils.getHorizontalPadding(context),
+            right: ResponsiveUtils.getHorizontalPadding(context),
+            top: ResponsiveUtils.getHorizontalPadding(context),
+            bottom: ResponsiveUtils.getHorizontalPadding(context) + MediaQuery.of(context).viewPadding.bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
