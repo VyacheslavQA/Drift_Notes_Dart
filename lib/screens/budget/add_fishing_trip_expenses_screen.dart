@@ -43,11 +43,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   // Общая информация о рыбалке
   DateTime _selectedDate = DateTime.now();
-  String _selectedCurrency = 'KZT';
   final _locationController = TextEditingController();
   final _tripNotesController = TextEditingController();
+  final _locationFocusNode = FocusNode();
 
-  // ИСПРАВЛЕНО: Добавили контроллеры для каждого поля ввода
+  // Контроллеры для каждого поля ввода
   final Map<FishingExpenseCategory, TextEditingController> _amountControllers = {};
   final Map<FishingExpenseCategory, TextEditingController> _descriptionControllers = {};
   final Map<FishingExpenseCategory, TextEditingController> _notesControllers = {};
@@ -61,14 +61,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   bool _isLoading = false;
   double _totalAmount = 0.0;
 
-  // Список поддерживаемых валют
-  final Map<String, String> _currencySymbols = {
-    'KZT': '₸',
-    'USD': '\$',
-    'EUR': '€',
-    'RUB': '₽',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -76,7 +68,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _initializeData() {
-    // ИСПРАВЛЕНО: Инициализируем контроллеры для всех категорий
+    // Инициализируем контроллеры для всех категорий
     for (final category in FishingExpenseCategory.allCategories) {
       _categoryAmounts[category] = 0.0;
       _categoryDescriptions[category] = '';
@@ -127,7 +119,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _loadTripForEditing(FishingTripModel trip) {
     setState(() {
       _selectedDate = trip.date;
-      _selectedCurrency = trip.currency;
       _locationController.text = trip.locationName ?? '';
       _tripNotesController.text = trip.notes ?? '';
 
@@ -137,10 +128,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       debugPrint('Дата: ${trip.date}');
       debugPrint('Место: ${trip.locationName}');
       debugPrint('Заметки: ${trip.notes}');
-      debugPrint('Валюта: ${trip.currency}');
       debugPrint('Количество расходов: ${trip.expenses.length}');
 
-      // ИСПРАВЛЕНО: Загружаем данные расходов в контроллеры
+      // Загружаем данные расходов в контроллеры
       for (final expense in trip.expenses) {
         debugPrint('Загружаем расход: ${expense.category.name} - ${expense.amount}');
         debugPrint('  Описание: ${expense.description}');
@@ -176,8 +166,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void dispose() {
     _locationController.dispose();
     _tripNotesController.dispose();
+    _locationFocusNode.dispose();
 
-    // ИСПРАВЛЕНО: Освобождаем все контроллеры
+    // Освобождаем все контроллеры
     for (final category in FishingExpenseCategory.allCategories) {
       _amountControllers[category]?.dispose();
       _descriptionControllers[category]?.dispose();
@@ -187,22 +178,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     super.dispose();
   }
 
-  List<Map<String, String>> _getCurrencies(AppLocalizations localizations) {
-    return [
-      {'code': 'KZT', 'symbol': '₸', 'name': localizations.translate('currency_kzt') ?? 'Тенге'},
-      {'code': 'USD', 'symbol': '\$', 'name': localizations.translate('currency_usd') ?? 'Доллар США'},
-      {'code': 'EUR', 'symbol': '€', 'name': localizations.translate('currency_eur') ?? 'Евро'},
-      {'code': 'RUB', 'symbol': '₽', 'name': localizations.translate('currency_rub') ?? 'Рубль'},
-    ];
-  }
-
   void _toggleCategory(FishingExpenseCategory category) {
     setState(() {
       _expandedCategories[category] = !(_expandedCategories[category] ?? false);
     });
   }
 
-  // ИСПРАВЛЕНО: Упрощенный метод обновления общей суммы
+  // Упрощенный метод обновления общей суммы
   void _updateTotalAmount() {
     setState(() {
       _totalAmount = _categoryAmounts.values.fold(0.0, (sum, amount) => sum + amount);
@@ -287,6 +269,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       setState(() {
         _selectedDate = pickedDate;
       });
+
+      // Фокус на поле "Место рыбалки" после выбора даты
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _locationFocusNode.requestFocus();
+      });
     }
   }
 
@@ -336,10 +323,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
         return false;
       }
-
-      // ✅ УБРАНО: Предупреждающее окно "Осталось X заметок из Y"
-      // Теперь пользователь может создавать заметки без раздражающих предупреждений
-      // Жесткий лимит все еще работает - при превышении покажется PaywallScreen
 
       return true;
     } catch (e) {
@@ -393,14 +376,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
       if (mounted) {
         final expenseCount = _categoryAmounts.values.where((amount) => amount > 0).length;
-        final symbol = _currencySymbols[_selectedCurrency] ?? '';
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
                 widget.tripToEdit != null
-                    ? '${localizations.translate('trip_updated') ?? 'Поездка обновлена'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: $symbol ${_totalAmount.toStringAsFixed(2)}'
-                    : '${localizations.translate('fishing_trip_expenses_saved') ?? 'Расходы сохранены'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: $symbol ${_totalAmount.toStringAsFixed(2)}'
+                    ? '${localizations.translate('trip_updated') ?? 'Поездка обновлена'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: ${_totalAmount.toStringAsFixed(2)}'
+                    : '${localizations.translate('fishing_trip_expenses_saved') ?? 'Расходы сохранены'} $expenseCount ${localizations.translate('expenses_count') ?? 'расходов'}. ${localizations.translate('total_amount') ?? 'Общая сумма'}: ${_totalAmount.toStringAsFixed(2)}'
             ),
             backgroundColor: AppConstants.primaryColor,
             duration: const Duration(seconds: 3),
@@ -445,7 +427,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       debugPrint('Дата: $_selectedDate');
       debugPrint('Место: ${_locationController.text}');
       debugPrint('Заметки: ${_tripNotesController.text}');
-      debugPrint('Валюта: $_selectedCurrency');
       debugPrint('Суммы по категориям:');
       _categoryAmounts.forEach((category, amount) {
         if (amount > 0) {
@@ -459,7 +440,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         date: _selectedDate,
         locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         notes: _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
-        currency: _selectedCurrency,
         categoryAmounts: _categoryAmounts,
         categoryDescriptions: _categoryDescriptions,
         categoryNotes: _categoryNotes,
@@ -501,7 +481,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             description: description.isNotEmpty ? description : (localizations.translate('expenses_default') ?? 'Расходы'),
             category: category,
             date: _selectedDate,
-            currency: _selectedCurrency,
             notes: expenseNotes.isEmpty ? null : expenseNotes,
             locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
             createdAt: existingExpense?.createdAt ?? DateTime.now(),
@@ -520,7 +499,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         date: _selectedDate,
         locationName: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         notes: _tripNotesController.text.trim().isEmpty ? null : _tripNotesController.text.trim(),
-        currency: _selectedCurrency,
         expenses: expenses,
         createdAt: existingTrip.createdAt,
         updatedAt: DateTime.now(),
@@ -633,14 +611,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Дата и валюта
-          Row(
-            children: [
-              Expanded(child: _buildDateField()),
-              const SizedBox(width: 16),
-              Expanded(child: _buildCurrencyField()),
-            ],
-          ),
+          // Только дата (валюта убрана)
+          _buildDateField(),
           const SizedBox(height: 16),
 
           // Место рыбалки
@@ -671,6 +643,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
           child: Container(
             padding: const EdgeInsets.all(16),
+            width: double.infinity,
             decoration: BoxDecoration(
               color: AppConstants.backgroundColor,
               borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
@@ -681,67 +654,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 color: AppConstants.textColor,
                 fontSize: 16,
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCurrencyField() {
-    final localizations = AppLocalizations.of(context);
-    final currencies = _getCurrencies(localizations);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ResponsiveText(
-          localizations.translate('currency') ?? 'Валюта',
-          type: ResponsiveTextType.labelLarge,
-          fontWeight: FontWeight.w600,
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppConstants.backgroundColor,
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedCurrency,
-              isExpanded: true,
-              icon: Icon(
-                Icons.arrow_drop_down,
-                color: AppConstants.textColor.withOpacity(0.7),
-              ),
-              dropdownColor: AppConstants.cardColor,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: 16,
-              ),
-              items: currencies.map((currency) {
-                return DropdownMenuItem<String>(
-                  value: currency['code'],
-                  child: Row(
-                    children: [
-                      Text(
-                        currency['symbol']!,
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(currency['name']!)),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedCurrency = value;
-                  });
-                }
-              },
             ),
           ),
         ),
@@ -763,6 +675,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _locationController,
+          focusNode: _locationFocusNode,
           style: TextStyle(
             color: AppConstants.textColor,
             fontSize: 16,
@@ -886,7 +799,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         const SizedBox(height: 4),
                         Text(
                           hasAmount
-                              ? '${_currencySymbols[_selectedCurrency]} ${amount.toStringAsFixed(2)}'
+                              ? amount.toStringAsFixed(2)
                               : localizations.translate('not_specified') ?? 'Не указано',
                           style: TextStyle(
                             color: hasAmount
@@ -922,66 +835,42 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          // ИСПРАВЛЕНО: Поле суммы с контроллером
-          Container(
-            decoration: BoxDecoration(
-              color: AppConstants.backgroundColor,
-              borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          // Поле суммы без валютного символа
+          TextFormField(
+            controller: _amountControllers[category],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
+            style: TextStyle(
+              color: AppConstants.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppConstants.primaryColor,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(AppConstants.borderRadiusMedium),
-                      bottomLeft: Radius.circular(AppConstants.borderRadiusMedium),
-                    ),
-                  ),
-                  child: Text(
-                    _currencySymbols[_selectedCurrency] ?? '',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: TextFormField(
-                    controller: _amountControllers[category], // ИСПРАВЛЕНО: Используем контроллер
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '0',
-                      hintStyle: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.5),
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    onChanged: (value) {
-                      // Обновляем общую сумму при изменении
-                      _updateTotalAmount();
-                    },
-                  ),
-                ),
-              ],
+            decoration: InputDecoration(
+              hintText: '0',
+              labelText: localizations.translate('amount') ?? 'Сумма',
+              hintStyle: TextStyle(
+                color: AppConstants.textColor.withOpacity(0.5),
+              ),
+              filled: true,
+              fillColor: AppConstants.backgroundColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.all(16),
             ),
+            onChanged: (value) {
+              // Обновляем общую сумму при изменении
+              _updateTotalAmount();
+            },
           ),
           const SizedBox(height: 12),
 
-          // ИСПРАВЛЕНО: Поле описания с контроллером
+          // Поле описания
           TextFormField(
-            controller: _descriptionControllers[category], // ИСПРАВЛЕНО: Используем контроллер
+            controller: _descriptionControllers[category],
             style: TextStyle(
               color: AppConstants.textColor,
               fontSize: 16,
@@ -1002,9 +891,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ИСПРАВЛЕНО: Поле заметок с контроллером
+          // Поле заметок
           TextFormField(
-            controller: _notesControllers[category], // ИСПРАВЛЕНО: Используем контроллер
+            controller: _notesControllers[category],
             maxLines: 3,
             style: TextStyle(
               color: AppConstants.textColor,
@@ -1058,7 +947,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${_currencySymbols[_selectedCurrency]} ${_totalAmount.toStringAsFixed(2)}',
+              _totalAmount.toStringAsFixed(2),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 32,

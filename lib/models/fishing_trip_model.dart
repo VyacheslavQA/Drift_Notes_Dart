@@ -21,9 +21,6 @@ class FishingTripModel {
   /// Общие заметки о поездке
   final String? notes;
 
-  /// Валюта поездки
-  final String currency;
-
   /// Дата создания записи
   final DateTime createdAt;
 
@@ -42,7 +39,6 @@ class FishingTripModel {
     required this.date,
     this.locationName,
     this.notes,
-    this.currency = 'KZT',
     required this.createdAt,
     required this.updatedAt,
     this.isSynced = false,
@@ -56,7 +52,6 @@ class FishingTripModel {
     DateTime? date,
     String? locationName,
     String? notes,
-    String? currency,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isSynced,
@@ -68,7 +63,6 @@ class FishingTripModel {
       date: date ?? this.date,
       locationName: locationName ?? this.locationName,
       notes: notes ?? this.notes,
-      currency: currency ?? this.currency,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isSynced: isSynced ?? this.isSynced,
@@ -97,7 +91,6 @@ class FishingTripModel {
               date: expenseData['date'] is Timestamp
                   ? (expenseData['date'] as Timestamp).toDate()
                   : DateTime.parse(expenseData['date'] as String),
-              currency: expenseData['currency'] as String? ?? 'KZT',
               notes: expenseData['notes'] as String?,
               locationName: expenseData['locationName'] as String?,
               createdAt: expenseData['createdAt'] is Timestamp
@@ -122,7 +115,6 @@ class FishingTripModel {
       date: (map['date'] as Timestamp).toDate(),
       locationName: map['locationName'] as String?,
       notes: map['notes'] as String?,
-      currency: map['currency'] as String? ?? 'KZT',
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
       isSynced: map['isSynced'] as bool? ?? false,
@@ -138,7 +130,6 @@ class FishingTripModel {
       'date': Timestamp.fromDate(date),
       'locationName': locationName,
       'notes': notes,
-      'currency': currency,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isSynced': isSynced,
@@ -150,7 +141,6 @@ class FishingTripModel {
         'description': expense.description,
         'category': expense.category.id,
         'date': Timestamp.fromDate(expense.date),
-        'currency': expense.currency,
         'notes': expense.notes,
         'locationName': expense.locationName,
         'createdAt': Timestamp.fromDate(expense.createdAt),
@@ -168,7 +158,6 @@ class FishingTripModel {
       'date': Timestamp.fromDate(date),
       'locationName': locationName,
       'notes': notes,
-      'currency': currency,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isSynced': isSynced,
@@ -183,7 +172,6 @@ class FishingTripModel {
       'date': date.toIso8601String(),
       'locationName': locationName,
       'notes': notes,
-      'currency': currency,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isSynced': isSynced,
@@ -198,7 +186,6 @@ class FishingTripModel {
       date: DateTime.parse(json['date'] as String),
       locationName: json['locationName'] as String?,
       notes: json['notes'] as String?,
-      currency: json['currency'] as String? ?? 'KZT',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       isSynced: json['isSynced'] as bool? ?? false,
@@ -211,7 +198,6 @@ class FishingTripModel {
     required DateTime date,
     String? locationName,
     String? notes,
-    String currency = 'KZT',
   }) {
     final now = DateTime.now();
     return FishingTripModel(
@@ -220,27 +206,10 @@ class FishingTripModel {
       date: date,
       locationName: locationName,
       notes: notes,
-      currency: currency,
       createdAt: now,
       updatedAt: now,
       isSynced: false,
     );
-  }
-
-  /// Получить символ валюты
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
   }
 
   /// Общая сумма расходов в поездке
@@ -248,9 +217,9 @@ class FishingTripModel {
     return expenses.fold(0.0, (sum, expense) => sum + expense.amount);
   }
 
-  /// Отформатированная общая сумма
+  /// Отформатированная общая сумма (как простое число)
   String get formattedTotalAmount {
-    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
+    return totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2);
   }
 
   /// Количество категорий с расходами
@@ -370,9 +339,6 @@ class FishingTripStatistics {
   /// Максимальная сумма за поездку
   final double maxTripAmount;
 
-  /// Валюта статистики
-  final String currency;
-
   /// Период статистики
   final DateTime startDate;
   final DateTime endDate;
@@ -383,7 +349,6 @@ class FishingTripStatistics {
     required this.averagePerTrip,
     required this.minTripAmount,
     required this.maxTripAmount,
-    this.currency = 'KZT',
     required this.startDate,
     required this.endDate,
   });
@@ -393,7 +358,6 @@ class FishingTripStatistics {
       List<FishingTripModel> trips, {
         DateTime? startDate,
         DateTime? endDate,
-        String currency = 'KZT',
       }) {
     if (trips.isEmpty) {
       return FishingTripStatistics(
@@ -402,7 +366,6 @@ class FishingTripStatistics {
         averagePerTrip: 0,
         minTripAmount: 0,
         maxTripAmount: 0,
-        currency: currency,
         startDate: startDate ?? DateTime.now(),
         endDate: endDate ?? DateTime.now(),
       );
@@ -421,53 +384,36 @@ class FishingTripStatistics {
       averagePerTrip: averagePerTrip,
       minTripAmount: minTripAmount,
       maxTripAmount: maxTripAmount,
-      currency: currency,
       startDate: startDate ?? trips.map((t) => t.date).reduce((a, b) => a.isBefore(b) ? a : b),
       endDate: endDate ?? trips.map((t) => t.date).reduce((a, b) => a.isAfter(b) ? a : b),
     );
   }
 
-  /// Получить символ валюты
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
-  }
-
   /// Количество поездок (алиас для совместимости)
   int get tripCount => totalTrips;
 
-  /// Отформатированная общая сумма
+  /// Отформатированная общая сумма (как простое число)
   String get formattedTotal {
-    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
+    return totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2);
   }
 
-  /// Отформатированная средняя сумма
+  /// Отформатированная средняя сумма (как простое число)
   String get formattedAverage {
-    return '$currencySymbol ${averagePerTrip.toStringAsFixed(averagePerTrip.truncateToDouble() == averagePerTrip ? 0 : 2)}';
+    return averagePerTrip.toStringAsFixed(averagePerTrip.truncateToDouble() == averagePerTrip ? 0 : 2);
   }
 
-  /// Отформатированная средняя сумма за поездку
+  /// Отформатированная средняя сумма за поездку (как простое число)
   String get formattedAveragePerTrip {
-    return '$currencySymbol ${averagePerTrip.toStringAsFixed(0)}';
+    return averagePerTrip.toStringAsFixed(0);
   }
 
-  /// Отформатированная минимальная сумма за поездку
+  /// Отформатированная минимальная сумма за поездку (как простое число)
   String get formattedMinTrip {
-    return '$currencySymbol ${minTripAmount.toStringAsFixed(0)}';
+    return minTripAmount.toStringAsFixed(0);
   }
 
-  /// Отформатированная максимальная сумма за поездку
+  /// Отформатированная максимальная сумма за поездку (как простое число)
   String get formattedMaxTrip {
-    return '$currencySymbol ${maxTripAmount.toStringAsFixed(0)}';
+    return maxTripAmount.toStringAsFixed(0);
   }
 }

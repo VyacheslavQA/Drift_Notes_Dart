@@ -174,7 +174,6 @@ class DataExportService {
           'is_multi_day': note.isMultiDay,
           'location_name': note.locationName,
           'notes': note.notes,
-          'currency': note.currency,
           'total_amount': note.totalAmount,
           'expense_count': note.expenseCount,
           'expenses': note.expenses.map((expense) => {
@@ -186,7 +185,6 @@ class DataExportService {
             'category_icon': expense.category.icon,
             'description': expense.description,
             'date': expense.date.toIso8601String(),
-            'currency': expense.currency,
             'notes': expense.notes,
             'location': expense.location != null ? {
               'latitude': expense.location!.latitude,
@@ -396,7 +394,7 @@ class DataExportService {
   /// Создание CSV для заметок бюджета
   String _createBudgetNotesCsv(List<dynamic> notes) {
     final buffer = StringBuffer();
-    buffer.writeln('ID,Date,End Date,Multi-Day,Location,Total Amount,Currency,Expense Count,Notes,Created At');
+    buffer.writeln('ID,Date,End Date,Multi-Day,Location,Total Amount,Expense Count,Notes,Created At');
 
     for (final note in notes) {
       buffer.writeln([
@@ -406,7 +404,6 @@ class DataExportService {
         note['is_multi_day'] ?? false,
         _escapeCsvField(note['location_name'] ?? ''),
         note['total_amount'] ?? 0,
-        note['currency'] ?? '',
         note['expense_count'] ?? 0,
         _escapeCsvField(note['notes'] ?? ''),
         note['created_at'] ?? '',
@@ -419,7 +416,7 @@ class DataExportService {
   /// Создание детального CSV для всех расходов
   String _createExpensesCsv(List<dynamic> budgetNotes) {
     final buffer = StringBuffer();
-    buffer.writeln('Budget Note ID,Trip Location,Expense ID,Category,Description,Amount,Currency,Date,Location Name,Notes,Created At');
+    buffer.writeln('Budget Note ID,Trip Location,Expense ID,Category,Description,Amount,Date,Location Name,Notes,Created At');
 
     for (final note in budgetNotes) {
       final expenses = note['expenses'] as List<dynamic>? ?? [];
@@ -431,7 +428,6 @@ class DataExportService {
           expense['category'] ?? '',
           _escapeCsvField(expense['description'] ?? ''),
           expense['amount'] ?? 0,
-          expense['currency'] ?? '',
           expense['date'] ?? '',
           _escapeCsvField(expense['location_name'] ?? ''),
           _escapeCsvField(expense['notes'] ?? ''),

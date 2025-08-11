@@ -355,7 +355,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ),
                     Text(
-                      expense.formattedAmount,
+                      _formatExpenseAmount(expense.amount),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -434,6 +434,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
 
     return result.reversed.join();
+  }
+
+  String _formatExpenseAmount(double amount) {
+    // Форматируем сумму расхода без символа валюты
+    return amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2);
   }
 
   @override
@@ -577,7 +582,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           // Статистика поездки
           Row(
             children: [
-              // Общая сумма
+              // Общая сумма без символа валюты
               Expanded(
                 flex: 2,
                 child: Column(
@@ -595,7 +600,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        '${trip.currencySymbol} ${_formatFullAmount(trip.totalAmount)}',
+                        _formatFullAmount(trip.totalAmount),
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -773,12 +778,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 ),
               ),
 
-              // Сумма и стрелка
+              // Сумма и стрелка без символа валюты
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    expense.formattedAmount,
+                    _formatExpenseAmount(expense.amount),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,

@@ -352,6 +352,22 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     return localizations.translate(monthKeys[month - 1]) ?? 'Месяц';
   }
 
+  String _formatStatisticsAmount(double amount) {
+    // Форматируем суммы статистики без символа валюты
+    final formatter = amount.toStringAsFixed(0);
+    final chars = formatter.split('').reversed.toList();
+    final result = <String>[];
+
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        result.add(' ');
+      }
+      result.add(chars[i]);
+    }
+
+    return result.reversed.join();
+  }
+
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -516,7 +532,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
       children: [
         _buildStatCard(
           localizations.translate('total_spent') ?? 'Потрачено',
-          statistics.formattedTotal,
+          _formatStatisticsAmount(statistics.totalAmount),
           Icons.payments,
           AppConstants.primaryColor,
           localizations.translate('total_spent_desc') ?? 'Общая сумма всех расходов',
@@ -524,7 +540,7 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
         const SizedBox(height: 16),
         _buildStatCard(
           localizations.translate('avg_per_trip') ?? 'Среднее за поездку',
-          statistics.formattedAveragePerTrip,
+          _formatStatisticsAmount(statistics.averagePerTrip),
           Icons.trending_up,
           Colors.green,
           localizations.translate('avg_per_trip_desc') ?? 'Средние расходы на одну поездку',
@@ -643,11 +659,11 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
           if (statistics.tripCount > 1) ...[
             const SizedBox(height: 16),
 
-            // Диапазон расходов
+            // Диапазон расходов без символов валют
             _buildDetailRow(
               Icons.show_chart,
               localizations.translate('expense_range') ?? 'Диапазон расходов',
-              '${statistics.formattedMinTrip} - ${statistics.formattedMaxTrip}',
+              '${_formatStatisticsAmount(statistics.minTripAmount)} - ${_formatStatisticsAmount(statistics.maxTripAmount)}',
               localizations.translate('min_max_trip_expenses') ?? 'Минимальные и максимальные расходы за поездку',
             ),
           ],

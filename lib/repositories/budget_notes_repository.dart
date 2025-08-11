@@ -126,12 +126,11 @@ class BudgetNotesRepository {
     }
   }
 
-  /// ✅ ИСПРАВЛЕНО: Создать новую заметку бюджета с расходами через Isar
+  /// ✅ ИСПРАВЛЕНО: Создать новую заметку бюджета с расходами через Isar (убрана валюта)
   Future<FishingTripModel> createTripWithExpenses({
     required DateTime date,
     String? locationName,
     String? notes,
-    String currency = 'KZT',
     required Map<FishingExpenseCategory, double> categoryAmounts,
     required Map<FishingExpenseCategory, String> categoryDescriptions,
     required Map<FishingExpenseCategory, String> categoryNotes,
@@ -175,7 +174,6 @@ class BudgetNotesRepository {
             description: description.isNotEmpty ? description : 'Расходы',
             category: category,
             date: date,
-            currency: currency,
             notes: expenseNotes.isEmpty ? null : expenseNotes,
             locationName: locationName,
             createdAt: now,
@@ -198,14 +196,13 @@ class BudgetNotesRepository {
           expense.copyWith(tripId: tripId)
       ).toList();
 
-      // ✅ ИСПРАВЛЕНО: Создаем BudgetNoteEntity для Isar
+      // ✅ ИСПРАВЛЕНО: Создаем BudgetNoteEntity для Isar (убрана валюта)
       final budgetEntity = BudgetNoteEntity.create(
         customId: tripId,
         userId: userId,
         date: date,
         locationName: locationName,
         notes: notes,
-        currency: currency,
         expenses: updatedExpenses,
       );
 
@@ -429,7 +426,7 @@ class BudgetNotesRepository {
   // ОСТАЛЬНЫЕ МЕТОДЫ (сохраняем совместимость)
   // ========================================
 
-  /// Получить суммированные расходы по категориям
+  /// Получить суммированные расходы по категориям (убрана валюта)
   Future<Map<FishingExpenseCategory, CategoryExpenseSummary>> getCategorySummaries({
     DateTime? startDate,
     DateTime? endDate,
@@ -470,7 +467,6 @@ class BudgetNotesRepository {
         double totalAmount = 0;
         int expenseCount = 0;
         int tripCount = 0;
-        String currency = 'KZT';
 
         for (final trip in filteredTrips) {
           bool hasCategoryInTrip = false;
@@ -479,7 +475,6 @@ class BudgetNotesRepository {
             if (expense.category == category) {
               totalAmount += expense.amount;
               expenseCount++;
-              currency = expense.currency;
               hasCategoryInTrip = true;
             }
           }
@@ -495,7 +490,6 @@ class BudgetNotesRepository {
             totalAmount: totalAmount,
             expenseCount: expenseCount,
             tripCount: tripCount,
-            currency: currency,
           );
 
           // ✅ УБРАНО: debugPrint с деталями категории и суммой
@@ -714,40 +708,19 @@ class BudgetNotesRepository {
   }
 }
 
-/// Сводка расходов по категории (сохраняем для совместимости)
+/// Сводка расходов по категории (убрана валюта)
 class CategoryExpenseSummary {
   final FishingExpenseCategory category;
   final double totalAmount;
   final int expenseCount;
   final int tripCount;
-  final String currency;
 
   const CategoryExpenseSummary({
     required this.category,
     required this.totalAmount,
     required this.expenseCount,
     required this.tripCount,
-    required this.currency,
   });
-
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
-  }
-
-  String get formattedAmount {
-    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
-  }
 
   String get tripCountDescription {
     if (tripCount == 1) {

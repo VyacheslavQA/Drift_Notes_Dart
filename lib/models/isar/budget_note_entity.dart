@@ -28,8 +28,6 @@ class BudgetNoteEntity {
 
   String? notes; // Общие заметки о поездке
 
-  String currency = 'KZT'; // Валюта
-
   double totalAmount = 0.0; // Общая сумма расходов
 
   int expenseCount = 0; // Количество расходов
@@ -99,7 +97,6 @@ class BudgetNoteEntity {
       'isMultiDay': isMultiDay,
       'locationName': locationName,
       'notes': notes,
-      'currency': currency,
       'totalAmount': totalAmount,
       'expenseCount': expenseCount,
       'expenses': expenses.map((e) => e.toMap()).toList(),
@@ -121,7 +118,6 @@ class BudgetNoteEntity {
       ..isMultiDay = data['isMultiDay'] as bool? ?? false
       ..locationName = data['locationName'] as String?
       ..notes = data['notes'] as String?
-      ..currency = data['currency'] as String? ?? 'KZT'
       ..totalAmount = (data['totalAmount'] as num?)?.toDouble() ?? 0.0
       ..expenseCount = data['expenseCount'] as int? ?? 0
       ..createdAt = data['createdAt'] != null
@@ -159,7 +155,6 @@ class BudgetNoteEntity {
       ..date = trip.date
       ..locationName = trip.locationName
       ..notes = trip.notes
-      ..currency = trip.currency
       ..createdAt = trip.createdAt
       ..updatedAt = trip.updatedAt
       ..isSynced = trip.isSynced;
@@ -178,7 +173,6 @@ class BudgetNoteEntity {
       date: date,
       locationName: locationName,
       notes: notes,
-      currency: currency,
       createdAt: createdAt,
       updatedAt: updatedAt,
       isSynced: isSynced,
@@ -195,7 +189,6 @@ class BudgetNoteEntity {
     bool isMultiDay = false,
     String? locationName,
     String? notes,
-    String currency = 'KZT',
     List<FishingExpenseModel> expenses = const [],
   }) {
     final now = DateTime.now();
@@ -207,7 +200,6 @@ class BudgetNoteEntity {
       ..isMultiDay = isMultiDay
       ..locationName = locationName
       ..notes = notes
-      ..currency = currency
       ..createdAt = now
       ..updatedAt = now
       ..isSynced = false;
@@ -228,7 +220,6 @@ class BudgetNoteEntity {
       'isMultiDay': isMultiDay,
       'locationName': locationName,
       'notes': notes,
-      'currency': currency,
       'totalAmount': totalAmount,
       'expenseCount': expenseCount,
       'expenses': expenses.map((e) => e.toMap()).toList(),
@@ -253,7 +244,6 @@ class BudgetNoteEntity {
       ..isMultiDay = map['isMultiDay'] as bool? ?? false
       ..locationName = map['locationName'] as String?
       ..notes = map['notes'] as String?
-      ..currency = map['currency'] as String? ?? 'KZT'
       ..totalAmount = (map['totalAmount'] as num?)?.toDouble() ?? 0.0
       ..expenseCount = map['expenseCount'] as int? ?? 0
       ..createdAt = map['createdAt'] != null
@@ -305,6 +295,6 @@ class BudgetNoteEntity {
 
   @override
   String toString() {
-    return 'BudgetNoteEntity(id: $id, firebaseId: $firebaseId, userId: $userId, totalAmount: $totalAmount $currency, expenses: ${expenses.length})';
+    return 'BudgetNoteEntity(id: $id, firebaseId: $firebaseId, userId: $userId, totalAmount: $totalAmount, expenses: ${expenses.length})';
   }
 }

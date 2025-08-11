@@ -410,6 +410,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     }
   }
 
+  String _formatCategoryAmount(double amount) {
+    // Форматируем суммы категорий без символа валюты
+    return amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2);
+  }
+
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -482,7 +487,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Статистика
+              // Статистика без символов валют
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -493,7 +498,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   children: [
                     _buildStatRow(
                       localizations.translate('total_amount') ?? 'Общая сумма',
-                      summary.formattedAmount,
+                      _formatCategoryAmount(summary.totalAmount),
                       _getCategoryColor(summary.category),
                     ),
                     const SizedBox(height: 12),
@@ -512,7 +517,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       const SizedBox(height: 12),
                       _buildStatRow(
                         localizations.translate('avg_per_trip') ?? 'Среднее за поездку',
-                        '${summary.currencySymbol} ${(summary.totalAmount / summary.tripCount).toStringAsFixed(0)}',
+                        _formatCategoryAmount(summary.totalAmount / summary.tripCount),
                         AppConstants.textColor,
                       ),
                     ],
@@ -799,12 +804,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 ),
               ),
 
-              // Сумма и стрелка
+              // Сумма без символа валюты и стрелка
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    summary.formattedAmount,
+                    _formatCategoryAmount(summary.totalAmount),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -59,9 +59,6 @@ class FishingExpenseModel {
   /// Связанная заметка о рыбалке (опционально, для совместимости)
   final String? fishingNoteId;
 
-  /// Валюта (по умолчанию тенге)
-  final String currency;
-
   /// Дополнительные заметки
   final String? notes;
 
@@ -85,7 +82,6 @@ class FishingExpenseModel {
     required this.createdAt,
     required this.updatedAt,
     this.fishingNoteId,
-    this.currency = 'KZT',
     this.notes,
     this.location,
     this.locationName,
@@ -104,7 +100,6 @@ class FishingExpenseModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? fishingNoteId,
-    String? currency,
     String? notes,
     GeoPoint? location,
     String? locationName,
@@ -121,7 +116,6 @@ class FishingExpenseModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       fishingNoteId: fishingNoteId ?? this.fishingNoteId,
-      currency: currency ?? this.currency,
       notes: notes ?? this.notes,
       location: location ?? this.location,
       locationName: locationName ?? this.locationName,
@@ -143,7 +137,6 @@ class FishingExpenseModel {
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
       fishingNoteId: map['fishingNoteId'] as String?,
-      currency: map['currency'] as String? ?? 'KZT',
       notes: map['notes'] as String?,
       location: map['location'] as GeoPoint?,
       locationName: map['locationName'] as String?,
@@ -164,7 +157,6 @@ class FishingExpenseModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'fishingNoteId': fishingNoteId,
-      'currency': currency,
       'notes': notes,
       'location': location,
       'locationName': locationName,
@@ -185,7 +177,6 @@ class FishingExpenseModel {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'fishingNoteId': fishingNoteId,
-      'currency': currency,
       'notes': notes,
       'location': location != null ? {
         'latitude': location!.latitude,
@@ -210,7 +201,6 @@ class FishingExpenseModel {
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       fishingNoteId: json['fishingNoteId'] as String?,
-      currency: json['currency'] as String? ?? 'KZT',
       notes: json['notes'] as String?,
       location: json['location'] != null ?
       GeoPoint(
@@ -231,7 +221,6 @@ class FishingExpenseModel {
     required String description,
     DateTime? date,
     String? fishingNoteId,
-    String currency = 'KZT',
     String? notes,
     GeoPoint? location,
     String? locationName,
@@ -248,7 +237,6 @@ class FishingExpenseModel {
       createdAt: now,
       updatedAt: now,
       fishingNoteId: fishingNoteId,
-      currency: currency,
       notes: notes,
       location: location,
       locationName: locationName,
@@ -256,25 +244,9 @@ class FishingExpenseModel {
     );
   }
 
-  /// Получить символ валюты
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
-  }
-
-  /// Отформатированная сумма с символом валюты
+  /// Отформатированная сумма (как простое число)
   String get formattedAmount {
-    return '$currencySymbol ${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)}';
+    return amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2);
   }
 
   /// Краткое отформатированное описание для списков
@@ -341,9 +313,6 @@ class FishingExpenseStatistics {
   final DateTime startDate;
   final DateTime endDate;
 
-  /// Валюта статистики
-  final String currency;
-
   const FishingExpenseStatistics({
     required this.totalAmount,
     required this.totalCount,
@@ -353,7 +322,6 @@ class FishingExpenseStatistics {
     this.mostExpensive,
     required this.startDate,
     required this.endDate,
-    this.currency = 'KZT',
   });
 
   /// Создать статистику из списка расходов
@@ -361,7 +329,6 @@ class FishingExpenseStatistics {
       List<FishingExpenseModel> expenses, {
         DateTime? startDate,
         DateTime? endDate,
-        String currency = 'KZT',
       }) {
     if (expenses.isEmpty) {
       return FishingExpenseStatistics(
@@ -372,7 +339,6 @@ class FishingExpenseStatistics {
         averageExpense: 0,
         startDate: startDate ?? DateTime.now(),
         endDate: endDate ?? DateTime.now(),
-        currency: currency,
       );
     }
 
@@ -421,34 +387,17 @@ class FishingExpenseStatistics {
       filteredExpenses.map((e) => e.date).reduce((a, b) => a.isBefore(b) ? a : b)),
       endDate: endDate ?? (filteredExpenses.isEmpty ? DateTime.now() :
       filteredExpenses.map((e) => e.date).reduce((a, b) => a.isAfter(b) ? a : b)),
-      currency: currency,
     );
   }
 
-  /// Получить символ валюты
-  String get currencySymbol {
-    switch (currency) {
-      case 'KZT':
-        return '₸';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'RUB':
-        return '₽';
-      default:
-        return currency;
-    }
-  }
-
-  /// Отформатированная общая сумма
+  /// Отформатированная общая сумма (как простое число)
   String get formattedTotal {
-    return '$currencySymbol ${totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2)}';
+    return totalAmount.toStringAsFixed(totalAmount.truncateToDouble() == totalAmount ? 0 : 2);
   }
 
-  /// Отформатированная средняя сумма
+  /// Отформатированная средняя сумма (как простое число)
   String get formattedAverage {
-    return '$currencySymbol ${averageExpense.toStringAsFixed(averageExpense.truncateToDouble() == averageExpense ? 0 : 2)}';
+    return averageExpense.toStringAsFixed(averageExpense.truncateToDouble() == averageExpense ? 0 : 2);
   }
 
   /// Получить процент расходов по категории

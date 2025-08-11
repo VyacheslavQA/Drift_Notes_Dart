@@ -430,12 +430,12 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
             ),
           ),
           const SizedBox(height: 12),
-          // Большая сумма с адаптивным размером
+          // Большая сумма без символа валюты
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              _formatLargeAmount(statistics?.totalAmount ?? 0, '₸'),
+              _formatLargeAmount(statistics?.totalAmount ?? 0),
               style: const TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.bold,
@@ -508,7 +508,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
         Expanded(
           child: _buildStatItem(
             localizations.translate('avg_per_trip') ?? 'Средняя за поездку',
-            _formatLargeAmount(avgPerTrip, '₸'),
+            _formatLargeAmount(avgPerTrip),
           ),
         ),
         Expanded(
@@ -734,7 +734,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
             const SizedBox(height: 12),
 
-            // Третья строка: сумма на отдельной строке
+            // Третья строка: сумма без символа валюты
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -743,7 +743,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                '${trip.currencySymbol} ${_formatFullAmount(totalAmount)}',
+                _formatFullAmount(totalAmount),
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -774,9 +774,9 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
     return result.reversed.join();
   }
 
-  String _formatLargeAmount(double amount, String currencySymbol) {
-    // Форматируем большие суммы для статистики (показываем полностью с разделителями)
-    return '$currencySymbol ${_formatFullAmount(amount)}';
+  String _formatLargeAmount(double amount) {
+    // Форматируем большие суммы для статистики без символа валюты
+    return _formatFullAmount(amount);
   }
 
   String _getExpenseCountText(int count) {
