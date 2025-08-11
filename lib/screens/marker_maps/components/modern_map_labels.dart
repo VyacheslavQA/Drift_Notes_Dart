@@ -162,7 +162,7 @@ class ModernMapLabels extends StatelessWidget {
       final angle = _calculateRayAngle(i);
 
       // Базовые параметры позиционирования (та же логика что раньше)
-      double labelY = 50.0;
+      double labelY = 30.0;
       final rayAtLabelY = (originY - labelY);
       double labelX = centerX + rayAtLabelY / math.tan(angle);
 
@@ -170,8 +170,8 @@ class ModernMapLabels extends StatelessWidget {
       switch (i) {
         case 0:
           labelY += 20.0;
-          labelX -= 50.0;
-          labelX = math.max(labelX, 35.0);
+          labelX -= 60.0;
+          labelX = math.max(labelX, 30.0);
           break;
         case 1:
           labelY += 5.0;
@@ -183,8 +183,8 @@ class ModernMapLabels extends StatelessWidget {
           break;
         case 4:
           labelY += 20.0;
-          labelX += 50.0;
-          labelX = math.min(labelX, screenSize.width - 35.0);
+          labelX += 40.0;
+          labelX = math.min(labelX, screenSize.width - 30.0);
           break;
       }
 

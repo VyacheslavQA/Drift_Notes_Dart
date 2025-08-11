@@ -63,8 +63,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   final int _raysCount = 5;
   final double _maxDistance = 200.0;
   final double _distanceStep = 10.0;
-  final double _leftAngle = 105.0;
-  final double _rightAngle = 75.0;
+  final double _leftAngle = 104.0;
+  final double _rightAngle = 76.0;
 
 
 
