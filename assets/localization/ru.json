@@ -356,6 +356,8 @@
   "timer_2": "Таймер 2",
   "timer_3": "Таймер 3",
   "timer_4": "Таймер 4",
+  "timer_5": "Таймер 5",
+  "timer_6": "Таймер 6",
   "fishing_notes": "Заметки о рыбалке",
   "required_field": "Обязательное поле",
   "enter_correct_number": "Введите корректное число",
@@ -2245,5 +2247,6 @@
   "copy_diary_entry": "Копировать запись",
   "entry_details": "Детали записи",
   "no_description_provided": "Описание не указано",
-  "view_all_records": "Просмотр всех записей"
+  "view_all_records": "Просмотр всех записей",
+  "point": "Точка"
 }

@@ -79,6 +79,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     'зацеп',
     'бугор',
     'точка_кормления',
+    'точка',
   ];
 
   String _currentBottomType = 'ил';
@@ -191,6 +192,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     'зацеп': Colors.red,
     'бугор': Color(0xFFFF8C00),
     'точка_кормления': Color(0xFF00BFFF),
+    'точка': Color(0xFFFF4500),
     'default': Colors.blue,
   };
 
@@ -204,6 +206,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     'зацеп': Icons.warning,
     'бугор': Icons.landscape,
     'точка_кормления': Icons.gps_fixed,
+    'точка': Icons.circle,
     'default': Icons.location_on,
   };
 
@@ -303,6 +306,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
         return localizations.translate('hill');
       case 'точка_кормления':
         return localizations.translate('feeding_spot');
+      case 'точка':
+        return localizations.translate('point');
       case 'dropoff':
         return localizations.translate('hill');
       case 'weed':

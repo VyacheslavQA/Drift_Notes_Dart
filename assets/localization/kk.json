@@ -356,6 +356,8 @@
   "timer_2": "Таймер 2",
   "timer_3": "Таймер 3",
   "timer_4": "Таймер 4",
+  "timer_5": "Таймер 5",
+  "timer_6": "Таймер 6",
   "fishing_notes": "Балық аулау туралы жазбалар",
   "required_field": "Міндетті өріс",
   "enter_correct_number": "Дұрыс санды енгізіңіз",
@@ -2239,5 +2241,6 @@
   "copy_diary_entry": "Жазбаны көшіру",
   "entry_details": "Жазба мәліметтері",
   "no_description_provided": "Сипаттама көрсетілмеген",
-  "view_all_records": "Барлық жазбаларды көру"
+  "view_all_records": "Барлық жазбаларды көру",
+  "point": "Нүкте"
 }

@@ -363,6 +363,8 @@
   "timer_2": "Timer 2",
   "timer_3": "Timer 3",
   "timer_4": "Timer 4",
+  "timer_5": "Timer 5",
+  "timer_6": "Timer 6",
   "fishing_notes": "Fishing Notes",
   "required_field": "Required field",
   "enter_correct_number": "Enter a valid number",
@@ -2289,5 +2291,6 @@
   "copy_diary_entry": "Copy Entry",
   "entry_details": "Entry Details",
   "no_description_provided": "No description provided",
-  "view_all_records": "View all records"
+  "view_all_records": "View all records",
+  "point": "Point"
 }

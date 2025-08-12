@@ -68,6 +68,8 @@ class TimerService {
     } else {
       // Проверяем и мигрируем существующие таймеры
       await _migrateTimerNames();
+      // Проверяем, нужно ли добавить новые таймеры
+      await _addMissingTimers();
     }
 
     // Восстановление работающих таймеров
@@ -104,7 +106,7 @@ class TimerService {
 
   // Создание таймеров по умолчанию с ключами локализации
   Future<void> _createDefaultTimers() async {
-    for (int i = 1; i <= 4; i++) {
+    for (int i = 1; i <= 6; i++) {
       _timers.add(
         FishingTimerModel(
           id: i.toString(),
@@ -113,7 +115,34 @@ class TimerService {
       );
     }
     await _saveTimers();
-    print('Созданы таймеры по умолчанию с ключами локализации');
+    print('Созданы таймеры по умолчанию с ключами локализации (6 таймеров)');
+  }
+
+  // Добавление недостающих таймеров для существующих пользователей
+  Future<void> _addMissingTimers() async {
+    bool needsSave = false;
+
+    // Проверяем, есть ли таймеры с ID 5 и 6
+    final existingIds = _timers.map((timer) => timer.id).toSet();
+
+    for (int i = 5; i <= 6; i++) {
+      final timerId = i.toString();
+      if (!existingIds.contains(timerId)) {
+        _timers.add(
+          FishingTimerModel(
+            id: timerId,
+            name: 'timer_$i',
+          ),
+        );
+        needsSave = true;
+        print('Добавлен новый таймер: timer_$i');
+      }
+    }
+
+    if (needsSave) {
+      await _saveTimers();
+      print('Новые таймеры сохранены');
+    }
   }
 
   // Миграция существующих названий таймеров на ключи локализации
@@ -145,10 +174,14 @@ class TimerService {
       'Таймер 2',
       'Таймер 3',
       'Таймер 4',
+      'Таймер 5',
+      'Таймер 6',
       'Timer 1',
       'Timer 2',
       'Timer 3',
       'Timer 4',
+      'Timer 5',
+      'Timer 6',
     ];
 
     // Если название уже является ключом локализации, не мигрируем
@@ -298,6 +331,10 @@ class TimerService {
         return 'Таймер 3';
       case 'timer_4':
         return 'Таймер 4';
+      case 'timer_5':
+        return 'Таймер 5';
+      case 'timer_6':
+        return 'Таймер 6';
       default:
         return timer.name;
     }

@@ -147,24 +147,55 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                     ),
                   ),
 
-                  // Подпись глубины (если есть)
+                  // 🆕 НОВАЯ ПОДПИСЬ ДИСТАНЦИИ СЛЕВА ОТ МАРКЕРА (белым цветом)
+                  Positioned(
+                    right: 16, // Слева от маркера
+                    top: 4, // Опущено еще ниже (было 2, стало 4)
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2, // Уменьшено в 2 раза
+                        vertical: 0.5, // Уменьшено в 2 раза
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9), // Белый фон
+                        borderRadius: BorderRadius.circular(2), // Уменьшено в 2 раза
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 1, // Уменьшено в 2 раза
+                            offset: const Offset(0, 0.5), // Уменьшено в 2 раза
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${distance.toInt()}', // Только цифра дистанции
+                        style: const TextStyle(
+                          color: Colors.black87, // Черный текст на белом фоне для читаемости
+                          fontSize: 4.5, // Уменьшено в 2 раза (9/2 = 4.5)
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Подпись глубины справа от маркера (если есть)
                   if (depth != null)
                     Positioned(
-                      left: 16, // Справа от маркера (чуть ближе из-за меньшей области)
-                      top: -4,
+                      left: 16, // Справа от маркера
+                      top: 4, // Опущено еще ниже (было 2, стало 4)
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
+                          horizontal: 2, // Уменьшено в 2 раза
+                          vertical: 0.5, // Уменьшено в 2 раза
                         ),
                         decoration: BoxDecoration(
                           color: Colors.yellow.shade300.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(2), // Уменьшено в 2 раза
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
-                              blurRadius: 2,
-                              offset: const Offset(0, 1),
+                              blurRadius: 1, // Уменьшено в 2 раза
+                              offset: const Offset(0, 0.5), // Уменьшено в 2 раза
                             ),
                           ],
                         ),
@@ -172,7 +203,7 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                           '${depth.toStringAsFixed(1)}м',
                           style: const TextStyle(
                             color: Colors.black87,
-                            fontSize: 9,
+                            fontSize: 4.5, // Уменьшено в 2 раза (9/2 = 4.5)
                             fontWeight: FontWeight.bold,
                           ),
                         ),
