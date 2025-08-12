@@ -2238,5 +2238,6 @@
   "delete_entry_confirmation": "Бұл жазбаны жойғыңыз келетініне сенімдісіз бе?",
   "copy_diary_entry": "Жазбаны көшіру",
   "entry_details": "Жазба мәліметтері",
-  "no_description_provided": "Сипаттама көрсетілмеген"
+  "no_description_provided": "Сипаттама көрсетілмеген",
+  "view_all_records": "Барлық жазбаларды көру"
 }

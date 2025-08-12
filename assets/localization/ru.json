@@ -2244,5 +2244,6 @@
   "delete_entry_confirmation": "Вы уверены что хотите удалить запись?",
   "copy_diary_entry": "Копировать запись",
   "entry_details": "Детали записи",
-  "no_description_provided": "Описание не указано"
+  "no_description_provided": "Описание не указано",
+  "view_all_records": "Просмотр всех записей"
 }

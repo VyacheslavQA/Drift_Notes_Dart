@@ -896,6 +896,80 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Po
     );
   }
 
+  // ✅ НОВЫЙ МЕТОД - вставить после _buildQuickActionItem
+  Widget _buildMyNotesButton() {
+    final localizations = AppLocalizations.of(context);
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FishingNotesListScreen()),
+        ).then((value) {
+          _loadFishingNotes();
+          _refreshProviderData();
+        });
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: EdgeInsets.all(cardPadding),
+        margin: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        decoration: BoxDecoration(
+          color: AppConstants.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppConstants.primaryColor.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Иконка
+            Container(
+              padding: EdgeInsets.all(isTablet ? 16 : 12),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.notes_outlined,
+                color: AppConstants.textColor,
+                size: isTablet ? 32 : 28,
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Текст
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localizations.translate('my_notes'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: isTablet ? 20 : 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    localizations.translate('view_all_records'),
+                    style: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.7),
+                      fontSize: isTablet ? 16 : 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsGrid() {
     final localizations = AppLocalizations.of(context);
 
@@ -1493,6 +1567,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Po
                   const SizedBox(height: 16),
                   _buildYoutubePromoCard(),
                   const SizedBox(height: 16),
+                  _buildMyNotesButton(),       // ← НОВАЯ кнопка
+                  const SizedBox(height: 16),  // ← НОВЫЙ отступ
                   _buildQuickActionsGrid(),
                   const SizedBox(height: 24),
 
