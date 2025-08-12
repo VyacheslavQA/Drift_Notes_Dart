@@ -1,13 +1,19 @@
 // Путь: lib/screens/fishing_diary/fishing_diary_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_diary_model.dart';
 import '../../repositories/fishing_diary_repository.dart';
+import '../../providers/subscription_provider.dart';
+import '../../widgets/loading_overlay.dart';
+import '../subscription/paywall_screen.dart';
 import 'edit_fishing_diary_screen.dart';
+// 🚀 НОВЫЕ ИМПОРТЫ для шеринга
+import '../../services/fishing_diary_share/fishing_diary_sharing_service.dart';
 
 class FishingDiaryDetailScreen extends StatefulWidget {
   final FishingDiaryModel entry;
@@ -21,6 +27,7 @@ class FishingDiaryDetailScreen extends StatefulWidget {
 class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
   final FishingDiaryRepository _repository = FishingDiaryRepository();
   late FishingDiaryModel _currentEntry;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -113,6 +120,93 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
     }
   }
 
+  // 🚀 НОВЫЙ МЕТОД: Экспорт записи дневника
+  Future<void> _shareDiaryEntry(FishingDiaryModel entry) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      // Показываем индикатор загрузки
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppConstants.surfaceColor,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                localizations.translate('preparing_share'),
+                style: TextStyle(color: AppConstants.textColor),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      debugPrint('📤 Начинаем экспорт записи: ${entry.title}');
+
+      final success = await FishingDiarySharingService.exportDiaryEntry(
+        diaryEntry: entry,
+        context: context,
+      );
+
+      // Закрываем индикатор загрузки
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('entry_exported_successfully')),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('export_error')),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка экспорта записи: $e');
+
+      // Закрываем индикатор загрузки в случае ошибки
+      if (mounted) {
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('export_error')}: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Показ Paywall для экспорта записей
+  void _showSharePaywall() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaywallScreen(
+          contentType: 'fishing_diary_sharing',
+          blockedFeature: 'Экспорт записей дневника',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -140,6 +234,7 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // Кнопка избранного
           IconButton(
             icon: Icon(
               _currentEntry.isFavorite ? Icons.star : Icons.star_border,
@@ -147,7 +242,37 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
               size: ResponsiveUtils.getIconSize(context),
             ),
             onPressed: _toggleFavorite,
+            tooltip: _currentEntry.isFavorite
+                ? localizations.translate('remove_from_favorites')
+                : localizations.translate('add_to_favorites'),
           ),
+
+          // 🚀 НОВАЯ КНОПКА: Поделиться записью
+          Consumer<SubscriptionProvider>(
+            builder: (context, subscriptionProvider, _) {
+              final hasPremium = subscriptionProvider.hasPremiumAccess;
+
+              return IconButton(
+                icon: Icon(
+                  hasPremium ? Icons.share : Icons.share_outlined,
+                  color: hasPremium
+                      ? AppConstants.textColor
+                      : AppConstants.textColor.withOpacity(0.5),
+                  size: ResponsiveUtils.getIconSize(context),
+                ),
+                onPressed: () {
+                  if (hasPremium) {
+                    _shareDiaryEntry(_currentEntry);
+                  } else {
+                    _showSharePaywall();
+                  }
+                },
+                tooltip: localizations.translate('share_entry'),
+              );
+            },
+          ),
+
+          // Кнопка редактирования
           IconButton(
             icon: Icon(
               Icons.edit,
@@ -155,33 +280,38 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
               size: ResponsiveUtils.getIconSize(context),
             ),
             onPressed: _editEntry,
+            tooltip: localizations.translate('edit_diary_entry'),
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(horizontalPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: ResponsiveConstants.spacingL),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        message: localizations.translate('loading'),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(horizontalPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: ResponsiveConstants.spacingL),
 
-              // Карточка с основной информацией
-              _buildMainInfoCard(localizations),
-              SizedBox(height: ResponsiveConstants.spacingL),
+                // Карточка с основной информацией
+                _buildMainInfoCard(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
-              // Описание записи
-              _buildDescriptionCard(localizations),
-              SizedBox(height: ResponsiveConstants.spacingL),
+                // Описание записи
+                _buildDescriptionCard(localizations),
+                SizedBox(height: ResponsiveConstants.spacingL),
 
-              // Информация о записи
-              _buildInfoCard(localizations),
-              SizedBox(height: ResponsiveConstants.spacingXXL),
+                // Информация о записи
+                _buildInfoCard(localizations),
+                SizedBox(height: ResponsiveConstants.spacingXXL),
 
-              // Кнопки действий
-              _buildActionButtons(localizations),
-              SizedBox(height: ResponsiveConstants.spacingXXL),
-            ],
+                // Кнопки действий
+                _buildActionButtons(localizations),
+                SizedBox(height: ResponsiveConstants.spacingXXL),
+              ],
+            ),
           ),
         ),
       ),
@@ -363,6 +493,7 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
     );
   }
 
+  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Кнопки действий с поддержкой шеринга
   Widget _buildActionButtons(AppLocalizations localizations) {
     return Column(
       children: [
@@ -392,6 +523,57 @@ class _FishingDiaryDetailScreenState extends State<FishingDiaryDetailScreen> {
               ),
             ),
           ),
+        ),
+        SizedBox(height: ResponsiveConstants.spacingM),
+
+        // 🚀 НОВАЯ КНОПКА: Поделиться записью с проверкой Premium
+        Consumer<SubscriptionProvider>(
+          builder: (context, subscriptionProvider, _) {
+            final hasPremium = subscriptionProvider.hasPremiumAccess;
+
+            return SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (hasPremium) {
+                    _shareDiaryEntry(_currentEntry);
+                  } else {
+                    _showSharePaywall();
+                  }
+                },
+                icon: Icon(
+                  hasPremium ? Icons.share : Icons.share_outlined,
+                  size: ResponsiveUtils.getIconSize(context),
+                ),
+                label: Text(
+                  localizations.translate('share_entry'),
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getOptimalFontSize(context, 16, maxSize: 18),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasPremium
+                      ? AppConstants.primaryColor.withOpacity(0.1)
+                      : AppConstants.surfaceColor.withOpacity(0.5),
+                  foregroundColor: hasPremium
+                      ? AppConstants.primaryColor
+                      : AppConstants.textColor.withOpacity(0.6),
+                  minimumSize: Size(double.infinity, ResponsiveConstants.minTouchTarget),
+                  padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(ResponsiveConstants.radiusXL),
+                    side: BorderSide(
+                      color: hasPremium
+                          ? AppConstants.primaryColor.withOpacity(0.3)
+                          : AppConstants.textColor.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         SizedBox(height: ResponsiveConstants.spacingM),
 

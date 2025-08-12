@@ -37,6 +37,9 @@ import 'screens/timer/timers_screen.dart';
 import 'screens/onboarding/first_launch_language_screen.dart';
 // 🚀 НОВЫЙ ИМПОРТ для маркерных карт
 import 'screens/marker_maps/marker_maps_list_screen.dart';
+// 🚀 НОВЫЕ ИМПОРТЫ для записей дневника
+import 'screens/fishing_diary/fishing_diary_list_screen.dart';
+import 'services/file_handler/driftnotes_file_handler.dart';
 // 🚀 НОВЫЙ ИМПОРТ для быстрого импорта
 import 'screens/marker_maps/quick_import_screen.dart';
 import 'screens/bait_programs/bait_programs_list_screen.dart';
@@ -754,7 +757,7 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     }
   }
 
-  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Обработка runtime файлов (упрощенная)
+  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Обработка runtime файлов с универсальным обработчиком
   void _handleRuntimeFiles(List<SharedMediaFile> files) async {
     if (files.isEmpty) return;
 
@@ -762,10 +765,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
       if (file.path.toLowerCase().endsWith('.driftnotes')) {
         debugPrint('✅ Runtime .driftnotes файл: ${file.path}');
 
-        // Простой переход к импорту через существующий метод
+        // Используем универсальный обработчик файлов
         final context = navigatorKey.currentContext;
         if (context != null) {
-          await MarkerMapsListScreen.handleMarkerMapImport(context, file.path);
+          await DriftNotesFileHandler.handleDriftNotesFile(context, file.path);
         }
         break;
       }
@@ -960,6 +963,10 @@ class _DriftNotesAppState extends State<DriftNotesApp>
             type: 'marker_maps',
             localizedTitle: 'Карты маркеров'
         ),
+        const ShortcutItem(
+            type: 'fishing_diary',
+            localizedTitle: 'Дневник рыбалки'
+        ),
       ]).catchError((error) {
         debugPrint('⚠️ Ошибка установки Quick Actions: $error');
       });
@@ -1015,6 +1022,9 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         case 'marker_maps':
           _handleShortcutAction('marker_maps');
           break;
+        case 'fishing_diary':
+          _handleShortcutAction('fishing_diary');
+          break;
       }
     }
   }
@@ -1051,6 +1061,9 @@ class _DriftNotesAppState extends State<DriftNotesApp>
     // 🚀 НОВОЕ: Навигация к маркерным картам
       case 'marker_maps':
         _navigateToMarkerMaps();
+        break;
+      case 'fishing_diary':
+        _navigateToFishingDiary();
         break;
     }
 
@@ -1120,6 +1133,24 @@ class _DriftNotesAppState extends State<DriftNotesApp>
         Navigator.of(globalNavigatorKey.currentContext!).push(
           MaterialPageRoute(
             builder: (context) => const MarkerMapsListScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Навигация к дневнику рыбалки
+  void _navigateToFishingDiary() {
+    globalNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/home',
+          (route) => false,
+    );
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (globalNavigatorKey.currentContext != null) {
+        Navigator.of(globalNavigatorKey.currentContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const FishingDiaryListScreen(),
           ),
         );
       }

@@ -1,21 +1,37 @@
 // Путь: lib/screens/fishing_diary/fishing_diary_list_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../localization/app_localizations.dart';
 import '../../models/fishing_diary_model.dart';
 import '../../repositories/fishing_diary_repository.dart';
+import '../../providers/subscription_provider.dart';
+import '../../widgets/loading_overlay.dart';
+import '../subscription/paywall_screen.dart';
 import 'add_fishing_diary_screen.dart';
 import 'edit_fishing_diary_screen.dart';
 import 'fishing_diary_detail_screen.dart';
+// 🚀 НОВЫЕ ИМПОРТЫ для шеринга
+import '../../services/fishing_diary_share/fishing_diary_sharing_service.dart';
+import '../../services/file_handler/driftnotes_file_handler.dart';
+import 'fishing_diary_import_preview_screen.dart';
 
 class FishingDiaryListScreen extends StatefulWidget {
   const FishingDiaryListScreen({super.key});
 
   @override
   State<FishingDiaryListScreen> createState() => _FishingDiaryListScreenState();
+
+  // 🚀 НОВЫЙ СТАТИЧЕСКИЙ МЕТОД: Обработка импорта записей дневника
+  static Future<void> handleDiaryImport(BuildContext context, String filePath) async {
+    debugPrint('🔍 handleDiaryImport: Перенаправляем в универсальный обработчик $filePath');
+
+    // Теперь просто вызываем универсальный обработчик
+    await DriftNotesFileHandler.handleDriftNotesFile(context, filePath);
+  }
 }
 
 class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
@@ -182,17 +198,83 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
     }
   }
 
+  // 🚀 НОВЫЙ МЕТОД: Экспорт записи дневника
+  Future<void> _shareDiaryEntry(FishingDiaryModel entry) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      setState(() => _isLoading = true);
+
+      debugPrint('📤 Начинаем экспорт записи: ${entry.title}');
+
+      final success = await FishingDiarySharingService.exportDiaryEntry(
+        diaryEntry: entry,
+        context: context,
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('entry_exported_successfully')),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(localizations.translate('export_error')),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Ошибка экспорта записи: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('export_error')}: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // 🚀 НОВЫЙ МЕТОД: Показ Paywall для экспорта записей
+  void _showSharePaywall() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaywallScreen(
+          contentType: 'fishing_diary_sharing',
+          blockedFeature: 'Экспорт записей дневника',
+        ),
+      ),
+    );
+  }
+
+  // 🚀 ИСПРАВЛЕННЫЙ МЕТОД: Меню настроек записи с увеличенной высотой (без скролла)
   void _showEntryOptions(FishingDiaryModel entry) {
     final localizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: AppConstants.surfaceColor,
+      isScrollControlled: true, // 🚀 ДОБАВЛЕНО: Позволяет контролировать размер модального окна
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ResponsiveConstants.radiusXL),
       ),
       builder: (context) {
         return Container(
+          // 🚀 ОПТИМАЛЬНО: Фиксированная высота 60% экрана - достаточно для всех элементов
+          height: MediaQuery.of(context).size.height * 0.6,
           padding: EdgeInsets.only(
             left: ResponsiveUtils.getHorizontalPadding(context),
             right: ResponsiveUtils.getHorizontalPadding(context),
@@ -200,8 +282,19 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
             bottom: ResponsiveUtils.getHorizontalPadding(context) + MediaQuery.of(context).viewPadding.bottom,
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
+              // Заголовок меню
+              Text(
+                localizations.translate('entry_settings'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Просмотр записи
               ListTile(
                 leading: Icon(Icons.visibility, color: AppConstants.textColor),
                 title: Text(
@@ -218,6 +311,8 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
                   );
                 },
               ),
+
+              // Редактирование записи
               ListTile(
                 leading: Icon(Icons.edit, color: AppConstants.textColor),
                 title: Text(
@@ -234,6 +329,41 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
                   ).then((_) => _loadEntries());
                 },
               ),
+
+              // 🚀 НОВАЯ КНОПКА: Поделиться записью с проверкой Premium
+              Consumer<SubscriptionProvider>(
+                builder: (context, subscriptionProvider, _) {
+                  final hasPremium = subscriptionProvider.hasPremiumAccess;
+
+                  return ListTile(
+                    leading: Icon(
+                      hasPremium ? Icons.share : Icons.share_outlined,
+                      color: hasPremium
+                          ? AppConstants.primaryColor
+                          : AppConstants.textColor.withOpacity(0.4),
+                    ),
+                    title: Text(
+                      localizations.translate('share_entry'),
+                      style: TextStyle(
+                        color: hasPremium
+                            ? AppConstants.textColor
+                            : AppConstants.textColor.withOpacity(0.4),
+                        fontSize: 16,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (hasPremium) {
+                        _shareDiaryEntry(entry);
+                      } else {
+                        _showSharePaywall();
+                      }
+                    },
+                  );
+                },
+              ),
+
+              // Копирование записи
               ListTile(
                 leading: Icon(Icons.copy, color: AppConstants.textColor),
                 title: Text(
@@ -245,6 +375,8 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
                   _copyEntry(entry);
                 },
               ),
+
+              // Избранное
               ListTile(
                 leading: Icon(
                   entry.isFavorite ? Icons.star : Icons.star_border,
@@ -261,6 +393,10 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
                   _toggleFavorite(entry.id);
                 },
               ),
+
+              const Divider(color: Colors.grey),
+
+              // Удаление записи
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: Text(
@@ -272,6 +408,8 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
                   _deleteEntry(entry);
                 },
               ),
+
+              const SizedBox(height: 10),
             ],
           ),
         );
@@ -331,82 +469,80 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Поиск
-            Padding(
-              padding: EdgeInsets.all(horizontalPadding),
-              child: TextField(
-                controller: _searchController,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
-                ),
-                decoration: InputDecoration(
-                  fillColor: AppConstants.surfaceColor,
-                  filled: true,
-                  hintText: localizations.translate('search_diary_entries'),
-                  hintStyle: TextStyle(
-                    color: AppConstants.textColor.withOpacity(0.5),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        message: localizations.translate('loading'),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Поиск
+              Padding(
+                padding: EdgeInsets.all(horizontalPadding),
+                child: TextField(
+                  controller: _searchController,
+                  style: TextStyle(
+                    color: AppConstants.textColor,
                     fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(
-                      ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                  decoration: InputDecoration(
+                    fillColor: AppConstants.surfaceColor,
+                    filled: true,
+                    hintText: localizations.translate('search_diary_entries'),
+                    hintStyle: TextStyle(
+                      color: AppConstants.textColor.withOpacity(0.5),
+                      fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
                     ),
-                    borderSide: BorderSide.none,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: AppConstants.textColor,
-                    size: ResponsiveUtils.getIconSize(context),
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                    icon: Icon(
-                      Icons.clear,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveUtils.getBorderRadius(context, baseRadius: ResponsiveConstants.radiusM),
+                      ),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
                       color: AppConstants.textColor,
                       size: ResponsiveUtils.getIconSize(context),
                     ),
-                    onPressed: () {
-                      _searchController.clear();
-                    },
-                  )
-                      : null,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: ResponsiveConstants.spacingM,
-                    vertical: ResponsiveConstants.spacingM,
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: AppConstants.textColor,
+                        size: ResponsiveUtils.getIconSize(context),
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                      },
+                    )
+                        : null,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveConstants.spacingM,
+                      vertical: ResponsiveConstants.spacingM,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Список записей
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
-                ),
-              )
-                  : _filteredEntries.isEmpty
-                  ? _buildEmptyState(localizations)
-                  : RefreshIndicator(
-                onRefresh: _loadEntries,
-                color: AppConstants.primaryColor,
-                backgroundColor: AppConstants.surfaceColor,
-                child: ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  itemCount: _filteredEntries.length,
-                  itemBuilder: (context, index) {
-                    final entry = _filteredEntries[index];
-                    return _buildEntryCard(entry, localizations);
-                  },
+              // Список записей
+              Expanded(
+                child: _filteredEntries.isEmpty
+                    ? _buildEmptyState(localizations)
+                    : RefreshIndicator(
+                  onRefresh: _loadEntries,
+                  color: AppConstants.primaryColor,
+                  backgroundColor: AppConstants.surfaceColor,
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    itemCount: _filteredEntries.length,
+                    itemBuilder: (context, index) {
+                      final entry = _filteredEntries[index];
+                      return _buildEntryCard(entry, localizations);
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -498,6 +634,7 @@ class _FishingDiaryListScreenState extends State<FishingDiaryListScreen> {
     );
   }
 
+  // 🚀 ОБНОВЛЕННЫЙ МЕТОД: Карточка записи с единообразным дизайном
   Widget _buildEntryCard(FishingDiaryModel entry, AppLocalizations localizations) {
     return Container(
       margin: EdgeInsets.only(bottom: ResponsiveConstants.spacingM),
