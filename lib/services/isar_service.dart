@@ -11,6 +11,7 @@ import '../models/isar/policy_acceptance_entity.dart';
 import '../models/isar/user_usage_limits_entity.dart';
 import '../models/isar/bait_program_entity.dart';
 import '../models/isar/fishing_diary_entity.dart';
+import '../models/isar/fishing_diary_folder_entity.dart';
 
 
 class IsarService {
@@ -42,6 +43,7 @@ class IsarService {
         UserUsageLimitsEntitySchema,
         BaitProgramEntitySchema,
         FishingDiaryEntitySchema,
+        FishingDiaryFolderEntitySchema
       ],
       directory: dir.path,
     );
@@ -1562,6 +1564,7 @@ class IsarService {
       await isar.userUsageLimitsEntitys.clear();
       await isar.baitProgramEntitys.clear();
       await isar.fishingDiaryEntitys.clear();
+      await isar.fishingDiaryFolderEntitys.clear();
     });
   }
 
@@ -1590,6 +1593,10 @@ class IsarService {
       'fishingDiary': {
         'total': await getFishingDiaryEntriesCountByUser(userId),
         'unsynced': await getUnsyncedFishingDiaryEntriesCount(userId),
+      },
+      'fishingDiaryFolders': {
+        'total': await getFishingDiaryFoldersCountByUser(userId),
+        'unsynced': await getUnsyncedFishingDiaryFoldersCount(userId),
       },
       'policyAcceptance': {
         'total': await getPolicyAcceptancesCount(),
@@ -1636,12 +1643,211 @@ class IsarService {
           .userIdEqualTo(userId)
           .deleteAll();
 
+      await isar.fishingDiaryFolderEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .deleteAll();
+
       // 🔥 ИСПРАВЛЕНО: FishingNotes теперь также привязаны к userId
       await isar.fishingNoteEntitys
           .filter()
           .userIdEqualTo(userId)
           .deleteAll();
     });
+  }
+
+  // ========================================
+  // МЕТОДЫ ДЛЯ ПАПОК ДНЕВНИКА РЫБАЛКИ
+  // ========================================
+
+  /// Вставка новой папки
+  Future<int> insertFishingDiaryFolder(FishingDiaryFolderEntity folder) async {
+    final result = await isar.writeTxn(() async {
+      return await isar.fishingDiaryFolderEntitys.put(folder);
+    });
+    debugPrint('📝 IsarService: Вставлена папка с ID=$result, name=${folder.name}');
+    return result;
+  }
+
+  /// Получение всех папок пользователя
+  Future<List<FishingDiaryFolderEntity>> getAllFishingDiaryFolders() async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    final folders = await isar.fishingDiaryFolderEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .sortBySortOrder()
+        .findAll();
+
+    debugPrint('📋 IsarService: Найдено ${folders.length} папок для пользователя $userId');
+    return folders;
+  }
+
+  /// Получение папки по Firebase ID
+  Future<FishingDiaryFolderEntity?> getFishingDiaryFolderByFirebaseId(String firebaseId) async {
+    return await isar.fishingDiaryFolderEntitys
+        .filter()
+        .firebaseIdEqualTo(firebaseId)
+        .findFirst();
+  }
+
+  /// Обновление папки
+  Future<int> updateFishingDiaryFolder(FishingDiaryFolderEntity folder) async {
+    folder.updatedAt = DateTime.now();
+    return await isar.writeTxn(() async {
+      return await isar.fishingDiaryFolderEntitys.put(folder);
+    });
+  }
+
+  /// Удаление папки
+  Future<bool> deleteFishingDiaryFolder(int id) async {
+    return await isar.writeTxn(() async {
+      return await isar.fishingDiaryFolderEntitys.delete(id);
+    });
+  }
+
+  /// Получение записей по папке
+  Future<List<FishingDiaryEntity>> getFishingDiaryEntriesByFolderId(String folderId) async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    return await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .folderIdEqualTo(folderId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .sortByCreatedAtDesc()
+        .findAll();
+  }
+
+  /// Получение записей без папки
+  Future<List<FishingDiaryEntity>> getFishingDiaryEntriesWithoutFolder() async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    return await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .folderIdIsNull()
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .sortByCreatedAtDesc()
+        .findAll();
+  }
+
+  /// Перемещение записи в папку
+  Future<void> moveFishingDiaryEntryToFolder(String entryFirebaseId, String? folderId) async {
+    final entry = await getFishingDiaryEntryByFirebaseId(entryFirebaseId);
+    if (entry == null) throw Exception('Запись не найдена');
+
+    entry.folderId = folderId;
+    entry.markAsModified();
+    await updateFishingDiaryEntry(entry);
+  }
+
+  /// Несинхронизированные папки
+  Future<List<FishingDiaryFolderEntity>> getUnsyncedFishingDiaryFolders() async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    return await isar.fishingDiaryFolderEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .isSyncedEqualTo(false)
+        .findAll();
+  }
+
+  /// Пометить папку как синхронизированную
+  Future<void> markFishingDiaryFolderAsSynced(int id, String firebaseId) async {
+    bool shouldDelete = false;
+
+    await isar.writeTxn(() async {
+      final folder = await isar.fishingDiaryFolderEntitys.get(id);
+      if (folder != null) {
+        folder.isSynced = true;
+        folder.firebaseId = firebaseId;
+        await isar.fishingDiaryFolderEntitys.put(folder);
+
+        if (folder.markedForDeletion == true) {
+          shouldDelete = true;
+        }
+      }
+    });
+
+    if (shouldDelete) {
+      await deleteFishingDiaryFolder(id);
+    }
+  }
+
+  /// Поиск папок по названию
+  Future<List<FishingDiaryFolderEntity>> searchFishingDiaryFolders(String query) async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    return await isar.fishingDiaryFolderEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .and()
+        .nameContains(query, caseSensitive: false)
+        .sortBySortOrder()
+        .findAll();
+  }
+
+  /// Получение папки по ID (локальный ID)
+  Future<FishingDiaryFolderEntity?> getFishingDiaryFolderById(int id) async {
+    return await isar.fishingDiaryFolderEntitys.get(id);
+  }
+
+  /// Очистка всех папок дневника
+  Future<void> clearAllFishingDiaryFolders() async {
+    await isar.writeTxn(() async {
+      await isar.fishingDiaryFolderEntitys.clear();
+    });
+    debugPrint('🧹 IsarService: Очищены все папки дневника');
+  }
+
+  /// Получение количества папок дневника пользователя
+  Future<int> getFishingDiaryFoldersCountByUser(String userId) async {
+    final count = await isar.fishingDiaryFolderEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .not()
+        .markedForDeletionEqualTo(true)
+        .count();
+
+    debugPrint('📊 IsarService: Активных папок дневника пользователя $userId: $count');
+    return count;
+  }
+
+  /// Получение количества несинхронизированных папок
+  Future<int> getUnsyncedFishingDiaryFoldersCount([String? userId]) async {
+    if (userId != null) {
+      return await isar.fishingDiaryFolderEntitys
+          .filter()
+          .userIdEqualTo(userId)
+          .and()
+          .isSyncedEqualTo(false)
+          .count();
+    }
+
+    return await isar.fishingDiaryFolderEntitys
+        .filter()
+        .isSyncedEqualTo(false)
+        .count();
   }
 
   /// Закрытие базы данных

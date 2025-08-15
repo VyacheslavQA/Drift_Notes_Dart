@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'fishing_diary_entity.dart';
+part of 'fishing_diary_folder_entity.dart';
 
 // **************************************************************************
 // IsarCollectionGenerator
@@ -9,54 +9,54 @@ part of 'fishing_diary_entity.dart';
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-extension GetFishingDiaryEntityCollection on Isar {
-  IsarCollection<FishingDiaryEntity> get fishingDiaryEntitys =>
+extension GetFishingDiaryFolderEntityCollection on Isar {
+  IsarCollection<FishingDiaryFolderEntity> get fishingDiaryFolderEntitys =>
       this.collection();
 }
 
-const FishingDiaryEntitySchema = CollectionSchema(
-  name: r'FishingDiaryEntity',
-  id: 6930188750538830881,
+const FishingDiaryFolderEntitySchema = CollectionSchema(
+  name: r'FishingDiaryFolderEntity',
+  id: -9195459164099209513,
   properties: {
-    r'createdAt': PropertySchema(
+    r'colorHex': PropertySchema(
       id: 0,
+      name: r'colorHex',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 1,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'description': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'description',
       type: IsarType.string,
     ),
     r'firebaseId': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'firebaseId',
       type: IsarType.string,
     ),
-    r'folderId': PropertySchema(
-      id: 3,
-      name: r'folderId',
-      type: IsarType.string,
-    ),
-    r'isFavorite': PropertySchema(
-      id: 4,
-      name: r'isFavorite',
-      type: IsarType.bool,
-    ),
     r'isSynced': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'markedForDeletion': PropertySchema(
-      id: 6,
+      id: 5,
       name: r'markedForDeletion',
       type: IsarType.bool,
     ),
-    r'title': PropertySchema(
-      id: 7,
-      name: r'title',
+    r'name': PropertySchema(
+      id: 6,
+      name: r'name',
       type: IsarType.string,
+    ),
+    r'sortOrder': PropertySchema(
+      id: 7,
+      name: r'sortOrder',
+      type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
       id: 8,
@@ -69,10 +69,10 @@ const FishingDiaryEntitySchema = CollectionSchema(
       type: IsarType.string,
     )
   },
-  estimateSize: _fishingDiaryEntityEstimateSize,
-  serialize: _fishingDiaryEntitySerialize,
-  deserialize: _fishingDiaryEntityDeserialize,
-  deserializeProp: _fishingDiaryEntityDeserializeProp,
+  estimateSize: _fishingDiaryFolderEntityEstimateSize,
+  serialize: _fishingDiaryFolderEntitySerialize,
+  deserialize: _fishingDiaryFolderEntityDeserialize,
+  deserializeProp: _fishingDiaryFolderEntityDeserializeProp,
   idName: r'id',
   indexes: {
     r'firebaseId': IndexSchema(
@@ -101,19 +101,6 @@ const FishingDiaryEntitySchema = CollectionSchema(
         )
       ],
     ),
-    r'folderId': IndexSchema(
-      id: 6340065978996931043,
-      name: r'folderId',
-      unique: false,
-      replace: false,
-      properties: [
-        IndexPropertySchema(
-          name: r'folderId',
-          type: IndexType.hash,
-          caseSensitive: true,
-        )
-      ],
-    ),
     r'markedForDeletion': IndexSchema(
       id: 4789654020591589618,
       name: r'markedForDeletion',
@@ -130,18 +117,19 @@ const FishingDiaryEntitySchema = CollectionSchema(
   },
   links: {},
   embeddedSchemas: {},
-  getId: _fishingDiaryEntityGetId,
-  getLinks: _fishingDiaryEntityGetLinks,
-  attach: _fishingDiaryEntityAttach,
+  getId: _fishingDiaryFolderEntityGetId,
+  getLinks: _fishingDiaryFolderEntityGetLinks,
+  attach: _fishingDiaryFolderEntityAttach,
   version: '3.1.0+1',
 );
 
-int _fishingDiaryEntityEstimateSize(
-  FishingDiaryEntity object,
+int _fishingDiaryFolderEntityEstimateSize(
+  FishingDiaryFolderEntity object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.colorHex.length * 3;
   {
     final value = object.description;
     if (value != null) {
@@ -154,57 +142,51 @@ int _fishingDiaryEntityEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
-  {
-    final value = object.folderId;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
-  bytesCount += 3 + object.title.length * 3;
+  bytesCount += 3 + object.name.length * 3;
   bytesCount += 3 + object.userId.length * 3;
   return bytesCount;
 }
 
-void _fishingDiaryEntitySerialize(
-  FishingDiaryEntity object,
+void _fishingDiaryFolderEntitySerialize(
+  FishingDiaryFolderEntity object,
   IsarWriter writer,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeString(offsets[1], object.description);
-  writer.writeString(offsets[2], object.firebaseId);
-  writer.writeString(offsets[3], object.folderId);
-  writer.writeBool(offsets[4], object.isFavorite);
-  writer.writeBool(offsets[5], object.isSynced);
-  writer.writeBool(offsets[6], object.markedForDeletion);
-  writer.writeString(offsets[7], object.title);
+  writer.writeString(offsets[0], object.colorHex);
+  writer.writeDateTime(offsets[1], object.createdAt);
+  writer.writeString(offsets[2], object.description);
+  writer.writeString(offsets[3], object.firebaseId);
+  writer.writeBool(offsets[4], object.isSynced);
+  writer.writeBool(offsets[5], object.markedForDeletion);
+  writer.writeString(offsets[6], object.name);
+  writer.writeLong(offsets[7], object.sortOrder);
   writer.writeDateTime(offsets[8], object.updatedAt);
   writer.writeString(offsets[9], object.userId);
 }
 
-FishingDiaryEntity _fishingDiaryEntityDeserialize(
+FishingDiaryFolderEntity _fishingDiaryFolderEntityDeserialize(
   Id id,
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = FishingDiaryEntity();
-  object.createdAt = reader.readDateTime(offsets[0]);
-  object.description = reader.readStringOrNull(offsets[1]);
-  object.firebaseId = reader.readStringOrNull(offsets[2]);
-  object.folderId = reader.readStringOrNull(offsets[3]);
+  final object = FishingDiaryFolderEntity();
+  object.colorHex = reader.readString(offsets[0]);
+  object.createdAt = reader.readDateTime(offsets[1]);
+  object.description = reader.readStringOrNull(offsets[2]);
+  object.firebaseId = reader.readStringOrNull(offsets[3]);
   object.id = id;
-  object.isFavorite = reader.readBool(offsets[4]);
-  object.isSynced = reader.readBool(offsets[5]);
-  object.markedForDeletion = reader.readBool(offsets[6]);
-  object.title = reader.readString(offsets[7]);
+  object.isSynced = reader.readBool(offsets[4]);
+  object.markedForDeletion = reader.readBool(offsets[5]);
+  object.name = reader.readString(offsets[6]);
+  object.sortOrder = reader.readLong(offsets[7]);
   object.updatedAt = reader.readDateTime(offsets[8]);
   object.userId = reader.readString(offsets[9]);
   return object;
 }
 
-P _fishingDiaryEntityDeserializeProp<P>(
+P _fishingDiaryFolderEntityDeserializeProp<P>(
   IsarReader reader,
   int propertyId,
   int offset,
@@ -212,9 +194,9 @@ P _fishingDiaryEntityDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
@@ -224,9 +206,9 @@ P _fishingDiaryEntityDeserializeProp<P>(
     case 5:
       return (reader.readBool(offset)) as P;
     case 6:
-      return (reader.readBool(offset)) as P;
-    case 7:
       return (reader.readString(offset)) as P;
+    case 7:
+      return (reader.readLong(offset)) as P;
     case 8:
       return (reader.readDateTime(offset)) as P;
     case 9:
@@ -236,26 +218,27 @@ P _fishingDiaryEntityDeserializeProp<P>(
   }
 }
 
-Id _fishingDiaryEntityGetId(FishingDiaryEntity object) {
+Id _fishingDiaryFolderEntityGetId(FishingDiaryFolderEntity object) {
   return object.id;
 }
 
-List<IsarLinkBase<dynamic>> _fishingDiaryEntityGetLinks(
-    FishingDiaryEntity object) {
+List<IsarLinkBase<dynamic>> _fishingDiaryFolderEntityGetLinks(
+    FishingDiaryFolderEntity object) {
   return [];
 }
 
-void _fishingDiaryEntityAttach(
-    IsarCollection<dynamic> col, Id id, FishingDiaryEntity object) {
+void _fishingDiaryFolderEntityAttach(
+    IsarCollection<dynamic> col, Id id, FishingDiaryFolderEntity object) {
   object.id = id;
 }
 
-extension FishingDiaryEntityByIndex on IsarCollection<FishingDiaryEntity> {
-  Future<FishingDiaryEntity?> getByFirebaseId(String? firebaseId) {
+extension FishingDiaryFolderEntityByIndex
+    on IsarCollection<FishingDiaryFolderEntity> {
+  Future<FishingDiaryFolderEntity?> getByFirebaseId(String? firebaseId) {
     return getByIndex(r'firebaseId', [firebaseId]);
   }
 
-  FishingDiaryEntity? getByFirebaseIdSync(String? firebaseId) {
+  FishingDiaryFolderEntity? getByFirebaseIdSync(String? firebaseId) {
     return getByIndexSync(r'firebaseId', [firebaseId]);
   }
 
@@ -267,13 +250,13 @@ extension FishingDiaryEntityByIndex on IsarCollection<FishingDiaryEntity> {
     return deleteByIndexSync(r'firebaseId', [firebaseId]);
   }
 
-  Future<List<FishingDiaryEntity?>> getAllByFirebaseId(
+  Future<List<FishingDiaryFolderEntity?>> getAllByFirebaseId(
       List<String?> firebaseIdValues) {
     final values = firebaseIdValues.map((e) => [e]).toList();
     return getAllByIndex(r'firebaseId', values);
   }
 
-  List<FishingDiaryEntity?> getAllByFirebaseIdSync(
+  List<FishingDiaryFolderEntity?> getAllByFirebaseIdSync(
       List<String?> firebaseIdValues) {
     final values = firebaseIdValues.map((e) => [e]).toList();
     return getAllByIndexSync(r'firebaseId', values);
@@ -289,33 +272,35 @@ extension FishingDiaryEntityByIndex on IsarCollection<FishingDiaryEntity> {
     return deleteAllByIndexSync(r'firebaseId', values);
   }
 
-  Future<Id> putByFirebaseId(FishingDiaryEntity object) {
+  Future<Id> putByFirebaseId(FishingDiaryFolderEntity object) {
     return putByIndex(r'firebaseId', object);
   }
 
-  Id putByFirebaseIdSync(FishingDiaryEntity object, {bool saveLinks = true}) {
+  Id putByFirebaseIdSync(FishingDiaryFolderEntity object,
+      {bool saveLinks = true}) {
     return putByIndexSync(r'firebaseId', object, saveLinks: saveLinks);
   }
 
-  Future<List<Id>> putAllByFirebaseId(List<FishingDiaryEntity> objects) {
+  Future<List<Id>> putAllByFirebaseId(List<FishingDiaryFolderEntity> objects) {
     return putAllByIndex(r'firebaseId', objects);
   }
 
-  List<Id> putAllByFirebaseIdSync(List<FishingDiaryEntity> objects,
+  List<Id> putAllByFirebaseIdSync(List<FishingDiaryFolderEntity> objects,
       {bool saveLinks = true}) {
     return putAllByIndexSync(r'firebaseId', objects, saveLinks: saveLinks);
   }
 }
 
-extension FishingDiaryEntityQueryWhereSort
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QWhere> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhere> anyId() {
+extension FishingDiaryFolderEntityQueryWhereSort on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QWhere> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterWhere>
+      anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhere>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterWhere>
       anyMarkedForDeletion() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
@@ -325,10 +310,10 @@ extension FishingDiaryEntityQueryWhereSort
   }
 }
 
-extension FishingDiaryEntityQueryWhere
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QWhereClause> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      idEqualTo(Id id) {
+extension FishingDiaryFolderEntityQueryWhere on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QWhereClause> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(
         lower: id,
@@ -337,8 +322,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -360,8 +345,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -369,8 +354,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      idLessThan(Id id, {bool include = false}) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -378,8 +363,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      idBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> idBetween(
     Id lowerId,
     Id upperId, {
     bool includeLower = true,
@@ -395,8 +380,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      firebaseIdIsNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> firebaseIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'firebaseId',
@@ -405,8 +390,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      firebaseIdIsNotNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> firebaseIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.between(
         indexName: r'firebaseId',
@@ -417,8 +402,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      firebaseIdEqualTo(String? firebaseId) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> firebaseIdEqualTo(String? firebaseId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'firebaseId',
@@ -427,8 +412,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      firebaseIdNotEqualTo(String? firebaseId) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> firebaseIdNotEqualTo(String? firebaseId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -462,8 +447,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      userIdEqualTo(String userId) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> userIdEqualTo(String userId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'userId',
@@ -472,8 +457,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      userIdNotEqualTo(String userId) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> userIdNotEqualTo(String userId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -507,75 +492,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      folderIdIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'folderId',
-        value: [null],
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      folderIdIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'folderId',
-        lower: [null],
-        includeLower: false,
-        upper: [],
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      folderIdEqualTo(String? folderId) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'folderId',
-        value: [folderId],
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      folderIdNotEqualTo(String? folderId) {
-    return QueryBuilder.apply(this, (query) {
-      if (query.whereSort == Sort.asc) {
-        return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'folderId',
-              lower: [],
-              upper: [folderId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'folderId',
-              lower: [folderId],
-              includeLower: false,
-              upper: [],
-            ));
-      } else {
-        return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'folderId',
-              lower: [folderId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'folderId',
-              lower: [],
-              upper: [folderId],
-              includeUpper: false,
-            ));
-      }
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      markedForDeletionEqualTo(bool markedForDeletion) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> markedForDeletionEqualTo(bool markedForDeletion) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'markedForDeletion',
@@ -584,8 +502,8 @@ extension FishingDiaryEntityQueryWhere
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterWhereClause>
-      markedForDeletionNotEqualTo(bool markedForDeletion) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterWhereClause> markedForDeletionNotEqualTo(bool markedForDeletion) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -620,10 +538,148 @@ extension FishingDiaryEntityQueryWhere
   }
 }
 
-extension FishingDiaryEntityQueryFilter
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QFilterCondition> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      createdAtEqualTo(DateTime value) {
+extension FishingDiaryFolderEntityQueryFilter on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QFilterCondition> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'colorHex',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
+      colorHexContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'colorHex',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
+      colorHexMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'colorHex',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'colorHex',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> colorHexIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'colorHex',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> createdAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'createdAt',
@@ -632,8 +688,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      createdAtGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> createdAtGreaterThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -646,8 +702,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      createdAtLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> createdAtLessThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -660,8 +716,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      createdAtBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> createdAtBetween(
     DateTime lower,
     DateTime upper, {
     bool includeLower = true,
@@ -678,8 +734,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionIsNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
         property: r'description',
@@ -687,8 +743,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionIsNotNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'description',
@@ -696,8 +752,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionEqualTo(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -710,8 +766,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -726,8 +782,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -742,8 +798,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -762,8 +818,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionStartsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -776,8 +832,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionEndsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -790,7 +846,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       descriptionContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
@@ -801,7 +858,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       descriptionMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
@@ -812,8 +870,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionIsEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'description',
@@ -822,8 +880,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      descriptionIsNotEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> descriptionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'description',
@@ -832,8 +890,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdIsNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
         property: r'firebaseId',
@@ -841,8 +899,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdIsNotNull() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'firebaseId',
@@ -850,8 +908,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdEqualTo(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -864,8 +922,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -880,8 +938,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -896,8 +954,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -916,8 +974,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdStartsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -930,8 +988,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdEndsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -944,7 +1002,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       firebaseIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
@@ -955,7 +1014,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       firebaseIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
@@ -966,8 +1026,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdIsEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'firebaseId',
@@ -976,8 +1036,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      firebaseIdIsNotEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> firebaseIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'firebaseId',
@@ -986,162 +1046,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'folderId',
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'folderId',
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdLessThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdBetween(
-    String? lower,
-    String? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'folderId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'folderId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'folderId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'folderId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      folderIdIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'folderId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      idEqualTo(Id value) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'id',
@@ -1150,8 +1056,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      idGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> idGreaterThan(
     Id value, {
     bool include = false,
   }) {
@@ -1164,8 +1070,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      idLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> idLessThan(
     Id value, {
     bool include = false,
   }) {
@@ -1178,8 +1084,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      idBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
@@ -1196,18 +1102,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      isFavoriteEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isFavorite',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      isSyncedEqualTo(bool value) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> isSyncedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'isSynced',
@@ -1216,8 +1112,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      markedForDeletionEqualTo(bool value) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> markedForDeletionEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'markedForDeletion',
@@ -1226,22 +1122,22 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleEqualTo(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1249,15 +1145,15 @@ extension FishingDiaryEntityQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1265,15 +1161,15 @@ extension FishingDiaryEntityQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1282,7 +1178,7 @@ extension FishingDiaryEntityQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'title',
+        property: r'name',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -1292,78 +1188,136 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleStartsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleEndsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleContains(String value, {bool caseSensitive = true}) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
+      nameContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
-        property: r'title',
+        property: r'name',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleMatches(String pattern, {bool caseSensitive = true}) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
+      nameMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
-        property: r'title',
+        property: r'name',
         wildcard: pattern,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleIsEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'title',
+        property: r'name',
         value: '',
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      titleIsNotEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> nameIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'title',
+        property: r'name',
         value: '',
       ));
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      updatedAtEqualTo(DateTime value) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> sortOrderEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sortOrder',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> sortOrderGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sortOrder',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> sortOrderLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sortOrder',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> sortOrderBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sortOrder',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> updatedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'updatedAt',
@@ -1372,8 +1326,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      updatedAtGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> updatedAtGreaterThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -1386,8 +1340,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      updatedAtLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> updatedAtLessThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -1400,8 +1354,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      updatedAtBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> updatedAtBetween(
     DateTime lower,
     DateTime upper, {
     bool includeLower = true,
@@ -1418,8 +1372,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdEqualTo(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1432,8 +1386,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdGreaterThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1448,8 +1402,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdLessThan(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1464,8 +1418,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdBetween(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1484,8 +1438,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdStartsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1498,8 +1452,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdEndsWith(
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1512,7 +1466,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       userIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
@@ -1523,7 +1478,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+          QAfterFilterCondition>
       userIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
@@ -1534,8 +1490,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdIsEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'userId',
@@ -1544,8 +1500,8 @@ extension FishingDiaryEntityQueryFilter
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterFilterCondition>
-      userIdIsNotEmpty() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity,
+      QAfterFilterCondition> userIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'userId',
@@ -1555,148 +1511,148 @@ extension FishingDiaryEntityQueryFilter
   }
 }
 
-extension FishingDiaryEntityQueryObject
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QFilterCondition> {}
+extension FishingDiaryFolderEntityQueryObject on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QFilterCondition> {}
 
-extension FishingDiaryEntityQueryLinks
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QFilterCondition> {}
+extension FishingDiaryFolderEntityQueryLinks on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QFilterCondition> {}
 
-extension FishingDiaryEntityQuerySortBy
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QSortBy> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+extension FishingDiaryFolderEntityQuerySortBy on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QSortBy> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortByColorHex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'colorHex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortByColorHexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'colorHex', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByFirebaseId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'firebaseId', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByFirebaseIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'firebaseId', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByFolderId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'folderId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByFolderIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'folderId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByIsFavorite() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isFavorite', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByIsFavoriteDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isFavorite', Sort.desc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByIsSyncedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByMarkedForDeletion() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'markedForDeletion', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByMarkedForDeletionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'markedForDeletion', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByTitle() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortByName() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'title', Sort.asc);
+      return query.addSortBy(r'name', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      sortByTitleDesc() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'title', Sort.desc);
+      return query.addSortBy(r'name', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      sortBySortOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByUserId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       sortByUserIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.desc);
@@ -1704,156 +1660,156 @@ extension FishingDiaryEntityQuerySortBy
   }
 }
 
-extension FishingDiaryEntityQuerySortThenBy
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QSortThenBy> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+extension FishingDiaryFolderEntityQuerySortThenBy on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QSortThenBy> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenByColorHex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'colorHex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenByColorHexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'colorHex', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByFirebaseId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'firebaseId', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByFirebaseIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'firebaseId', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByFolderId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'folderId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByFolderIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'folderId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByIsFavorite() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isFavorite', Sort.asc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByIsFavoriteDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isFavorite', Sort.desc);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByIsSyncedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByMarkedForDeletion() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'markedForDeletion', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByMarkedForDeletionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'markedForDeletion', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByTitle() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenByName() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'title', Sort.asc);
+      return query.addSortBy(r'name', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
-      thenByTitleDesc() {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenByNameDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'title', Sort.desc);
+      return query.addSortBy(r'name', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
+      thenBySortOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByUserId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.asc);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QAfterSortBy>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QAfterSortBy>
       thenByUserIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userId', Sort.desc);
@@ -1861,72 +1817,72 @@ extension FishingDiaryEntityQuerySortThenBy
   }
 }
 
-extension FishingDiaryEntityQueryWhereDistinct
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct> {
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+extension FishingDiaryFolderEntityQueryWhereDistinct on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct> {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
+      distinctByColorHex({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'colorHex', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByDescription({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'description', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByFirebaseId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'firebaseId', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
-      distinctByFolderId({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'folderId', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
-      distinctByIsFavorite() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'isFavorite');
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isSynced');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByMarkedForDeletion() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'markedForDeletion');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
-      distinctByTitle({bool caseSensitive = true}) {
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
+      distinctByName({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'title', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
+      distinctBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sortOrder');
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QDistinct>
+  QueryBuilder<FishingDiaryFolderEntity, FishingDiaryFolderEntity, QDistinct>
       distinctByUserId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'userId', caseSensitive: caseSensitive);
@@ -1934,76 +1890,79 @@ extension FishingDiaryEntityQueryWhereDistinct
   }
 }
 
-extension FishingDiaryEntityQueryProperty
-    on QueryBuilder<FishingDiaryEntity, FishingDiaryEntity, QQueryProperty> {
-  QueryBuilder<FishingDiaryEntity, int, QQueryOperations> idProperty() {
+extension FishingDiaryFolderEntityQueryProperty on QueryBuilder<
+    FishingDiaryFolderEntity, FishingDiaryFolderEntity, QQueryProperty> {
+  QueryBuilder<FishingDiaryFolderEntity, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, DateTime, QQueryOperations>
+  QueryBuilder<FishingDiaryFolderEntity, String, QQueryOperations>
+      colorHexProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'colorHex');
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, DateTime, QQueryOperations>
       createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, String?, QQueryOperations>
+  QueryBuilder<FishingDiaryFolderEntity, String?, QQueryOperations>
       descriptionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'description');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, String?, QQueryOperations>
+  QueryBuilder<FishingDiaryFolderEntity, String?, QQueryOperations>
       firebaseIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'firebaseId');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, String?, QQueryOperations>
-      folderIdProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'folderId');
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, bool, QQueryOperations>
-      isFavoriteProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'isFavorite');
-    });
-  }
-
-  QueryBuilder<FishingDiaryEntity, bool, QQueryOperations> isSyncedProperty() {
+  QueryBuilder<FishingDiaryFolderEntity, bool, QQueryOperations>
+      isSyncedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isSynced');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, bool, QQueryOperations>
+  QueryBuilder<FishingDiaryFolderEntity, bool, QQueryOperations>
       markedForDeletionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'markedForDeletion');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, String, QQueryOperations> titleProperty() {
+  QueryBuilder<FishingDiaryFolderEntity, String, QQueryOperations>
+      nameProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'title');
+      return query.addPropertyName(r'name');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, DateTime, QQueryOperations>
+  QueryBuilder<FishingDiaryFolderEntity, int, QQueryOperations>
+      sortOrderProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sortOrder');
+    });
+  }
+
+  QueryBuilder<FishingDiaryFolderEntity, DateTime, QQueryOperations>
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
     });
   }
 
-  QueryBuilder<FishingDiaryEntity, String, QQueryOperations> userIdProperty() {
+  QueryBuilder<FishingDiaryFolderEntity, String, QQueryOperations>
+      userIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'userId');
     });

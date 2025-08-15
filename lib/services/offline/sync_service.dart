@@ -14,6 +14,7 @@ import '../../models/isar/user_usage_limits_entity.dart';
 import '../isar_service.dart';
 import '../../models/isar/bait_program_entity.dart';
 import '../../models/isar/fishing_diary_entity.dart';
+import '../../models/isar/fishing_diary_folder_entity.dart';
 
 class SyncService {
   static SyncService? _instance;
@@ -1273,6 +1274,7 @@ class SyncService {
       'title': entity.title,
       'description': entity.description,
       'isFavorite': entity.isFavorite,
+      'folderId': entity.folderId, // 🆕 НОВОЕ: Добавляем folderId
       'createdAt': Timestamp.fromDate(entity.createdAt),
       'updatedAt': Timestamp.fromDate(entity.updatedAt),
     };
@@ -1285,6 +1287,7 @@ class SyncService {
       ..title = data['title'] ?? ''
       ..description = data['description'] ?? ''
       ..isFavorite = data['isFavorite'] ?? false
+      ..folderId = data['folderId'] // 🆕 НОВОЕ: Читаем folderId из Firebase
       ..createdAt = _parseTimestamp(data['createdAt'])
       ..updatedAt = _parseTimestamp(data['updatedAt'])
       ..isSynced = true;
@@ -1476,6 +1479,158 @@ class SyncService {
   }
 
   // ========================================
+  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ FISHING DIARY FOLDERS
+  // ========================================
+
+  /// Конвертация FishingDiaryFolderEntity в Map для Firestore
+  Map<String, dynamic> _fishingDiaryFolderEntityToFirestore(FishingDiaryFolderEntity entity) {
+    return {
+      'name': entity.name,
+      'description': entity.description,
+      'colorHex': entity.colorHex,
+      'sortOrder': entity.sortOrder,
+      'createdAt': Timestamp.fromDate(entity.createdAt),
+      'updatedAt': Timestamp.fromDate(entity.updatedAt),
+    };
+  }
+
+  /// Конвертация данных из Firestore в FishingDiaryFolderEntity
+  FishingDiaryFolderEntity _firestoreToFishingDiaryFolderEntity(String firebaseId, Map<String, dynamic> data) {
+    final entity = FishingDiaryFolderEntity()
+      ..firebaseId = firebaseId
+      ..name = data['name'] ?? ''
+      ..description = data['description']
+      ..colorHex = data['colorHex'] ?? '#4CAF50'
+      ..sortOrder = data['sortOrder'] ?? 0
+      ..createdAt = _parseTimestamp(data['createdAt'])
+      ..updatedAt = _parseTimestamp(data['updatedAt'])
+      ..isSynced = true;
+    entity.userId = _auth.currentUser?.uid ?? '';
+    return entity;
+  }
+
+  /// Синхронизация папок дневника в Firebase
+  Future<bool> syncFishingDiaryFoldersToFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary_folders');
+      if (collection == null) return false;
+
+      final unsyncedFolders = await _isarService.getUnsyncedFishingDiaryFolders();
+      final foldersToSync = unsyncedFolders.where((folder) => folder.markedForDeletion != true).toList();
+
+      debugPrint('📤 SyncService: Синхронизируем ${foldersToSync.length} папок дневника в Firebase');
+
+      for (final folder in foldersToSync) {
+        try {
+          final data = _fishingDiaryFolderEntityToFirestore(folder);
+
+          if (folder.firebaseId != null) {
+            final docRef = collection.doc(folder.firebaseId);
+            final docSnapshot = await docRef.get();
+
+            if (docSnapshot.exists) {
+              await docRef.update(data);
+              debugPrint('🔄 SyncService: Обновлена папка дневника ${folder.firebaseId}');
+            } else {
+              await docRef.set(data);
+              debugPrint('✅ SyncService: Создана папка дневника ${folder.firebaseId}');
+            }
+            await _isarService.markFishingDiaryFolderAsSynced(folder.id, folder.firebaseId!);
+          } else {
+            final docRef = await collection.add(data);
+            await _isarService.markFishingDiaryFolderAsSynced(folder.id, docRef.id);
+            debugPrint('✅ SyncService: Создана новая папка дневника ${docRef.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка синхронизации папки дневника ${folder.firebaseId}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingDiaryFoldersToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Синхронизация папок дневника из Firebase
+  Future<bool> syncFishingDiaryFoldersFromFirebase() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary_folders');
+      if (collection == null) return false;
+
+      final querySnapshot = await collection.orderBy('sortOrder').orderBy('createdAt').get();
+      debugPrint('📥 SyncService: Получено ${querySnapshot.docs.length} папок дневника из Firebase');
+
+      for (final doc in querySnapshot.docs) {
+        try {
+          final firebaseId = doc.id;
+          final data = doc.data() as Map<String, dynamic>;
+
+          final existingFolder = await _isarService.getFishingDiaryFolderByFirebaseId(firebaseId);
+
+          if (existingFolder == null) {
+            final entity = _firestoreToFishingDiaryFolderEntity(firebaseId, data);
+            await _isarService.insertFishingDiaryFolder(entity);
+          } else {
+            final firebaseUpdatedAt = _parseTimestamp(data['updatedAt']);
+            if (firebaseUpdatedAt.isAfter(existingFolder.updatedAt)) {
+              final updatedEntity = _firestoreToFishingDiaryFolderEntity(firebaseId, data);
+              updatedEntity.id = existingFolder.id;
+              await _isarService.updateFishingDiaryFolder(updatedEntity);
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка обработки папки дневника ${doc.id}: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка syncFishingDiaryFoldersFromFirebase: $e');
+      return false;
+    }
+  }
+
+  /// Удаление папки дневника по Firebase ID
+  Future<bool> deleteFishingDiaryFolderByFirebaseId(String firebaseId) async {
+    try {
+      debugPrint('🗑️ SyncService: Начинаем удаление папки дневника $firebaseId');
+
+      if (await _hasInternetConnection()) {
+        final collection = _getUserCollection('fishing_diary_folders');
+        if (collection != null) {
+          try {
+            await collection.doc(firebaseId).delete();
+            debugPrint('✅ SyncService: Папка дневника удалена из Firebase: $firebaseId');
+          } catch (e) {
+            debugPrint('❌ SyncService: Ошибка удаления папки дневника из Firebase $firebaseId: $e');
+          }
+        }
+      }
+
+      final entity = await _isarService.getFishingDiaryFolderByFirebaseId(firebaseId);
+      if (entity != null) {
+        await _isarService.deleteFishingDiaryFolder(entity.id);
+        debugPrint('✅ SyncService: Папка дневника удалена из Isar: $firebaseId');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка deleteFishingDiaryFolderByFirebaseId $firebaseId: $e');
+      return false;
+    }
+  }
+
+  // ========================================
   // ✅ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
   // ========================================
 
@@ -1587,13 +1742,14 @@ class SyncService {
     try {
       debugPrint('🔄 SyncService: Начинаем syncAll...');
       final results = await Future.wait([
-        syncFishingNotesToFirebaseWithDeletion(), // 🔥 ОБНОВЛЕНО: с удалением
-        syncBudgetNotesToFirebaseWithDeletion(),  // 🔥 НОВОЕ: с удалением
-        syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
+        syncFishingNotesToFirebaseWithDeletion(),
+        syncBudgetNotesToFirebaseWithDeletion(),
+        syncMarkerMapsToFirebaseWithDeletion(),
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
         syncBaitProgramsToFirebaseWithDeletion(),
-        syncFishingDiaryToFirebaseWithDeletion(), // 🔥 ИСПРАВЛЕНО: с удалением
+        syncFishingDiaryToFirebaseWithDeletion(),
+        syncFishingDiaryFoldersToFirebase(), // 🆕 НОВОЕ: Добавляем синхронизацию папок
       ]);
 
       final success = results.every((result) => result);
@@ -1626,13 +1782,14 @@ class SyncService {
     try {
       // Отправляем локальные изменения в Firebase (включая удаление)
       final toFirebaseResults = await Future.wait([
-        syncFishingNotesToFirebaseWithDeletion(), // 🔥 ОБНОВЛЕНО: с удалением
-        syncBudgetNotesToFirebaseWithDeletion(),  // 🔥 НОВОЕ: с удалением
-        syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
+        syncFishingNotesToFirebaseWithDeletion(),
+        syncBudgetNotesToFirebaseWithDeletion(),
+        syncMarkerMapsToFirebaseWithDeletion(),
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
         syncBaitProgramsToFirebaseWithDeletion(),
-        syncFishingDiaryToFirebaseWithDeletion(), // 🔥 ИСПРАВЛЕНО: с удалением
+        syncFishingDiaryToFirebaseWithDeletion(),
+        syncFishingDiaryFoldersToFirebase(), // 🆕 НОВОЕ: Папки TO Firebase
       ]);
 
       // Получаем обновления из Firebase
@@ -1644,6 +1801,7 @@ class SyncService {
         syncUserUsageLimitsFromFirebase(),
         syncBaitProgramsFromFirebase(),
         syncFishingDiaryFromFirebase(),
+        syncFishingDiaryFoldersFromFirebase(), // 🆕 НОВОЕ: Папки FROM Firebase
       ]);
 
       final success = [...toFirebaseResults, ...fromFirebaseResults].every((result) => result);

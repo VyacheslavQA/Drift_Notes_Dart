@@ -1,4 +1,4 @@
-// Путь: lib/repositories/fishing_diary_repository.dart
+// File: lib/repositories/fishing_diary_repository.dart (Modify file - заменить весь файл)
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -346,6 +346,168 @@ class FishingDiaryRepository {
     }
   }
 
+  // ========================================
+  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ПАПКАМИ
+  // ========================================
+
+  /// Получение записей дневника по папке
+  Future<List<FishingDiaryModel>> getFishingDiaryEntriesByFolder(String folderId) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        return [];
+      }
+
+      final isarEntries = await _isarService.getFishingDiaryEntriesByFolderId(folderId);
+
+      return isarEntries.map((entity) => _entityToModel(entity)).toList();
+    } catch (e) {
+      debugPrint('❌ Ошибка получения записей по папке: $e');
+      return [];
+    }
+  }
+
+  /// Получение записей дневника без папки
+  Future<List<FishingDiaryModel>> getFishingDiaryEntriesWithoutFolder() async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        return [];
+      }
+
+      final isarEntries = await _isarService.getFishingDiaryEntriesWithoutFolder();
+
+      return isarEntries.map((entity) => _entityToModel(entity)).toList();
+    } catch (e) {
+      debugPrint('❌ Ошибка получения записей без папки: $e');
+      return [];
+    }
+  }
+
+  /// Перемещение записи в папку
+  Future<void> moveFishingDiaryEntryToFolder(String entryId, String? folderId) async {
+    try {
+      if (entryId.isEmpty) {
+        throw Exception('ID записи не может быть пустым');
+      }
+
+      // Получаем текущую запись
+      final entry = await getFishingDiaryEntryById(entryId);
+      if (entry == null) {
+        throw Exception('Запись не найдена');
+      }
+
+      // Создаем обновленную запись с новой папкой
+      final updatedEntry = entry.moveToFolder(folderId);
+
+      // Сохраняем изменения
+      await updateFishingDiaryEntry(updatedEntry);
+
+      debugPrint('📁 Запись $entryId перемещена в папку $folderId');
+    } catch (e) {
+      debugPrint('❌ Ошибка перемещения записи в папку: $e');
+      rethrow;
+    }
+  }
+
+  /// Получение количества записей в папке
+  Future<int> getFishingDiaryEntriesCountInFolder(String folderId) async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        return 0;
+      }
+
+      final entries = await getFishingDiaryEntriesByFolder(folderId);
+      return entries.length;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения количества записей в папке: $e');
+      return 0;
+    }
+  }
+
+  /// Получение количества записей без папки
+  Future<int> getFishingDiaryEntriesCountWithoutFolder() async {
+    try {
+      final userId = _firebaseService.currentUserId;
+      if (userId == null || userId.isEmpty) {
+        return 0;
+      }
+
+      final entries = await getFishingDiaryEntriesWithoutFolder();
+      return entries.length;
+    } catch (e) {
+      debugPrint('❌ Ошибка получения количества записей без папки: $e');
+      return 0;
+    }
+  }
+
+  /// Копирование записи дневника в папку
+  Future<String> copyFishingDiaryEntryToFolder(String entryId, String? targetFolderId) async {
+    try {
+      final entry = await getFishingDiaryEntryById(entryId);
+      if (entry == null) {
+        throw Exception('Запись не найдена');
+      }
+
+      final copiedEntry = entry.copyWith(
+        id: '', // Новый ID будет сгенерирован
+        title: 'Копия: ${entry.title}',
+        folderId: targetFolderId, // 🆕 НОВОЕ: Устанавливаем целевую папку
+        isFavorite: false, // Копия не избранная
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      return await addFishingDiaryEntry(copiedEntry);
+    } catch (e) {
+      debugPrint('❌ Ошибка копирования записи в папку: $e');
+      rethrow;
+    }
+  }
+
+  /// Перемещение всех записей из папки в другую папку (или в корень)
+  Future<void> moveAllEntriesFromFolder(String sourceFolderId, String? targetFolderId) async {
+    try {
+      final entries = await getFishingDiaryEntriesByFolder(sourceFolderId);
+
+      for (final entry in entries) {
+        await moveFishingDiaryEntryToFolder(entry.id, targetFolderId);
+      }
+
+      debugPrint('📁 Перемещено ${entries.length} записей из папки $sourceFolderId в папку $targetFolderId');
+    } catch (e) {
+      debugPrint('❌ Ошибка перемещения всех записей из папки: $e');
+      rethrow;
+    }
+  }
+
+  /// Фильтрация записей по папке из кэша
+  List<FishingDiaryModel> filterEntriesByFolder(List<FishingDiaryModel> entries, String? folderId) {
+    if (folderId == null) {
+      // Возвращаем записи без папки
+      return entries.where((entry) => entry.folderId == null).toList();
+    } else {
+      // Возвращаем записи конкретной папки
+      return entries.where((entry) => entry.folderId == folderId).toList();
+    }
+  }
+
+  /// Группировка записей по папкам
+  Map<String?, List<FishingDiaryModel>> groupEntriesByFolders(List<FishingDiaryModel> entries) {
+    final Map<String?, List<FishingDiaryModel>> groupedEntries = {};
+
+    for (final entry in entries) {
+      final folderId = entry.folderId;
+      if (!groupedEntries.containsKey(folderId)) {
+        groupedEntries[folderId] = [];
+      }
+      groupedEntries[folderId]!.add(entry);
+    }
+
+    return groupedEntries;
+  }
+
   /// Принудительная синхронизация
   Future<bool> forceSyncData() async {
     try {
@@ -406,6 +568,7 @@ class FishingDiaryRepository {
       ..title = model.title
       ..description = model.description
       ..isFavorite = model.isFavorite
+      ..folderId = model.folderId // 🆕 НОВОЕ: Добавляем folderId
       ..createdAt = model.createdAt
       ..updatedAt = model.updatedAt
       ..markedForDeletion = false;
@@ -421,6 +584,7 @@ class FishingDiaryRepository {
       title: entity.title,
       description: entity.description ?? '',
       isFavorite: entity.isFavorite,
+      folderId: entity.folderId, // 🆕 НОВОЕ: Читаем folderId из Entity
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     );

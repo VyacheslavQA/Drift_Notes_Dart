@@ -1,28 +1,26 @@
-// File: lib/models/isar/fishing_diary_entity.dart (Modify file)
+// File: lib/models/isar/fishing_diary_folder_entity.dart (New file)
 
 import 'package:isar/isar.dart';
 
-part 'fishing_diary_entity.g.dart';
+part 'fishing_diary_folder_entity.g.dart';
 
 @Collection()
-class FishingDiaryEntity {
+class FishingDiaryFolderEntity {
   Id id = Isar.autoIncrement; // Isar ID, auto-increment
 
   @Index(unique: true)
   String? firebaseId; // ID из Firestore
 
   @Index()
-  late String userId; // ID пользователя, которому принадлежит запись
+  late String userId; // ID пользователя, которому принадлежит папка
 
-  late String title; // Название записи дневника
+  late String name; // Название папки
 
-  String? description; // Описание записи дневника
+  String? description; // Описание папки
 
-  bool isFavorite = false; // Избранная запись
+  late String colorHex; // Цвет папки в hex формате (например: "#4CAF50")
 
-  // 🆕 НОВОЕ ПОЛЕ: ID папки, к которой относится запись
-  @Index()
-  String? folderId; // ID папки (null = записи без папки)
+  int sortOrder = 0; // Порядок сортировки папок
 
   bool isSynced = false; // Флаг синхронизации с Firebase
 
@@ -32,53 +30,47 @@ class FishingDiaryEntity {
   DateTime createdAt = DateTime.now();
   DateTime updatedAt = DateTime.now();
 
-  /// Помечает запись как синхронизированную
+  /// Помечает папку как синхронизированную
   void markAsSynced() {
     isSynced = true;
     updatedAt = DateTime.now();
   }
 
-  /// Помечает запись как измененную (требует синхронизации)
+  /// Помечает папку как измененную (требует синхронизации)
   void markAsModified() {
     isSynced = false;
     updatedAt = DateTime.now();
   }
 
-  /// Помечает запись для удаления
+  /// Помечает папку для удаления
   void markForDeletion() {
     markedForDeletion = true;
     isSynced = false;
     updatedAt = DateTime.now();
   }
 
-  /// Перемещает запись в папку
-  void moveToFolder(String? newFolderId) {
-    folderId = newFolderId;
-    markAsModified();
-  }
-
   /// Преобразование в Map для Firestore
   Map<String, dynamic> toFirestoreMap() {
     return {
       'userId': userId,
-      'title': title,
+      'name': name,
       'description': description,
-      'isFavorite': isFavorite,
-      'folderId': folderId, // 🆕 НОВОЕ: Добавляем folderId в Firebase
+      'colorHex': colorHex,
+      'sortOrder': sortOrder,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
     };
   }
 
   /// Создание entity из данных Firestore
-  static FishingDiaryEntity fromFirestoreMap(String firebaseId, Map<String, dynamic> data) {
-    final entity = FishingDiaryEntity()
+  static FishingDiaryFolderEntity fromFirestoreMap(String firebaseId, Map<String, dynamic> data) {
+    final entity = FishingDiaryFolderEntity()
       ..firebaseId = firebaseId
       ..userId = data['userId'] ?? ''
-      ..title = data['title'] ?? ''
-      ..description = data['description'] ?? ''
-      ..isFavorite = data['isFavorite'] ?? false
-      ..folderId = data['folderId'] // 🆕 НОВОЕ: Читаем folderId из Firebase
+      ..name = data['name'] ?? ''
+      ..description = data['description']
+      ..colorHex = data['colorHex'] ?? '#4CAF50'
+      ..sortOrder = data['sortOrder'] ?? 0
       ..isSynced = true
       ..markedForDeletion = false;
 
@@ -104,6 +96,6 @@ class FishingDiaryEntity {
 
   @override
   String toString() {
-    return 'FishingDiaryEntity(id: $id, firebaseId: $firebaseId, title: $title, folderId: $folderId, markedForDeletion: $markedForDeletion)';
+    return 'FishingDiaryFolderEntity(id: $id, firebaseId: $firebaseId, name: $name, colorHex: $colorHex, markedForDeletion: $markedForDeletion)';
   }
 }

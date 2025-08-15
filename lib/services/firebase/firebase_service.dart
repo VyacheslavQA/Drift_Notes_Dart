@@ -884,6 +884,143 @@ class FirebaseService {
   }
 
   // ========================================
+  // ПАПКИ ДНЕВНИКА РЫБАЛКИ
+  // ========================================
+
+  /// Добавление папки дневника рыбалки
+  Future<DocumentReference> addFishingDiaryFolder(Map<String, dynamic> folderData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary_folders')
+          .add({
+        ...folderData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Обновление папки дневника рыбалки
+  Future<void> updateFishingDiaryFolder(String folderId, Map<String, dynamic> folderData) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary_folders')
+          .doc(folderId)
+          .update({
+        ...folderData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение папок дневника рыбалки пользователя
+  Future<QuerySnapshot> getUserFishingDiaryFolders() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary_folders')
+          .orderBy('sortOrder')
+          .orderBy('createdAt', descending: false)
+          .get();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Удаление папки дневника рыбалки
+  Future<void> deleteFishingDiaryFolder(String folderId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary_folders')
+          .doc(folderId)
+          .delete();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Обновление folderId в записи дневника рыбалки (перемещение в папку)
+  Future<void> moveFishingDiaryEntryToFolder(String entryId, String? folderId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      final updateData = <String, dynamic>{
+        'folderId': folderId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .doc(entryId)
+          .update(updateData);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение записей дневника рыбалки по папке
+  Future<QuerySnapshot> getFishingDiaryEntriesByFolder(String folderId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .where('folderId', isEqualTo: folderId)
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Получение записей дневника рыбалки без папки
+  Future<QuerySnapshot> getFishingDiaryEntriesWithoutFolder() async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      return await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .where('folderId', isNull: true)
+          .orderBy('createdAt', descending: true)
+          .get();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // ========================================
   // СОГЛАСИЯ ПОЛЬЗОВАТЕЛЯ
   // ========================================
 
