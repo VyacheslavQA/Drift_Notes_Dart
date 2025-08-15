@@ -1203,6 +1203,66 @@ class SyncService {
     }
   }
 
+/// 🔥 НОВОЕ: Синхронизация удаления помеченных BaitPrograms
+  Future<bool> syncBaitProgramsDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления BaitPrograms');
+        return false;
+      }
+
+      final collection = _getUserCollection('bait_programs');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию bait_programs');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем программы помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionBaitPrograms();
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} BaitPrograms для удаления из Firebase');
+
+      for (final program in markedForDeletion) {
+        try {
+          if (program.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(program.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена BaitProgram из Firebase: ${program.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markBaitProgramAsSynced(program.id, program.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление BaitProgram из Isar для ID=${program.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления BaitProgram ${program.firebaseId}: $e');
+          // Продолжаем с другими программами
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления BaitPrograms: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация BaitPrograms (создание/обновление + удаление)
+  Future<bool> syncBaitProgramsToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncBaitProgramsToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncBaitProgramsDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации BaitPrograms - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации BaitPrograms: $e');
+      return false;
+    }
+  }
+
   // ========================================
   // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ FISHING DIARY
   // ========================================
@@ -1232,7 +1292,7 @@ class SyncService {
     return entity;
   }
 
-  /// Синхронизация FishingDiary в Firebase
+  /// 🔥 ИСПРАВЛЕНО: Синхронизация FishingDiary в Firebase с фильтрацией удаляемых записей
   Future<bool> syncFishingDiaryToFirebase() async {
     try {
       if (!await _hasInternetConnection()) {
@@ -1243,6 +1303,8 @@ class SyncService {
       if (collection == null) return false;
 
       final unsyncedEntries = await _isarService.getUnsyncedFishingDiaryEntries();
+      
+      // 🔥 ИСПРАВЛЕНО: Фильтруем только НЕ помеченные для удаления
       final entriesToSync = unsyncedEntries.where((entry) => entry.markedForDeletion != true).toList();
 
       debugPrint('📤 SyncService: Синхронизируем ${entriesToSync.length} FishingDiary в Firebase');
@@ -1276,6 +1338,66 @@ class SyncService {
       return true;
     } catch (e) {
       debugPrint('❌ SyncService: Критическая ошибка syncFishingDiaryToFirebase: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Синхронизация удаления помеченных FishingDiary
+  Future<bool> syncFishingDiaryDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления FishingDiary');
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию fishing_diary');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем записи помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionFishingDiaryEntries();
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} записей FishingDiary для удаления из Firebase');
+
+      for (final entry in markedForDeletion) {
+        try {
+          if (entry.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(entry.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена FishingDiary из Firebase: ${entry.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markFishingDiaryEntryAsSynced(entry.id, entry.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление FishingDiary из Isar для ID=${entry.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления FishingDiary ${entry.firebaseId}: $e');
+          // Продолжаем с другими записями
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления FishingDiary: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация FishingDiary (создание/обновление + удаление)
+  Future<bool> syncFishingDiaryToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncFishingDiaryToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncFishingDiaryDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации FishingDiary - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации FishingDiary: $e');
       return false;
     }
   }
@@ -1460,7 +1582,7 @@ class SyncService {
   // 🔥 ОБНОВЛЕННЫЕ ОБЩИЕ МЕТОДЫ
   // ========================================
 
-  /// ✅ ОБНОВЛЕНО: Синхронизация всех данных включая удаление MarkerMaps
+  /// ✅ ОБНОВЛЕНО: Синхронизация всех данных включая удаление FishingDiary
   Future<bool> syncAll() async {
     try {
       debugPrint('🔄 SyncService: Начинаем syncAll...');
@@ -1470,8 +1592,8 @@ class SyncService {
         syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
-        syncBaitProgramsToFirebase(),
-        syncFishingDiaryToFirebase(),
+        syncBaitProgramsToFirebaseWithDeletion(),
+        syncFishingDiaryToFirebaseWithDeletion(), // 🔥 ИСПРАВЛЕНО: с удалением
       ]);
 
       final success = results.every((result) => result);
@@ -1509,8 +1631,8 @@ class SyncService {
         syncMarkerMapsToFirebaseWithDeletion(),   // 🔥 НОВОЕ: с удалением
         syncPolicyAcceptanceToFirebase(),
         syncUserUsageLimitsToFirebase(),
-        syncBaitProgramsToFirebase(),
-        syncFishingDiaryToFirebase(),
+        syncBaitProgramsToFirebaseWithDeletion(),
+        syncFishingDiaryToFirebaseWithDeletion(), // 🔥 ИСПРАВЛЕНО: с удалением
       ]);
 
       // Получаем обновления из Firebase

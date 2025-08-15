@@ -1316,6 +1316,24 @@ class IsarService {
     debugPrint('🧹 IsarService: Очищены все BaitPrograms');
   }
 
+/// Получение прикормочных программ помеченных для удаления
+  Future<List<BaitProgramEntity>> getMarkedForDeletionBaitPrograms() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final markedPrograms = await isar.baitProgramEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${markedPrograms.length} BaitPrograms помеченных для удаления');
+    return markedPrograms;
+  }
+
   // ========================================
   // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ FISHING DIARY
   // ========================================
@@ -1510,6 +1528,24 @@ class IsarService {
       await isar.fishingDiaryEntitys.clear();
     });
     debugPrint('🧹 IsarService: Очищены все FishingDiaryEntries');
+  }
+
+/// Получение записей FishingDiary помеченных для удаления
+  Future<List<FishingDiaryEntity>> getMarkedForDeletionFishingDiaryEntries() async {
+    final userId = getCurrentUserId();
+    if (userId == null) {
+      return [];
+    }
+
+    final markedEntries = await isar.fishingDiaryEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${markedEntries.length} FishingDiary записей помеченных для удаления');
+    return markedEntries;
   }
 
   // ========================================

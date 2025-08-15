@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/app_constants.dart';
-import '../services/local/local_file_service.dart';
 import '../localization/app_localizations.dart';
 
 /// Виджет для отображения изображений из различных источников (сеть, локальный файл)

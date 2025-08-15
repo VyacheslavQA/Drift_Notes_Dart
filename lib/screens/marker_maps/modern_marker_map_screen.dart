@@ -593,7 +593,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                             await _toggleRayVisibility(rayIndex);
                                             setDialogState(() {}); // Обновляем состояние диалога
                                           },
-                                          activeColor: AppConstants.primaryColor,
+                                          activeThumbColor: AppConstants.primaryColor,
                                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                         ),
                                       ),

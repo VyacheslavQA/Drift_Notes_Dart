@@ -259,8 +259,8 @@ class _SubscriptionManagementScreenState extends State<SubscriptionManagementScr
     }
 
     // 4. Определяем по дате истечения (приблизительно)
-    if (subscription.expirationDate != null && subscription.createdAt != null) {
-      final duration = subscription.expirationDate!.difference(subscription.createdAt!);
+    if (subscription.expirationDate != null) {
+      final duration = subscription.expirationDate!.difference(subscription.createdAt);
       if (duration.inDays > 200) { // Больше 6-7 месяцев = годовая
         return localizations.translate('yearly_subscription');
       } else if (duration.inDays > 20) { // Больше 20 дней = месячная

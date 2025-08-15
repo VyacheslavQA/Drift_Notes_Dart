@@ -183,7 +183,7 @@ class _NotificationSoundSettingsScreenState
                       ),
                     ),
                     value: _settings.soundEnabled,
-                    activeColor: AppConstants.primaryColor,
+                    activeThumbColor: AppConstants.primaryColor,
                     onChanged: (value) {
                       _updateSettings(_settings.copyWith(soundEnabled: value));
                     },
@@ -276,7 +276,7 @@ class _NotificationSoundSettingsScreenState
                   ),
                 ),
                 value: _settings.vibrationEnabled,
-                activeColor: AppConstants.primaryColor,
+                activeThumbColor: AppConstants.primaryColor,
                 onChanged: (value) {
                   _updateSettings(_settings.copyWith(vibrationEnabled: value));
                 },
@@ -314,7 +314,7 @@ class _NotificationSoundSettingsScreenState
                       ),
                     ),
                     value: _settings.quietHoursEnabled,
-                    activeColor: AppConstants.primaryColor,
+                    activeThumbColor: AppConstants.primaryColor,
                     onChanged: (value) {
                       _updateSettings(
                         _settings.copyWith(quietHoursEnabled: value),
@@ -444,7 +444,7 @@ class _NotificationSoundSettingsScreenState
                         ),
                       ),
                       value: _settings.badgeEnabled,
-                      activeColor: AppConstants.primaryColor,
+                      activeThumbColor: AppConstants.primaryColor,
                       onChanged: (value) {
                         _updateSettings(
                           _settings.copyWith(badgeEnabled: value),

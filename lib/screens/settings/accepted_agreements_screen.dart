@@ -545,12 +545,12 @@ class _AcceptedAgreementsScreenState extends State<AcceptedAgreementsScreen> {
     } else if (updates.length == 1) {
       return localizations
           .translate('single_agreement_update')
-          ?.replaceAll('{document}', updates[0]) ??
+          .replaceAll('{document}', updates[0]) ??
           'Обновилась ${updates[0]}. Для продолжения работы необходимо принять новую версию.';
     } else {
       return localizations
           .translate('multiple_agreements_updated')
-          ?.replaceAll('{documents}', updates.join(' и ')) ??
+          .replaceAll('{documents}', updates.join(' и ')) ??
           'Обновились ${updates.join(' и ')}. Для продолжения работы необходимо принять новые версии.';
     }
   }

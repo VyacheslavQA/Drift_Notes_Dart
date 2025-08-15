@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/marker_map_model.dart';
 import '../../constants/app_constants.dart';
-import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
 import '../../localization/app_localizations.dart';
 

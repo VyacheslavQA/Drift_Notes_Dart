@@ -273,7 +273,7 @@ class _AdminSubscriptionScreenState extends State<AdminSubscriptionScreen> {
         ),
         const SizedBox(height: AppConstants.paddingSmall),
         DropdownButtonFormField<String>(
-          value: _selectedDuration,
+          initialValue: _selectedDuration,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),

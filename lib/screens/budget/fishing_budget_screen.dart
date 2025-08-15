@@ -68,7 +68,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
       for (final trip in trips) {
         debugPrint('  📍 Поездка: ${trip.displayTitle}');
         debugPrint('     Дата: ${trip.date}');
-        debugPrint('     Расходов: ${trip.expenses?.length ?? 0}');
+        debugPrint('     Расходов: ${trip.expenses.length ?? 0}');
         debugPrint('     Общая сумма: ${trip.totalAmount}');
       }
 
@@ -655,7 +655,7 @@ class _FishingBudgetScreenState extends State<FishingBudgetScreen>
 
   Widget _buildTripItem(FishingTripModel trip) {
     final totalAmount = trip.totalAmount;
-    final expenseCount = trip.expenses?.length ?? 0;
+    final expenseCount = trip.expenses.length ?? 0;
 
     return InkWell(
       onTap: () => _navigateToTripDetails(trip),

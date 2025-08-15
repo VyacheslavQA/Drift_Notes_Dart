@@ -56,7 +56,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final trip = await _expenseRepository.getTripById(widget.trip.id);
 
       if (trip != null) {
-        debugPrint('✅ Поездка загружена: ${trip.expenses?.length ?? 0} расходов, общая сумма: ${trip.totalAmount}');
+        debugPrint('✅ Поездка загружена: ${trip.expenses.length ?? 0} расходов, общая сумма: ${trip.totalAmount}');
 
         if (mounted) {
           setState(() {
@@ -252,7 +252,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         debugPrint('🗑️ Удаляем расход: ${expense.category.name} - ${expense.amount}');
 
         // Создаем обновленный список расходов без удаляемого
-        final updatedExpenses = _currentTrip!.expenses?.where((e) => e.id != expense.id).toList() ?? [];
+        final updatedExpenses = _currentTrip!.expenses.where((e) => e.id != expense.id).toList() ?? [];
 
         // Создаем обновленную поездку
         final updatedTrip = _currentTrip!.copyWith(
@@ -631,7 +631,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${trip.expenses?.length ?? 0}',
+                      '${trip.expenses.length ?? 0}',
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,

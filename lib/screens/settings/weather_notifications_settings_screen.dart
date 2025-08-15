@@ -256,7 +256,7 @@ class _WeatherNotificationsSettingsScreenState
                 _settings = _settings.copyWith(enabled: value);
               });
             },
-            activeColor: AppConstants.primaryColor,
+            activeThumbColor: AppConstants.primaryColor,
           ),
         ],
       ),
@@ -307,7 +307,7 @@ class _WeatherNotificationsSettingsScreenState
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppConstants.primaryColor,
+            activeThumbColor: AppConstants.primaryColor,
           ),
         ],
       ),

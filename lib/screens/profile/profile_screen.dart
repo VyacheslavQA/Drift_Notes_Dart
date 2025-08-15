@@ -784,7 +784,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : null,
       ),
       isExpanded: true,
-      value:
+      initialValue:
       (_selectedCountry != null &&
           _availableCountries.contains(_selectedCountry!))
           ? _selectedCountry
@@ -838,7 +838,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : null,
       ),
       isExpanded: true,
-      value:
+      initialValue:
       (_selectedCity != null && _availableCities.contains(_selectedCity!))
           ? _selectedCity
           : null,

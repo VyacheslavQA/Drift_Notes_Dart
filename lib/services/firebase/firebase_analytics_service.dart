@@ -331,7 +331,7 @@ class FirebaseAnalyticsService {
         parameters: {
           'feature_name': featureName,
           'has_access': hasAccess,
-          'blocked_reason': blockedReason ?? (hasAccess ? null : 'no_subscription'),
+          'blocked_reason': blockedReason ?? (hasAccess ? 'none' : 'no_subscription'),
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );
@@ -407,7 +407,7 @@ class FirebaseAnalyticsService {
         parameters: {
           'product_id': productId,
           'plan_type': planType,
-          'price': price,
+          'price': price ?? 0,
           'currency': currency ?? 'USD',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
@@ -452,9 +452,9 @@ class FirebaseAnalyticsService {
           'product_id': productId,
           'plan_type': planType,
           'success': success,
-          'error_reason': errorReason,
-          'price': price,
-          'yearly_discount': yearlyDiscount,
+          'error_reason': errorReason ?? 'none',
+          'price': price ?? 0,
+          'yearly_discount': yearlyDiscount ?? 0,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );
@@ -477,7 +477,7 @@ class FirebaseAnalyticsService {
         parameters: {
           'success': success,
           'restored_count': restoredCount ?? 0,
-          'error_reason': errorReason,
+          'error_reason': errorReason ?? 'none',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );
@@ -566,8 +566,8 @@ class FirebaseAnalyticsService {
           'total_budget_notes': totalBudgetNotes,
           'is_premium': isPremium,
           'days_active': daysActive,
-          'most_used_fishing_type': mostUsedFishingType,
-          'most_used_currency': mostUsedCurrency,
+          'most_used_fishing_type': mostUsedFishingType ?? 'unknown',
+          'most_used_currency': mostUsedCurrency ?? 'USD',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );
@@ -591,7 +591,7 @@ class FirebaseAnalyticsService {
         name: 'user_became_premium',
         parameters: {
           'plan_type': planType,
-          'price': price,
+          'price': price ?? 0,
           'days_from_install': daysFromInstall,
           'total_notes_created': totalNotesCreated,
           'total_maps_created': totalMapsCreated,

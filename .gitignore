@@ -75,3 +75,9 @@ android/build/
 build/
 android/.gradle/
 .dart_tool/
+# API ключи и секретные данные
+android/local.properties
+android/key.properties
+ios/Runner/GoogleService-Info.plist
+build_log.txt
+*.backup*

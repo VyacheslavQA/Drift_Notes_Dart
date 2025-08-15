@@ -777,9 +777,9 @@ class _BudgetStatisticsScreenState extends State<BudgetStatisticsScreen> {
     if (count == 1) {
       return localizations.translate('one_trip') ?? 'Одна поездка';
     } else if (count >= 2 && count <= 4) {
-      return localizations.translate('few_trips')?.replaceFirst('%count%', count.toString()) ?? '$count поездки';
+      return localizations.translate('few_trips').replaceFirst('%count%', count.toString()) ?? '$count поездки';
     } else {
-      return localizations.translate('many_trips')?.replaceFirst('%count%', count.toString()) ?? '$count поездок';
+      return localizations.translate('many_trips').replaceFirst('%count%', count.toString()) ?? '$count поездок';
     }
   }
 

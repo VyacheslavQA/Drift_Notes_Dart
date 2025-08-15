@@ -501,7 +501,7 @@ class _EditBaitProgramScreenState extends State<EditBaitProgramScreen> {
                 });
                 _markAsChanged();
               },
-              activeColor: AppConstants.primaryColor,
+              activeThumbColor: AppConstants.primaryColor,
               activeTrackColor: AppConstants.primaryColor.withOpacity(0.3),
               inactiveThumbColor: AppConstants.textColor.withOpacity(0.5),
               inactiveTrackColor: AppConstants.textColor.withOpacity(0.1),

@@ -1,7 +1,5 @@
-# Uncomment this line to define a global platform for your project
-platform :ios, '12.0'
+platform :ios, '14.0'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -33,7 +31,6 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Дополнительные настройки для ваших зависимостей
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -42,22 +39,23 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
-
-    # Настройки для совместимости с iOS
+    
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
-        '$(inherited)',
-        'PERMISSION_CAMERA=1',
-        'PERMISSION_MICROPHONE=1',
-        'PERMISSION_PHOTOS=1',
-        'PERMISSION_LOCATION=1',
-        'PERMISSION_LOCATION_ALWAYS=1',
-        'PERMISSION_LOCATION_WHEN_IN_USE=1',
-      ]
-
-      # Настройки для Apple Silicon Mac
-      config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
+      # Принудительное исправление для BoringSSL-GRPC
+      if target.name.include?('BoringSSL')
+        # Полностью переопределяем OTHER_CFLAGS для BoringSSL
+        config.build_settings['OTHER_CFLAGS'] = '$(inherited) -w -DOPENSSL_NO_ASM -DBORINGSSL_PREFIX=GRPC'
+        config.build_settings['WARNING_CFLAGS'] = ''
+        config.build_settings.delete('GCC_WARN_INHIBIT_ALL_WARNINGS')
+        config.build_settings['GCC_WARN_ABOUT_MISSING_PROTOTYPES'] = 'NO'
+        config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      end
+      
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      config.build_settings.delete('SWIFT_COMPILATION_MODE')
+      config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'
     end
   end
 end

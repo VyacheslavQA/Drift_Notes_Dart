@@ -17,7 +17,6 @@ import 'fishing_diary_detail_screen.dart';
 // 🚀 НОВЫЕ ИМПОРТЫ для шеринга
 import '../../services/fishing_diary_share/fishing_diary_sharing_service.dart';
 import '../../services/file_handler/driftnotes_file_handler.dart';
-import 'fishing_diary_import_preview_screen.dart';
 
 class FishingDiaryListScreen extends StatefulWidget {
   const FishingDiaryListScreen({super.key});

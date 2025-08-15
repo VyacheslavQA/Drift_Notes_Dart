@@ -218,7 +218,7 @@ class MarkerMapShareService {
           return ValidationResult(false, 'Некорректный формат маркера');
         }
 
-        final markerMap = marker as Map<String, dynamic>;
+        final markerMap = marker;
         if (!markerMap.containsKey('id') ||
             !markerMap.containsKey('rayIndex') ||
             !markerMap.containsKey('distance')) {

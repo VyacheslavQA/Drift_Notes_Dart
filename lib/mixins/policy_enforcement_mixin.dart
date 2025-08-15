@@ -172,7 +172,7 @@ mixin PolicyEnforcementMixin<T extends StatefulWidget> on State<T> {
           ? (localizations.translate('privacy_policy'))
           : (localizations.translate('terms_of_service'));
 
-      message = localizations.translate('single_policy_reminder')?.replaceFirst('{policy}', policyName) ??
+      message = localizations.translate('single_policy_reminder').replaceFirst('{policy}', policyName) ??
           'Напоминание: обновилась $policyName. Вы можете принять новую версию в любое время в настройках.';
     } else {
       message = localizations.translate('multiple_policies_reminder') ??

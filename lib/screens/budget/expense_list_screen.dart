@@ -353,9 +353,9 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     if (tripCount == 1) {
       return localizations.translate('from_one_trip') ?? 'из 1 поездки';
     } else if (tripCount >= 2 && tripCount <= 4) {
-      return localizations.translate('from_few_trips')?.replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
+      return localizations.translate('from_few_trips').replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
     } else {
-      return localizations.translate('from_many_trips')?.replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
+      return localizations.translate('from_many_trips').replaceFirst('%count%', tripCount.toString()) ?? 'из $tripCount поездок';
     }
   }
 

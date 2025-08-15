@@ -144,11 +144,11 @@ class AIBitePredictionService {
     try {
       // Загружаем предпочтения из профиля пользователя
       final userData = await _userRepository.getCurrentUserData();
-      if (userData?.fishingTypes?.isNotEmpty == true) {
+      if (userData?.fishingTypes.isNotEmpty == true) {
         if (kDebugMode) {
           debugPrint('📋 Loaded preferences from profile: ${userData!.fishingTypes}');
         }
-        return userData!.fishingTypes!;
+        return userData!.fishingTypes;
       }
     } catch (e) {
       if (kDebugMode) {
@@ -547,8 +547,8 @@ class AIBitePredictionService {
 
       // Объединяем предпочтения из профиля и истории
       final combinedPreferredTypes = <String>[];
-      if (userData?.fishingTypes?.isNotEmpty == true) {
-        combinedPreferredTypes.addAll(userData!.fishingTypes!);
+      if (userData?.fishingTypes.isNotEmpty == true) {
+        combinedPreferredTypes.addAll(userData!.fishingTypes);
       }
       // Добавляем из истории, если их нет в профиле
       for (final historyType in preferredTypesFromHistory.take(3).map((e) => e.key)) {

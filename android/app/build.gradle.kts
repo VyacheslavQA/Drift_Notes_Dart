@@ -19,7 +19,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.driftnotes.app"
 
-    compileSdk = 34
+    compileSdk = 35
     // ИСПРАВЛЕНО: Версия NDK как требуют плагины
     ndkVersion = "27.0.12077973"
 
@@ -47,8 +47,9 @@ android {
 
     defaultConfig {
         applicationId = "com.driftnotes.app"
-        minSdk = 23
-        targetSdk = 34
+        minSdk = 24
+        project.ext.set("flutter.minSdkVersion", 24)
+        targetSdk = 35
 
         // ДОБАВЛЕНО: Включаем multidex для поддержки больших приложений
         multiDexEnabled = true
@@ -139,10 +140,10 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    // ИСПРАВЛЕНО: Реальные существующие версии
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    // ОБНОВЛЕНО: Новые версии Google Play Services
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
 
     // ИСПРАВЛЕНО: Реальные версии Billing
     implementation("com.android.billingclient:billing:6.0.1")
