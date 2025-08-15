@@ -244,7 +244,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Построение маршрута до места рыбалки
+  // 🔥 ИСПРАВЛЕНО: Построение маршрута до места рыбалки
   Future<void> _navigateToLocation() async {
     if (_note == null || (_note!.latitude == 0 && _note!.longitude == 0)) {
       final localizations = AppLocalizations.of(context);
@@ -263,6 +263,8 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => _buildNavigationOptionsSheet(),
     );
   }
@@ -271,8 +273,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   Widget _buildNavigationOptionsSheet() {
     final localizations = AppLocalizations.of(context);
 
-    return Container(
-      padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
+    return Padding(
+      padding: EdgeInsets.only(
+        left: ResponsiveUtils.getHorizontalPadding(context),
+        right: ResponsiveUtils.getHorizontalPadding(context),
+        top: ResponsiveUtils.getHorizontalPadding(context),
+        bottom: MediaQuery.of(context).viewPadding.bottom + ResponsiveUtils.getHorizontalPadding(context),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,13 +322,6 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
             subtitle: localizations.translate('detailed_russian_maps'),
             icon: Icons.alt_route,
             onTap: () => _openYandexMaps(),
-          ),
-          const SizedBox(height: 12),
-          _buildNavigationOption(
-            title: '2GIS',
-            subtitle: localizations.translate('detailed_city_maps'),
-            icon: Icons.location_city,
-            onTap: () => _open2GIS(),
           ),
           const SizedBox(height: 20),
         ],
@@ -393,66 +393,90 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 
-  // Открытие различных навигационных приложений
+  // 🔥 ИСПРАВЛЕНО: Открытие различных навигационных приложений
   Future<void> _openGoogleMaps() async {
     Navigator.pop(context);
-    final url = 'https://www.google.com/maps/dir/?api=1&destination=${_note!
-        .latitude},${_note!.longitude}';
-    await _launchURL(url, 'Google Maps');
+    final url = 'https://www.google.com/maps/dir/?api=1&destination=${_note!.latitude},${_note!.longitude}';
+    await _launchURL(url, 'Google Maps', null);
   }
 
   Future<void> _openAppleMaps() async {
     Navigator.pop(context);
-    final url = 'http://maps.apple.com/?daddr=${_note!.latitude},${_note!
-        .longitude}&dirflg=d';
-    await _launchURL(url, 'Apple Maps');
+    final url = 'http://maps.apple.com/?daddr=${_note!.latitude},${_note!.longitude}&dirflg=d';
+    await _launchURL(url, 'Apple Maps', null);
   }
 
   Future<void> _openYandexMaps() async {
     Navigator.pop(context);
-    final url = 'yandexmaps://maps.yandex.ru/?rtext=~${_note!.latitude},${_note!
-        .longitude}&rtt=auto';
-    await _launchURL(url, 'Яндекс.Карты');
+
+    // Пробуем сначала приложение
+    final appUrl = 'yandexmaps://maps.yandex.ru/?rtext=~${_note!.latitude},${_note!.longitude}&rtt=auto';
+
+    // Fallback на веб-версию
+    final webUrl = 'https://yandex.ru/maps/?rtext=~${_note!.latitude},${_note!.longitude}&rtt=auto';
+
+    await _launchURL(appUrl, 'Яндекс.Карты', webUrl);
   }
 
-  Future<void> _open2GIS() async {
-    Navigator.pop(context);
-    final url = 'dgis://2gis.ru/routeSearch/rsType/car/to/${_note!
-        .longitude},${_note!.latitude}';
-    await _launchURL(url, '2GIS');
-  }
-
-  // Универсальный запуск URL
-  Future<void> _launchURL(String url, String appName) async {
+  // 🔥 ИСПРАВЛЕНО: Универсальный запуск URL с fallback
+  Future<void> _launchURL(String url, String appName, String? fallbackUrl) async {
     final localizations = AppLocalizations.of(context);
 
     try {
       final uri = Uri.parse(url);
 
-      if (await canLaunchUrl(uri)) {
+      // Проверяем, можем ли открыть основной URL
+      bool canLaunch = await canLaunchUrl(uri);
+
+      if (canLaunch) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  '${localizations.translate('app_not_installed')}: $appName'),
-              backgroundColor: Colors.orange,
-              action: SnackBarAction(
-                label: localizations.translate('install'),
-                textColor: Colors.white,
-                onPressed: () => _openAppStore(appName),
-              ),
-            ),
-          );
+        return;
+      }
+
+      // Если основной URL не работает и есть fallback, пробуем его
+      if (fallbackUrl != null) {
+        final fallbackUri = Uri.parse(fallbackUrl);
+        bool canLaunchFallback = await canLaunchUrl(fallbackUri);
+
+        if (canLaunchFallback) {
+          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+          return;
         }
       }
-    } catch (e) {
+
+      // Если ничего не работает, показываем сообщение с предложением установить
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                '${localizations.translate('error_opening_app')}: $appName'),
+            content: Text('${localizations.translate('app_not_installed')}: $appName'),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: localizations.translate('install'),
+              textColor: Colors.white,
+              onPressed: () => _openAppStore(appName),
+            ),
+          ),
+        );
+      }
+
+    } catch (e) {
+      debugPrint('❌ Ошибка запуска $appName: $e');
+
+      // Если есть fallback, пробуем его при ошибке
+      if (fallbackUrl != null) {
+        try {
+          final fallbackUri = Uri.parse(fallbackUrl);
+          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+          return;
+        } catch (fallbackError) {
+          debugPrint('❌ Ошибка fallback для $appName: $fallbackError');
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.translate('error_opening_app')}: $appName'),
             backgroundColor: Colors.red,
           ),
         );
@@ -460,23 +484,17 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     }
   }
 
-  // Открытие магазина приложений
+  // 🔥 ОБНОВЛЕНО: Открытие магазина приложений с актуальными ссылками
   Future<void> _openAppStore(String appName) async {
     String storeUrl = '';
 
     if (Platform.isAndroid) {
       switch (appName) {
         case 'Google Maps':
-          storeUrl =
-          'https://play.google.com/store/apps/details?id=com.google.android.apps.maps';
+          storeUrl = 'https://play.google.com/store/apps/details?id=com.google.android.apps.maps';
           break;
         case 'Яндекс.Карты':
-          storeUrl =
-          'https://play.google.com/store/apps/details?id=ru.yandex.yandexmaps';
-          break;
-        case '2GIS':
-          storeUrl =
-          'https://play.google.com/store/apps/details?id=ru.dublgis.dgismobile';
+          storeUrl = 'https://play.google.com/store/apps/details?id=ru.yandex.yandexmaps';
           break;
       }
     } else if (Platform.isIOS) {
@@ -487,16 +505,17 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
         case 'Яндекс.Карты':
           storeUrl = 'https://apps.apple.com/app/yandex-maps/id313877526';
           break;
-        case '2GIS':
-          storeUrl = 'https://apps.apple.com/app/2gis/id481627348';
-          break;
       }
     }
 
     if (storeUrl.isNotEmpty) {
-      final uri = Uri.parse(storeUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      try {
+        final uri = Uri.parse(storeUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (e) {
+        debugPrint('❌ Ошибка открытия магазина приложений: $e');
       }
     }
   }
@@ -1992,4 +2011,3 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
     );
   }
 }
-
