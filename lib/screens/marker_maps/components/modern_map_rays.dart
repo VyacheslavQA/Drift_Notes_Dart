@@ -106,7 +106,7 @@ class _RayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.8) // 🔥 УВЕЛИЧИЛИ прозрачность для видимости
+      ..color = Colors.black.withOpacity(0.6) // 🔥 УВЕЛИЧИЛИ прозрачность для видимости
       ..strokeWidth = 1.5 // 🔥 УВЕЛИЧИЛИ толщину линии
       ..style = PaintingStyle.stroke;
 

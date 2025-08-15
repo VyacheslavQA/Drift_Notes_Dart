@@ -55,7 +55,7 @@ class ModernMapGrid extends StatelessWidget {
         size: Size(radius * 2, radius * 2),
         painter: _DashedCirclePainter(
           radius: radius,
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.black.withOpacity(0.2),
           strokeWidth: 1.0,
           dashLength: 3.0, // 🔥 МЕЛКИЙ пунктир
           gapLength: 3.0,

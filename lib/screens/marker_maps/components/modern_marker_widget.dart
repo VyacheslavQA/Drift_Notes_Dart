@@ -96,6 +96,7 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
     final distance = widget.marker['distance'] as double? ?? 0;
     final depth = widget.marker['depth'] as double?;
     final bottomType = widget.marker['bottomType'] as String? ?? 'ил';
+    final isPointMarker = bottomType == 'точка'; // 🔥 ПРОВЕРКА на маркер "точка"
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -116,10 +117,10 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                 clipBehavior: Clip.none,
                 alignment: Alignment.center,
                 children: [
-                  // Основной маркер 14x14
+                  // 🔥 ОБНОВЛЕННЫЙ маркер с условиями для "точка"
                   Container(
-                    width: 14,
-                    height: 14,
+                    width: isPointMarker ? 7 : 14, // 🔥 В 2 раза меньше для "точка"
+                    height: isPointMarker ? 7 : 14, // 🔥 В 2 раза меньше для "точка"
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: widget.color.withOpacity(0.9),
@@ -140,40 +141,31 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                         width: 1,
                       ),
                     ),
-                    child: Icon(
+                    // 🔥 УБИРАЕМ ИКОНКУ для маркера "точка"
+                    child: isPointMarker ? null : Icon(
                       widget.icon,
                       color: Colors.black87,
                       size: 8,
                     ),
                   ),
 
-                  // 🆕 НОВАЯ ПОДПИСЬ ДИСТАНЦИИ СЛЕВА ОТ МАРКЕРА (белым цветом)
+                  // 🆕 ПОДПИСЬ ДИСТАНЦИИ СЛЕВА ОТ МАРКЕРА (темно-синий)
                   Positioned(
-                    right: 16, // Слева от маркера
+                    right: isPointMarker ? 9 : 16, // 🔥 Ближе для маленького маркера "точка"
                     top: 4, // Опущено еще ниже (было 2, стало 4)
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2, // Уменьшено в 2 раза
-                        vertical: 0.5, // Уменьшено в 2 раза
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9), // Белый фон
-                        borderRadius: BorderRadius.circular(2), // Уменьшено в 2 раза
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 1, // Уменьшено в 2 раза
-                            offset: const Offset(0, 0.5), // Уменьшено в 2 раза
+                    child: Text(
+                      '${distance.toInt()}', // Только цифра дистанции
+                      style: const TextStyle(
+                        color: Color(0xFF003366), // 🔥 Темно-синий цвет
+                        fontSize: 5.5, // 🔥 Увеличили на 1 (было 4.5, стало 5.5)
+                        fontWeight: FontWeight.w900, // 🔥 Максимально жирный
+                        shadows: [
+                          Shadow(
+                            offset: Offset(1, 1),
+                            blurRadius: 2,
+                            color: Colors.white, // 🔥 Белая тень для читаемости
                           ),
                         ],
-                      ),
-                      child: Text(
-                        '${distance.toInt()}', // Только цифра дистанции
-                        style: const TextStyle(
-                          color: Colors.black87, // Черный текст на белом фоне для читаемости
-                          fontSize: 4.5, // Уменьшено в 2 раза (9/2 = 4.5)
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
                     ),
                   ),
@@ -181,31 +173,21 @@ class _ModernMarkerWidgetState extends State<ModernMarkerWidget>
                   // Подпись глубины справа от маркера (если есть)
                   if (depth != null)
                     Positioned(
-                      left: 16, // Справа от маркера
+                      left: isPointMarker ? 9 : 16, // 🔥 Ближе для маленького маркера "точка"
                       top: 4, // Опущено еще ниже (было 2, стало 4)
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 2, // Уменьшено в 2 раза
-                          vertical: 0.5, // Уменьшено в 2 раза
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.yellow.shade300.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(2), // Уменьшено в 2 раза
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 1, // Уменьшено в 2 раза
-                              offset: const Offset(0, 0.5), // Уменьшено в 2 раза
+                      child: Text(
+                        '${depth.toStringAsFixed(1)}', // 🔥 Убрали букву "м"
+                        style: const TextStyle(
+                          color: Color(0xFF006400), // 🔥 Темно-зеленый цвет
+                          fontSize: 5.5, // 🔥 Увеличили на 1 (было 4.5, стало 5.5)
+                          fontWeight: FontWeight.w900, // 🔥 Максимально жирный
+                          shadows: [
+                            Shadow(
+                              offset: Offset(1, 1),
+                              blurRadius: 2,
+                              color: Colors.white, // 🔥 Белая тень для читаемости
                             ),
                           ],
-                        ),
-                        child: Text(
-                          '${depth.toStringAsFixed(1)}м',
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 4.5, // Уменьшено в 2 раза (9/2 = 4.5)
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ),
                     ),

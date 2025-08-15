@@ -17,8 +17,8 @@ class ModernMapBackground extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0B1F1D), // Темно-зеленый
-            Color(0xFF0F2823), // Чуть светлее
+            Colors.white, // 🔥 СВЕТЛЫЙ БЕЛЫЙ
+            Color(0xFFF8F9FA), // 🔥 ОЧЕНЬ СВЕТЛО-СЕРЫЙ для легкого градиента
           ],
           stops: [0.0, 1.0],
         ),

@@ -93,7 +93,7 @@ class ModernMapLabels extends StatelessWidget {
           child: Text(
             distance.toString(),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.black.withOpacity(0.8),
               fontSize: 13,
               fontWeight: FontWeight.w600,
               shadows: [
@@ -140,7 +140,7 @@ class ModernMapLabels extends StatelessWidget {
         child: Text(
           distance.toString(),
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.black.withOpacity(0.8),
             fontSize: 13,
             fontWeight: FontWeight.w600,
             shadows: [
@@ -244,7 +244,7 @@ class ModernMapLabels extends StatelessWidget {
                               '${localizations.translate('ray')} ${i + 1}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.black.withOpacity(0.8),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600, // 🔥 Чуть жирнее для кликабельности
                                 shadows: [

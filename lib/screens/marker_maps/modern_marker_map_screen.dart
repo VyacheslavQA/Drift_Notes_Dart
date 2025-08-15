@@ -366,7 +366,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${action} - ${localizations.translate('saved')}'),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.white,
             duration: const Duration(seconds: 1),
           ),
         );
@@ -656,7 +656,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       ),
                                     ],
                                   ),
-                                  child: Icon(
+                                  child: type == 'точка' ? null : Icon(
                                     _bottomTypeIcons[type] ?? Icons.location_on,
                                     color: Colors.black87,
                                     size: 14,

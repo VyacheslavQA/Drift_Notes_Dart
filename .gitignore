@@ -70,14 +70,37 @@ android/app/src/main/AndroidManifest.xml
 android/app/src/debug/AndroidManifest.xml
 android/app/src/profile/AndroidManifest.xml
 
-# Build outputs (добавить в конец файла)
+# Build outputs
 android/build/
 build/
 android/.gradle/
 .dart_tool/
-# API ключи и секретные данные
-android/local.properties
-android/key.properties
-ios/Runner/GoogleService-Info.plist
-build_log.txt
+
+# Backup files
+*.backup
 *.backup*
+
+# Log files
+build_log.txt
+
+# iOS specific
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/.symlinks/
+ios/Runner.xcworkspace/xcshareddata/
+ios/Runner.xcodeproj/xcshareddata/
+*.mobileprovision
+*.p12
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Coverage
+coverage/
+
+# macOS related
+.DS_Store
