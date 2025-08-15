@@ -64,6 +64,7 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
 
   FishingWeather? _weather;
   bool _isLoadingWeather = false;
+  bool _showAIDetails = false;
 
   late List<BiteRecord> _biteRecords;
   late String _selectedFishingType;
@@ -1055,50 +1056,111 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Используем адаптивную разметку для заголовка
-          ResponsiveUtils.isSmallScreen(context)
-              ? Column( // На маленьких экранах - вертикально
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // ✅ КОМПАКТНАЯ ВЕРСИЯ (всегда видна)
+          Row(
             children: [
-              _buildAIHeader(localizations),
-              SizedBox(height: ResponsiveConstants.spacingS),
-              _buildAIScore(),
-            ],
-          )
-              : Row( // На больших экранах - горизонтально
-            children: [
-              Expanded(child: _buildAIHeader(localizations)),
-              _buildAIScore(),
+              Container(
+                padding: EdgeInsets.all(ResponsiveConstants.spacingS),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
+                ),
+                child: Icon(
+                  Icons.psychology,
+                  color: _getScoreColor(_aiPrediction!.overallScore),
+                  size: ResponsiveUtils.getIconSize(context, baseSize: 20),
+                ),
+              ),
+              SizedBox(width: ResponsiveConstants.spacingM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
+                      style: TextStyle(
+                        color: AppConstants.textColor,
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 14, maxSize: 16),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    Text(
+                      _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
+                      style: TextStyle(
+                        color: _getScoreColor(_aiPrediction!.overallScore),
+                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveConstants.spacingS,
+                  vertical: ResponsiveConstants.spacingXS,
+                ),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
+                ),
+                child: Text(
+                  '${_aiPrediction!.confidencePercent}%',
+                  style: TextStyle(
+                    color: _getScoreColor(_aiPrediction!.overallScore),
+                    fontSize: ResponsiveUtils.getOptimalFontSize(context, 10, maxSize: 12),
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              SizedBox(width: ResponsiveConstants.spacingS),
+              IconButton(
+                icon: Icon(
+                  _showAIDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: AppConstants.textColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showAIDetails = !_showAIDetails;
+                  });
+                },
+              ),
             ],
           ),
-          SizedBox(height: ResponsiveConstants.spacingM),
-          Text(
-            _aiPrediction!.recommendation,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
-              height: ResponsiveConstants.lineHeightNormal,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 3,
-          ),
-          if (_aiPrediction!.tips.isNotEmpty) ...[
+
+          // ✅ ПОДРОБНОСТИ (показываются по условию)
+          if (_showAIDetails) ...[
             SizedBox(height: ResponsiveConstants.spacingM),
             Text(
-              localizations.translate('recommendations'),
+              _aiPrediction!.recommendation,
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
-                fontWeight: FontWeight.bold,
+                height: ResponsiveConstants.lineHeightNormal,
               ),
               overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+              maxLines: 3,
             ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            ...(_aiPrediction!.tips
-                .take(2)
-                .map(
-                  (tip) => Padding(
+            if (_aiPrediction!.tips.isNotEmpty) ...[
+              SizedBox(height: ResponsiveConstants.spacingM),
+              Text(
+                localizations.translate('recommendations'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              SizedBox(height: ResponsiveConstants.spacingS),
+              ...(_aiPrediction!.tips.take(2).map((tip) => Padding(
                 padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1124,8 +1186,8 @@ class _EditFishingNoteScreenState extends State<EditFishingNoteScreen>
                     ),
                   ],
                 ),
-              ),
-            )),
+              ))),
+            ],
           ],
         ],
       ),

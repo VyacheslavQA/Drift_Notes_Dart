@@ -95,6 +95,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
   late Animation<double> _fadeAnimation;
 
   bool _hasUnsavedChanges = false;
+  bool _showAIDetails = false;
 
   @override
   void initState() {
@@ -1805,6 +1806,7 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ✅ КОМПАКТНАЯ ВЕРСИЯ (всегда видна)
           Row(
             children: [
               Container(
@@ -1861,55 +1863,71 @@ class _AddFishingNoteScreenState extends State<AddFishingNoteScreen>
                   ),
                 ),
               ),
+              SizedBox(width: ResponsiveConstants.spacingS),
+              IconButton(
+                icon: Icon(
+                  _showAIDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: AppConstants.textColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showAIDetails = !_showAIDetails;
+                  });
+                },
+              ),
             ],
           ),
-          SizedBox(height: ResponsiveConstants.spacingM),
-          Text(
-            _aiPrediction!.recommendation,
-            style: TextStyle(
-              color: AppConstants.textColor,
-              fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
-              height: ResponsiveConstants.lineHeightNormal,
-            ),
-          ),
-          if (_aiPrediction!.tips.isNotEmpty) ...[
+
+          // ✅ ПОДРОБНОСТИ (показываются по условию)
+          if (_showAIDetails) ...[
             SizedBox(height: ResponsiveConstants.spacingM),
             Text(
-              localizations.translate('recommendations'),
+              _aiPrediction!.recommendation,
               style: TextStyle(
                 color: AppConstants.textColor,
                 fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
-                fontWeight: FontWeight.bold,
+                height: ResponsiveConstants.lineHeightNormal,
               ),
             ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            ...(_aiPrediction!.tips.take(2).map(
-                  (tip) => Padding(
-                padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '• ',
-                      style: TextStyle(
-                        color: AppConstants.primaryColor,
-                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        tip,
-                        style: TextStyle(
-                          color: AppConstants.textColor.withValues(alpha: 0.9),
-                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 11, maxSize: 13),
-                        ),
-                      ),
-                    ),
-                  ],
+            if (_aiPrediction!.tips.isNotEmpty) ...[
+              SizedBox(height: ResponsiveConstants.spacingM),
+              Text(
+                localizations.translate('recommendations'),
+                style: TextStyle(
+                  color: AppConstants.textColor,
+                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            )),
+              SizedBox(height: ResponsiveConstants.spacingS),
+              ...(_aiPrediction!.tips.take(2).map(
+                    (tip) => Padding(
+                  padding: EdgeInsets.only(bottom: ResponsiveConstants.spacingXS),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ',
+                        style: TextStyle(
+                          color: AppConstants.primaryColor,
+                          fontSize: ResponsiveUtils.getOptimalFontSize(context, 12, maxSize: 14),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          tip,
+                          style: TextStyle(
+                            color: AppConstants.textColor.withValues(alpha: 0.9),
+                            fontSize: ResponsiveUtils.getOptimalFontSize(context, 11, maxSize: 13),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+            ],
           ],
         ],
       ),

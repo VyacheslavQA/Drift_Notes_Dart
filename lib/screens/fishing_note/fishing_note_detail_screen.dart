@@ -54,6 +54,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
   // Прикормочные программы
   List<BaitProgramModel> _baitPrograms = [];
   bool _isLoadingPrograms = false;
+  bool _showAIDetails = false;
 
   // 🔥 ОПТИМИЗАЦИЯ: Debounce для предотвращения частых обновлений
   Timer? _debounceTimer;
@@ -1106,13 +1107,13 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ✅ КОМПАКТНАЯ ВЕРСИЯ (всегда видна)
               Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _getScoreColor(_aiPrediction!.overallScore)
-                          .withValues(alpha: 0.2),
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -1127,9 +1128,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${localizations.translate(
-                              'ai_bite_forecast')} (${_aiPrediction!
-                              .overallScore}/100)',
+                          '${localizations.translate('ai_bite_forecast')} (${_aiPrediction!.overallScore}/100)',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 16,
@@ -1137,8 +1136,7 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                           ),
                         ),
                         Text(
-                          _getActivityLevelText(
-                              _aiPrediction!.activityLevel, localizations),
+                          _getActivityLevelText(_aiPrediction!.activityLevel, localizations),
                           style: TextStyle(
                             color: _getScoreColor(_aiPrediction!.overallScore),
                             fontSize: 14,
@@ -1149,11 +1147,9 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getScoreColor(_aiPrediction!.overallScore)
-                          .withValues(alpha: 0.2),
+                      color: _getScoreColor(_aiPrediction!.overallScore).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -1165,55 +1161,69 @@ class _FishingNoteDetailScreenState extends State<FishingNoteDetailScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      _showAIDetails ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: AppConstants.textColor,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _showAIDetails = !_showAIDetails;
+                      });
+                    },
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                _aiPrediction!.recommendation,
-                style: TextStyle(
-                  color: AppConstants.textColor,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              if (_aiPrediction!.tips.isNotEmpty) ...[
+
+              // ✅ ПОДРОБНОСТИ (показываются по условию)
+              if (_showAIDetails) ...[
                 const SizedBox(height: 12),
                 Text(
-                  localizations.translate('recommendations'),
+                  _aiPrediction!.recommendation,
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 6),
-                ...(_aiPrediction!.tips.take(3).map((tip) =>
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '• ',
+                if (_aiPrediction!.tips.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    localizations.translate('recommendations'),
+                    style: TextStyle(
+                      color: AppConstants.textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ...(_aiPrediction!.tips.take(3).map((tip) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• ',
+                          style: TextStyle(
+                            color: AppConstants.primaryColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            tip,
                             style: TextStyle(
-                              color: AppConstants.primaryColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              color: AppConstants.textColor.withValues(alpha: 0.9),
+                              fontSize: 13,
                             ),
                           ),
-                          Expanded(
-                            child: Text(
-                              tip,
-                              style: TextStyle(
-                                color: AppConstants.textColor.withValues(
-                                    alpha: 0.9),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ))),
+                        ),
+                      ],
+                    ),
+                  ))),
+                ],
               ],
             ],
           ),
