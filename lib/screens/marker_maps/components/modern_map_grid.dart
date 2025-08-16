@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-/// Современная сетка концентрических окружностей
-/// Заменяет Canvas дуги на Stack из Container с borders
+/// 🚀 ОПТИМИЗИРОВАННАЯ сетка концентрических окружностей
+/// Заменяет 20 отдельных CustomPaint виджетов ОДНИМ!
 class ModernMapGrid extends StatelessWidget {
   final double maxDistance;
   final double distanceStep;
@@ -20,80 +20,56 @@ class ModernMapGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final centerX = screenSize.width / 2;
-    final originY = screenSize.height - 20; // 🔥 ИСПРАВЛЕНО: отступ от низа экрана
+    final originY = screenSize.height - 20;
     final pixelsPerMeter = screenSize.height / (maxDistance * 1.1);
 
     return RepaintBoundary(
-      child: Stack(
-        children: [
-          // Генерируем концентрические полукруги
-          for (int distance = 10; distance <= maxDistance.toInt(); distance += 10)
-            _buildGridCircle(
-              centerX: centerX,
-              originY: originY,
-              distance: distance,
-              pixelsPerMeter: pixelsPerMeter,
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Построение одного полукруга сетки с пунктиром
-  Widget _buildGridCircle({
-    required double centerX,
-    required double originY,
-    required int distance,
-    required double pixelsPerMeter,
-  }) {
-    final radius = distance * pixelsPerMeter;
-
-    return Positioned(
-      left: centerX - radius,
-      top: originY - radius,
       child: CustomPaint(
-        size: Size(radius * 2, radius * 2),
-        painter: _DashedCirclePainter(
-          radius: radius,
-          color: Colors.black.withOpacity(0.2),
-          strokeWidth: 1.0,
-          dashLength: 3.0, // 🔥 МЕЛКИЙ пунктир
-          gapLength: 3.0,
+        size: screenSize,
+        painter: _OptimizedGridPainter(
+          centerX: centerX,
+          originY: originY,
+          maxDistance: maxDistance,
+          pixelsPerMeter: pixelsPerMeter,
         ),
       ),
     );
   }
 }
 
-/// 🔥 ДОБАВИЛИ: Painter для пунктирных полукругов
-class _DashedCirclePainter extends CustomPainter {
-  final double radius;
-  final Color color;
-  final double strokeWidth;
-  final double dashLength;
-  final double gapLength;
+/// 🚀 ЕДИНЫЙ Painter для ВСЕХ концентрических кругов
+class _OptimizedGridPainter extends CustomPainter {
+  final double centerX;
+  final double originY;
+  final double maxDistance;
+  final double pixelsPerMeter;
 
-  _DashedCirclePainter({
-    required this.radius,
-    required this.color,
-    required this.strokeWidth,
-    required this.dashLength,
-    required this.gapLength,
+  _OptimizedGridPainter({
+    required this.centerX,
+    required this.originY,
+    required this.maxDistance,
+    required this.pixelsPerMeter,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
+      ..color = Colors.black.withOpacity(0.2)
+      ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
-    final center = Offset(radius, radius);
+    // 🚀 РИСУЕМ ВСЕ КРУГИ В ОДНОМ МЕТОДЕ
+    for (int distance = 10; distance <= maxDistance.toInt(); distance += 10) {
+      final radius = distance * pixelsPerMeter;
+      _drawDashedSemicircle(canvas, radius, paint);
+    }
+  }
 
-    // Рисуем только нижнюю половину окружности (полукруг) пунктиром
-    final path = Path();
+  /// 🔥 ОПТИМИЗИРОВАННАЯ отрисовка пунктирного полукруга
+  void _drawDashedSemicircle(Canvas canvas, double radius, Paint paint) {
+    const dashLength = 3.0;
+    const gapLength = 3.0;
 
-    // Вычисляем общую длину полукруга
     final semicircleLength = math.pi * radius;
     final dashCount = (semicircleLength / (dashLength + gapLength)).floor();
 
@@ -103,19 +79,20 @@ class _DashedCirclePainter extends CustomPainter {
 
       if (endAngle > 2 * math.pi) break;
 
-      final startX = center.dx + radius * math.cos(startAngle);
-      final startY = center.dy + radius * math.sin(startAngle);
-      final endX = center.dx + radius * math.cos(endAngle);
-      final endY = center.dy + radius * math.sin(endAngle);
+      final startX = centerX + radius * math.cos(startAngle);
+      final startY = originY + radius * math.sin(startAngle);
+      final endX = centerX + radius * math.cos(endAngle);
+      final endY = originY + radius * math.sin(endAngle);
 
-      path.moveTo(startX, startY);
-      path.arcToPoint(
-        Offset(endX, endY),
-        radius: Radius.circular(radius),
+      // 🚀 РИСУЕМ ДУГУ НАПРЯМУЮ без создания Path
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(centerX, originY), radius: radius),
+        startAngle,
+        endAngle - startAngle,
+        false,
+        paint,
       );
     }
-
-    canvas.drawPath(path, paint);
   }
 
   @override

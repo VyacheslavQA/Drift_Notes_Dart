@@ -49,10 +49,6 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   // 🔥 Флаг disposed для предотвращения утечек
   bool _isDisposed = false;
 
-  // 🎬 Контроллеры анимаций
-  late AnimationController _fadeController;
-  late AnimationController _staggerController;
-  late Animation<double> _fadeAnimation;
   // 🔍 НОВЫЙ: Контроллер для зума
   late TransformationController _transformationController;
 
@@ -65,7 +61,6 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   final double _distanceStep = 10.0;
   final double _leftAngle = 104.0;
   final double _rightAngle = 76.0;
-
 
 
   // Типы дна для маркеров (те же что в оригинале)
@@ -168,7 +163,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     },
     // 🌉 НОВАЯ ЗАПИСЬ - добавить между internet_tower и exact_location
     'bridge': {
-      'icon': Icons.straighten,  // Используем Icons.straighten вместо Icons.bridge
+      'icon': Icons.straighten,
+      // Используем Icons.straighten вместо Icons.bridge
       'nameEn': 'Bridge/Pier',
       'nameRu': 'Мост/Помост',
       'nameKz': 'Көпір/Тақтай',
@@ -216,32 +212,13 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     _markerMap = widget.markerMap;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
 
-    // 🎬 Инициализация анимаций
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _staggerController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
-
-    // 🎬 Запуск анимации загрузки
-    _fadeController.forward();
     // 🔍 Инициализация контроллера зума
     _transformationController = TransformationController();
-    _staggerController.forward();
 
-    debugPrint('🗺️ ModernMarkerMapScreen: Открываем современную карту маркеров ID: ${_markerMap.id}');
+
+    debugPrint(
+        '🗺️ ModernMarkerMapScreen: Открываем современную карту маркеров ID: ${_markerMap
+            .id}');
   }
 
   @override
@@ -256,9 +233,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     _distanceController.dispose();
     _landmarkCommentController.dispose(); // 🔥 НОВЫЙ контроллер
 
-    // 🎬 Освобождаем контроллеры анимаций
-    _fadeController.dispose();
-    _staggerController.dispose();
+
     // 🔍 Освобождаем контроллер зума
     _transformationController.dispose();
 
@@ -383,7 +358,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${localizations.translate('save_error')}: ${e.toString()}'),
+            content: Text(
+                '${localizations.translate('save_error')}: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 2),
           ),
@@ -462,7 +438,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
         if (!_isDisposed && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${localizations.translate('error')}: ${e.toString()}'),
+              content: Text(
+                  '${localizations.translate('error')}: ${e.toString()}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -487,8 +464,14 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
           ),
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxWidth: MediaQuery
+                  .of(context)
+                  .size
+                  .width * 0.9,
+              maxHeight: MediaQuery
+                  .of(context)
+                  .size
+                  .height * 0.8,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -546,17 +529,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                         _buildInstructionItem(
                           icon: Icons.add_location,
                           title: localizations.translate('adding_marker_title'),
-                          description: localizations.translate('adding_marker_instruction'),
+                          description: localizations.translate(
+                              'adding_marker_instruction'),
                         ),
                         _buildInstructionItem(
                           icon: Icons.touch_app,
                           title: localizations.translate('view_details_title'),
-                          description: localizations.translate('view_details_instruction'),
+                          description: localizations.translate(
+                              'view_details_instruction'),
                         ),
                         _buildInstructionItem(
                           icon: Icons.palette,
                           title: localizations.translate('marker_colors_title'),
-                          description: localizations.translate('marker_colors_instruction'),
+                          description: localizations.translate(
+                              'marker_colors_instruction'),
                         ),
 
                         const SizedBox(height: 24),
@@ -578,9 +564,11 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           builder: (context, setDialogState) {
                             return Column(
                               children: List.generate(_raysCount, (rayIndex) {
-                                final isVisible = _markerMap.rayVisibility[rayIndex];
+                                final isVisible = _markerMap
+                                    .rayVisibility[rayIndex];
                                 return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8),
                                   child: Row(
                                     children: [
                                       SizedBox(
@@ -590,17 +578,21 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           value: isVisible,
                                           onChanged: (value) async {
                                             // 🔥 ПЕРЕКЛЮЧАЕМ И ОБНОВЛЯЕМ ДИАЛОГ
-                                            await _toggleRayVisibility(rayIndex);
+                                            await _toggleRayVisibility(
+                                                rayIndex);
                                             setDialogState(() {}); // Обновляем состояние диалога
                                           },
-                                          activeThumbColor: AppConstants.primaryColor,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          activeThumbColor: AppConstants
+                                              .primaryColor,
+                                          materialTapTargetSize: MaterialTapTargetSize
+                                              .shrinkWrap,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Text(
-                                          '${localizations.translate('ray')} ${rayIndex + 1}',
+                                          '${localizations.translate(
+                                              'ray')} ${rayIndex + 1}',
                                           style: TextStyle(
                                             color: AppConstants.textColor,
                                             fontSize: 16,
@@ -642,7 +634,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   width: 24,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: _bottomTypeColors[type] ?? Colors.blue,
+                                    color: _bottomTypeColors[type] ??
+                                        Colors.blue,
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: Colors.white.withOpacity(0.3),
@@ -681,7 +674,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   width: 12,
                                   height: 12,
                                   decoration: BoxDecoration(
-                                    color: _bottomTypeColors[type] ?? Colors.blue,
+                                    color: _bottomTypeColors[type] ??
+                                        Colors.blue,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -715,7 +709,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    localizations.translate('useful_tips_title'),
+                                    localizations.translate(
+                                        'useful_tips_title'),
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -728,7 +723,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               Text(
                                 localizations.translate('useful_tips_content'),
                                 style: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.8),
+                                  color: AppConstants.textColor.withOpacity(
+                                      0.8),
                                   fontSize: 14,
                                   height: 1.4,
                                 ),
@@ -865,7 +861,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
               const SizedBox(height: 10),
               // 🎯 ЛУЧ - отдельная строка
               Text(
-                '${localizations.translate('ray')}: ${(marker['rayIndex'] + 1).toInt()}',
+                '${localizations.translate('ray')}: ${(marker['rayIndex'] + 1)
+                    .toInt()}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -875,7 +872,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
 // 🎯 ДИСТАНЦИЯ - отдельная строка
               Text(
-                '${localizations.translate('distance')}: ${marker['distance'].toInt()} ${localizations.translate('meters')}',
+                '${localizations.translate('distance')}: ${marker['distance']
+                    .toInt()} ${localizations.translate('meters')}',
                 style: TextStyle(
                   color: AppConstants.textColor,
                   fontSize: 16,
@@ -886,7 +884,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
               if (marker['depth'] != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '${localizations.translate('depth')}: ${marker['depth']} ${localizations.translate('meters')}',
+                  '${localizations.translate(
+                      'depth')}: ${marker['depth']} ${localizations.translate(
+                      'meters')}',
                   style: TextStyle(
                     color: AppConstants.textColor,
                     fontSize: 16,
@@ -911,7 +911,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                     height: 20,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      color: _bottomTypeColors[marker['bottomType']] ?? _bottomTypeColors['default'],
+                      color: _bottomTypeColors[marker['bottomType']] ??
+                          _bottomTypeColors['default'],
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.white.withOpacity(0.3),
@@ -926,7 +927,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       ],
                     ),
                     child: Icon(
-                      _bottomTypeIcons[marker['bottomType']] ?? _bottomTypeIcons['default'],
+                      _bottomTypeIcons[marker['bottomType']] ??
+                          _bottomTypeIcons['default'],
                       color: Colors.black87,
                       size: 12,
                     ),
@@ -966,9 +968,11 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       TextButton.icon(
                         onPressed: () {
                           Navigator.pop(context); // Закрываем текущий диалог
-                          _showEditMarkerDialog(marker); // 🔥 Открываем диалог редактирования
+                          _showEditMarkerDialog(
+                              marker); // 🔥 Открываем диалог редактирования
                         },
-                        icon: Icon(Icons.edit, color: AppConstants.primaryColor),
+                        icon: Icon(
+                            Icons.edit, color: AppConstants.primaryColor),
                         label: Text(
                           localizations.translate('edit'),
                           style: TextStyle(color: AppConstants.primaryColor),
@@ -1017,7 +1021,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     int selectedRayIndex = _lastSelectedRayIndex;
     if (!_markerMap.rayVisibility[selectedRayIndex]) {
       // Находим первый видимый луч
-      selectedRayIndex = _markerMap.rayVisibility.indexWhere((visible) => visible);
+      selectedRayIndex =
+          _markerMap.rayVisibility.indexWhere((visible) => visible);
       if (selectedRayIndex == -1) {
         // Если все лучи скрыты (невозможно, но на всякий случай)
         selectedRayIndex = 0;
@@ -1041,9 +1046,15 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Container(
-                      width: MediaQuery.of(context).size.width * 0.9,
+                      width: MediaQuery
+                          .of(context)
+                          .size
+                          .width * 0.9,
                       constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                        maxHeight: MediaQuery
+                            .of(context)
+                            .size
+                            .height * 0.8,
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1089,7 +1100,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                 children: [
                                   // 1️⃣ ВЫБОР ЛУЧА
                                   Text(
-                                    '1. ${localizations.translate('ray_selection')}',
+                                    '1. ${localizations.translate(
+                                        'ray_selection')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1099,10 +1111,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: AppConstants.primaryColor.withOpacity(0.3),
+                                        color: AppConstants.primaryColor
+                                            .withOpacity(0.3),
                                       ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
@@ -1110,18 +1124,26 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       child: DropdownButton<int>(
                                         value: selectedRayIndex,
                                         isExpanded: true,
-                                        dropdownColor: AppConstants.surfaceColor,
-                                        style: TextStyle(color: AppConstants.textColor),
-                                        items: List.generate(_raysCount, (index) {
+                                        dropdownColor: AppConstants
+                                            .surfaceColor,
+                                        style: TextStyle(
+                                            color: AppConstants.textColor),
+                                        items: List.generate(
+                                            _raysCount, (index) {
                                           // 🔥 ПОКАЗЫВАЕМ ТОЛЬКО ВИДИМЫЕ ЛУЧИ
-                                          if (!_markerMap.rayVisibility[index]) return null;
+                                          if (!_markerMap.rayVisibility[index])
+                                            return null;
                                           return DropdownMenuItem<int>(
                                             value: index,
-                                            child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                            child: Text('${localizations
+                                                .translate('ray')} ${index +
+                                                1}'),
                                           );
-                                        }).where((item) => item != null).cast<DropdownMenuItem<int>>().toList(),
+                                        }).where((item) => item != null).cast<
+                                            DropdownMenuItem<int>>().toList(),
                                         onChanged: (value) {
-                                          if (value != null && _markerMap.rayVisibility[value]) {
+                                          if (value != null &&
+                                              _markerMap.rayVisibility[value]) {
                                             setDialogState(() {
                                               selectedRayIndex = value;
                                             });
@@ -1135,7 +1157,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                                   // 2️⃣ РАССТОЯНИЕ
                                   Text(
-                                    '2. ${localizations.translate('distance_m')}',
+                                    '2. ${localizations.translate(
+                                        'distance_m')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1145,16 +1168,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _distanceController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('distance_hint'),
+                                      hintText: localizations.translate(
+                                          'distance_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1163,7 +1190,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
                                     keyboardType: TextInputType.number,
                                   ),
@@ -1181,16 +1210,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _depthController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('depth_hint'),
+                                      hintText: localizations.translate(
+                                          'depth_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1199,9 +1232,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
-                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType: TextInputType
+                                        .numberWithOptions(decimal: true),
                                   ),
                                   const SizedBox(height: 20),
 
@@ -1217,16 +1253,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _notesController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('notes_hint'),
+                                      hintText: localizations.translate(
+                                          'notes_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1235,7 +1275,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
                                     maxLines: 3,
                                     minLines: 1,
@@ -1244,7 +1286,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                                   // 5️⃣ ВЫБОР ТИПА ДНА
                                   Text(
-                                    '5. ${localizations.translate('marker_type')}',
+                                    '5. ${localizations.translate(
+                                        'marker_type')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1256,7 +1299,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     spacing: 8,
                                     runSpacing: 8,
                                     children: _bottomTypes.map((type) {
-                                      final isSelected = selectedBottomType == type;
+                                      final isSelected = selectedBottomType ==
+                                          type;
                                       return GestureDetector(
                                         onTap: () {
                                           setDialogState(() {
@@ -1264,15 +1308,21 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           });
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? _bottomTypeColors[type] ?? Colors.grey
-                                                : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
-                                            borderRadius: BorderRadius.circular(20),
+                                                ? _bottomTypeColors[type] ??
+                                                Colors.grey
+                                                : _bottomTypeColors[type]
+                                                ?.withOpacity(0.3) ??
+                                                Colors.grey.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(
+                                                20),
                                             border: Border.all(
                                               color: isSelected
-                                                  ? _bottomTypeColors[type] ?? Colors.grey
+                                                  ? _bottomTypeColors[type] ??
+                                                  Colors.grey
                                                   : Colors.transparent,
                                               width: 2,
                                             ),
@@ -1282,15 +1332,21 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                             children: [
                                               Icon(
                                                 _bottomTypeIcons[type],
-                                                color: isSelected ? Colors.black : AppConstants.textColor,
+                                                color: isSelected
+                                                    ? Colors.black
+                                                    : AppConstants.textColor,
                                                 size: 16,
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
                                                 _getBottomTypeName(type),
                                                 style: TextStyle(
-                                                  color: isSelected ? Colors.black : AppConstants.textColor,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  color: isSelected ? Colors
+                                                      .black : AppConstants
+                                                      .textColor,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -1311,7 +1367,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                             decoration: BoxDecoration(
                               border: Border(
                                 top: BorderSide(
-                                  color: AppConstants.textColor.withOpacity(0.1),
+                                  color: AppConstants.textColor.withOpacity(
+                                      0.1),
                                   width: 1,
                                 ),
                               ),
@@ -1323,7 +1380,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   onPressed: () => Navigator.pop(context),
                                   child: Text(
                                     localizations.translate('cancel'),
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -1338,20 +1396,27 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   onPressed: () async {
                                     // Валидация
                                     if (_distanceController.text.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger
+                                          .of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(localizations.translate('enter_distance')),
+                                          content: Text(localizations.translate(
+                                              'enter_distance')),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
                                       return;
                                     }
 
-                                    double? distance = double.tryParse(_distanceController.text);
+                                    double? distance = double.tryParse(
+                                        _distanceController.text);
                                     if (distance == null || distance <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger
+                                          .of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(localizations.translate('enter_valid_distance')),
+                                          content: Text(localizations.translate(
+                                              'enter_valid_distance')),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -1370,32 +1435,40 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       'name': localizations.translate('marker'),
                                       'depth': _depthController.text.isEmpty
                                           ? null
-                                          : double.tryParse(_depthController.text),
+                                          : double.tryParse(
+                                          _depthController.text),
                                       'notes': _notesController.text.trim(),
                                       'bottomType': selectedBottomType,
-                                      'angle': _calculateRayAngle(selectedRayIndex),
+                                      'angle': _calculateRayAngle(
+                                          selectedRayIndex),
                                       'ratio': distance / _maxDistance,
                                     };
 
                                     _lastSelectedRayIndex = selectedRayIndex;
                                     _currentBottomType = selectedBottomType;
 
-                                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
+                                    final updatedMarkers = List<
+                                        Map<String, dynamic>>.from(
+                                        _markerMap.markers);
                                     updatedMarkers.add(newMarker);
 
                                     if (!_isDisposed) {
                                       _safeSetState(() {
-                                        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                                        _markerMap = _markerMap.copyWith(
+                                            markers: updatedMarkers);
                                       });
                                     }
 
                                     Navigator.pop(context);
 
-                                    await _autoSaveChanges(localizations.translate('marker_added'));
+                                    await _autoSaveChanges(
+                                        localizations.translate(
+                                            'marker_added'));
                                   },
                                   child: Text(
                                     localizations.translate('add'),
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ],
@@ -1415,7 +1488,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   }
 
   // 🎯 НОВЫЙ МЕТОД - Диалог редактирования маркера
-  Future<void> _showEditMarkerDialog(Map<String, dynamic> existingMarker) async {
+  Future<void> _showEditMarkerDialog(
+      Map<String, dynamic> existingMarker) async {
     if (_isDisposed) return;
 
     final localizations = AppLocalizations.of(context);
@@ -1444,9 +1518,15 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Container(
-                      width: MediaQuery.of(context).size.width * 0.9,
+                      width: MediaQuery
+                          .of(context)
+                          .size
+                          .width * 0.9,
                       constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                        maxHeight: MediaQuery
+                            .of(context)
+                            .size
+                            .height * 0.8,
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1471,7 +1551,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    localizations.translate('edit_marker'), // 🎯 "Редактировать маркер"
+                                    localizations.translate('edit_marker'),
+                                    // 🎯 "Редактировать маркер"
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 20,
@@ -1492,7 +1573,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                 children: [
                                   // 1️⃣ ВЫБОР ЛУЧА
                                   Text(
-                                    '1. ${localizations.translate('ray_selection')}',
+                                    '1. ${localizations.translate(
+                                        'ray_selection')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1502,10 +1584,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: AppConstants.primaryColor.withOpacity(0.3),
+                                        color: AppConstants.primaryColor
+                                            .withOpacity(0.3),
                                       ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
@@ -1513,16 +1597,23 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       child: DropdownButton<int>(
                                         value: selectedRayIndex,
                                         isExpanded: true,
-                                        dropdownColor: AppConstants.surfaceColor,
-                                        style: TextStyle(color: AppConstants.textColor),
-                                        items: List.generate(_raysCount, (index) {
+                                        dropdownColor: AppConstants
+                                            .surfaceColor,
+                                        style: TextStyle(
+                                            color: AppConstants.textColor),
+                                        items: List.generate(
+                                            _raysCount, (index) {
                                           // 🔥 ПОКАЗЫВАЕМ ТОЛЬКО ВИДИМЫЕ ЛУЧИ
-                                          if (!_markerMap.rayVisibility[index]) return null;
+                                          if (!_markerMap.rayVisibility[index])
+                                            return null;
                                           return DropdownMenuItem<int>(
                                             value: index,
-                                            child: Text('${localizations.translate('ray')} ${index + 1}'),
+                                            child: Text('${localizations
+                                                .translate('ray')} ${index +
+                                                1}'),
                                           );
-                                        }).where((item) => item != null).cast<DropdownMenuItem<int>>().toList(),
+                                        }).where((item) => item != null).cast<
+                                            DropdownMenuItem<int>>().toList(),
                                         onChanged: (value) {
                                           if (value != null) {
                                             setDialogState(() {
@@ -1537,7 +1628,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                                   // 2️⃣ РАССТОЯНИЕ
                                   Text(
-                                    '2. ${localizations.translate('distance_m')}',
+                                    '2. ${localizations.translate(
+                                        'distance_m')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1547,16 +1639,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _distanceController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('distance_hint'),
+                                      hintText: localizations.translate(
+                                          'distance_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1565,7 +1661,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
                                     keyboardType: TextInputType.number,
                                   ),
@@ -1583,16 +1681,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _depthController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('depth_hint'),
+                                      hintText: localizations.translate(
+                                          'depth_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1601,9 +1703,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
-                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    keyboardType: TextInputType
+                                        .numberWithOptions(decimal: true),
                                   ),
                                   const SizedBox(height: 20),
 
@@ -1619,16 +1724,20 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _notesController,
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                     decoration: InputDecoration(
-                                      hintText: localizations.translate('notes_hint'),
+                                      hintText: localizations.translate(
+                                          'notes_hint'),
                                       hintStyle: TextStyle(
-                                        color: AppConstants.textColor.withOpacity(0.5),
+                                        color: AppConstants.textColor
+                                            .withOpacity(0.5),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppConstants.primaryColor.withOpacity(0.3),
+                                          color: AppConstants.primaryColor
+                                              .withOpacity(0.3),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
@@ -1637,7 +1746,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           color: AppConstants.primaryColor,
                                         ),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      contentPadding: const EdgeInsets
+                                          .symmetric(
+                                          horizontal: 12, vertical: 12),
                                     ),
                                     maxLines: 3,
                                     minLines: 1,
@@ -1646,7 +1757,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                                   // 5️⃣ ВЫБОР ТИПА ДНА
                                   Text(
-                                    '5. ${localizations.translate('marker_type')}',
+                                    '5. ${localizations.translate(
+                                        'marker_type')}',
                                     style: TextStyle(
                                       color: AppConstants.textColor,
                                       fontSize: 16,
@@ -1658,7 +1770,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     spacing: 8,
                                     runSpacing: 8,
                                     children: _bottomTypes.map((type) {
-                                      final isSelected = selectedBottomType == type;
+                                      final isSelected = selectedBottomType ==
+                                          type;
                                       return GestureDetector(
                                         onTap: () {
                                           setDialogState(() {
@@ -1666,15 +1779,21 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           });
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? _bottomTypeColors[type] ?? Colors.grey
-                                                : _bottomTypeColors[type]?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.3),
-                                            borderRadius: BorderRadius.circular(20),
+                                                ? _bottomTypeColors[type] ??
+                                                Colors.grey
+                                                : _bottomTypeColors[type]
+                                                ?.withOpacity(0.3) ??
+                                                Colors.grey.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(
+                                                20),
                                             border: Border.all(
                                               color: isSelected
-                                                  ? _bottomTypeColors[type] ?? Colors.grey
+                                                  ? _bottomTypeColors[type] ??
+                                                  Colors.grey
                                                   : Colors.transparent,
                                               width: 2,
                                             ),
@@ -1684,15 +1803,21 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                             children: [
                                               Icon(
                                                 _bottomTypeIcons[type],
-                                                color: isSelected ? Colors.black : AppConstants.textColor,
+                                                color: isSelected
+                                                    ? Colors.black
+                                                    : AppConstants.textColor,
                                                 size: 16,
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
                                                 _getBottomTypeName(type),
                                                 style: TextStyle(
-                                                  color: isSelected ? Colors.black : AppConstants.textColor,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  color: isSelected ? Colors
+                                                      .black : AppConstants
+                                                      .textColor,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -1713,7 +1838,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                             decoration: BoxDecoration(
                               border: Border(
                                 top: BorderSide(
-                                  color: AppConstants.textColor.withOpacity(0.1),
+                                  color: AppConstants.textColor.withOpacity(
+                                      0.1),
                                   width: 1,
                                 ),
                               ),
@@ -1725,7 +1851,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   onPressed: () => Navigator.pop(context),
                                   child: Text(
                                     localizations.translate('cancel'),
-                                    style: TextStyle(color: AppConstants.textColor),
+                                    style: TextStyle(
+                                        color: AppConstants.textColor),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -1740,20 +1867,27 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                   onPressed: () async {
                                     // 🔥 ВАЛИДАЦИЯ - такая же как в _showAddMarkerDialog
                                     if (_distanceController.text.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger
+                                          .of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(localizations.translate('enter_distance')),
+                                          content: Text(localizations.translate(
+                                              'enter_distance')),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
                                       return;
                                     }
 
-                                    double? distance = double.tryParse(_distanceController.text);
+                                    double? distance = double.tryParse(
+                                        _distanceController.text);
                                     if (distance == null || distance <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger
+                                          .of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(localizations.translate('enter_valid_distance')),
+                                          content: Text(localizations.translate(
+                                              'enter_valid_distance')),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -1766,43 +1900,57 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                                     // 🔥 ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО МАРКЕРА (а не создание нового!)
                                     final updatedMarker = {
-                                      'id': existingMarker['id'], // 🎯 СОХРАНЯЕМ ОРИГИНАЛЬНЫЙ ID!
+                                      'id': existingMarker['id'],
+                                      // 🎯 СОХРАНЯЕМ ОРИГИНАЛЬНЫЙ ID!
                                       'rayIndex': selectedRayIndex.toDouble(),
                                       'distance': distance,
                                       'name': localizations.translate('marker'),
                                       'depth': _depthController.text.isEmpty
                                           ? null
-                                          : double.tryParse(_depthController.text),
+                                          : double.tryParse(
+                                          _depthController.text),
                                       'notes': _notesController.text.trim(),
                                       'bottomType': selectedBottomType,
-                                      'angle': _calculateRayAngle(selectedRayIndex),
+                                      'angle': _calculateRayAngle(
+                                          selectedRayIndex),
                                       'ratio': distance / _maxDistance,
                                     };
 
                                     // 🔥 НАХОДИМ И ЗАМЕНЯЕМ СУЩЕСТВУЮЩИЙ МАРКЕР
-                                    final updatedMarkers = List<Map<String, dynamic>>.from(_markerMap.markers);
-                                    final markerIndex = updatedMarkers.indexWhere((m) => m['id'] == existingMarker['id']);
+                                    final updatedMarkers = List<
+                                        Map<String, dynamic>>.from(
+                                        _markerMap.markers);
+                                    final markerIndex = updatedMarkers
+                                        .indexWhere((m) =>
+                                    m['id'] == existingMarker['id']);
 
                                     if (markerIndex != -1) {
-                                      updatedMarkers[markerIndex] = updatedMarker; // 🎯 ЗАМЕНЯЕМ, а не добавляем!
+                                      updatedMarkers[markerIndex] =
+                                          updatedMarker; // 🎯 ЗАМЕНЯЕМ, а не добавляем!
                                     } else {
-                                      debugPrint('⚠️ Маркер с ID ${existingMarker['id']} не найден для обновления');
+                                      debugPrint(
+                                          '⚠️ Маркер с ID ${existingMarker['id']} не найден для обновления');
                                       return;
                                     }
 
                                     if (!_isDisposed) {
                                       _safeSetState(() {
-                                        _markerMap = _markerMap.copyWith(markers: updatedMarkers);
+                                        _markerMap = _markerMap.copyWith(
+                                            markers: updatedMarkers);
                                       });
                                     }
 
                                     Navigator.pop(context);
 
-                                    await _autoSaveChanges(localizations.translate('marker_updated')); // 🎯 "Маркер обновлен"
+                                    await _autoSaveChanges(
+                                        localizations.translate(
+                                            'marker_updated')); // 🎯 "Маркер обновлен"
                                   },
                                   child: Text(
-                                    localizations.translate('save_changes'), // 🎯 "Сохранить изменения"
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    localizations.translate('save_changes'),
+                                    // 🎯 "Сохранить изменения"
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ],
@@ -1828,7 +1976,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     debugPrint('📊 Проверяем доступ к графикам глубины...');
 
     // 🔒 ПРОВЕРКА ПОДПИСКИ
-    final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+    final subscriptionProvider = Provider.of<SubscriptionProvider>(
+        context, listen: false);
 
     if (!subscriptionProvider.hasPremiumAccess) {
       debugPrint('🚫 Доступ к графикам заблокирован - показываем PaywallScreen');
@@ -1837,7 +1986,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const PaywallScreen(
+          builder: (context) =>
+          const PaywallScreen(
             contentType: 'depth_charts',
             blockedFeature: 'Графики глубины',
           ),
@@ -1846,13 +1996,16 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       return;
     }
 
-    debugPrint('✅ Premium доступ подтвержден - переходим к графикам глубины с ${_markerMap.markers.length} маркерами');
+    debugPrint(
+        '✅ Premium доступ подтвержден - переходим к графикам глубины с ${_markerMap
+            .markers.length} маркерами');
 
     // 🎬 ПРОСТАЯ АНИМАЦИЯ slide справа налево
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, _) => DepthChartScreen(markerMap: _markerMap),
+        pageBuilder: (context, animation, _) =>
+            DepthChartScreen(markerMap: _markerMap),
         transitionsBuilder: (context, animation, _, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -1884,28 +2037,45 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     final localizations = AppLocalizations.of(context);
 
     switch (type) {
-      case 'tree': return localizations.translate('landmark_tree');
-      case 'reed': return localizations.translate('landmark_reed');
-      case 'forest': return localizations.translate('landmark_forest');
-      case 'dry_trees': return localizations.translate('landmark_dry_trees');
-      case 'rock': return localizations.translate('landmark_rock');
-      case 'mountain': return localizations.translate('landmark_mountain');
-      case 'power_line': return localizations.translate('landmark_power_line');
-      case 'factory': return localizations.translate('landmark_factory');
-      case 'house': return localizations.translate('landmark_house');
-      case 'radio_tower': return localizations.translate('landmark_radio_tower');
-      case 'lamp_post': return localizations.translate('landmark_lamp_post');
-      case 'gazebo': return localizations.translate('landmark_gazebo');
-      case 'internet_tower': return localizations.translate('landmark_internet_tower');
-      case 'bridge': return localizations.translate('bridge');
-      case 'exact_location': return localizations.translate('landmark_exact_location');
-      default: return type;
+      case 'tree':
+        return localizations.translate('landmark_tree');
+      case 'reed':
+        return localizations.translate('landmark_reed');
+      case 'forest':
+        return localizations.translate('landmark_forest');
+      case 'dry_trees':
+        return localizations.translate('landmark_dry_trees');
+      case 'rock':
+        return localizations.translate('landmark_rock');
+      case 'mountain':
+        return localizations.translate('landmark_mountain');
+      case 'power_line':
+        return localizations.translate('landmark_power_line');
+      case 'factory':
+        return localizations.translate('landmark_factory');
+      case 'house':
+        return localizations.translate('landmark_house');
+      case 'radio_tower':
+        return localizations.translate('landmark_radio_tower');
+      case 'lamp_post':
+        return localizations.translate('landmark_lamp_post');
+      case 'gazebo':
+        return localizations.translate('landmark_gazebo');
+      case 'internet_tower':
+        return localizations.translate('landmark_internet_tower');
+      case 'bridge':
+        return localizations.translate('bridge');
+      case 'exact_location':
+        return localizations.translate('landmark_exact_location');
+      default:
+        return type;
     }
   }
 
   /// Обработчик клика на подпись луча (добавление ориентира)
   void _onRayLabelTap(int rayIndex) {
-    debugPrint('🎯 Клик на луч ${rayIndex + 1} - открываем диалог добавления ориентира');
+    debugPrint('🎯 Клик на луч ${rayIndex +
+        1} - открываем диалог добавления ориентира');
     _showAddLandmarkDialog(rayIndex);
   }
 
@@ -1915,7 +2085,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     final landmark = _markerMap.rayLandmarks[landmarkKey];
 
     if (landmark != null) {
-      debugPrint('🏗️ Клик на ориентир луча ${rayIndex + 1}: ${landmark['type']}');
+      debugPrint(
+          '🏗️ Клик на ориентир луча ${rayIndex + 1}: ${landmark['type']}');
       _showLandmarkDetails(rayIndex, landmark);
     }
   }
@@ -1939,9 +2110,15 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
+                width: MediaQuery
+                    .of(context)
+                    .size
+                    .width * 0.9,
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxHeight: MediaQuery
+                      .of(context)
+                      .size
+                      .height * 0.8,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1966,7 +2143,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              '${localizations.translate('add_landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
+                              '${localizations.translate(
+                                  'add_landmark')} ${localizations.translate(
+                                  'ray')} ${rayIndex + 1}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 18,
@@ -1987,7 +2166,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           children: [
                             // Выбор типа ориентира
                             Text(
-                              '1. ${localizations.translate('select_landmark_type')}',
+                              '1. ${localizations.translate(
+                                  'select_landmark_type')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2016,8 +2196,10 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     height: 80,
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppConstants.primaryColor.withOpacity(0.8)
-                                          : AppConstants.primaryColor.withOpacity(0.2),
+                                          ? AppConstants.primaryColor
+                                          .withOpacity(0.8)
+                                          : AppConstants.primaryColor
+                                          .withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isSelected
@@ -2027,11 +2209,14 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       ),
                                     ),
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment
+                                          .center,
                                       children: [
                                         Icon(
                                           data['icon'] as IconData,
-                                          color: isSelected ? Colors.white : AppConstants.textColor,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : AppConstants.textColor,
                                           size: 28,
                                         ),
                                         const SizedBox(height: 4),
@@ -2039,9 +2224,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           _getLandmarkName(type),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            color: isSelected ? Colors.white : AppConstants.textColor,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : AppConstants.textColor,
                                             fontSize: 10,
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            fontWeight: isSelected ? FontWeight
+                                                .bold : FontWeight.normal,
                                           ),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
@@ -2057,7 +2245,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                             // Комментарий
                             Text(
-                              '2. ${localizations.translate('comment_optional')}',
+                              '2. ${localizations.translate(
+                                  'comment_optional')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2069,14 +2258,18 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               controller: _landmarkCommentController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                hintText: localizations.translate('landmark_comment_hint'),  // ✅ ПРАВИЛЬНО
+                                hintText: localizations.translate(
+                                    'landmark_comment_hint'),
+                                // ✅ ПРАВИЛЬНО
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
+                                  color: AppConstants.textColor.withOpacity(
+                                      0.5),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                    color: AppConstants.primaryColor
+                                        .withOpacity(0.3),
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
@@ -2085,7 +2278,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     color: AppConstants.primaryColor,
                                   ),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
                               ),
                               maxLines: 3,
                               minLines: 1,
@@ -2130,25 +2324,31 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               final newLandmark = {
                                 'type': selectedLandmarkType,
                                 'icon': selectedLandmarkType, // Ключ иконки
-                                'comment': _landmarkCommentController.text.trim(),
+                                'comment': _landmarkCommentController.text
+                                    .trim(),
                               };
 
                               // Обновление rayLandmarks
-                              final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
-                              updatedLandmarks[rayIndex.toString()] = newLandmark;
+                              final updatedLandmarks = Map<String,
+                                  dynamic>.from(_markerMap.rayLandmarks);
+                              updatedLandmarks[rayIndex.toString()] =
+                                  newLandmark;
 
                               if (!_isDisposed) {
                                 _safeSetState(() {
-                                  _markerMap = _markerMap.copyWith(rayLandmarks: updatedLandmarks);
+                                  _markerMap = _markerMap.copyWith(
+                                      rayLandmarks: updatedLandmarks);
                                 });
                               }
 
                               Navigator.pop(context);
-                              await _autoSaveChanges(localizations.translate('landmark_added'));
+                              await _autoSaveChanges(
+                                  localizations.translate('landmark_added'));
                             },
                             child: Text(
                               localizations.translate('add'),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -2203,7 +2403,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${localizations.translate('landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
+                          '${localizations.translate(
+                              'landmark')} ${localizations.translate(
+                              'ray')} ${rayIndex + 1}',
                           style: TextStyle(
                             color: AppConstants.textColor,
                             fontSize: 20,
@@ -2225,7 +2427,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 ],
               ),
 
-              if (landmark['comment'] != null && landmark['comment'].isNotEmpty) ...[
+              if (landmark['comment'] != null &&
+                  landmark['comment'].isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
                   '${localizations.translate('comment')}:',
@@ -2258,7 +2461,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           Navigator.pop(context);
                           _showEditLandmarkDialog(rayIndex, landmark);
                         },
-                        icon: Icon(Icons.edit, color: AppConstants.primaryColor),
+                        icon: Icon(
+                            Icons.edit, color: AppConstants.primaryColor),
                         label: Text(
                           localizations.translate('edit'),
                           style: TextStyle(color: AppConstants.primaryColor),
@@ -2272,8 +2476,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                         },
                         icon: const Icon(Icons.delete, color: Colors.red),
                         label: Text(
-                          localizations.translate('delete'),  // ✅ ПРАВИЛЬНО
-                          style: const TextStyle(color: Colors.red),  // const только для стиля
+                          localizations.translate('delete'), // ✅ ПРАВИЛЬНО
+                          style: const TextStyle(color: Colors
+                              .red), // const только для стиля
                         ),
                       ),
                     ],
@@ -2292,7 +2497,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
   }
 
   /// Диалог редактирования ориентира
-  Future<void> _showEditLandmarkDialog(int rayIndex, Map<String, dynamic> existingLandmark) async {
+  Future<void> _showEditLandmarkDialog(int rayIndex,
+      Map<String, dynamic> existingLandmark) async {
     if (_isDisposed) return;
 
     final localizations = AppLocalizations.of(context);
@@ -2310,9 +2516,15 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
+                width: MediaQuery
+                    .of(context)
+                    .size
+                    .width * 0.9,
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxHeight: MediaQuery
+                      .of(context)
+                      .size
+                      .height * 0.8,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2337,7 +2549,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              '${localizations.translate('edit_landmark')} ${localizations.translate('ray')} ${rayIndex + 1}',
+                              '${localizations.translate(
+                                  'edit_landmark')} ${localizations.translate(
+                                  'ray')} ${rayIndex + 1}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 18,
@@ -2358,7 +2572,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                           children: [
                             // Выбор типа ориентира
                             Text(
-                              '1. ${localizations.translate('select_landmark_type')}',
+                              '1. ${localizations.translate(
+                                  'select_landmark_type')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2387,8 +2602,10 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     height: 80,
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppConstants.primaryColor.withOpacity(0.8)
-                                          : AppConstants.primaryColor.withOpacity(0.2),
+                                          ? AppConstants.primaryColor
+                                          .withOpacity(0.8)
+                                          : AppConstants.primaryColor
+                                          .withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isSelected
@@ -2398,11 +2615,14 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                       ),
                                     ),
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment
+                                          .center,
                                       children: [
                                         Icon(
                                           data['icon'] as IconData,
-                                          color: isSelected ? Colors.white : AppConstants.textColor,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : AppConstants.textColor,
                                           size: 28,
                                         ),
                                         const SizedBox(height: 4),
@@ -2410,9 +2630,12 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                           _getLandmarkName(type),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            color: isSelected ? Colors.white : AppConstants.textColor,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : AppConstants.textColor,
                                             fontSize: 10,
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            fontWeight: isSelected ? FontWeight
+                                                .bold : FontWeight.normal,
                                           ),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
@@ -2428,7 +2651,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
                             // Комментарий
                             Text(
-                              '2. ${localizations.translate('comment_optional')}',
+                              '2. ${localizations.translate(
+                                  'comment_optional')}',
                               style: TextStyle(
                                 color: AppConstants.textColor,
                                 fontSize: 16,
@@ -2440,14 +2664,17 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               controller: _landmarkCommentController,
                               style: TextStyle(color: AppConstants.textColor),
                               decoration: InputDecoration(
-                                hintText: localizations.translate('landmark_comment_hint'),
+                                hintText: localizations.translate(
+                                    'landmark_comment_hint'),
                                 hintStyle: TextStyle(
-                                  color: AppConstants.textColor.withOpacity(0.5),
+                                  color: AppConstants.textColor.withOpacity(
+                                      0.5),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide(
-                                    color: AppConstants.primaryColor.withOpacity(0.3),
+                                    color: AppConstants.primaryColor
+                                        .withOpacity(0.3),
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
@@ -2456,7 +2683,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                                     color: AppConstants.primaryColor,
                                   ),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
                               ),
                               maxLines: 3,
                               minLines: 1,
@@ -2501,25 +2729,31 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
                               final updatedLandmark = {
                                 'type': selectedLandmarkType,
                                 'icon': selectedLandmarkType,
-                                'comment': _landmarkCommentController.text.trim(),
+                                'comment': _landmarkCommentController.text
+                                    .trim(),
                               };
 
                               // Обновление rayLandmarks
-                              final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
-                              updatedLandmarks[rayIndex.toString()] = updatedLandmark;
+                              final updatedLandmarks = Map<String,
+                                  dynamic>.from(_markerMap.rayLandmarks);
+                              updatedLandmarks[rayIndex.toString()] =
+                                  updatedLandmark;
 
                               if (!_isDisposed) {
                                 _safeSetState(() {
-                                  _markerMap = _markerMap.copyWith(rayLandmarks: updatedLandmarks);
+                                  _markerMap = _markerMap.copyWith(
+                                      rayLandmarks: updatedLandmarks);
                                 });
                               }
 
                               Navigator.pop(context);
-                              await _autoSaveChanges(localizations.translate('landmark_updated'));
+                              await _autoSaveChanges(
+                                  localizations.translate('landmark_updated'));
                             },
                             child: Text(
                               localizations.translate('save'),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -2557,7 +2791,9 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
             ),
           ),
           content: Text(
-            '${localizations.translate('delete_landmark_confirmation')} ${localizations.translate('ray')} ${rayIndex + 1}?',
+            '${localizations.translate(
+                'delete_landmark_confirmation')} ${localizations.translate(
+                'ray')} ${rayIndex + 1}?',
             style: TextStyle(
               color: AppConstants.textColor,
             ),
@@ -2587,7 +2823,8 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
 
     if (confirmed == true) {
       try {
-        final updatedLandmarks = Map<String, dynamic>.from(_markerMap.rayLandmarks);
+        final updatedLandmarks = Map<String, dynamic>.from(
+            _markerMap.rayLandmarks);
         updatedLandmarks.remove(rayIndex.toString());
 
         if (!_isDisposed) {
@@ -2645,102 +2882,109 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       body: LoadingOverlay(
         isLoading: _isLoading,
         message: AppLocalizations.of(context).translate('please_wait'),
-        child: AnimatedBuilder(
-          animation: _fadeAnimation,
-          builder: (context, child) {
-            return Opacity(
-              opacity: _fadeAnimation.value,
-              child: Stack(
-                children: [
-                  // 🎨 1. СОВРЕМЕННЫЙ ФОН
-                  const ModernMapBackground(),
+        child: Stack(
+          children: [
+            // 🎨 1. СОВРЕМЕННЫЙ ФОН
+            const ModernMapBackground(),
 
-                  // 🎨 2. ОСНОВНАЯ КАРТА С ЗУМОМ
-                  Positioned.fill(
-                      child: InteractiveViewer(
-                        transformationController: _transformationController,
-                        boundaryMargin: const EdgeInsets.all(0),
-                        minScale: 1.0,
-                        maxScale: 3.0,
-                        panEnabled: true,
-                        scaleEnabled: true,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                        // 🔥 ФИКСИРОВАННЫЕ РАЗМЕРЫ - игнорируем клавиатуру
-                        final screenSize = Size(
-                          MediaQuery.of(context).size.width,
-                          MediaQuery.of(context).size.height,
-                        );
+            // 🎨 2. ОСНОВНАЯ КАРТА С ЗУМОМ
+            Positioned.fill(
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                boundaryMargin: const EdgeInsets.all(0),
+                minScale: 1.0,
+                maxScale: 3.0,
+                panEnabled: true,
+                scaleEnabled: true,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 🔥 ФИКСИРОВАННЫЕ РАЗМЕРЫ - игнорируем клавиатуру
+                    final screenSize = Size(
+                      MediaQuery
+                          .of(context)
+                          .size
+                          .width,
+                      MediaQuery
+                          .of(context)
+                          .size
+                          .height,
+                    );
 
-                        return Stack(
-                          children: [
-                            // 🎨 3. СЕТКА КОНЦЕНТРИЧЕСКИХ ОКРУЖНОСТЕЙ
-                            ModernMapGrid(
-                              maxDistance: _maxDistance,
-                              distanceStep: _distanceStep,
-                              screenSize: screenSize,
-                            ),
+                    return Stack(
+                      children: [
+                        // 🎨 3. СЕТКА КОНЦЕНТРИЧЕСКИХ ОКРУЖНОСТЕЙ
+                        ModernMapGrid(
+                          maxDistance: _maxDistance,
+                          distanceStep: _distanceStep,
+                          screenSize: screenSize,
+                        ),
 
-                            // 🎨 4. ЛУЧИ
-                            ModernMapRays(
-                              rayCount: _raysCount,
-                              maxDistance: _maxDistance,
-                              leftAngle: _leftAngle,
-                              rightAngle: _rightAngle,
-                              screenSize: screenSize,
-                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
-                            ),
+                        // 🎨 4. ЛУЧИ
+                        ModernMapRays(
+                          rayCount: _raysCount,
+                          maxDistance: _maxDistance,
+                          leftAngle: _leftAngle,
+                          rightAngle: _rightAngle,
+                          screenSize: screenSize,
+                          rayVisibility: _markerMap
+                              .rayVisibility, // 🔥 НОВЫЙ параметр
+                        ),
 
-                            // 🎨 5. ПОДПИСИ РАССТОЯНИЙ И ЛУЧЕЙ
-                            ModernMapLabels(
-                              maxDistance: _maxDistance,
-                              rayCount: _raysCount,
-                              leftAngle: _leftAngle,
-                              rightAngle: _rightAngle,
-                              screenSize: screenSize,
-                              rayLandmarks: _markerMap.rayLandmarks, // 🔥 НОВЫЙ параметр
-                              onRayLabelTap: _onRayLabelTap, // 🔥 НОВЫЙ параметр
-                              onLandmarkTap: _onLandmarkTap, // 🔥 НОВЫЙ параметр
-                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
-                            ),
+                        // 🎨 5. ПОДПИСИ РАССТОЯНИЙ И ЛУЧЕЙ
+                        ModernMapLabels(
+                          maxDistance: _maxDistance,
+                          rayCount: _raysCount,
+                          leftAngle: _leftAngle,
+                          rightAngle: _rightAngle,
+                          screenSize: screenSize,
+                          rayLandmarks: _markerMap.rayLandmarks,
+                          // 🔥 НОВЫЙ параметр
+                          onRayLabelTap: _onRayLabelTap,
+                          // 🔥 НОВЫЙ параметр
+                          onLandmarkTap: _onLandmarkTap,
+                          // 🔥 НОВЫЙ параметр
+                          rayVisibility: _markerMap
+                              .rayVisibility, // 🔥 НОВЫЙ параметр
+                        ),
 
-                            // 🎨 6. МАРКЕРЫ С АНИМАЦИЯМИ
-                            ModernMapMarkers(
-                              markers: _markerMap.markers,
-                              bottomTypeColors: _bottomTypeColors,
-                              bottomTypeIcons: _bottomTypeIcons,
-                              onMarkerTap: _showMarkerDetails,
-                              maxDistance: _maxDistance,
-                              rayCount: _raysCount,
-                              leftAngle: _leftAngle,
-                              rightAngle: _rightAngle,
-                              screenSize: screenSize,
-                              rayVisibility: _markerMap.rayVisibility, // 🔥 НОВЫЙ параметр
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  ),
-
-                  // 🎨 7. ИНДИКАТОР АВТОСОХРАНЕНИЯ
-                  if (_isAutoSaving)
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 20,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: _buildModernSaveIndicator(),
-                      ),
-                    ),
-
-                  // 🎨 8. СОВРЕМЕННЫЕ FLOATING КНОПКИ
-                  ..._buildModernFloatingButtons(context),
-                ],
+                        // 🎨 6. МАРКЕРЫ С АНИМАЦИЯМИ
+                        ModernMapMarkers(
+                          markers: _markerMap.markers,
+                          bottomTypeColors: _bottomTypeColors,
+                          bottomTypeIcons: _bottomTypeIcons,
+                          onMarkerTap: _showMarkerDetails,
+                          maxDistance: _maxDistance,
+                          rayCount: _raysCount,
+                          leftAngle: _leftAngle,
+                          rightAngle: _rightAngle,
+                          screenSize: screenSize,
+                          rayVisibility: _markerMap
+                              .rayVisibility, // 🔥 НОВЫЙ параметр
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
-            );
-          },
+            ),
+
+            // 🎨 7. ИНДИКАТОР АВТОСОХРАНЕНИЯ
+            if (_isAutoSaving)
+              Positioned(
+                top: MediaQuery
+                    .of(context)
+                    .padding
+                    .top + 20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _buildModernSaveIndicator(),
+                ),
+              ),
+
+            // 🎨 8. СОВРЕМЕННЫЕ FLOATING КНОПКИ
+            ..._buildModernFloatingButtons(context),
+          ],
         ),
       ),
     );
@@ -2791,10 +3035,13 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     );
   }
 
-  /// 🎨 Современные floating кнопки с glassmorphism
+  /// 🎨 Современные floating кнопки БЕЗ анимации
   List<Widget> _buildModernFloatingButtons(BuildContext context) {
     final buttons = <Widget>[];
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery
+        .of(context)
+        .padding
+        .bottom;
 
     // Кнопка информации
     buttons.add(_buildSingleFloatingButton(
@@ -2824,8 +3071,10 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       heroTag: "charts_button",
       onPressed: _showDepthCharts,
       delay: 200,
-      isPremiumFeature: true, // 🔒 Помечаем как Premium функцию
-      tooltip: AppLocalizations.of(context).translate('depth_charts'), // 📋 Подсказка
+      isPremiumFeature: true,
+      // 🔒 Помечаем как Premium функцию
+      tooltip: AppLocalizations.of(context).translate(
+          'depth_charts'), // 📋 Подсказка
     ));
 
     // Кнопка добавления маркера
@@ -2842,7 +3091,7 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
     return buttons;
   }
 
-  /// 🎨 Отдельная современная floating кнопка
+  /// 🎨 Отдельная современная floating кнопка БЕЗ анимации
   Widget _buildSingleFloatingButton({
     double? left,
     double? right,
@@ -2861,175 +3110,159 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       right: right,
       top: top,
       bottom: bottom,
-      child: AnimatedBuilder(
-        animation: _staggerController,
-        builder: (context, child) {
-          final delayedAnimation = Tween<double>(
-            begin: 0.0,
-            end: 1.0,
-          ).animate(CurvedAnimation(
-            parent: _staggerController,
-            curve: Interval(
-              delay / 1000,
-              (delay + 300) / 1000,
-              curve: Curves.elasticOut,
-            ),
-          ));
+      child: Consumer<SubscriptionProvider>(
+        builder: (context, subscriptionProvider, _) {
+          // 🔒 Проверяем нужно ли показывать замочек для Premium функций
+          final showLock = isPremiumFeature &&
+              !subscriptionProvider.hasPremiumAccess;
 
-          return Transform.scale(
-            scale: delayedAnimation.value,
-            child: Consumer<SubscriptionProvider>(
-              builder: (context, subscriptionProvider, _) {
-                // 🔒 Проверяем нужно ли показывать замочек для Premium функций
-                final showLock = isPremiumFeature && !subscriptionProvider.hasPremiumAccess;
-
-                Widget buttonWidget = Stack(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isPrimary
-                              ? [
-                            AppConstants.primaryColor,
-                            AppConstants.primaryColor.withOpacity(0.8),
-                          ]
-                              : showLock
-                              ? [
-                            Colors.orange.withOpacity(0.9),
-                            Colors.orange.withOpacity(0.7),
-                          ]
-                              : [
-                            AppConstants.primaryColor.withOpacity(0.9),
-                            AppConstants.primaryColor.withOpacity(0.7),
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                          BoxShadow(
-                            color: (showLock ? Colors.orange : AppConstants.primaryColor).withOpacity(0.4),
-                            blurRadius: 20,
-                            offset: const Offset(0, 0),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(30),
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            onPressed();
-                          },
-                          child: Hero(
-                            tag: heroTag,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // 🎯 ВСЕГДА показываем основную иконку
-                                Icon(
-                                  icon,
-                                  color: Colors.white,
-                                  size: isPrimary ? 28 : 24,
-                                ),
-
-                                // 🔒 Накладываем замочек ПОВЕРХ для Premium функций
-                                if (showLock)
-                                  Positioned(
-                                    bottom: -2,
-                                    right: -2,
-                                    child: Container(
-                                      width: 16,
-                                      height: 16,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.orange,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.lock,
-                                        color: Colors.orange,
-                                        size: 10,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+          Widget buttonWidget = Stack(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isPrimary
+                        ? [
+                      AppConstants.primaryColor,
+                      AppConstants.primaryColor.withOpacity(0.8),
+                    ]
+                        : showLock
+                        ? [
+                      Colors.orange.withOpacity(0.9),
+                      Colors.orange.withOpacity(0.7),
+                    ]
+                        : [
+                      AppConstants.primaryColor.withOpacity(0.9),
+                      AppConstants.primaryColor.withOpacity(0.7),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
                     ),
-
-                    // 🔒 Индикатор Premium для платных функций
-                    if (showLock)
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(
-                            color: Colors.orange,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.star,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
+                    BoxShadow(
+                      color: (showLock ? Colors.orange : AppConstants
+                          .primaryColor).withOpacity(0.4),
+                      blurRadius: 20,
+                      offset: const Offset(0, 0),
+                    ),
                   ],
-                );
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(30),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onPressed();
+                    },
+                    child: Hero(
+                      tag: heroTag,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 🎯 ВСЕГДА показываем основную иконку
+                          Icon(
+                            icon,
+                            color: Colors.white,
+                            size: isPrimary ? 28 : 24,
+                          ),
 
-                // 📋 Добавляем Tooltip если задан
-                if (tooltip != null) {
-                  return Tooltip(
-                    message: showLock
-                        ? '${tooltip} - Premium'
-                        : tooltip,
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
+                          // 🔒 Накладываем замочек ПОВЕРХ для Premium функций
+                          if (showLock)
+                            Positioned(
+                              bottom: -2,
+                              right: -2,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.orange,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.lock,
+                                  color: Colors.orange,
+                                  size: 10,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                    textStyle: const TextStyle(
+                  ),
+                ),
+              ),
+
+              // 🔒 Индикатор Premium для платных функций
+              if (showLock)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.star,
                       color: Colors.white,
-                      fontSize: 12,
+                      size: 12,
                     ),
-                    child: buttonWidget,
-                  );
-                }
-
-                return buttonWidget;
-              },
-            ),
+                  ),
+                ),
+            ],
           );
+
+          // 📋 Добавляем Tooltip если задан
+          if (tooltip != null) {
+            return Tooltip(
+              message: showLock
+                  ? '${tooltip} - Premium'
+                  : tooltip,
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              textStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+              child: buttonWidget,
+            );
+          }
+
+          return buttonWidget;
         },
       ),
     );
   }
+
   /// Построение индикатора содержимого луча
   Widget _buildRayContentIndicator(int rayIndex) {
     final markersOnRay = _markerMap.markers.where((marker) =>
     (marker['rayIndex'] as double? ?? 0).toInt() == rayIndex
     ).length;
 
-    final hasLandmark = _markerMap.rayLandmarks.containsKey(rayIndex.toString());
+    final hasLandmark = _markerMap.rayLandmarks.containsKey(
+        rayIndex.toString());
 
     if (markersOnRay == 0 && !hasLandmark) {
       return const SizedBox.shrink();
@@ -3072,4 +3305,4 @@ class ModernMarkerMapScreenState extends State<ModernMarkerMapScreen>
       ],
     );
   }
-} // ← ПОСЛЕДНЯЯ СКОБКА КЛАССА
+}
