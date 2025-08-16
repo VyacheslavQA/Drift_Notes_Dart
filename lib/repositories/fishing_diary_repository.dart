@@ -391,19 +391,32 @@ class FishingDiaryRepository {
         throw Exception('ID записи не может быть пустым');
       }
 
-      // Получаем текущую запись
-      final entry = await getFishingDiaryEntryById(entryId);
-      if (entry == null) {
-        throw Exception('Запись не найдена');
+      // Получаем Entity напрямую из Isar
+      final entity = await _isarService.getFishingDiaryEntryByFirebaseId(entryId);
+      if (entity == null) {
+        throw Exception('Запись не найдена в локальной базе');
       }
 
-      // Создаем обновленную запись с новой папкой
-      final updatedEntry = entry.moveToFolder(folderId);
+      // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Прямое обновление Entity
+      entity.folderId = folderId;
+      entity.updatedAt = DateTime.now();
+      entity.isSynced = false; // Помечаем для синхронизации
 
-      // Сохраняем изменения
-      await updateFishingDiaryEntry(updatedEntry);
+      // Сохраняем изменения напрямую в Isar
+      await _isarService.updateFishingDiaryEntry(entity);
+
+      // 🔥 КРИТИЧЕСКОЕ: Очищаем кэш НЕМЕДЛЕННО
+      clearCache();
 
       debugPrint('📁 Запись $entryId перемещена в папку $folderId');
+
+      // Запускаем синхронизацию в фоне
+      final isOnline = await NetworkUtils.isNetworkAvailable();
+      if (isOnline) {
+        _syncService.syncFishingDiaryToFirebase().catchError((e) {
+          debugPrint('❌ Ошибка фоновой синхронизации перемещения: $e');
+        });
+      }
     } catch (e) {
       debugPrint('❌ Ошибка перемещения записи в папку: $e');
       rethrow;

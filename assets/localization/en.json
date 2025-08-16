@@ -2359,6 +2359,7 @@
   "entries_moved_successfully": "Entries moved successfully",
   "entry_moved_successfully": "Entry moved successfully",
   "move_confirmation": "Move {entries} to {folder}?",
-  "delete": "Delete"
-
+  "delete": "Delete",
+  "remove_from_folder": "Remove from folder",
+  "entry_removed_from_folder": "Entry removed from folder"
 }

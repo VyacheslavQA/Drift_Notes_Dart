@@ -1819,6 +1819,38 @@ class IsarService {
     debugPrint('🧹 IsarService: Очищены все папки дневника');
   }
 
+  /// Получение папок дневника помеченных для удаления
+  Future<List<FishingDiaryFolderEntity>> getMarkedForDeletionFishingDiaryFolders() async {
+    final userId = getCurrentUserId();
+    if (userId == null) return [];
+
+    final markedFolders = await isar.fishingDiaryFolderEntitys
+        .filter()
+        .userIdEqualTo(userId)
+        .and()
+        .markedForDeletionEqualTo(true)
+        .findAll();
+
+    debugPrint('🗑️ IsarService: Найдено ${markedFolders.length} папок дневника помеченных для удаления');
+    return markedFolders;
+  }
+
+  /// Пометить папку дневника для офлайн удаления
+  Future<void> markFishingDiaryFolderForDeletion(String firebaseId) async {
+    final folder = await getFishingDiaryFolderByFirebaseId(firebaseId);
+    if (folder == null) {
+      debugPrint('❌ IsarService: Папка с firebaseId=$firebaseId не найдена для маркировки удаления');
+      throw Exception('Папка дневника не найдена в локальной базе');
+    }
+
+    folder.markedForDeletion = true;
+    folder.isSynced = false; // Требует синхронизации удаления
+    folder.updatedAt = DateTime.now();
+
+    await updateFishingDiaryFolder(folder);
+    debugPrint('✅ IsarService: Папка дневника $firebaseId помечена для удаления');
+  }
+
   /// Получение количества папок дневника пользователя
   Future<int> getFishingDiaryFoldersCountByUser(String userId) async {
     final count = await isar.fishingDiaryFolderEntitys

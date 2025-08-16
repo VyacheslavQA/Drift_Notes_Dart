@@ -1630,6 +1630,69 @@ class SyncService {
     }
   }
 
+  // ДОБАВЬ В lib/services/offline/sync_service.dart
+// НАЙДИ МЕТОД deleteFishingDiaryFolderByFirebaseId И ДОБАВЬ ПОСЛЕ НЕГО:
+
+  /// 🔥 НОВОЕ: Синхронизация удаления помеченных папок дневника
+  Future<bool> syncFishingDiaryFoldersDeletion() async {
+    try {
+      if (!await _hasInternetConnection()) {
+        debugPrint('📱 SyncService: Нет интернета для синхронизации удаления папок дневника');
+        return false;
+      }
+
+      final collection = _getUserCollection('fishing_diary_folders');
+      if (collection == null) {
+        debugPrint('❌ SyncService: Не удалось получить коллекцию fishing_diary_folders');
+        return false;
+      }
+
+      // 🔥 НОВОЕ: Получаем папки помеченные для удаления
+      final markedForDeletion = await _isarService.getMarkedForDeletionFishingDiaryFolders();
+      debugPrint('🗑️ SyncService: Найдено ${markedForDeletion.length} папок дневника для удаления из Firebase');
+
+      for (final folder in markedForDeletion) {
+        try {
+          if (folder.firebaseId != null) {
+            // Удаляем из Firebase
+            await collection.doc(folder.firebaseId).delete();
+            debugPrint('✅ SyncService: Удалена папка дневника из Firebase: ${folder.firebaseId}');
+
+            // Помечаем как синхронизированную (это запустит автоудаление из Isar)
+            await _isarService.markFishingDiaryFolderAsSynced(folder.id, folder.firebaseId!);
+            debugPrint('✅ SyncService: Запущено автоудаление папки дневника из Isar для ID=${folder.id}');
+          }
+        } catch (e) {
+          debugPrint('❌ SyncService: Ошибка удаления папки дневника ${folder.firebaseId}: $e');
+          // Продолжаем с другими папками
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ SyncService: Критическая ошибка синхронизации удаления папок дневника: $e');
+      return false;
+    }
+  }
+
+  /// 🔥 НОВОЕ: Полная синхронизация папок дневника (создание/обновление + удаление)
+  Future<bool> syncFishingDiaryFoldersToFirebaseWithDeletion() async {
+    try {
+      // 1. Сначала синхронизируем создание/обновление
+      final createUpdateResult = await syncFishingDiaryFoldersToFirebase();
+
+      // 2. Затем синхронизируем удаление
+      final deletionResult = await syncFishingDiaryFoldersDeletion();
+
+      debugPrint('📊 SyncService: Результаты синхронизации папок дневника - создание/обновление: $createUpdateResult, удаление: $deletionResult');
+
+      return createUpdateResult && deletionResult;
+    } catch (e) {
+      debugPrint('❌ SyncService: Ошибка полной синхронизации папок дневника: $e');
+      return false;
+    }
+  }
+
   // ========================================
   // ✅ МЕТОДЫ УДАЛЕНИЯ (ЭТАП 15)
   // ========================================
@@ -1789,7 +1852,7 @@ class SyncService {
         syncUserUsageLimitsToFirebase(),
         syncBaitProgramsToFirebaseWithDeletion(),
         syncFishingDiaryToFirebaseWithDeletion(),
-        syncFishingDiaryFoldersToFirebase(), // 🆕 НОВОЕ: Папки TO Firebase
+        syncFishingDiaryFoldersToFirebaseWithDeletion(),
       ]);
 
       // Получаем обновления из Firebase

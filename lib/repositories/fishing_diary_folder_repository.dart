@@ -1,4 +1,4 @@
-// File: lib/repositories/fishing_diary_folder_repository.dart (New file)
+// ЗАМЕНИ ВЕСЬ ФАЙЛ lib/repositories/fishing_diary_folder_repository.dart НА:
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -31,7 +31,10 @@ class FishingDiaryFolderRepository {
   Future<List<FishingDiaryFolderModel>> getUserFishingDiaryFolders() async {
     try {
       final userId = _firebaseService.currentUserId;
+      debugPrint('📁 FolderRepository: Получение папок для пользователя: $userId');
+
       if (userId == null || userId.isEmpty) {
+        debugPrint('⚠️ FolderRepository: Пользователь не авторизован');
         return [];
       }
 
@@ -39,17 +42,33 @@ class FishingDiaryFolderRepository {
       if (_cachedFolders != null && _cacheTimestamp != null) {
         final cacheAge = DateTime.now().difference(_cacheTimestamp!);
         if (cacheAge < _cacheValidity) {
+          debugPrint('✅ FolderRepository: Возвращаем данные из кэша (${_cachedFolders!.length} папок)');
           return _cachedFolders!;
         } else {
+          debugPrint('🔄 FolderRepository: Кэш устарел, очищаем');
           clearCache();
         }
       }
 
       // Получаем данные из Isar
+      debugPrint('📁 FolderRepository: Загружаем папки из Isar');
       final isarFolders = await _isarService.getAllFishingDiaryFolders();
+      debugPrint('📁 FolderRepository: Загружено из Isar: ${isarFolders.length} папок');
 
       // Конвертируем в модели приложения
-      final folders = isarFolders.map((entity) => _entityToModel(entity)).toList();
+      final folders = isarFolders
+          .where((entity) => entity.markedForDeletion != true) // Исключаем удаленные
+          .map((entity) => _entityToModel(entity))
+          .toList();
+
+      // Сортируем по sortOrder, затем по дате создания
+      folders.sort((a, b) {
+        final orderComparison = a.sortOrder.compareTo(b.sortOrder);
+        if (orderComparison != 0) return orderComparison;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+
+      debugPrint('✅ FolderRepository: Обработано папок: ${folders.length}');
 
       // Кэшируем результат
       _cachedFolders = folders;
@@ -58,12 +77,15 @@ class FishingDiaryFolderRepository {
       // Запускаем синхронизацию если онлайн
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
+        debugPrint('🌐 FolderRepository: Запускаем фоновую синхронизацию');
         _performBackgroundSync('getUserFolders');
+      } else {
+        debugPrint('📱 FolderRepository: Офлайн режим, синхронизация пропущена');
       }
 
       return folders;
     } catch (e) {
-      debugPrint('❌ Ошибка получения папок дневника: $e');
+      debugPrint('❌ FolderRepository: Ошибка получения папок дневника: $e');
       return [];
     }
   }
@@ -72,12 +94,15 @@ class FishingDiaryFolderRepository {
   Future<String> addFishingDiaryFolder(FishingDiaryFolderModel folder) async {
     try {
       final userId = _firebaseService.currentUserId;
+      debugPrint('📁 FolderRepository: Добавление папки "${folder.name}" для пользователя: $userId');
+
       if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
 
       // Генерируем ID, если его нет
       final folderId = folder.id.isEmpty ? const Uuid().v4() : folder.id;
+      debugPrint('📁 FolderRepository: Сгенерирован ID папки: $folderId');
 
       // Создаем копию папки с установленным ID и UserID
       final folderToAdd = folder.copyWith(
@@ -93,23 +118,28 @@ class FishingDiaryFolderRepository {
       entity.markedForDeletion = false;
 
       await _isarService.insertFishingDiaryFolder(entity);
+      debugPrint('✅ FolderRepository: Папка сохранена в Isar');
 
       // Если онлайн, запускаем синхронизацию
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
+        debugPrint('🌐 FolderRepository: Запускаем синхронизацию с Firebase');
         _syncService.syncFishingDiaryFoldersToFirebase().then((_) {
-          // Синхронизация завершена
+          debugPrint('✅ FolderRepository: Синхронизация добавления завершена');
         }).catchError((e) {
-          debugPrint('❌ Ошибка фоновой синхронизации папок: $e');
+          debugPrint('❌ FolderRepository: Ошибка фоновой синхронизации папок: $e');
         });
+      } else {
+        debugPrint('📱 FolderRepository: Офлайн режим, папка будет синхронизирована позже');
       }
 
       // Очищаем кэш
       clearCache();
+      debugPrint('🔄 FolderRepository: Кэш очищен');
 
       return folderId;
     } catch (e) {
-      debugPrint('❌ Ошибка добавления папки дневника: $e');
+      debugPrint('❌ FolderRepository: Ошибка добавления папки дневника: $e');
       rethrow;
     }
   }
@@ -118,6 +148,8 @@ class FishingDiaryFolderRepository {
   Future<void> updateFishingDiaryFolder(FishingDiaryFolderModel folder) async {
     try {
       final userId = _firebaseService.currentUserId;
+      debugPrint('📁 FolderRepository: Обновление папки "${folder.name}" (ID: ${folder.id})');
+
       if (userId == null || userId.isEmpty) {
         throw Exception('Пользователь не авторизован');
       }
@@ -129,6 +161,7 @@ class FishingDiaryFolderRepository {
       // Находим существующую папку в Isar
       final existingEntity = await _isarService.getFishingDiaryFolderByFirebaseId(folder.id);
       if (existingEntity == null) {
+        debugPrint('❌ FolderRepository: Папка не найдена в локальной базе');
         throw Exception('Папка не найдена в локальной базе');
       }
 
@@ -140,21 +173,26 @@ class FishingDiaryFolderRepository {
       updatedEntity.markedForDeletion = false;
 
       await _isarService.updateFishingDiaryFolder(updatedEntity);
+      debugPrint('✅ FolderRepository: Папка обновлена в Isar');
 
       // Если онлайн, запускаем синхронизацию
       final isOnline = await NetworkUtils.isNetworkAvailable();
       if (isOnline) {
+        debugPrint('🌐 FolderRepository: Запускаем синхронизацию обновления с Firebase');
         _syncService.syncFishingDiaryFoldersToFirebase().then((_) {
-          // Синхронизация обновления завершена
+          debugPrint('✅ FolderRepository: Синхронизация обновления завершена');
         }).catchError((e) {
-          debugPrint('❌ Ошибка фоновой синхронизации папок: $e');
+          debugPrint('❌ FolderRepository: Ошибка фоновой синхронизации папок: $e');
         });
+      } else {
+        debugPrint('📱 FolderRepository: Офлайн режим, обновление будет синхронизировано позже');
       }
 
       // Очищаем кэш
       clearCache();
+      debugPrint('🔄 FolderRepository: Кэш очищен');
     } catch (e) {
-      debugPrint('❌ Ошибка обновления папки дневника: $e');
+      debugPrint('❌ FolderRepository: Ошибка обновления папки дневника: $e');
       rethrow;
     }
   }
@@ -162,24 +200,28 @@ class FishingDiaryFolderRepository {
   /// Удаление папки дневника
   Future<void> deleteFishingDiaryFolder(String folderId, {bool moveEntriesToRoot = true}) async {
     try {
+      debugPrint('📁 FolderRepository: Удаление папки $folderId (moveEntriesToRoot: $moveEntriesToRoot)');
+
       if (folderId.isEmpty) {
         throw Exception('ID папки не может быть пустым');
       }
 
       final entity = await _isarService.getFishingDiaryFolderByFirebaseId(folderId);
       if (entity == null) {
+        debugPrint('❌ FolderRepository: Папка не найдена в локальной базе');
         throw Exception('Папка не найдена в локальной базе');
       }
 
       // Если нужно, перемещаем записи в корень
       if (moveEntriesToRoot) {
+        debugPrint('📁 FolderRepository: Перемещаем записи из папки в корень');
         final entriesInFolder = await _isarService.getFishingDiaryEntriesByFolderId(folderId);
         for (final entry in entriesInFolder) {
           entry.folderId = null;
           entry.markAsModified();
           await _isarService.updateFishingDiaryEntry(entry);
         }
-        debugPrint('📁 Перемещено ${entriesInFolder.length} записей в корень');
+        debugPrint('✅ FolderRepository: Перемещено ${entriesInFolder.length} записей в корень');
       }
 
       final isOnline = await NetworkUtils.isNetworkAvailable();
@@ -187,20 +229,22 @@ class FishingDiaryFolderRepository {
 
       if (isOnline) {
         // ОНЛАЙН РЕЖИМ: Сразу удаляем из Firebase и Isar
+        debugPrint('🌐 FolderRepository: ОНЛАЙН режим - удаляем из Firebase');
         try {
           deletionSuccessful = await _syncService.deleteFishingDiaryFolderByFirebaseId(folderId);
 
           if (deletionSuccessful) {
-            debugPrint('✅ Онлайн удаление папки $folderId успешно');
+            debugPrint('✅ FolderRepository: Онлайн удаление папки $folderId успешно');
           } else {
-            debugPrint('⚠️ Онлайн удаление папки $folderId завершилось с ошибками');
+            debugPrint('⚠️ FolderRepository: Онлайн удаление папки $folderId завершилось с ошибками');
           }
         } catch (e) {
-          debugPrint('❌ Ошибка онлайн удаления папки $folderId: $e');
+          debugPrint('❌ FolderRepository: Ошибка онлайн удаления папки $folderId: $e');
           throw Exception('Не удалось удалить папку: $e');
         }
       } else {
         // ОФЛАЙН РЕЖИМ: Помечаем для удаления
+        debugPrint('📱 FolderRepository: ОФЛАЙН режим - помечаем для удаления');
         try {
           entity.markedForDeletion = true;
           entity.updatedAt = DateTime.now();
@@ -209,9 +253,9 @@ class FishingDiaryFolderRepository {
           await _isarService.updateFishingDiaryFolder(entity);
           deletionSuccessful = true;
 
-          debugPrint('✅ Офлайн удаление: папка $folderId помечена для удаления');
+          debugPrint('✅ FolderRepository: Офлайн удаление: папка $folderId помечена для удаления');
         } catch (e) {
-          debugPrint('❌ Ошибка офлайн удаления папки $folderId: $e');
+          debugPrint('❌ FolderRepository: Ошибка офлайн удаления папки $folderId: $e');
           throw Exception('Не удалось пометить папку для удаления: $e');
         }
       }
@@ -219,9 +263,10 @@ class FishingDiaryFolderRepository {
       if (deletionSuccessful) {
         // Очищаем кэш
         clearCache();
+        debugPrint('🔄 FolderRepository: Кэш очищен после удаления');
       }
     } catch (e) {
-      debugPrint('❌ Критическая ошибка удаления папки $folderId: $e');
+      debugPrint('❌ FolderRepository: Критическая ошибка удаления папки $folderId: $e');
       rethrow;
     }
   }
@@ -229,18 +274,23 @@ class FishingDiaryFolderRepository {
   /// Получение папки по ID
   Future<FishingDiaryFolderModel?> getFishingDiaryFolderById(String folderId) async {
     try {
+      debugPrint('📁 FolderRepository: Поиск папки по ID: $folderId');
+
       if (folderId.isEmpty) {
         return null;
       }
 
       final entity = await _isarService.getFishingDiaryFolderByFirebaseId(folderId);
       if (entity == null || entity.markedForDeletion == true) {
+        debugPrint('❌ FolderRepository: Папка $folderId не найдена или удалена');
         return null;
       }
 
-      return _entityToModel(entity);
+      final model = _entityToModel(entity);
+      debugPrint('✅ FolderRepository: Папка найдена: "${model.name}"');
+      return model;
     } catch (e) {
-      debugPrint('❌ Ошибка получения папки по ID: $e');
+      debugPrint('❌ FolderRepository: Ошибка получения папки по ID: $e');
       return null;
     }
   }
@@ -248,6 +298,8 @@ class FishingDiaryFolderRepository {
   /// Копирование папки
   Future<String> copyFishingDiaryFolder(String folderId) async {
     try {
+      debugPrint('📁 FolderRepository: Копирование папки: $folderId');
+
       final folder = await getFishingDiaryFolderById(folderId);
       if (folder == null) {
         throw Exception('Папка не найдена');
@@ -260,9 +312,12 @@ class FishingDiaryFolderRepository {
         updatedAt: DateTime.now(),
       );
 
-      return await addFishingDiaryFolder(copiedFolder);
+      final newFolderId = await addFishingDiaryFolder(copiedFolder);
+      debugPrint('✅ FolderRepository: Папка скопирована с новым ID: $newFolderId');
+
+      return newFolderId;
     } catch (e) {
-      debugPrint('❌ Ошибка копирования папки: $e');
+      debugPrint('❌ FolderRepository: Ошибка копирования папки: $e');
       rethrow;
     }
   }
@@ -270,15 +325,19 @@ class FishingDiaryFolderRepository {
   /// Принудительная синхронизация
   Future<bool> forceSyncData() async {
     try {
+      debugPrint('🔄 FolderRepository: Запуск принудительной синхронизации');
       final result = await _syncService.fullSync();
 
       if (result) {
         clearCache();
+        debugPrint('✅ FolderRepository: Принудительная синхронизация завершена успешно');
+      } else {
+        debugPrint('⚠️ FolderRepository: Принудительная синхронизация завершена с ошибками');
       }
 
       return result;
     } catch (e) {
-      debugPrint('❌ Ошибка принудительной синхронизации папок: $e');
+      debugPrint('❌ FolderRepository: Ошибка принудительной синхронизации папок: $e');
       return false;
     }
   }
@@ -331,15 +390,18 @@ class FishingDiaryFolderRepository {
   static void clearCache() {
     _cachedFolders = null;
     _cacheTimestamp = null;
+    debugPrint('🔄 FolderRepository: Кэш папок очищен');
   }
 
   /// Очистка всех локальных данных папок (для отладки)
   Future<void> clearAllLocalData() async {
     try {
+      debugPrint('🗑️ FolderRepository: Очистка всех локальных данных папок');
       await _isarService.clearAllFishingDiaryFolders();
       clearCache();
+      debugPrint('✅ FolderRepository: Все локальные данные папок очищены');
     } catch (e) {
-      debugPrint('❌ Ошибка очистки данных папок: $e');
+      debugPrint('❌ FolderRepository: Ошибка очистки данных папок: $e');
       rethrow;
     }
   }

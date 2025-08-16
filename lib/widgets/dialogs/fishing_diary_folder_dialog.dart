@@ -1,6 +1,5 @@
-// File: lib/widgets/dialogs/fishing_diary_folder_dialog.dart (New file)
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/responsive_constants.dart';
 import '../../utils/responsive_utils.dart';
@@ -30,16 +29,8 @@ class _FishingDiaryFolderDialogState extends State<FishingDiaryFolderDialog> {
 
   // Предустановленные цвета для папок
   final List<String> _folderColors = [
-    '#4CAF50', // Зеленый
-    '#2196F3', // Синий
-    '#FF9800', // Оранжевый
-    '#9C27B0', // Фиолетовый
-    '#F44336', // Красный
-    '#00BCD4', // Бирюзовый
-    '#8BC34A', // Светло-зеленый
-    '#FF5722', // Темно-оранжевый
-    '#607D8B', // Сине-серый
-    '#795548', // Коричневый
+    '#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336',
+    '#00BCD4', '#8BC34A', '#FF5722', '#607D8B', '#795548',
   ];
 
   @override
@@ -63,234 +54,283 @@ class _FishingDiaryFolderDialogState extends State<FishingDiaryFolderDialog> {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    return Dialog(
-      backgroundColor: AppConstants.surfaceColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusL),
-      ),
-      child: Container(
-        padding: EdgeInsets.all(ResponsiveUtils.getHorizontalPadding(context)),
-        width: MediaQuery.of(context).size.width * 0.9,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Заголовок
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(ResponsiveConstants.spacingS),
-                  decoration: BoxDecoration(
-                    color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
-                  ),
-                  child: Icon(
-                    Icons.folder,
-                    color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
-                    size: ResponsiveUtils.getIconSize(context, baseSize: 24),
-                  ),
-                ),
-                SizedBox(width: ResponsiveConstants.spacingM),
-                Expanded(
-                  child: Text(
-                    _isEditing
-                        ? localizations.translate('edit_folder')
-                        : localizations.translate('create_folder'),
-                    style: TextStyle(
-                      color: AppConstants.textColor,
-                      fontSize: ResponsiveUtils.getOptimalFontSize(context, 20, maxSize: 22),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.close,
-                    color: AppConstants.textColor,
-                    size: ResponsiveUtils.getIconSize(context),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-
-            SizedBox(height: ResponsiveConstants.spacingL),
-
-            // Поле названия
-            Text(
-              localizations.translate('folder_name'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                fontWeight: FontWeight.w600,
+    // 🔥 РАДИКАЛЬНОЕ ИСПРАВЛЕНИЕ: Полная изоляция от системы
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        // 🔥 КРИТИЧЕСКОЕ: Отключаем реакцию на клавиатуру
+        resizeToAvoidBottomInset: false,
+        backgroundColor: Colors.black54, // Полупрозрачный фон
+        body: Center(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              margin: const EdgeInsets.all(24.0),
+              width: double.maxFinite,
+              height: 520, // Жестко фиксированная высота
+              decoration: BoxDecoration(
+                color: AppConstants.surfaceColor,
+                borderRadius: BorderRadius.circular(ResponsiveConstants.radiusL),
               ),
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            TextField(
-              controller: _nameController,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-              ),
-              decoration: InputDecoration(
-                fillColor: AppConstants.backgroundColor,
-                filled: true,
-                hintText: localizations.translate('folder_name_hint'),
-                hintStyle: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.5),
-                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: ResponsiveConstants.spacingM,
-                  vertical: ResponsiveConstants.spacingM,
-                ),
-              ),
-              maxLength: 50,
-            ),
-
-            SizedBox(height: ResponsiveConstants.spacingM),
-
-            // Поле описания (опционально)
-            Text(
-              localizations.translate('folder_description'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            TextField(
-              controller: _descriptionController,
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-              ),
-              decoration: InputDecoration(
-                fillColor: AppConstants.backgroundColor,
-                filled: true,
-                hintText: localizations.translate('folder_description_hint'),
-                hintStyle: TextStyle(
-                  color: AppConstants.textColor.withOpacity(0.5),
-                  fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: ResponsiveConstants.spacingM,
-                  vertical: ResponsiveConstants.spacingM,
-                ),
-              ),
-              maxLines: 3,
-              maxLength: 200,
-            ),
-
-            SizedBox(height: ResponsiveConstants.spacingM),
-
-            // Выбор цвета
-            Text(
-              localizations.translate('folder_color'),
-              style: TextStyle(
-                color: AppConstants.textColor,
-                fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: ResponsiveConstants.spacingS),
-            Wrap(
-              spacing: ResponsiveConstants.spacingS,
-              runSpacing: ResponsiveConstants.spacingS,
-              children: _folderColors.map((color) {
-                final isSelected = _selectedColor == color;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    width: 40,
-                    height: 40,
+              child: Column(
+                children: [
+                  // 🔥 ЗАГОЛОВОК (фиксированная высота)
+                  Container(
+                    height: 80,
+                    padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
-                      color: Color(int.parse(color.replaceFirst('#', '0xFF'))),
-                      borderRadius: BorderRadius.circular(ResponsiveConstants.radiusS),
-                      border: Border.all(
-                        color: isSelected ? AppConstants.textColor : Colors.transparent,
-                        width: 3,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppConstants.textColor.withOpacity(0.1),
+                          width: 1,
+                        ),
                       ),
                     ),
-                    child: isSelected
-                        ? Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: ResponsiveUtils.getIconSize(context, baseSize: 20),
-                    )
-                        : null,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.folder,
+                            color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _isEditing ? 'Редактировать папку' : 'Создать папку',
+                            style: const TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            child: const Icon(
+                              Icons.close,
+                              color: AppConstants.textColor,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }).toList(),
-            ),
 
-            SizedBox(height: ResponsiveConstants.spacingXL),
+                  // 🔥 КОНТЕНТ (расширяемая область)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Поле названия
+                          const Text(
+                            'Название папки',
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppConstants.backgroundColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextField(
+                              controller: _nameController,
+                              style: const TextStyle(color: AppConstants.textColor, fontSize: 16),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Введите название...',
+                                hintStyle: TextStyle(
+                                  color: Color(0xFF7A7A7A),
+                                  fontSize: 16,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                counterText: '',
+                              ),
+                              maxLength: 50,
+                              inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                            ),
+                          ),
 
-            // Кнопки действий
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
-                      ),
-                    ),
-                    child: Text(
-                      localizations.translate('cancel'),
-                      style: TextStyle(
-                        color: AppConstants.textColor.withOpacity(0.7),
-                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
+                          const SizedBox(height: 16),
+
+                          // Поле описания
+                          const Text(
+                            'Описание (необязательно)',
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: AppConstants.backgroundColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextField(
+                              controller: _descriptionController,
+                              style: const TextStyle(color: AppConstants.textColor, fontSize: 16),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Добавьте описание...',
+                                hintStyle: TextStyle(
+                                  color: Color(0xFF7A7A7A),
+                                  fontSize: 16,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                counterText: '',
+                              ),
+                              maxLines: 2,
+                              maxLength: 200,
+                              inputFormatters: [LengthLimitingTextInputFormatter(200)],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Выбор цвета
+                          const Text(
+                            'Цвет папки',
+                            style: TextStyle(
+                              color: AppConstants.textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // 🔥 ФИКСИРОВАННАЯ ОБЛАСТЬ ДЛЯ ЦВЕТОВ
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _folderColors.map((color) {
+                                  final isSelected = _selectedColor == color;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (!isSelected) {
+                                        setState(() => _selectedColor = color);
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 35,
+                                      height: 35,
+                                      decoration: BoxDecoration(
+                                        color: Color(int.parse(color.replaceFirst('#', '0xFF'))),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isSelected ? AppConstants.textColor : Colors.transparent,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: isSelected
+                                          ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                          : null,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                SizedBox(width: ResponsiveConstants.spacingM),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: ResponsiveConstants.spacingM),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(ResponsiveConstants.radiusM),
+
+                  // 🔥 КНОПКИ (фиксированная высота)
+                  Container(
+                    height: 80,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: AppConstants.textColor.withOpacity(0.1),
+                          width: 1,
+                        ),
                       ),
                     ),
-                    child: _isLoading
-                        ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                        : Text(
-                      _isEditing
-                          ? localizations.translate('save_changes')
-                          : localizations.translate('create_folder'),
-                      style: TextStyle(
-                        fontSize: ResponsiveUtils.getOptimalFontSize(context, 16),
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _isLoading ? null : () => Navigator.of(context).pop(),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppConstants.textColor.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Отмена',
+                                style: TextStyle(
+                                  color: AppConstants.textColor.withOpacity(0.7),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _isLoading ? null : _handleSave,
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                                  : Text(
+                                _isEditing ? 'Сохранить' : 'Создать',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -302,8 +342,8 @@ class _FishingDiaryFolderDialogState extends State<FishingDiaryFolderDialog> {
     // Валидация
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('folder_name_required')),
+        const SnackBar(
+          content: Text('Название папки обязательно'),
           backgroundColor: Colors.red,
         ),
       );
@@ -332,7 +372,7 @@ class _FishingDiaryFolderDialogState extends State<FishingDiaryFolderDialog> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${localizations.translate('error')}: $e'),
+          content: Text('Ошибка: $e'),
           backgroundColor: Colors.red,
         ),
       );

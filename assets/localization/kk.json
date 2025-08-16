@@ -2309,5 +2309,7 @@
   "entries_moved_successfully": "Жазбалар сәтті жылжытылды",
   "entry_moved_successfully": "Жазба сәтті жылжытылды",
   "move_confirmation": "{entries} дегенді {folder} дегенге жылжыту?",
-  "delete": "Жою"
+  "delete": "Жою",
+  "remove_from_folder": "Папкадан шығару",
+  "entry_removed_from_folder": "Жазба папкадан шығарылды"
 }

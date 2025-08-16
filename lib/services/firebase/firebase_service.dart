@@ -893,16 +893,23 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      return await _firestore
+      debugPrint('📁 Firebase: Добавляем папку дневника: ${folderData['name']}');
+
+      final docRef = await _firestore
           .collection('users')
           .doc(userId)
           .collection('fishing_diary_folders')
           .add({
         ...folderData,
+        'userId': userId, // Явно добавляем userId
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      debugPrint('📁 Firebase: Папка добавлена с ID: ${docRef.id}');
+      return docRef;
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка добавления папки: $e');
       rethrow;
     }
   }
@@ -913,6 +920,8 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
+      debugPrint('📁 Firebase: Обновляем папку: $folderId');
+
       await _firestore
           .collection('users')
           .doc(userId)
@@ -922,7 +931,10 @@ class FirebaseService {
         ...folderData,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      debugPrint('📁 Firebase: Папка обновлена: $folderId');
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка обновления папки: $e');
       rethrow;
     }
   }
@@ -933,15 +945,31 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
-      return await _firestore
+      debugPrint('📁 Firebase: Загружаем папки дневника для пользователя: $userId');
+
+      final result = await _firestore
           .collection('users')
           .doc(userId)
           .collection('fishing_diary_folders')
           .orderBy('sortOrder')
           .orderBy('createdAt', descending: false)
           .get();
+
+      debugPrint('📁 Firebase: Загружено папок: ${result.docs.length}');
+      return result;
     } catch (e) {
-      rethrow;
+      debugPrint('❌ Firebase: Ошибка загрузки папок, пробуем без сортировки: $e');
+      // Если не работает сортировка, загружаем без неё
+      try {
+        return await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('fishing_diary_folders')
+            .get();
+      } catch (e2) {
+        debugPrint('❌ Firebase: Критическая ошибка загрузки папок: $e2');
+        rethrow;
+      }
     }
   }
 
@@ -951,23 +979,65 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
+      debugPrint('📁 Firebase: Удаляем папку: $folderId');
+
+      // Сначала убираем все записи из этой папки
+      await _removeFolderFromAllEntries(folderId);
+
+      // Затем удаляем саму папку
       await _firestore
           .collection('users')
           .doc(userId)
           .collection('fishing_diary_folders')
           .doc(folderId)
           .delete();
+
+      debugPrint('📁 Firebase: Папка удалена: $folderId');
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка удаления папки: $e');
       rethrow;
     }
   }
 
-  /// Обновление folderId в записи дневника рыбалки (перемещение в папку)
+  /// Вспомогательный метод: удаление папки из всех записей
+  Future<void> _removeFolderFromAllEntries(String folderId) async {
+    final userId = currentUserId;
+    if (userId == null) return;
+
+    try {
+      // Находим все записи в этой папке
+      final entriesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary')
+          .where('folderId', isEqualTo: folderId)
+          .get();
+
+      // Убираем папку из всех записей (делаем их "без папки")
+      final batch = _firestore.batch();
+
+      for (final doc in entriesSnapshot.docs) {
+        batch.update(doc.reference, {
+          'folderId': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      debugPrint('📁 Firebase: Удалено folderId из ${entriesSnapshot.docs.length} записей');
+    } catch (e) {
+      debugPrint('❌ Firebase: Ошибка очистки записей от папки: $e');
+    }
+  }
+
+  /// Перемещение записи дневника в папку
   Future<void> moveFishingDiaryEntryToFolder(String entryId, String? folderId) async {
     final userId = currentUserId;
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
+      debugPrint('📁 Firebase: Перемещаем запись $entryId в папку: $folderId');
+
       final updateData = <String, dynamic>{
         'folderId': folderId,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -979,7 +1049,10 @@ class FirebaseService {
           .collection('fishing_diary')
           .doc(entryId)
           .update(updateData);
+
+      debugPrint('📁 Firebase: Запись перемещена успешно');
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка перемещения записи: $e');
       rethrow;
     }
   }
@@ -990,6 +1063,8 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
+      debugPrint('📁 Firebase: Загружаем записи папки: $folderId');
+
       return await _firestore
           .collection('users')
           .doc(userId)
@@ -998,6 +1073,7 @@ class FirebaseService {
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка загрузки записей папки: $e');
       rethrow;
     }
   }
@@ -1008,6 +1084,8 @@ class FirebaseService {
     if (userId == null) throw Exception('Пользователь не авторизован');
 
     try {
+      debugPrint('📁 Firebase: Загружаем записи без папки');
+
       return await _firestore
           .collection('users')
           .doc(userId)
@@ -1016,6 +1094,45 @@ class FirebaseService {
           .orderBy('createdAt', descending: true)
           .get();
     } catch (e) {
+      debugPrint('❌ Firebase: Ошибка загрузки записей без папки: $e');
+      rethrow;
+    }
+  }
+
+  /// Копирование папки дневника рыбалки
+  Future<String> copyFishingDiaryFolder(String folderId) async {
+    final userId = currentUserId;
+    if (userId == null) throw Exception('Пользователь не авторизован');
+
+    try {
+      debugPrint('📁 Firebase: Копируем папку: $folderId');
+
+      // Получаем оригинальную папку
+      final originalDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('fishing_diary_folders')
+          .doc(folderId)
+          .get();
+
+      if (!originalDoc.exists) {
+        throw Exception('Папка не найдена');
+      }
+
+      final originalData = originalDoc.data() as Map<String, dynamic>;
+
+      // Создаем копию с новым именем
+      final copyData = Map<String, dynamic>.from(originalData);
+      copyData['name'] = '${originalData['name']} (копия)';
+      copyData.remove('createdAt');
+      copyData.remove('updatedAt');
+
+      final newDocRef = await addFishingDiaryFolder(copyData);
+
+      debugPrint('📁 Firebase: Папка скопирована с ID: ${newDocRef.id}');
+      return newDocRef.id;
+    } catch (e) {
+      debugPrint('❌ Firebase: Ошибка копирования папки: $e');
       rethrow;
     }
   }

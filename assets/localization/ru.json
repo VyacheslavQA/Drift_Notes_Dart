@@ -2315,5 +2315,7 @@
   "entries_moved_successfully": "Записи успешно перемещены",
   "entry_moved_successfully": "Запись успешно перемещена",
   "move_confirmation": "Переместить {entries} в {folder}?",
-  "delete": "Удалить"
+  "delete": "Удалить",
+  "remove_from_folder": "Убрать из папки",
+  "entry_removed_from_folder": "Запись убрана из папки"
 }
